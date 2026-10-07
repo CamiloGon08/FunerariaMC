@@ -26,14 +26,14 @@ public class LeaseNotification {
     private Vault vault;
 
     // REMINDER u OVERDUE_NOTICE
-    @Column(name = "notification_type", length = 20, nullable = false)
+    @Column(name = "notification_type", length = 20)
     private String notificationType = "REMINDER";
 
     // EMAIL o TELEGRAM
-    @Column(name = "channel", length = 15, nullable = false)
+    @Column(name = "channel", length = 15)
     private String channel = "EMAIL";
 
-    @Column(name = "scheduled_date", nullable = false)
+    @Column(name = "scheduled_date")
     private LocalDate scheduledDate;
 
     @Column(name = "sent_date")

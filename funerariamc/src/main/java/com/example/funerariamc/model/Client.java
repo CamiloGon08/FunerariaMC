@@ -1,7 +1,6 @@
 package com.example.funerariamc.model;
 
 import lombok.Getter;
-import lombok.Setter;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import jakarta.persistence.*;
@@ -11,7 +10,6 @@ import java.time.LocalDate;
 @Entity
 @Table(name = "client")
 @Getter
-@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class Client extends Person {

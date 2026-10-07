@@ -1,9 +1,6 @@
 package com.example.funerariamc.model;
 
-import lombok.Getter;
-import lombok.Setter;
 import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
 import jakarta.persistence.*;
 
 /**
@@ -13,8 +10,6 @@ import jakarta.persistence.*;
  */
 @Entity
 @Table(name = "cafeteria_attendant")
-@Getter
-@Setter
 @NoArgsConstructor
 public class CafeteriaAttendant extends Employee {
 }

@@ -12,7 +12,6 @@ import java.time.LocalDate;
 @Entity
 @Table(name = "employee")
 @Getter
-@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class Employee extends Person {
@@ -30,4 +29,21 @@ public class Employee extends Person {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "role_id")
     private Role role;
+    
+    public void deactivate(){
+        this.status = "INACTIVE";
+    }
+    
+    public void activate(){
+        this.status = "ACTIVE";
+    }
+    
+    public boolean isActive(){
+        return "ACTIVE".equals(this.status);
+    }
+    
+    public void setSalary(BigDecimal salary){
+        this.salary = salary;
+    }
 }
+

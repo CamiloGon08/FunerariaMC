@@ -1,7 +1,6 @@
 package com.example.funerariamc.model;
 
 import lombok.Getter;
-import lombok.Setter;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import jakarta.persistence.*;
@@ -11,7 +10,6 @@ import java.math.BigDecimal;
 @Entity
 @Table(name = "funeral_salesperson")
 @Getter
-@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class FuneralSalesperson extends Employee {

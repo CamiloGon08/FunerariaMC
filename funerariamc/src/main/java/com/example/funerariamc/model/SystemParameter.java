@@ -23,10 +23,10 @@ public class SystemParameter {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "param_name", length = 50, nullable = false, unique = true)
+    @Column(name = "param_name", length = 50, unique = true)
     private String paramName;
 
-    @Column(name = "param_value", length = 50, nullable = false)
+    @Column(name = "param_value", length = 50)
     private String paramValue;
 
     @Column(name = "description", length = 150)

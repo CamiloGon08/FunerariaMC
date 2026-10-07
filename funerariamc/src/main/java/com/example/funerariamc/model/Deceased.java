@@ -20,10 +20,10 @@ public class Deceased {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "name", length = 25, nullable = false)
+    @Column(name = "name", length = 25)
     private String name;
 
-    @Column(name = "lastname", length = 25, nullable = false)
+    @Column(name = "lastname", length = 25)
     private String lastname;
 
     @Column(name = "document_number", length = 11)

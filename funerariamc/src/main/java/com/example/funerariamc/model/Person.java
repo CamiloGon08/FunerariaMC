@@ -1,9 +1,7 @@
 package com.example.funerariamc.model;
 
 import lombok.Getter;
-import lombok.Setter;
 import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -17,9 +15,8 @@ import java.time.LocalDateTime;
 @Table(name = "person")
 @Inheritance(strategy = InheritanceType.JOINED)
 @Getter
-@Setter
 @NoArgsConstructor
-@AllArgsConstructor
+
 public abstract class Person {
 
     @Id

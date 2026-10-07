@@ -1,7 +1,6 @@
 package com.example.funerariamc.model;
 
 import lombok.Getter;
-import lombok.Setter;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import jakarta.persistence.*;
@@ -10,7 +9,6 @@ import jakarta.persistence.*;
 @Entity
 @Table(name = "role")
 @Getter
-@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class Role {

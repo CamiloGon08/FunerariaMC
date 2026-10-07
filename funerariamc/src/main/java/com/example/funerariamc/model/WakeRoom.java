@@ -20,7 +20,7 @@ public class WakeRoom {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "name", length = 15, nullable = false)
+    @Column(name = "name", length = 15)
     private String name;
 
     @Column(name = "capacity")
