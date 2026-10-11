@@ -19,11 +19,11 @@ public class Employee extends Person {
     @Column(name = "hire_date")
     private LocalDate hireDate;
 
-    @Column(name = "salary", precision = 10, scale = 2)
+    @Column(name = "salary", precision = 12, scale = 2)
     private BigDecimal salary;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", length = 10)
+    @Column(name = "status", length = 20)
     private EmployeeStatus status = EmployeeStatus.ACTIVE;
 
     @ManyToOne(fetch = FetchType.LAZY)
