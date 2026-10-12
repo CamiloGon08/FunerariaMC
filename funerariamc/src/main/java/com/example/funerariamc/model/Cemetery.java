@@ -1,12 +1,15 @@
+
 package com.example.funerariamc.model;
 
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
-import jakarta.persistence.*;
 
-/** Cementerio donde la funeraria tiene bóvedas/nichos. Tabla: cemetery */
+/**
+ * Represents a cemetery where the funeral home owns vaults.
+ */
 @Entity
 @Table(name = "cemetery")
 @Getter
@@ -19,9 +22,9 @@ public class Cemetery {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "name", length = 100)
+    @Column(name = "name", nullable = false)
     private String name;
 
-    @Column(name = "address", length = 40)
+    @Column(name = "address")
     private String address;
 }
