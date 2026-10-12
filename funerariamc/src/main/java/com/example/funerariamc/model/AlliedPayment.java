@@ -1,3 +1,4 @@
+
 package com.example.funerariamc.model;
 
 import lombok.Getter;
@@ -8,7 +9,9 @@ import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-/** Pago hacia/desde una funeraria aliada por un servicio compartido. Tabla: allied_payment */
+/**
+ * Stores payments involving an allied funeral home.
+ */
 @Entity
 @Table(name = "allied_payment")
 @Getter
@@ -29,12 +32,12 @@ public class AlliedPayment {
     @JoinColumn(name = "related_service_contract_id")
     private ServiceContract relatedServiceContract;
 
-    @Column(name = "amount", precision = 10, scale = 2, nullable = false)
+    @Column(name = "amount", nullable = false)
     private BigDecimal amount;
 
     @Column(name = "payment_date")
     private LocalDate paymentDate;
 
-    @Column(name = "status", length = 15)
+    @Column(name = "status")
     private String status;
 }
