@@ -1,12 +1,15 @@
+
 package com.example.funerariamc.model;
 
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
-import jakarta.persistence.*;
 
-/** Beneficiario cubierto por un plan funerario. Tabla: beneficiary */
+/**
+ * Represents a beneficiary covered by a funeral plan.
+ */
 @Entity
 @Table(name = "beneficiary")
 @Getter
@@ -23,15 +26,15 @@ public class Beneficiary {
     @JoinColumn(name = "funeral_plan_id", nullable = false)
     private FuneralPlan funeralPlan;
 
-    @Column(name = "name", length = 25)
+    @Column(name = "name", nullable = false)
     private String name;
 
-    @Column(name = "lastname", length = 25)
+    @Column(name = "lastname", nullable = false)
     private String lastname;
 
-    @Column(name = "relationship", length = 30)
+    @Column(name = "relationship")
     private String relationship;
 
-    @Column(name = "document_number", length = 11)
+    @Column(name = "document_number")
     private String documentNumber;
 }
