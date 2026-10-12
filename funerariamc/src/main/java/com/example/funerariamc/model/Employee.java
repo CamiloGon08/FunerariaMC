@@ -1,29 +1,32 @@
+
 package com.example.funerariamc.model;
 
 import com.example.funerariamc.model.enums.EmployeeStatus;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-/** Employee subtype of Person. Table: employee. */
+/**
+ * Stores the common information for all employees.
+ */
 @Entity
 @Table(name = "employee")
 @Getter
+@Setter
 @NoArgsConstructor
-@AllArgsConstructor
 public class Employee extends Person {
 
     @Column(name = "hire_date")
     private LocalDate hireDate;
 
-    @Column(name = "salary", precision = 12, scale = 2)
+    @Column(name = "salary")
     private BigDecimal salary;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", length = 20)
+    @Column(name = "status")
     private EmployeeStatus status = EmployeeStatus.ACTIVE;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -40,9 +43,5 @@ public class Employee extends Person {
 
     public boolean isActive() {
         return EmployeeStatus.ACTIVE.equals(this.status);
-    }
-
-    public void setSalary(BigDecimal salary) {
-        this.salary = salary;
     }
 }
