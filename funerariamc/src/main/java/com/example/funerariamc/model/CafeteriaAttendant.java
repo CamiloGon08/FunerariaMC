@@ -1,12 +1,13 @@
+
 package com.example.funerariamc.model;
 
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
 import lombok.NoArgsConstructor;
-import jakarta.persistence.*;
 
 /**
- * Subtipo de Employee: encargado de la cafetería interna de cortesía.
- * No maneja comisión ni se liga a Sale (no es una línea de negocio independiente).
- * Tabla: cafeteria_attendant
+ * Represents the employee responsible for complimentary cafeteria supplies.
+ * This role has no commission or sales relationship.
  */
 @Entity
 @Table(name = "cafeteria_attendant")
