@@ -7,7 +7,9 @@ import lombok.AllArgsConstructor;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
-/** Registro individual de cremación de un difunto. Tabla: cremation */
+/**
+ * Stores the details of a cremation.
+ */
 @Entity
 @Table(name = "cremation")
 @Getter
@@ -35,6 +37,6 @@ public class Cremation {
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
 
-    @Column(name = "certificate_number", length = 20)
+    @Column(name = "certificate_number")
     private String certificateNumber;
 }
