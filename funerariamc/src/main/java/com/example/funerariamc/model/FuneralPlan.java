@@ -1,14 +1,18 @@
+
 package com.example.funerariamc.model;
 
+import com.example.funerariamc.model.enums.PlanStatus;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
-import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-/** Plan funerario prepagado contratado por un cliente. Tabla: funeral_plan */
+/**
+ * Represents a prepaid or membership funeral plan.
+ */
 @Entity
 @Table(name = "funeral_plan")
 @Getter
@@ -25,16 +29,16 @@ public class FuneralPlan {
     @JoinColumn(name = "client_id", nullable = false)
     private Client client;
 
-    @Column(name = "plan_name", length = 80)
+    @Column(name = "plan_name")
     private String planName;
 
-    @Column(name = "monthly_fee", precision = 10, scale = 2)
+    @Column(name = "monthly_fee")
     private BigDecimal monthlyFee;
 
     @Column(name = "start_date")
     private LocalDate startDate;
 
-    // ACTIVE, SUSPENDED, CANCELLED
-    @Column(name = "status", length = 12)
-    private String status;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status")
+    private PlanStatus status;
 }
