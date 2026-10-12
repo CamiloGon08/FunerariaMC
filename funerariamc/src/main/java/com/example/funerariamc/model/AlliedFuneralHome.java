@@ -1,32 +1,34 @@
+
 package com.example.funerariamc.model;
 
-import lombok.Getter;
-import lombok.Setter;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 import java.time.LocalDate;
 
-/** Funeraria externa aliada con convenio. Tabla: allied_funeral_home */
+/**
+ * Stores information about an allied funeral home.
+ */
 @Entity
 @Table(name = "allied_funeral_home")
 @Getter
 @Setter
 @NoArgsConstructor
-@AllArgsConstructor
 public class AlliedFuneralHome {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "name", length = 100, nullable = false)
+    @Column(name = "name", nullable = false)
     private String name;
 
-    @Column(name = "nit", length = 15)
+    @Column(name = "nit")
     private String nit;
 
-    @Column(name = "contact_phone", length = 10)
+    @Column(name = "contact_phone")
     private String contactPhone;
 
     @Column(name = "agreement_start_date")
