@@ -1,13 +1,16 @@
+
 package com.example.funerariamc.model;
 
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
-import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
-/** Bitácora de auditoría de acciones de usuarios. Tabla: access_log */
+/**
+ * Records the actions performed by application users.
+ */
 @Entity
 @Table(name = "access_log")
 @Getter
@@ -24,12 +27,12 @@ public class AccessLog {
     @JoinColumn(name = "app_user_id", nullable = false)
     private AppUser appUser;
 
-    @Column(name = "action", length = 100)
+    @Column(name = "action")
     private String action;
 
-    @Column(name = "ip_address", length = 45)
+    @Column(name = "ip_address")
     private String ipAddress;
 
-    @Column(name = "\"timestamp\"")
+    @Column(name = "timestamp", insertable = false, updatable = false)
     private LocalDateTime timestamp;
 }

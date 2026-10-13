@@ -1,14 +1,20 @@
+
 package com.example.funerariamc.model;
 
+import com.example.funerariamc.model.enums.NotificationType;
+import com.example.funerariamc.model.enums.NotificationChannel;
+import com.example.funerariamc.model.enums.NotificationStatus;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
-import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-/** Aviso automático de vencimiento/mora de arriendo de una bóveda. Tabla: lease_notification */
+/**
+ * Represents a notification for upcoming or overdue vault payments.
+ */
 @Entity
 @Table(name = "lease_notification")
 @Getter
@@ -25,30 +31,30 @@ public class LeaseNotification {
     @JoinColumn(name = "vault_id", nullable = false)
     private Vault vault;
 
-    // REMINDER u OVERDUE_NOTICE
-    @Column(name = "notification_type", length = 20)
-    private String notificationType = "REMINDER";
+    @Enumerated(EnumType.STRING)
+    @Column(name = "notification_type", nullable = false)
+    private NotificationType notificationType = NotificationType.REMINDER;
 
-    // EMAIL o TELEGRAM
-    @Column(name = "channel", length = 15)
-    private String channel = "EMAIL";
+    @Enumerated(EnumType.STRING)
+    @Column(name = "channel", nullable = false)
+    private NotificationChannel channel = NotificationChannel.EMAIL;
 
-    @Column(name = "scheduled_date")
+    @Column(name = "scheduled_date", nullable = false)
     private LocalDate scheduledDate;
 
     @Column(name = "sent_date")
     private LocalDateTime sentDate;
 
-    // PENDING, SENT, FAILED
-    @Column(name = "status", length = 15)
-    private String status = "PENDING";
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status")
+    private NotificationStatus status = NotificationStatus.PENDING;
 
-    @Column(name = "recipient_contact", length = 100)
+    @Column(name = "recipient_contact")
     private String recipientContact;
 
-    @Column(name = "message_content", length = 300)
+    @Column(name = "message_content")
     private String messageContent;
 
-    @Column(name = "created_at")
+    @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
 }

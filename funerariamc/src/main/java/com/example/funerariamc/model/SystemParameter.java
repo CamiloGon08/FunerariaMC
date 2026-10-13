@@ -1,15 +1,14 @@
+
 package com.example.funerariamc.model;
 
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
-import jakarta.persistence.*;
 
 /**
- * Parámetros de configuración general del sistema (llave-valor), para no dejar
- * valores fijos ("hardcodeados") en el código, ej. REMINDER_DAYS_BEFORE.
- * Tabla: system_parameter
+ * Stores the system configuration parameters.
  */
 @Entity
 @Table(name = "system_parameter")
@@ -23,12 +22,12 @@ public class SystemParameter {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "param_name", length = 50, unique = true)
+    @Column(name = "param_name", unique = true, nullable = false)
     private String paramName;
 
-    @Column(name = "param_value", length = 50)
+    @Column(name = "param_value", nullable = false)
     private String paramValue;
 
-    @Column(name = "description", length = 150)
+    @Column(name = "description")
     private String description;
 }

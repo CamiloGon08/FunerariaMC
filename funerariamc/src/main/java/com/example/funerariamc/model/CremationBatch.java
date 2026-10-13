@@ -7,7 +7,9 @@ import lombok.AllArgsConstructor;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
-/** Lote/turno de cremación programado en el horno. Tabla: cremation_batch */
+/**
+ * Stores a scheduled cremation batch.
+ */
 @Entity
 @Table(name = "cremation_batch")
 @Getter
@@ -23,9 +25,9 @@ public class CremationBatch {
     @Column(name = "scheduled_date")
     private LocalDateTime scheduledDate;
 
-    @Column(name = "furnace_code", length = 15)
+    @Column(name = "furnace_code")
     private String furnaceCode;
 
-    @Column(name = "status", length = 15)
+    @Column(name = "status")
     private String status;
 }

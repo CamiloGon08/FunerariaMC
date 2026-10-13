@@ -1,10 +1,13 @@
+
 package com.example.funerariamc.model;
 
-
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
 import lombok.NoArgsConstructor;
-import jakarta.persistence.*;
 
-/** Subtipo de Employee: receptionist. No agrega columnas propias. Tabla: receptionist */
+/**
+ * Represents an employee responsible for customer service and administrative tasks.
+ */
 @Entity
 @Table(name = "receptionist")
 @NoArgsConstructor

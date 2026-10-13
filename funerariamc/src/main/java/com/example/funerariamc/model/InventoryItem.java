@@ -1,13 +1,16 @@
+
 package com.example.funerariamc.model;
 
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
-import jakarta.persistence.*;
 import java.math.BigDecimal;
 
-/** Artículo de inventario vendible (ataúdes, flores, urnas, etc.). Tabla: inventory_item */
+/**
+ * Represents an item available in the inventory.
+ */
 @Entity
 @Table(name = "inventory_item")
 @Getter
@@ -20,10 +23,10 @@ public class InventoryItem {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "name", length = 80, nullable = false)
+    @Column(name = "name", nullable = false)
     private String name;
 
-    @Column(name = "category", length = 30)
+    @Column(name = "category")
     private String category;
 
     @Column(name = "stock_quantity")
@@ -32,6 +35,6 @@ public class InventoryItem {
     @Column(name = "minimum_stock")
     private Integer minimumStock = 0;
 
-    @Column(name = "unit_price", precision = 10, scale = 2)
+    @Column(name = "unit_price")
     private BigDecimal unitPrice;
 }

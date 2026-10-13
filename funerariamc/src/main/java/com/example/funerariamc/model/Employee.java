@@ -1,49 +1,47 @@
+
 package com.example.funerariamc.model;
 
+import com.example.funerariamc.model.enums.EmployeeStatus;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-/** Subtipo de Person: quien trabaja para la funeraria. Tabla: employee */
+/**
+ * Stores the common information for all employees.
+ */
 @Entity
 @Table(name = "employee")
 @Getter
+@Setter
 @NoArgsConstructor
-@AllArgsConstructor
 public class Employee extends Person {
 
     @Column(name = "hire_date")
     private LocalDate hireDate;
 
-    @Column(name = "salary", precision = 10, scale = 2)
+    @Column(name = "salary")
     private BigDecimal salary;
 
-    // ACTIVE o INACTIVE
-    @Column(name = "status", length = 10)
-    private String status = "ACTIVE";
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status")
+    private EmployeeStatus status = EmployeeStatus.ACTIVE;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "role_id")
     private Role role;
-    
-    public void deactivate(){
-        this.status = "INACTIVE";
+
+    public void deactivate() {
+        this.status = EmployeeStatus.INACTIVE;
     }
-    
-    public void activate(){
-        this.status = "ACTIVE";
+
+    public void activate() {
+        this.status = EmployeeStatus.ACTIVE;
     }
-    
-    public boolean isActive(){
-        return "ACTIVE".equals(this.status);
-    }
-    
-    public void setSalary(BigDecimal salary){
-        this.salary = salary;
+
+    public boolean isActive() {
+        return EmployeeStatus.ACTIVE.equals(this.status);
     }
 }
-

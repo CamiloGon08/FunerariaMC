@@ -1,13 +1,16 @@
+
 package com.example.funerariamc.model;
 
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
-import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
-/** Credenciales de acceso al sistema para un empleado. Tabla: app_user */
+/**
+ * Stores the login information for an employee.
+ */
 @Entity
 @Table(name = "app_user")
 @Getter
@@ -24,10 +27,10 @@ public class AppUser {
     @JoinColumn(name = "employee_id", nullable = false, unique = true)
     private Employee employee;
 
-    @Column(name = "username", length = 25, nullable = false, unique = true)
+    @Column(name = "username", nullable = false, unique = true)
     private String username;
 
-    @Column(name = "password_hash", length = 70, nullable = false)
+    @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
     @Column(name = "is_enabled")

@@ -1,21 +1,26 @@
+
 package com.example.funerariamc.model;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
-import jakarta.persistence.*;
+import lombok.Setter;
 
-/** Subtipo de Employee: conductor de los vehículos de la funeraria. Tabla: driver */
+/**
+ * Represents a funeral home driver.
+ */
 @Entity
 @Table(name = "driver")
 @Getter
+@Setter
 @NoArgsConstructor
-@AllArgsConstructor
 public class Driver extends Employee {
 
-    @Column(name = "license_category", length = 10)
+    @Column(name = "license_category")
     private String licenseCategory;
 
-    @Column(name = "license_file_url", length = 250)
+    @Column(name = "license_file_url")
     private String licenseFileUrl;
 }

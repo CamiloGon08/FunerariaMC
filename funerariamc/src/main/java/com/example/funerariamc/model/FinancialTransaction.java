@@ -1,14 +1,18 @@
+
 package com.example.funerariamc.model;
 
+import com.example.funerariamc.model.enums.TransactionType;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
-import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-/** Movimiento financiero (ingreso o egreso). Tabla: financial_transaction */
+/**
+ * Represents a financial transaction.
+ */
 @Entity
 @Table(name = "financial_transaction")
 @Getter
@@ -21,20 +25,22 @@ public class FinancialTransaction {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // INCOME o EXPENSE
-    @Column(name = "transaction_type", length = 10)
-    private String transactionType;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "transaction_type")
+    private TransactionType transactionType;
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "related_sale_id", unique = true)
     private Sale relatedSale;
 
-    @Column(name = "amount", precision = 12, scale = 2, nullable = false)
+    @Column(name = "amount", nullable = false)
     private BigDecimal amount;
 
-    @Column(name = "transaction_date")
+    @Column(name = "transaction_date",
+            insertable = false,
+            updatable = false)
     private LocalDateTime transactionDate;
 
-    @Column(name = "description", length = 150)
+    @Column(name = "description")
     private String description;
 }
