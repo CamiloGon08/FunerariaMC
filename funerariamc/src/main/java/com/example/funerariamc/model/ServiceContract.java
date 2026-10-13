@@ -1,14 +1,18 @@
+
 package com.example.funerariamc.model;
 
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
-import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import com.example.funerariamc.model.enums.ContractStatus;
 
-/** Contrato de servicio funerario completo para un difunto. Tabla: service_contract */
+/**
+ * Stores the details of a funeral service contract.
+ */
 @Entity
 @Table(name = "service_contract")
 @Getter
@@ -37,15 +41,18 @@ public class ServiceContract {
     @JoinColumn(name = "funeral_salesperson_id")
     private FuneralSalesperson funeralSalesperson;
 
-    @Column(name = "contract_number", length = 20, nullable = false, unique = true)
+    @Column(name = "contract_number", nullable = false, unique = true)
     private String contractNumber;
 
-    @Column(name = "contract_date")
+    @Column(name = "contract_date",
+            insertable = false,
+            updatable = false)
     private LocalDate contractDate;
 
-    @Column(name = "total_amount", precision = 12, scale = 2)
+    @Column(name = "total_amount")
     private BigDecimal totalAmount;
 
-    @Column(name = "status", length = 15)
-    private String status;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status")
+    private ContractStatus status = ContractStatus.ACTIVE;
 }
