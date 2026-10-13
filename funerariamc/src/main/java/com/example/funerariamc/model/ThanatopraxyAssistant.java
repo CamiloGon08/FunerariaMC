@@ -6,9 +6,7 @@ import jakarta.persistence.Table;
 import lombok.NoArgsConstructor;
 
 /**
- * Employee subtype that assists the thanatopractor in body preparation.
- * It has no commission, requires no training certificate, and has no system user.
- * Table: thanatopraxy_assistant.
+ * Represents an assistant who supports body preparation.
  */
 @Entity
 @Table(name = "thanatopraxy_assistant")
