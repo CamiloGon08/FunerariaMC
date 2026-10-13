@@ -1,13 +1,16 @@
+
 package com.example.funerariamc.model;
 
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
-import jakarta.persistence.*;
 import java.math.BigDecimal;
 
-/** Línea de detalle de artículos dentro de una venta. Tabla: sale_detail */
+/**
+ * Stores the details of a sale.
+ */
 @Entity
 @Table(name = "sale_detail")
 @Getter
@@ -28,15 +31,15 @@ public class SaleDetail {
     @JoinColumn(name = "inventory_item_id")
     private InventoryItem inventoryItem;
 
-    @Column(name = "description", length = 100)
+    @Column(name = "description")
     private String description;
 
     @Column(name = "quantity", nullable = false)
     private Integer quantity = 1;
 
-    @Column(name = "unit_price", precision = 10, scale = 2, nullable = false)
+    @Column(name = "unit_price", nullable = false)
     private BigDecimal unitPrice;
 
-    @Column(name = "subtotal", precision = 12, scale = 2, nullable = false)
+    @Column(name = "subtotal", nullable = false)
     private BigDecimal subtotal;
 }
