@@ -1,29 +1,32 @@
+
 package com.example.funerariamc.model;
 
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-/** Subtipo de Employee: tanatopractor(a). Tabla: thanatopractor */
+/**
+ * Represents a thanatopractor.
+ */
 @Entity
 @Table(name = "thanatopractor")
 @Getter
+@Setter
 @NoArgsConstructor
-@AllArgsConstructor
 public class Thanatopractor extends Employee {
 
-    @Column(name = "training_institution", length = 80)
+    @Column(name = "training_institution")
     private String trainingInstitution;
 
     @Column(name = "certification_date")
     private LocalDate certificationDate;
 
-    @Column(name = "certificate_file_url", length = 250)
+    @Column(name = "certificate_file_url")
     private String certificateFileUrl;
 
-    @Column(name = "commission_per_case", precision = 10, scale = 2)
+    @Column(name = "commission_per_case")
     private BigDecimal commissionPerCase;
 }
