@@ -1,13 +1,17 @@
+
 package com.example.funerariamc.model;
 
+import com.example.funerariamc.model.enums.VaultStatus;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
-import jakarta.persistence.*;
 import java.time.LocalDate;
 
-/** Bóveda/nicho dentro de un cementerio, con los datos del arriendo vigente. Tabla: vault */
+/**
+ * Represents a vault or niche within a cemetery.
+ */
 @Entity
 @Table(name = "vault")
 @Getter
@@ -28,7 +32,7 @@ public class Vault {
     @JoinColumn(name = "client_id")
     private Client client;
 
-    @Column(name = "code", length = 20)
+    @Column(name = "code")
     private String code;
 
     @Column(name = "lease_start_date")
@@ -37,7 +41,7 @@ public class Vault {
     @Column(name = "lease_end_date")
     private LocalDate leaseEndDate;
 
-    // OCCUPIED, AVAILABLE, EXPIRED, OVERDUE
-    @Column(name = "status", length = 12)
-    private String status;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status")
+    private VaultStatus status;
 }
