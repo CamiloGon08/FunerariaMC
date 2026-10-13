@@ -1,21 +1,22 @@
 
 package com.example.funerariamc.model;
 
-import lombok.Getter;
-import lombok.NoArgsConstructor;
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.NoArgsConstructor;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
  * Base entity for the person hierarchy.
  * Clients and employees inherit from this class using JOINED inheritance.
- * Table: person.
  */
 @Entity
 @Table(name = "person")
 @Inheritance(strategy = InheritanceType.JOINED)
 @Getter
+@Setter
 @NoArgsConstructor
 public abstract class Person {
 
@@ -23,10 +24,10 @@ public abstract class Person {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "name", length = 100)
+    @Column(name = "name", length = 100, nullable = false)
     private String name;
 
-    @Column(name = "lastname", length = 100)
+    @Column(name = "lastname", length = 100, nullable = false)
     private String lastname;
 
     @Column(name = "document_type", length = 20)
@@ -47,6 +48,6 @@ public abstract class Person {
     @Column(name = "birth_date")
     private LocalDate birthDate;
 
-    @Column(name = "created_at")
+    @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
 }
