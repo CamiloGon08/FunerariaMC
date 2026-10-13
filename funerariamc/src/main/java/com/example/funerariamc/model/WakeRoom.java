@@ -1,13 +1,16 @@
+
 package com.example.funerariamc.model;
 
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
-import jakarta.persistence.*;
 import java.math.BigDecimal;
 
-/** Sala de velación disponible en la funeraria. Tabla: wake_room */
+/**
+ * Represents a wake room.
+ */
 @Entity
 @Table(name = "wake_room")
 @Getter
@@ -20,13 +23,13 @@ public class WakeRoom {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "name", length = 15)
+    @Column(name = "name", nullable = false)
     private String name;
 
     @Column(name = "capacity")
     private Integer capacity;
 
-    @Column(name = "base_price", precision = 10, scale = 2)
+    @Column(name = "base_price")
     private BigDecimal basePrice;
 
     @Column(name = "surcharge_applies")
