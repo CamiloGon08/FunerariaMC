@@ -1,6 +1,6 @@
-
 package com.example.funerariamc.model;
 
+import com.example.funerariamc.model.enums.TransactionStatus;
 import com.example.funerariamc.model.enums.TransactionType;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -29,9 +29,13 @@ public class FinancialTransaction {
     @Column(name = "transaction_type")
     private TransactionType transactionType;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "related_sale_id", unique = true)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "related_sale_id")
     private Sale relatedSale;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "employee_id")
+    private Employee employee;
 
     @Column(name = "amount", nullable = false)
     private BigDecimal amount;
@@ -43,4 +47,8 @@ public class FinancialTransaction {
 
     @Column(name = "description")
     private String description;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status")
+    private TransactionStatus status = TransactionStatus.ACTIVE;
 }
