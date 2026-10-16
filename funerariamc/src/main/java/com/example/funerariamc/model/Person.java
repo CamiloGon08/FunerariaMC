@@ -50,4 +50,7 @@ public abstract class Person {
 
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
+    
+     @Column(name = "telegram_chat_id")
+    private String telegramChatId;
 }
