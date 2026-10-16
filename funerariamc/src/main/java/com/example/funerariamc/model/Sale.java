@@ -36,6 +36,10 @@ public class Sale {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "employee_id")
     private Employee employee;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "service_contract_id")
+    private ServiceContract serviceContract;
 
     @Column(name = "sale_date",
             insertable = false,

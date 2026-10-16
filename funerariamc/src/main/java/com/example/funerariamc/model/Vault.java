@@ -31,6 +31,10 @@ public class Vault {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "client_id")
     private Client client;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "deceased_id")
+    private Deceased deceased;
 
     @Column(name = "code")
     private String code;

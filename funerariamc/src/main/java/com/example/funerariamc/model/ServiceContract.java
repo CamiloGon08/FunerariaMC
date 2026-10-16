@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import com.example.funerariamc.model.enums.ContractStatus;
 
 /**
@@ -40,6 +41,14 @@ public class ServiceContract {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "funeral_salesperson_id")
     private FuneralSalesperson funeralSalesperson;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "funeral_plan_id")
+    private FuneralPlan funeralPlan;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "thanatopractor_id")
+    private Thanatopractor thanatopractor;
 
     @Column(name = "contract_number", nullable = false, unique = true)
     private String contractNumber;
@@ -48,6 +57,9 @@ public class ServiceContract {
             insertable = false,
             updatable = false)
     private LocalDate contractDate;
+    
+    @Column(name = "preparation_completed_at")
+    private LocalDateTime preparationCompletedAt;
 
     @Column(name = "total_amount")
     private BigDecimal totalAmount;
