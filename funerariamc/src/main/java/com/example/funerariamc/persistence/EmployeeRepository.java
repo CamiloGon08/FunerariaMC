@@ -5,7 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
 /** Sirve para Employee y sus subtipos (Manager,Recepcionist, etc) */
-public interface EmployeeRepository {
+public interface EmployeeRepository extends JpaRepository<Employee, Long> {
     Optional<Employee> findDocumentNumber(String documentNumber);
 
 }

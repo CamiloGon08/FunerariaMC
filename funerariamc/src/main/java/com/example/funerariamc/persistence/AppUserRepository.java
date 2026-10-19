@@ -22,6 +22,6 @@ public interface AppUserRepository extends JpaRepository<AppUser, Long>{
 
     Optional<AppUser> findByUsernameWithEmployeeAndRole(@Param("username") String username);
 
-    boolean existByUsername(String username);
-    boolean existByEmployee_Id(Long employeeId);
+    boolean existsByUsername(String username);
+    boolean existsByEmployee_Id(Long employeeId);
 }

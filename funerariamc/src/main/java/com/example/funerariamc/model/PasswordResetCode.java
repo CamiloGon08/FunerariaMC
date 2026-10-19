@@ -22,7 +22,7 @@ import java.time.LocalDateTime;
  * su hash BCrypt
  */
 @Entity 
-@Table(name = "pasword_reset_code")
+@Table(name = "password_reset_code")
 @Getter
 @Setter
 @NoArgsConstructor
