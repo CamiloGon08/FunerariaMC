@@ -22,9 +22,11 @@ public class FxmlViewLoader {
     public static final String LOGIN = "/fxml/login.fxml";
     public static final String MAIN = "/fxml/main.fxml";
     public static final String ACCESS_LOG = "/fxml/access-log.fxml";
+    public static final String PASSWORD_RECOVERY = "/fxml/password-recovery.fxml";
 
     public static final String LOGIN_TITLE = "Funeraria MC — Iniciar sesión";
     public static final String MAIN_TITLE = "Funeraria MC";
+    public static final String PASSWORD_RECOVERY_TITLE = "Funeraria MC — Recuperar contraseña";
 
     private final ApplicationContext context;
 
