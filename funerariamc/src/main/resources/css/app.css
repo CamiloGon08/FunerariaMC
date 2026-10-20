@@ -1,6 +1,4 @@
-@font-face { font-family: "Cormorant Garamond"; src: url("../fonts/CormorantGaramond-SemiBold.ttf"); }
-@font-face { font-family: "Source Sans 3"; src: url("../fonts/SourceSans3-Regular.ttf"); }
-@font-face { font-family: "Source Sans 3"; font-weight: bold; src: url("../fonts/SourceSans3-SemiBold.ttf"); }
+
 
 .root {
     -color-primary:     #182F25; /* Verde bosque: menú, panel de marca, texto principal */
