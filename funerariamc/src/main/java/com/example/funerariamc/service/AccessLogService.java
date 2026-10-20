@@ -3,6 +3,7 @@ package com.example.funerariamc.service;
 import com.example.funerariamc.model.AccessLog;
 import com.example.funerariamc.persistence.AccessLogRepository;
 import com.example.funerariamc.persistence.AppUserRepository;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -28,6 +29,9 @@ public class AccessLogService {
     public static final String PASSWORD_RESET_REQUESTED = "PASSWORD_RESET_REQUESTED: ";
     public static final String PASSWORD_RESET_FAILED = "PASSWORD_RESET_FAILED: INVALID_CODE";
     public static final String PASSWORD_RESET_COMPLETED = "PASSWORD_RESET_COMPLETED";
+
+    /** Límite técnico de filas por página del contrato de bitácora EP-01. */
+    public static final int MAX_PAGE_SIZE = 100;
 
     private final AccessLogRepository accessLogRepository;
     private final AppUserRepository appUserRepository;
@@ -58,6 +62,18 @@ public class AccessLogService {
     @Transactional(readOnly = true)
     public List<AccessLog> findRecent(int limit) {
         return accessLogRepository.findRecent(PageRequest.of(0, limit));
+    }
+
+    /**
+     * Consulta una página con sus totales. La numeración empieza en cero y el
+     * tamaño se ajusta al intervalo 1..100, según el contrato de la pantalla.
+     * El repositorio entrega los registros ordenados y sus totales.
+     */
+    @Transactional(readOnly = true)
+    public Page<AccessLog> findPage(int page, int size) {
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
+        return accessLogRepository.findPage(PageRequest.of(safePage, safeSize));
     }
 
     private String localIpAddress() {
