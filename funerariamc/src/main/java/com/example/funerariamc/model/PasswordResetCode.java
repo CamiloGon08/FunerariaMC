@@ -33,7 +33,7 @@ public class PasswordResetCode {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "App_user_id", nullable = false)
+    @JoinColumn(name = "app_user_id", nullable = false)
     private AppUser appUser;
 
     @Column(name = "code_hash", nullable = false, length = 65)
