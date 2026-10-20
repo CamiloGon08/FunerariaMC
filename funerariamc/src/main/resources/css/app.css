@@ -1,0 +1,285 @@
+@font-face { font-family: "Cormorant Garamond"; src: url("../fonts/CormorantGaramond-SemiBold.ttf"); }
+@font-face { font-family: "Source Sans 3"; src: url("../fonts/SourceSans3-Regular.ttf"); }
+@font-face { font-family: "Source Sans 3"; font-weight: bold; src: url("../fonts/SourceSans3-SemiBold.ttf"); }
+
+.root {
+    -color-primary:     #182F25; /* Verde bosque: menú, panel de marca, texto principal */
+    -color-primary-mid: #2C4535; /* Bosque medio: píldoras del menú y bordes de tabla */
+    -color-secondary:   #5E6660; /* Gris verdoso: texto secundario, bordes de campos */
+    -color-border:      #A9AFA8; /* Niebla: divisores y deshabilitados */
+    -color-surface:     #E2E6DD; /* Salvia clara: chips, filas alternas, buscador */
+    -color-background:  #F4F1EC; /* Marfil: fondo principal */
+    -color-card:        #FAF9F6; /* Tarjeta: paneles e indicadores */
+    -color-accent:      #465E47; /* Verde musgo: botón principal, títulos, ítem activo */
+    -color-accent-dark: #2C4535; /* Bosque medio: botón presionado */
+    -color-detail:      #C4AF84; /* Caqui dorado: filetes, íconos y texto sobre verde */
+    -color-gold-text:   #8C7648; /* Oro oscuro: dorado legible sobre marfil */
+    -color-olive:       #676B48; /* Oliva: gráficos secundarios */
+    -color-error:       #9E3B32; /* Terracota: mensajes de error */
+    -color-error-bg:    #F1E4E1;
+
+    -font-display: "Cormorant Garamond SemiBold", "Georgia", serif;
+    -font-body:    "Source Sans 3", "Segoe UI", sans-serif;
+
+    -fx-font-family: "Source Sans 3", "Segoe UI", sans-serif;
+    -fx-font-size: 14px;
+    -fx-background-color: -color-background;
+    -fx-text-fill: -color-primary;
+    -fx-accent: -color-accent;
+    -fx-focus-color: -color-accent;
+    -fx-faint-focus-color: transparent;
+}
+
+/* ---------- Login ---------- */
+.login-root { -fx-background-color: -color-background; }
+
+.login-brand {
+    -fx-background-color: -color-primary;
+    -fx-border-color: rgba(196,175,132,0.35); -fx-border-insets: 24;
+    -fx-padding: 64 56 56 56;
+    -fx-spacing: 14;
+}
+/* Logo (LilyLogo): los colores del lirio salen de estas clases */
+.lily-leaves { -fx-fill: #8FA88F; }
+.lily-petals { -fx-fill: #F4F1EC; -fx-stroke: #B8CBBA; -fx-stroke-width: 0.6; -fx-stroke-line-join: round; }
+.lily-veins { -fx-fill: transparent; -fx-stroke: #C9D5CA; -fx-stroke-width: 0.5; -fx-stroke-line-cap: round; }
+.lily-stamens { -fx-fill: transparent; -fx-stroke: #C4AF84; -fx-stroke-width: 0.7; -fx-stroke-line-cap: round; }
+.lily-anthers { -fx-fill: #A07E45; }
+.brand-sub {
+    -fx-text-fill: -color-detail; -fx-font-size: 13px; -fx-font-weight: bold;
+}
+.brand-name {
+    -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif;
+    -fx-font-size: 44px; -fx-font-weight: bold;
+    -fx-text-fill: -color-background;
+}
+.brand-tagline { -fx-text-fill: -color-border; -fx-font-size: 13px; -fx-line-spacing: 3; }
+.brand-quote {
+    -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif;
+    -fx-font-style: italic; -fx-font-size: 17px;
+    -fx-text-fill: -color-detail;
+}
+.brand-place { -fx-text-fill: -color-border; -fx-font-size: 11px; }
+.eyebrow { -fx-text-fill: -color-secondary; -fx-font-size: 12px; -fx-font-weight: bold; }
+.link { -fx-text-fill: -color-accent; -fx-font-weight: bold; -fx-underline: true; -fx-border-color: transparent; -fx-padding: 0; }
+.link:visited { -fx-text-fill: -color-accent; }
+.gold-rule { -fx-background-color: -color-detail; -fx-min-height: 1; -fx-max-height: 1; -fx-pref-width: 56; -fx-max-width: 56; }
+
+.login-form { -fx-padding: 56 120 40 120; -fx-spacing: 10; -fx-background-color: -color-background; }
+.login-title {
+    -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif;
+    -fx-font-size: 44px; -fx-font-weight: bold;
+    -fx-text-fill: -color-accent;
+}
+.login-subtitle { -fx-text-fill: -color-secondary; -fx-padding: 0 0 14 0; }
+.field-label {
+    -fx-text-fill: -color-secondary; -fx-font-size: 12px; -fx-font-weight: bold;
+    -fx-padding: 6 0 0 0;
+}
+.login-footer { -fx-text-fill: -color-secondary; -fx-font-size: 11px; }
+
+/* Campos de texto: línea inferior en lugar de caja, foco en verde musgo */
+.text-field, .password-field {
+    -fx-background-color: -color-background, -color-background;
+    -fx-background-insets: 0, 0 0 1 0;
+    -fx-border-color: transparent transparent -color-secondary transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 8 2 8 2;
+    -fx-text-fill: -color-primary;
+    -fx-prompt-text-fill: -color-border;
+}
+.text-field:focused, .password-field:focused {
+    -fx-border-color: transparent transparent -color-accent transparent;
+    -fx-border-width: 0 0 2 0;
+}
+
+/* Error: terracota suave, distinto del verde de acción (avisar sin alarmar) */
+.error-label { -fx-text-fill: -color-error; -fx-font-weight: bold; -fx-font-size: 13px; }
+
+/* ---------- Botones ---------- */
+.primary-button {
+    -fx-background-color: -color-accent; -fx-text-fill: -color-background;
+    -fx-font-weight: bold; -fx-font-size: 14px;
+    -fx-padding: 11 18; -fx-background-radius: 2; -fx-cursor: hand;
+}
+.primary-button:hover { -fx-background-color: derive(-color-accent, 12%); }
+.primary-button:pressed { -fx-background-color: -color-accent-dark; }
+.primary-button:disabled { -fx-background-color: -color-border; -fx-opacity: 1; }
+
+.secondary-button {
+    -fx-background-color: transparent; -fx-text-fill: -color-primary;
+    -fx-border-color: -color-secondary; -fx-border-width: 1;
+    -fx-border-radius: 2; -fx-background-radius: 2;
+    -fx-padding: 6 14; -fx-cursor: hand;
+}
+.secondary-button:hover { -fx-background-color: -color-surface; }
+
+/* ---------- Menú lateral flotante (mockups 06/07) ---------- */
+.shell { -fx-background-color: -color-background; }
+.sidebar {
+    -fx-background-color: linear-gradient(to bottom, #182F25 0%, #182F25 60%, #29402F 100%);
+    -fx-background-radius: 24;
+    -fx-effect: dropshadow(gaussian, rgba(24,47,37,0.30), 32, 0.1, 0, 14);
+    -fx-padding: 20 0 20 0;
+}
+.sidebar-brand { -fx-padding: 0 14 16 14; }
+.sidebar.expanded .sidebar-brand { -fx-padding: 0 14 16 24; -fx-alignment: center-left; }
+.sidebar-logo {
+    -fx-background-color: transparent; -fx-padding: 0; -fx-cursor: hand;
+    -fx-min-width: 48; -fx-min-height: 48; -fx-max-width: 48; -fx-max-height: 48;
+}
+.sidebar-name { -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif; -fx-font-size: 19px; -fx-font-weight: bold; -fx-text-fill: -color-background; }
+.sidebar-sub { -fx-text-fill: -color-detail; -fx-font-size: 11px; -fx-font-weight: bold; }
+.sidebar.animating { -fx-effect: null; }
+.sidebar-collapse {
+    -fx-background-color: #29402F; -fx-background-radius: 15; -fx-text-fill: -color-background;
+    -fx-font-size: 16px; -fx-min-width: 30; -fx-min-height: 30; -fx-max-width: 30; -fx-max-height: 30; -fx-padding: 0; -fx-cursor: hand;
+}
+.sidebar-collapse:hover { -fx-background-color: -color-accent; }
+.sidebar-rule { -fx-background-color: rgba(196,175,132,0.6); -fx-min-height: 1; -fx-max-height: 1; -fx-max-width: 32; }
+.sidebar.expanded .sidebar-rule { -fx-max-width: 240; }
+.side-scroll, .side-scroll > .viewport, .side-menu { -fx-background-color: transparent; -fx-background-insets: 0; -fx-border-width: 0; -fx-padding: 0; }
+.side-menu { -fx-padding: 14 0 14 0; }
+.sidebar-decor { -fx-opacity: 0.42; } /* intensidad de la foto del lirio detrás de los módulos */
+
+/* Ítems del menú: círculo de 40 px contraído, píldora de 240 px expandido */
+.nav-pill {
+    -fx-background-color: rgba(41,64,47,0.62); /* translúcido para que se vea el lirio de fondo */ -fx-background-radius: 12;
+    -fx-text-fill: -color-background; -fx-font-size: 13.5px;
+    -fx-graphic-text-gap: 12; -fx-alignment: center-left; -fx-padding: 0 14 0 14; -fx-cursor: hand;
+    -fx-min-height: 38; -fx-pref-height: 38; -fx-max-height: 38;
+    -fx-min-width: 36; -fx-pref-width: 240; -fx-max-width: 240;
+    -fx-text-overrun: clip;
+}
+.sidebar.pills-collapsed .nav-pill {
+    -fx-background-radius: 18; -fx-alignment: center; -fx-padding: 0;
+    -fx-min-width: 36; -fx-pref-width: 36; -fx-max-width: 36;
+    -fx-min-height: 36; -fx-pref-height: 36; -fx-max-height: 36;
+}
+.nav-pill:hover { -fx-background-color: derive(#465E47, 18%); }
+.nav-pill.active {
+    -fx-background-color: -color-accent; -fx-font-weight: bold;
+    -fx-effect: dropshadow(gaussian, rgba(70,94,71,0.45), 12, 0, 0, 4);
+}
+.nav-icon {
+    -fx-fill: transparent; -fx-stroke: -color-background; -fx-stroke-width: 1.6;
+    -fx-stroke-line-cap: round; -fx-stroke-line-join: round;
+}
+.sidebar-profile { -fx-padding: 8 0 0 0; }
+.sidebar-avatar {
+    -fx-background-color: -color-detail; -fx-background-radius: 22; -fx-text-fill: -color-primary;
+    -fx-font-size: 16px; -fx-font-weight: bold; -fx-padding: 0; -fx-cursor: hand;
+    -fx-min-width: 44; -fx-min-height: 44; -fx-max-width: 44; -fx-max-height: 44;
+}
+.user-name { -fx-text-fill: -color-background; -fx-font-weight: bold; }
+.user-role { -fx-text-fill: -color-detail; -fx-font-size: 12px; }
+
+/* Tooltip del menú contraído (colores literales: el popup no hereda las variables de .root) */
+.tooltip {
+    -fx-background-color: #C4AF84; -fx-background-radius: 12; -fx-text-fill: #182F25;
+    -fx-font-size: 13px; -fx-font-weight: bold; -fx-padding: 8 14 8 14;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.18), 14, 0, 0, 6);
+}
+
+/* ---------- Encabezado del contenido ---------- */
+.content-subtitle { -fx-text-fill: -color-secondary; -fx-font-size: 15px; }
+.session-badge {
+    -fx-background-color: -color-surface; -fx-background-radius: 999; -fx-padding: 8 14 8 14;
+    -fx-text-fill: -color-primary; -fx-font-size: 13px; -fx-font-weight: bold;
+    -fx-graphic-text-gap: 8;
+}
+.pill-button {
+    -fx-background-color: transparent; -fx-border-color: -color-secondary; -fx-border-radius: 999;
+    -fx-background-radius: 999; -fx-text-fill: -color-primary; -fx-padding: 8 16 8 16; -fx-cursor: hand;
+}
+.pill-button:hover { -fx-background-color: -color-surface; }
+
+/* ---------- Contenido ---------- */
+.content-title {
+    -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif;
+    -fx-font-size: 34px; -fx-font-weight: bold; -fx-text-fill: -color-accent;
+}
+.placeholder { -fx-text-fill: -color-secondary; -fx-font-size: 15px; }
+
+/* ---------- Tablas (bitácora y módulos) ---------- */
+.table-view {
+    -fx-background-color: -color-background;
+    -fx-border-color: -color-border; -fx-border-width: 1;
+    -fx-table-cell-border-color: transparent;
+}
+.table-view .column-header-background { -fx-background-color: -color-primary; }
+.table-view .column-header {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent #29402F transparent transparent;
+    -fx-padding: 6 8;
+}
+.table-view .column-header .label { -fx-text-fill: -color-background; -fx-font-weight: bold; -fx-alignment: center-left; }
+.table-view .filler { -fx-background-color: -color-primary; }
+.table-row-cell { -fx-background-color: -color-background; -fx-text-fill: -color-primary; -fx-cell-size: 32; }
+.table-row-cell:odd { -fx-background-color: -color-surface; }
+.table-row-cell:selected { -fx-background-color: -color-accent; }
+.table-row-cell:selected .table-cell { -fx-text-fill: -color-background; }
+.table-cell { -fx-text-fill: -color-primary; -fx-padding: 0 8; }
+
+/* Barras de desplazamiento discretas */
+.scroll-bar { -fx-background-color: transparent; }
+.scroll-bar .thumb { -fx-background-color: -color-border; -fx-background-radius: 4; }
+.scroll-bar .increment-button, .scroll-bar .decrement-button { -fx-padding: 0; -fx-opacity: 0; }
+
+/* ---------- Tarjetas de indicadores (panel de inicio) ---------- */
+.kpi-card {
+    -fx-background-color: -color-card; -fx-padding: 18 20; -fx-background-radius: 16; -fx-border-radius: 16;
+    -fx-border-color: -color-primary -color-surface -color-surface -color-surface; -fx-border-width: 2 1 1 1;
+}
+.kpi-card.accent { -fx-border-color: -color-accent -color-surface -color-surface -color-surface; }
+.kpi-label { -fx-text-fill: -color-secondary; -fx-font-size: 12px; -fx-font-weight: bold; }
+.kpi-value { -fx-text-fill: -color-primary; -fx-font-size: 40px; -fx-font-weight: bold; }
+.kpi-footer { -fx-text-fill: -color-secondary; -fx-font-size: 13px; }
+
+/* ---------- Ojito para mostrar u ocultar (contraseña e IP) ---------- */
+/* Botón plano: mismo fondo de la interfaz, sin borde ni relieve en ningún estado */
+.eye-toggle,
+.eye-toggle:hover,
+.eye-toggle:selected,
+.eye-toggle:selected:hover,
+.eye-toggle:armed,
+.eye-toggle:focused,
+.eye-toggle:selected:focused {
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+    -fx-background-radius: 0;
+    -fx-border-color: transparent;
+    -fx-effect: null;
+    -fx-padding: 4;
+    -fx-cursor: hand;
+}
+.eye-icon {
+    -fx-fill: transparent; -fx-stroke: -color-secondary; -fx-stroke-width: 1.8;
+    -fx-stroke-line-cap: round; -fx-stroke-line-join: round;
+}
+.eye-toggle:hover .eye-icon, .eye-toggle:selected .eye-icon { -fx-stroke: -color-accent; }
+/* Deja espacio a la derecha para que el texto no quede debajo del ojito */
+.password-box .text-field, .password-box .password-field { -fx-padding: 8 36 8 2; }
+
+/* ---------- Paginación de la bitácora ---------- */
+.log-pagination { -fx-padding: 0; -fx-page-information-visible: false; -fx-arrows-visible: true; }
+.log-pagination .page { -fx-pref-height: 0; -fx-max-height: 0; }
+.log-pagination .pagination-control { -fx-padding: 0; -fx-background-color: transparent; }
+.log-pagination .pagination-control .number-button {
+    -fx-background-color: transparent; -fx-background-radius: 14;
+    -fx-text-fill: -color-primary; -fx-font-size: 13px; -fx-padding: 4 10; -fx-cursor: hand;
+}
+.log-pagination .pagination-control .number-button:hover { -fx-background-color: -color-surface; }
+.log-pagination .pagination-control .number-button:selected {
+    -fx-background-color: -color-accent; -fx-text-fill: -color-background;
+}
+.log-pagination .pagination-control .left-arrow-button,
+.log-pagination .pagination-control .right-arrow-button {
+    -fx-background-color: transparent; -fx-background-radius: 14; -fx-padding: 6 10; -fx-cursor: hand;
+}
+.log-pagination .pagination-control .left-arrow-button:hover,
+.log-pagination .pagination-control .right-arrow-button:hover { -fx-background-color: -color-surface; }
+.log-pagination .pagination-control .left-arrow,
+.log-pagination .pagination-control .right-arrow { -fx-background-color: -color-accent; }
+/* ---------- Recuperar contraseña: mensaje informativo en verde musgo ---------- */
+.info-label { -fx-text-fill: -color-accent; -fx-font-size: 13px; }
