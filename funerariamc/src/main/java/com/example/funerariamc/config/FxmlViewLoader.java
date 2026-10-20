@@ -4,11 +4,13 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.text.Font;
 import javafx.stage.Stage;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.net.URL;
 
@@ -24,6 +26,13 @@ public class FxmlViewLoader {
     public static final String ACCESS_LOG = "/fxml/access-log.fxml";
     public static final String PASSWORD_RECOVERY = "/fxml/password-recovery.fxml";
 
+    
+    private static final String[] FONTS = {
+            "/fonts/CormorantGaramond-SemiBold.ttf",
+            "/fonts/SourceSans3-Regular.ttf",
+            "/fonts/SourceSans3-SemiBold.ttf"
+    };
+
     public static final String LOGIN_TITLE = "Funeraria MC — Iniciar sesión";
     public static final String MAIN_TITLE = "Funeraria MC";
     public static final String PASSWORD_RECOVERY_TITLE = "Funeraria MC — Recuperar contraseña";
@@ -32,6 +41,20 @@ public class FxmlViewLoader {
 
     public FxmlViewLoader(ApplicationContext context) {
         this.context = context;
+        loadFonts();
+    }
+
+    /** Registra las fuentes de la marca; @font-face falla si la ruta tiene espacios. */
+    private void loadFonts() {
+        for (String font : FONTS) {
+            try (InputStream in = getClass().getResourceAsStream(font)) {
+                if (in != null) {
+                    Font.loadFont(in, 14);
+                }
+            } catch (IOException ignored) {
+                // Sin la fuente, el CSS usa la de respaldo.
+            }
+        }
     }
 
     /** Carga una vista y devuelve su nodo raíz. */
