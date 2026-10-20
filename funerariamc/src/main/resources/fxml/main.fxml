@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import com.example.funerariamc.controller.LilyLogo?>
+<?import com.example.funerariamc.controller.SidebarDecor?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Pane?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+
+<!-- Shell del Administrador Maestro (mockups 06 y 07 en Figma). El ancho del menú lo anima SidebarAnimator. -->
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.example.funerariamc.controller.MainController"
+            styleClass="shell" prefWidth="1280" prefHeight="800" stylesheets="@../css/app.css">
+
+    <left>
+        <VBox fx:id="sidebar" styleClass="sidebar" alignment="TOP_CENTER">
+            <BorderPane.margin>
+                <Insets top="24" bottom="24" left="24"/>
+            </BorderPane.margin>
+
+            <HBox styleClass="sidebar-brand" spacing="12" alignment="CENTER">
+                <Button fx:id="homeButton" styleClass="sidebar-logo" onAction="#onHome">
+                    <graphic>
+                        <LilyLogo size="44"/>
+                    </graphic>
+                </Button>
+                <VBox fx:id="brandText" HBox.hgrow="ALWAYS">
+                    <Label text="F U N E R A R I A" styleClass="sidebar-sub"/>
+                    <Label text="El Edén" styleClass="sidebar-name"/>
+                </VBox>
+                <Button fx:id="collapseButton" text="‹" styleClass="sidebar-collapse" onAction="#onToggleSidebar"/>
+            </HBox>
+            <Region styleClass="sidebar-rule"/>
+
+            <!-- Foto del lirio detrás de los módulos (primera capa del StackPane) -->
+            <StackPane VBox.vgrow="ALWAYS">
+                <SidebarDecor/>
+                <ScrollPane fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="NEVER"
+                            styleClass="side-scroll">
+                    <VBox fx:id="menuBox" spacing="3" alignment="TOP_CENTER" styleClass="side-menu">
+                        <padding>
+                            <Insets top="14" bottom="14"/>
+                        </padding>
+                    </VBox>
+                </ScrollPane>
+            </StackPane>
+
+            <VBox styleClass="sidebar-profile" spacing="8" alignment="CENTER">
+                <VBox fx:id="profileText" alignment="CENTER">
+                    <Label fx:id="userNameLabel" styleClass="user-name"/>
+                    <Label fx:id="roleLabel" styleClass="user-role"/>
+                </VBox>
+                <Button fx:id="avatarButton" styleClass="sidebar-avatar" onAction="#onToggleSidebar"/>
+            </VBox>
+        </VBox>
+    </left>
+
+    <center>
+        <VBox spacing="22">
+            <padding>
+                <Insets top="32" right="32" bottom="24" left="32"/>
+            </padding>
+            <HBox spacing="14" alignment="CENTER_LEFT">
+                <VBox spacing="2">
+                    <Label fx:id="titleLabel" styleClass="content-title" minWidth="-Infinity"/>
+                    <Label fx:id="subtitleLabel" styleClass="content-subtitle"/>
+                </VBox>
+                <Pane HBox.hgrow="ALWAYS"/>
+                <Label fx:id="sessionBadge" styleClass="session-badge"/>
+                <Button text="Cerrar sesión" onAction="#onLogout" styleClass="pill-button" minWidth="-Infinity"/>
+            </HBox>
+            <StackPane fx:id="contentPane" VBox.vgrow="ALWAYS" alignment="TOP_LEFT"/>
+        </VBox>
+    </center>
+</BorderPane>

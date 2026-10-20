@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import com.example.funerariamc.controller.LilyLogo?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Hyperlink?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.ToggleButton?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+
+<HBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.example.funerariamc.controller.LoginController"
+      styleClass="login-root" prefWidth="1100" prefHeight="680"
+      stylesheets="@../css/app.css">
+
+    <!-- Panel de marca: verde bosque con el lirio de El Edén y detalles en caqui -->
+    <VBox styleClass="login-brand" prefWidth="440" minWidth="440">
+        <LilyLogo size="96"/>
+        <Region prefHeight="6"/>
+        <Label text="F U N E R A R I A" styleClass="brand-sub"/>
+        <Label text="El Edén" styleClass="brand-name" wrapText="true"/>
+        <Region styleClass="gold-rule"/>
+        <Label text="Sistema de información para la gestión integral de servicios exequiales." styleClass="brand-tagline"
+               wrapText="true"/>
+        <Region VBox.vgrow="ALWAYS"/>
+        <Label text="“Acompañamos con respeto cada despedida.”" styleClass="brand-quote" wrapText="true"/>
+        <Label text="VALLEDUPAR · CESAR" styleClass="brand-place"/>
+    </VBox>
+
+    <!-- Formulario: marfil, título y botón en verde musgo -->
+    <VBox styleClass="login-form" HBox.hgrow="ALWAYS" alignment="CENTER_LEFT">
+        <Label text="BIENVENIDO" styleClass="eyebrow"/>
+        <Label text="Iniciar sesión" styleClass="login-title"/>
+        <Label text="Ingrese con el usuario que le asignó el administrador." styleClass="login-subtitle"/>
+
+        <Label text="USUARIO" styleClass="field-label"/>
+        <TextField fx:id="usernameField" promptText="Ingrese su usuario"/>
+
+        <Label text="CONTRASEÑA" styleClass="field-label"/>
+        <StackPane styleClass="password-box">
+            <PasswordField fx:id="passwordField" promptText="Ingrese su contraseña"/>
+            <TextField fx:id="passwordVisibleField" promptText="Ingrese su contraseña" visible="false" managed="false"/>
+            <ToggleButton fx:id="showPasswordButton" StackPane.alignment="CENTER_RIGHT"/>
+        </StackPane>
+
+        <!-- Recuperación de contraseña: se conecta cuando exista el flujo (ver README) -->
+        <HBox alignment="CENTER_RIGHT">
+            <Hyperlink fx:id="forgotPasswordLink" text="¿Olvidó su contraseña?" styleClass="link"/>
+        </HBox>
+
+        <Label fx:id="errorLabel" styleClass="error-label" wrapText="true" minHeight="22"/>
+
+        <Button fx:id="loginButton" text="Iniciar sesión" onAction="#onLogin"
+                defaultButton="true" maxWidth="Infinity" styleClass="primary-button"/>
+
+        <Region minHeight="24"/>
+        <Label text="Ingeniería de Software I · Unicesar · 2026" styleClass="login-footer"/>
+    </VBox>
+</HBox>
