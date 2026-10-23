@@ -1,4 +1,4 @@
-package com.example.funerariamc.controller;
+package com.example.funerariamc.ui;
 
 import com.example.funerariamc.service.AppModule;
 import javafx.scene.Group;
@@ -13,7 +13,7 @@ import java.util.Map;
  * mockup de Figma. Se buscan por {@code AppModule.name()} para no romper la
  * compilación si se agrega o renombra un módulo: en ese caso usa DEFAULT.
  */
-final class ModuleIcons {
+public final class ModuleIcons {
 
     private static final double SIZE = 20;
 
@@ -39,7 +39,7 @@ final class ModuleIcons {
     }
 
     /** Ícono del módulo escalado a 20 px; el color lo define la clase CSS {@code nav-icon}. */
-    static Node of(AppModule module) {
+    public static Node of(AppModule module) {
         SVGPath path = new SVGPath();
         path.setContent(PATHS.getOrDefault(module.name(), PATHS.get("DEFAULT")));
         path.getStyleClass().add("nav-icon");
