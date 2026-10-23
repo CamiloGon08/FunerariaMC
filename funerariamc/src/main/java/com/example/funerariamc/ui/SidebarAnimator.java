@@ -1,4 +1,4 @@
-package com.example.funerariamc.controller;
+package com.example.funerariamc.ui;
 
 import javafx.animation.FadeTransition;
 import javafx.animation.Interpolator;
@@ -29,7 +29,7 @@ import java.util.List;
  * nombres), con las animaciones del mockup "06/07 MASTER_ADMIN" de Figma:
  * cambio de ancho en 220 ms, rebote al presionar y aumento al pasar el mouse.
  */
-final class SidebarAnimator {
+public final class SidebarAnimator {
 
     static final double COLLAPSED_WIDTH = 80;
     static final double EXPANDED_WIDTH = 288;
@@ -58,7 +58,7 @@ final class SidebarAnimator {
      * @param sidebar      contenedor del menú (su ancho se anima)
      * @param expandedOnly nodos que solo se ven con el menú expandido
      */
-    SidebarAnimator(Region sidebar, Node... expandedOnly) {
+    public SidebarAnimator(Region sidebar, Node... expandedOnly) {
         this.sidebar = sidebar;
         this.expandedOnly = List.of(expandedOnly);
         setWidth(COLLAPSED_WIDTH);
@@ -66,7 +66,7 @@ final class SidebarAnimator {
     }
 
     /** Registra un botón del menú: tooltip en modo contraído y animaciones de hover y clic. */
-    void register(Labeled pill, String tooltipText) {
+    public void register(Labeled pill, String tooltipText) {
         Tooltip tooltip = new Tooltip(tooltipText);
         tooltip.setShowDelay(TOOLTIP_SHOW_DELAY);
         tooltip.setShowDuration(TOOLTIP_VISIBLE);
@@ -83,20 +83,20 @@ final class SidebarAnimator {
      * imagen fija en lugar de recalcular su tamaño en cada cuadro (la tabla de la
      * bitácora, por ejemplo). Eso es lo que quita los "tirones".
      */
-    void freezeDuringAnimation(Pane content) {
+    public void freezeDuringAnimation(Pane content) {
         this.frozenContent = content;
     }
 
-    boolean isExpanded() {
+    public boolean isExpanded() {
         return expanded;
     }
 
-    void toggle() {
+    public void toggle() {
         setExpanded(!expanded, null);
     }
 
     /** Cambia el estado y ejecuta {@code after} cuando termina la animación. */
-    void setExpanded(boolean value, Runnable after) {
+    public void setExpanded(boolean value, Runnable after) {
         if (value == expanded) {
             if (after != null) {
                 after.run();
@@ -165,7 +165,7 @@ final class SidebarAnimator {
     }
 
     /** Marca el botón activo con un pequeño "pop" (crece y vuelve a 1.05). */
-    void markActive(Labeled active) {
+    public void markActive(Labeled active) {
         for (Labeled pill : pills) {
             pill.getStyleClass().remove("active");
             if (pill != active) {
@@ -181,7 +181,7 @@ final class SidebarAnimator {
     }
 
     /** Entrada suave del contenido de un módulo. */
-    static void fadeIn(Node content) {
+    public static void fadeIn(Node content) {
         content.setOpacity(0);
         content.setTranslateY(10);
         FadeTransition fade = new FadeTransition(Duration.millis(260), content);
@@ -193,13 +193,13 @@ final class SidebarAnimator {
     }
 
     /** Aumenta el nodo al pasar el mouse y lo devuelve a su tamaño al salir. */
-    static void addHoverScale(Node node, double factor) {
+    public static void addHoverScale(Node node, double factor) {
         node.addEventHandler(MouseEvent.MOUSE_ENTERED, e -> scaleTo(node, factor));
         node.addEventHandler(MouseEvent.MOUSE_EXITED, e -> scaleTo(node, restingScale(node)));
     }
 
     /** Efecto de "encogerse y agrandarse" al hacer clic. */
-    static void addPressBounce(Node node) {
+    public static void addPressBounce(Node node) {
         node.addEventHandler(MouseEvent.MOUSE_PRESSED, e -> scaleTo(node, 0.9));
         node.addEventHandler(MouseEvent.MOUSE_RELEASED, e -> scaleTo(node, node.isHover() ? 1.08 : restingScale(node)));
     }
