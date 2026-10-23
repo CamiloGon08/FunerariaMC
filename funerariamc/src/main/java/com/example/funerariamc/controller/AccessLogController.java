@@ -2,6 +2,7 @@ package com.example.funerariamc.controller;
 
 import com.example.funerariamc.model.AccessLog;
 import com.example.funerariamc.service.AccessLogService;
+import com.example.funerariamc.ui.EyeToggle;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
 import javafx.concurrent.Task;
