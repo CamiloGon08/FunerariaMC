@@ -1,4 +1,4 @@
-package com.example.funerariamc.controller;
+package com.example.funerariamc.ui;
 
 import javafx.scene.Group;
 import javafx.scene.shape.SVGPath;
