@@ -1,0 +1,139 @@
+/*
+ * Módulo de Personal (mockups 08, 09 y 10). Usa los colores de app.css
+ * (-color-primary, -color-surface, ...), así que app.css debe estar cargado
+ * en la misma escena.
+ */
+
+/* ---------- Lista ---------- */
+.personal-root { -fx-background-color: transparent; }
+
+/* La barra de búsqueda usa .filter-card, .search-box y .search-icon de app.css (igual que la bitácora). */
+.table-card {
+    -fx-background-color: -color-card;
+    -fx-border-color: -color-surface; -fx-border-width: 1;
+    -fx-background-radius: 14; -fx-border-radius: 14;
+    -fx-padding: 20 22 16 22; -fx-spacing: 12;
+}
+
+/* Filtros de estado y cargo en píldora */
+.chip, .chip-combo {
+    -fx-background-color: transparent; -fx-text-fill: -color-primary;
+    -fx-border-color: -color-border; -fx-border-width: 1;
+    -fx-background-radius: 999; -fx-border-radius: 999;
+    -fx-padding: 6 14; -fx-cursor: hand;
+}
+.chip:hover { -fx-background-color: -color-surface; }
+.chip:selected {
+    -fx-background-color: -color-accent; -fx-border-color: -color-accent;
+    -fx-text-fill: -color-background; -fx-font-weight: bold;
+}
+.chip-combo { -fx-padding: 1 6; }
+.chip-combo .list-cell { -fx-text-fill: -color-primary; -fx-background-color: transparent; }
+.chip-combo .arrow { -fx-background-color: -color-secondary; }
+
+.card-title {
+    -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif;
+    -fx-font-size: 26px; -fx-text-fill: -color-primary;
+}
+.card-subtitle { -fx-text-fill: -color-secondary; -fx-font-size: 13px; }
+
+/* Tabla */
+.employee-table {
+    -fx-background-color: transparent; -fx-border-width: 0;
+    -fx-table-cell-border-color: transparent; -fx-fixed-cell-size: 58;
+}
+.employee-table .column-header-background { -fx-background-color: -color-surface; -fx-background-radius: 8; }
+.employee-table .column-header, .employee-table .filler {
+    -fx-background-color: transparent; -fx-border-width: 0; -fx-padding: 8 4;
+}
+.employee-table .column-header .label {
+    -fx-text-fill: -color-secondary; -fx-font-size: 12px; -fx-font-weight: bold;
+    -fx-alignment: center-left;
+}
+.employee-table .table-row-cell {
+    -fx-background-color: -color-card;
+    -fx-border-color: transparent transparent -color-surface transparent;
+    -fx-border-width: 0 0 1 0;
+}
+.employee-table .table-row-cell:hover { -fx-background-color: derive(-color-surface, 40%); }
+.employee-table .table-row-cell:selected { -fx-background-color: -color-surface; }
+.employee-table .table-row-cell:inactive { -fx-opacity: 0.6; }
+.employee-table .table-cell { -fx-text-fill: -color-primary; -fx-alignment: center-left; -fx-padding: 0 8; }
+.employee-table .placeholder .label { -fx-text-fill: -color-secondary; }
+
+.cell-strong { -fx-text-fill: -color-primary; -fx-font-weight: bold; }
+.cell-muted { -fx-text-fill: -color-secondary; -fx-font-size: 12px; }
+.cell-warning { -fx-text-fill: -color-error; -fx-font-size: 12px; -fx-font-weight: bold; }
+
+.status-badge {
+    -fx-background-radius: 999; -fx-padding: 3 10;
+    -fx-font-size: 11px; -fx-font-weight: bold;
+}
+.status-active { -fx-background-color: -color-surface; -fx-text-fill: -color-accent; }
+.status-inactive { -fx-background-color: #ECEAE6; -fx-text-fill: -color-secondary; }
+
+.row-button {
+    -fx-background-color: transparent; -fx-text-fill: -color-primary;
+    -fx-border-color: -color-border; -fx-border-width: 1;
+    -fx-background-radius: 999; -fx-border-radius: 999;
+    -fx-padding: 4 12; -fx-font-size: 12px; -fx-cursor: hand;
+}
+.row-button:hover { -fx-background-color: -color-surface; }
+.row-danger { -fx-text-fill: -color-error; -fx-border-color: derive(-color-error, 45%); }
+.row-danger:hover { -fx-background-color: -color-error-bg; }
+.row-activate { -fx-text-fill: -color-accent; -fx-border-color: -color-accent; }
+
+/* ---------- Diálogos (mockup 10) ---------- */
+.personal-dialog { -fx-background-color: -color-card; -fx-padding: 6 8; }
+.personal-dialog > .header-panel { -fx-background-color: -color-card; -fx-padding: 14 16 4 16; }
+.personal-dialog > .header-panel > .label {
+    -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif;
+    -fx-font-size: 22px; -fx-text-fill: -color-primary;
+}
+.personal-dialog > .content.label { -fx-text-fill: -color-secondary; -fx-padding: 6 16 10 16; -fx-wrap-text: true; }
+/* Botones del diálogo con la misma esquina (10) que .primary-button y .secondary-button */
+.personal-dialog .button-bar .button {
+    -fx-background-color: transparent; -fx-text-fill: -color-primary;
+    -fx-border-color: -color-secondary; -fx-border-width: 1;
+    -fx-background-radius: 10; -fx-border-radius: 10; -fx-padding: 9 18; -fx-cursor: hand;
+}
+.personal-dialog .button-bar .button:hover { -fx-background-color: -color-surface; }
+.personal-dialog .button-bar .button.danger-button,
+.danger-button {
+    -fx-background-color: -color-error; -fx-text-fill: -color-background;
+    -fx-border-color: -color-error; -fx-font-weight: bold;
+}
+
+/* ---------- Formulario (mockup 09) ---------- */
+.form-root { -fx-background-color: -color-card; }
+.form-header {
+    -fx-padding: 22 28 14 28;
+    -fx-border-color: transparent transparent -color-detail transparent; -fx-border-width: 0 0 1 0;
+}
+.form-title {
+    -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif;
+    -fx-font-size: 30px; -fx-text-fill: -color-primary;
+}
+.form-scroll, .form-scroll > .viewport { -fx-background-color: transparent; -fx-background-insets: 0; -fx-padding: 0; }
+.form-body { -fx-padding: 18 28 18 28; -fx-background-color: -color-card; }
+.section-title { -fx-text-fill: -color-accent; -fx-font-size: 15px; -fx-font-weight: bold; }
+.form-field { -fx-spacing: 2; }
+.form-root .text-field { -fx-background-color: -color-card, -color-card; }
+.form-root .date-picker, .form-combo {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent transparent -color-secondary transparent; -fx-border-width: 0 0 1 0;
+}
+.form-root .date-picker .text-field { -fx-border-width: 0; }
+.form-combo .list-cell { -fx-background-color: transparent; -fx-text-fill: -color-primary; -fx-padding: 8 2; }
+.form-combo:disabled { -fx-opacity: 0.65; }
+.file-box { -fx-alignment: center-left; -fx-padding: 6 0 0 0; }
+.file-name { -fx-text-fill: -color-secondary; }
+
+.note-info, .note-alert { -fx-background-radius: 10; -fx-padding: 10 12; -fx-font-size: 13px; -fx-max-width: infinity; }
+.note-info { -fx-background-color: -color-surface; -fx-text-fill: -color-primary; }
+.note-alert { -fx-background-color: -color-error-bg; -fx-text-fill: -color-error; -fx-font-weight: bold; }
+
+.form-footer {
+    -fx-background-color: -color-card;
+    -fx-border-color: -color-surface transparent transparent transparent; -fx-border-width: 1 0 0 0;
+}
