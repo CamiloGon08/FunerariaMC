@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Bean;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
+import java.util.Locale;
 
 /**
  * Punto de entrada. Lanza JavaFX, que a su vez levanta el contexto de Spring
@@ -19,6 +20,8 @@ import java.sql.Connection;
 public class FunerariamcApplication {
 
 	public static void main(String[] args) {
+		// Calendarios y fechas en español aunque Windows esté en otro idioma.
+		Locale.setDefault(Locale.forLanguageTag("es-CO"));
 		Application.launch(JavaFxApplication.class, args);
 	}
 
