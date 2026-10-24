@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Pane?>
+<?import javafx.scene.layout.VBox?>
+
+<!-- Formulario de Clientes (mockup 12): nuevo cliente (HU-01), ver y editar.
+     Se abre en una ventana modal desde clients.fxml. -->
+<VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.example.funerariamc.controller.ClientFormController"
+      styleClass="form-root, client-form" prefWidth="700"
+      stylesheets="@../css/app.css, @../css/personal.css, @../css/clients.css">
+
+    <VBox styleClass="form-header" spacing="2">
+        <Label fx:id="titleLabel" styleClass="form-title" text="Nuevo cliente"/>
+        <Label fx:id="subtitleLabel" styleClass="card-subtitle" wrapText="true"
+               text="Los campos con * son obligatorios. El número de documento no puede estar registrado."/>
+    </VBox>
+
+    <VBox spacing="14" styleClass="form-body">
+        <GridPane fx:id="formGrid" hgap="18" vgap="12">
+            <columnConstraints>
+                <ColumnConstraints percentWidth="50"/>
+                <ColumnConstraints percentWidth="50"/>
+            </columnConstraints>
+            <VBox styleClass="form-field" GridPane.columnIndex="0" GridPane.rowIndex="0">
+                <Label styleClass="field-label" text="TIPO DE CLIENTE *"/>
+                <ComboBox fx:id="clientTypeCombo" maxWidth="Infinity" styleClass="form-combo"/>
+            </VBox>
+            <VBox styleClass="form-field" GridPane.columnIndex="1" GridPane.rowIndex="0">
+                <Label styleClass="field-label" text="TIPO DE DOCUMENTO *"/>
+                <ComboBox fx:id="documentTypeCombo" maxWidth="Infinity" styleClass="form-combo"/>
+            </VBox>
+            <VBox styleClass="form-field" GridPane.columnIndex="0" GridPane.rowIndex="1">
+                <Label styleClass="field-label" text="NÚMERO DE DOCUMENTO *"/>
+                <TextField fx:id="documentField" promptText="1.065.832.417"/>
+            </VBox>
+            <VBox styleClass="form-field" GridPane.columnIndex="1" GridPane.rowIndex="1">
+                <Label styleClass="field-label" text="FECHA DE REGISTRO"/>
+                <TextField fx:id="registrationField" editable="false" focusTraversable="false"
+                           styleClass="read-only-field"/>
+            </VBox>
+            <VBox fx:id="nameBox" styleClass="form-field" GridPane.columnIndex="0" GridPane.rowIndex="2">
+                <Label fx:id="nameLabel" styleClass="field-label" text="NOMBRES *"/>
+                <TextField fx:id="nameField"/>
+            </VBox>
+            <VBox fx:id="lastnameBox" styleClass="form-field" GridPane.columnIndex="1" GridPane.rowIndex="2">
+                <Label styleClass="field-label" text="APELLIDOS *"/>
+                <TextField fx:id="lastnameField"/>
+            </VBox>
+            <VBox styleClass="form-field" GridPane.columnIndex="0" GridPane.rowIndex="3">
+                <Label styleClass="field-label" text="TELÉFONO *"/>
+                <TextField fx:id="phoneField" promptText="301 556 2087"/>
+            </VBox>
+            <VBox styleClass="form-field" GridPane.columnIndex="1" GridPane.rowIndex="3">
+                <Label styleClass="field-label" text="CORREO"/>
+                <TextField fx:id="emailField"/>
+            </VBox>
+            <VBox styleClass="form-field" GridPane.columnIndex="0" GridPane.rowIndex="4"
+                  GridPane.columnSpan="2">
+                <Label styleClass="field-label" text="DIRECCIÓN *"/>
+                <TextField fx:id="addressField" promptText="Cra. 9 # 16-42, Centro, Valledupar"/>
+            </VBox>
+        </GridPane>
+
+        <Label fx:id="typeNote" styleClass="note-info" wrapText="true"/>
+
+        <!-- RF-PER-01 2a: el documento ya es de un cliente; se muestra en vez de duplicarlo -->
+        <HBox fx:id="existingBox" styleClass="existing-client">
+            <VBox spacing="2" HBox.hgrow="ALWAYS">
+                <Label styleClass="existing-title" text="Este documento ya está registrado"/>
+                <Label fx:id="existingLabel" wrapText="true"/>
+            </VBox>
+            <Button text="Ver cliente" styleClass="secondary-button" onAction="#onShowExisting"
+                    minWidth="-Infinity"/>
+        </HBox>
+    </VBox>
+
+    <HBox styleClass="form-footer" spacing="12" alignment="CENTER_RIGHT">
+        <Label fx:id="errorLabel" styleClass="error-label" wrapText="true" maxWidth="330"/>
+        <Pane HBox.hgrow="ALWAYS"/>
+        <Button fx:id="cancelButton" text="Cancelar" styleClass="secondary-button" cancelButton="true"
+                onAction="#onCancel" minWidth="-Infinity"/>
+        <Button fx:id="saveButton" text="Guardar cliente" styleClass="primary-button"
+                defaultButton="true" onAction="#onSave" minWidth="-Infinity"/>
+        <padding>
+            <Insets top="14" right="28" bottom="18" left="28"/>
+        </padding>
+    </HBox>
+</VBox>
