@@ -1,4 +1,4 @@
-package com.example.funerariamc.controller;
+package com.example.funerariamc.ui;
 
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;

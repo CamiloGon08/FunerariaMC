@@ -1,4 +1,4 @@
-package com.example.funerariamc.controller;
+package com.example.funerariamc.ui;
 
 import javafx.animation.Interpolator;
 import javafx.animation.KeyFrame;
@@ -26,7 +26,7 @@ import javafx.util.Duration;
  * Oculto: ojo cerrado con pestañas. Visible: ojo abierto. Al tocarlo el párpado se abre o se cierra
  * con una animación corta. El color lo define la clase CSS {@code eye-icon}.
  */
-final class EyeToggle {
+public final class EyeToggle {
 
     private static final double SIZE = 22;
     private static final Duration BLINK = Duration.millis(220);
@@ -39,7 +39,7 @@ final class EyeToggle {
     }
 
     /** Pone el ícono y el tooltip al botón y anima el ojo cada vez que se toca. */
-    static void install(ToggleButton button, String showText, String hideText) {
+    public static void install(ToggleButton button, String showText, String hideText) {
         button.getStyleClass().add("eye-toggle");
         button.setFocusTraversable(false);
         button.setContentDisplay(ContentDisplay.GRAPHIC_ONLY);

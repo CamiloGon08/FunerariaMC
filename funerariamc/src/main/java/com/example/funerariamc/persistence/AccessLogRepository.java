@@ -1,12 +1,15 @@
 package com.example.funerariamc.persistence;
 
-import com.example.funerariamc.model.AccessLog;
+import java.time.LocalDateTime;
+import java.util.List;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
-import java.util.List;
+import com.example.funerariamc.model.AccessLog;
 
 public interface AccessLogRepository extends JpaRepository<AccessLog, Long> {
 
@@ -21,7 +24,6 @@ public interface AccessLogRepository extends JpaRepository<AccessLog, Long> {
 
     /**
      * Una página de la bitácora, del más reciente al más antiguo, con el total de registros.
-     * El countQuery va aparte porque un "join fetch" no se puede usar para contar.
      */
     @Query(value = """
             select l from AccessLog l
@@ -31,4 +33,29 @@ public interface AccessLogRepository extends JpaRepository<AccessLog, Long> {
             """,
             countQuery = "select count(l) from AccessLog l")
     Page<AccessLog> findPage(Pageable pageable);
+
+    /**
+     *página filtrada por rango [from, to) y por usuario.
+     */
+    @Query(value = """
+            select l from AccessLog l
+            join fetch l.appUser u
+            join fetch u.employee e
+            where l.timestamp >= :from and l.timestamp < :to
+              and (lower(u.username) like :userPattern
+                   or lower(concat(e.name, ' ', e.lastname)) like :userPattern)
+            order by l.timestamp desc, l.id desc
+            """,
+            countQuery = """
+            select count(l) from AccessLog l
+            join l.appUser u
+            join u.employee e
+            where l.timestamp >= :from and l.timestamp < :to
+              and (lower(u.username) like :userPattern
+                   or lower(concat(e.name, ' ', e.lastname)) like :userPattern)
+            """)
+    Page<AccessLog> findPageFiltered(@Param("from") LocalDateTime from,
+                                     @Param("to") LocalDateTime to,
+                                     @Param("userPattern") String userPattern,
+                                     Pageable pageable);
 }

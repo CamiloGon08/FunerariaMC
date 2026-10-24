@@ -6,6 +6,8 @@ import com.example.funerariamc.service.AppModule;
 import com.example.funerariamc.service.AuthService;
 import com.example.funerariamc.service.RoleNames;
 import com.example.funerariamc.service.SessionContext;
+import com.example.funerariamc.ui.ModuleIcons;
+import com.example.funerariamc.ui.SidebarAnimator;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
 import javafx.scene.control.Alert;

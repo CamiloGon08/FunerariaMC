@@ -3,6 +3,7 @@ package com.example.funerariamc.controller;
 import com.example.funerariamc.config.FxmlViewLoader;
 import com.example.funerariamc.exception.BusinessException;
 import com.example.funerariamc.service.AuthService;
+import com.example.funerariamc.ui.EyeToggle;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Hyperlink;
