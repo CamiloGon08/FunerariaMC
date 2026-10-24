@@ -16,7 +16,9 @@ import javafx.scene.control.Label;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import org.springframework.context.annotation.Scope;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.TransactionException;
 
 /**
  * RF-ACC-04/05/06: menú principal con los módulos del rol de la sesión.
@@ -107,6 +109,12 @@ public class MainController {
             }
         } catch (BusinessException e) {
             Alert alert = new Alert(Alert.AlertType.WARNING, e.getMessage());
+            alert.setHeaderText(null);
+            alert.showAndWait();
+        } catch (DataAccessException | TransactionException e) {
+            // HU-11: si la bitácora no se puede escribir, el módulo no se abre y se informa el error.
+            Alert alert = new Alert(Alert.AlertType.ERROR,
+                    "No se pudo registrar el acceso en la bitácora, por eso el módulo no se abrió. Intente de nuevo.");
             alert.setHeaderText(null);
             alert.showAndWait();
         }

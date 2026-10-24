@@ -98,7 +98,7 @@
 .primary-button {
     -fx-background-color: -color-accent; -fx-text-fill: -color-background;
     -fx-font-weight: bold; -fx-font-size: 14px;
-    -fx-padding: 11 18; -fx-background-radius: 2; -fx-cursor: hand;
+    -fx-padding: 11 18; -fx-background-radius: 10; -fx-cursor: hand;
 }
 .primary-button:hover { -fx-background-color: derive(-color-accent, 12%); }
 .primary-button:pressed { -fx-background-color: -color-accent-dark; }
@@ -107,7 +107,7 @@
 .secondary-button {
     -fx-background-color: transparent; -fx-text-fill: -color-primary;
     -fx-border-color: -color-secondary; -fx-border-width: 1;
-    -fx-border-radius: 2; -fx-background-radius: 2;
+    -fx-border-radius: 10; -fx-background-radius: 10;
     -fx-padding: 6 14; -fx-cursor: hand;
 }
 .secondary-button:hover { -fx-background-color: -color-surface; }
@@ -281,3 +281,87 @@
 .log-pagination .pagination-control .right-arrow { -fx-background-color: -color-accent; }
 /* ---------- Recuperar contraseña: mensaje informativo en verde musgo ---------- */
 .info-label { -fx-text-fill: -color-accent; -fx-font-size: 13px; }
+/* ---------- Filtros de la bitácora (RF-ACC-08) ---------- */
+/* Tarjeta blanca con buscador y fechas en cápsulas salvia, igual que el módulo de Personal */
+.filter-card {
+    -fx-background-color: -color-card;
+    -fx-border-color: -color-surface; -fx-border-width: 1;
+    -fx-background-radius: 14; -fx-border-radius: 14;
+    -fx-padding: 14 18; -fx-spacing: 10; -fx-alignment: center-left;
+}
+.search-box {
+    -fx-background-color: -color-surface; -fx-background-radius: 999;
+    -fx-padding: 2 14; -fx-spacing: 8; -fx-alignment: center-left;
+}
+.search-box:focus-within { -fx-background-color: derive(-color-surface, -4%); }
+.search-icon { -fx-fill: transparent; -fx-stroke: -color-secondary; -fx-stroke-width: 1.8; -fx-stroke-line-cap: round; }
+.search-box .text-field,
+.search-box .text-field:focused {
+    -fx-background-color: transparent; -fx-border-width: 0; -fx-padding: 9 0;
+}
+/* Fechas: misma cápsula que el buscador, con el ícono de calendario a la derecha */
+.filter-card .date-picker {
+    -fx-background-color: -color-surface; -fx-background-radius: 999; -fx-padding: 0 4 0 14;
+}
+.filter-card .date-picker:focus-within { -fx-background-color: derive(-color-surface, -4%); }
+.filter-card .date-picker > .text-field,
+.filter-card .date-picker > .text-field:focused {
+    -fx-background-color: transparent; -fx-border-width: 0; -fx-padding: 9 0;
+}
+.filter-card .button { -fx-pref-height: 40; -fx-min-height: 40; -fx-padding: 0 20; }
+.date-picker > .arrow-button { -fx-background-color: transparent; -fx-padding: 8 10; -fx-cursor: hand; }
+.date-picker > .arrow-button > .arrow { -fx-background-color: -color-secondary; }
+.date-picker > .arrow-button:hover > .arrow { -fx-background-color: -color-accent; }
+
+/* Calendario desplegable: tarjeta blanca redondeada, días en círculo, rango resaltado */
+.date-picker-popup {
+    -fx-background-color: -color-card;
+    -fx-background-radius: 16; -fx-border-radius: 16;
+    -fx-border-color: -color-surface; -fx-border-width: 1;
+    -fx-padding: 14 14 10 14;
+    -fx-background-insets: 0;
+    -fx-effect: dropshadow(gaussian, rgba(24,47,37,0.16), 24, 0, 0, 6);
+}
+.date-picker-popup > .month-year-pane {
+    /* Franja superior verde pastel (derivada del musgo) que llega a los bordes de la tarjeta */
+    -fx-background-color: #DCE5D6;
+    -fx-background-insets: -14 -14 0 -14;
+    -fx-background-radius: 16 16 0 0;
+    -fx-padding: 0 0 12 0;
+}
+.date-picker-popup > .month-year-pane .spinner { -fx-spacing: 6; }
+.date-picker-popup > .month-year-pane .spinner-label {
+    -fx-text-fill: -color-primary; -fx-font-size: 14px; -fx-font-weight: bold;
+}
+/* Flechas en cajita redondeada con borde, como en la referencia */
+.date-picker-popup > .month-year-pane .spinner .button {
+    -fx-background-color: -color-card; -fx-background-radius: 8; -fx-border-radius: 8;
+    -fx-border-color: -color-surface; -fx-border-width: 1;
+    -fx-padding: 7 9; -fx-cursor: hand;
+}
+.date-picker-popup > .month-year-pane .spinner .button:hover { -fx-background-color: -color-surface; }
+.date-picker-popup > .month-year-pane .spinner .left-arrow,
+.date-picker-popup > .month-year-pane .spinner .right-arrow { -fx-background-color: -color-primary; }
+.date-picker-popup > .calendar-grid { -fx-background-color: transparent; -fx-hgap: 0; -fx-vgap: 4; }
+.date-picker-popup .day-name-cell {
+    -fx-background-color: transparent; -fx-text-fill: -color-primary;
+    -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 4 0 8 0;
+}
+.date-picker-popup .day-cell {
+    -fx-background-color: transparent; -fx-background-radius: 999; -fx-background-insets: 0;
+    -fx-border-width: 0; -fx-text-fill: -color-primary;
+    -fx-pref-width: 38; -fx-pref-height: 38; -fx-alignment: center; -fx-cursor: hand;
+}
+.date-picker-popup .day-cell:hover { -fx-background-color: -color-surface; }
+.date-picker-popup .day-cell.today { -fx-text-fill: -color-accent; -fx-font-weight: bold; -fx-border-width: 0; }
+.date-picker-popup .day-cell.previous-month,
+.date-picker-popup .day-cell.next-month { -fx-text-fill: -color-border; }
+.date-picker-popup .day-cell:disabled { -fx-text-fill: -color-border; -fx-opacity: 0.6; -fx-cursor: default; }
+/* Días entre "Desde" y "Hasta": banda salvia; los extremos en círculo musgo */
+.date-picker-popup .day-cell.in-range { -fx-background-color: -color-surface; -fx-background-radius: 0; }
+.date-picker-popup .day-cell.range-end,
+.date-picker-popup .day-cell:selected,
+.date-picker-popup .day-cell.selected {
+    -fx-background-color: -color-accent; -fx-background-radius: 999;
+    -fx-text-fill: -color-background; -fx-font-weight: bold;
+}
