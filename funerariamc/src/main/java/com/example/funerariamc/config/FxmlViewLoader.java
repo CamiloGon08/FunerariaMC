@@ -25,6 +25,10 @@ public class FxmlViewLoader {
     public static final String MAIN = "/fxml/main.fxml";
     public static final String ACCESS_LOG = "/fxml/access-log.fxml";
     public static final String PASSWORD_RECOVERY = "/fxml/password-recovery.fxml";
+    public static final String EMPLOYEES = "/fxml/employees.fxml";
+    public static final String EMPLOYEE_FORM = "/fxml/employee-form.fxml";
+    public static final String CLIENTS = "/fxml/clients.fxml";
+    public static final String CLIENT_FORM = "/fxml/client-form.fxml";
 
     
     private static final String[] FONTS = {
@@ -57,8 +61,17 @@ public class FxmlViewLoader {
         }
     }
 
+    /** Vista cargada junto con su controlador, para pasarle datos antes de mostrarla. */
+    public record View<C>(Parent root, C controller) {
+    }
+
     /** Carga una vista y devuelve su nodo raíz. */
     public Parent load(String fxmlPath) {
+        return loadView(fxmlPath).root();
+    }
+
+    /** Carga una vista y devuelve también su controlador (por ejemplo, el formulario de Personal). */
+    public <C> View<C> loadView(String fxmlPath) {
         URL url = getClass().getResource(fxmlPath);
         if (url == null) {
             throw new IllegalArgumentException("No existe la vista " + fxmlPath);
@@ -66,7 +79,8 @@ public class FxmlViewLoader {
         FXMLLoader loader = new FXMLLoader(url);
         loader.setControllerFactory(context::getBean);
         try {
-            return loader.load();
+            Parent root = loader.load();
+            return new View<>(root, loader.getController());
         } catch (IOException e) {
             throw new UncheckedIOException("No se pudo cargar la vista " + fxmlPath, e);
         }
