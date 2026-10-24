@@ -12,7 +12,8 @@ import org.springframework.data.repository.query.Param;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.Optional;
-/** Sirve para Employee y sus subtipos (Manager,Recepcionist, etc) */
+
+/** Sirve para Employee y sus subtipos  */
 public interface EmployeeRepository extends JpaRepository<Employee, Long> {
     Optional<Employee> findByDocumentNumber(String documentNumber);
 
