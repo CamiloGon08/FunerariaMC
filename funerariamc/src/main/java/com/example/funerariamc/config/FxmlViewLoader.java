@@ -29,6 +29,7 @@ public class FxmlViewLoader {
     public static final String EMPLOYEE_FORM = "/fxml/employee-form.fxml";
     public static final String CLIENTS = "/fxml/clients.fxml";
     public static final String CLIENT_FORM = "/fxml/client-form.fxml";
+    public static final String CHANGE_PASSWORD = "/fxml/change-password.fxml";
 
     
     private static final String[] FONTS = {
@@ -40,6 +41,7 @@ public class FxmlViewLoader {
     public static final String LOGIN_TITLE = "Funeraria MC — Iniciar sesión";
     public static final String MAIN_TITLE = "Funeraria MC";
     public static final String PASSWORD_RECOVERY_TITLE = "Funeraria MC — Recuperar contraseña";
+    public static final String CHANGE_PASSWORD_TITLE = "Funeraria MC — Cambiar contraseña";
 
     private final ApplicationContext context;
 
@@ -70,7 +72,7 @@ public class FxmlViewLoader {
         return loadView(fxmlPath).root();
     }
 
-    /** Carga una vista y devuelve también su controlador (por ejemplo, el formulario de Personal). */
+    /** Carga una vista y devuelve también su controlador */
     public <C> View<C> loadView(String fxmlPath) {
         URL url = getClass().getResource(fxmlPath);
         if (url == null) {
