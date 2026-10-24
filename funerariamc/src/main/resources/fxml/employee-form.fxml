@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.DatePicker?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Pane?>
+<?import javafx.scene.layout.VBox?>
+
+<!-- Formulario de Personal (mockup 09): registrar (HU-02) y actualizar (HU-03).
+     Se abre en una ventana modal desde employees.fxml. -->
+<VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.example.funerariamc.controller.EmployeeFormController"
+      styleClass="form-root" prefWidth="760" prefHeight="720"
+      stylesheets="@../css/app.css, @../css/personal.css">
+
+    <VBox styleClass="form-header" spacing="2">
+        <Label fx:id="titleLabel" styleClass="form-title" text="Registrar empleado"/>
+        <Label fx:id="subtitleLabel" styleClass="card-subtitle"
+               text="Los campos con * son obligatorios."/>
+    </VBox>
+
+    <ScrollPane fitToWidth="true" styleClass="form-scroll" VBox.vgrow="ALWAYS">
+        <VBox spacing="18" styleClass="form-body">
+
+            <!-- Datos personales (tabla person) -->
+            <Label styleClass="section-title" text="Datos personales"/>
+            <GridPane hgap="18" vgap="12">
+                <columnConstraints>
+                    <ColumnConstraints percentWidth="33.3"/>
+                    <ColumnConstraints percentWidth="33.3"/>
+                    <ColumnConstraints percentWidth="33.3"/>
+                </columnConstraints>
+                <VBox styleClass="form-field" GridPane.columnIndex="0" GridPane.rowIndex="0">
+                    <Label styleClass="field-label" text="NOMBRES *"/>
+                    <TextField fx:id="nameField"/>
+                </VBox>
+                <VBox styleClass="form-field" GridPane.columnIndex="1" GridPane.rowIndex="0">
+                    <Label styleClass="field-label" text="APELLIDOS *"/>
+                    <TextField fx:id="lastnameField"/>
+                </VBox>
+                <VBox styleClass="form-field" GridPane.columnIndex="2" GridPane.rowIndex="0">
+                    <Label styleClass="field-label" text="FECHA DE NACIMIENTO"/>
+                    <DatePicker fx:id="birthDatePicker" maxWidth="Infinity" promptText="dd/mm/aaaa"/>
+                </VBox>
+                <VBox styleClass="form-field" GridPane.columnIndex="0" GridPane.rowIndex="1">
+                    <Label styleClass="field-label" text="TIPO DE DOCUMENTO *"/>
+                    <ComboBox fx:id="documentTypeCombo" maxWidth="Infinity" styleClass="form-combo"/>
+                </VBox>
+                <VBox styleClass="form-field" GridPane.columnIndex="1" GridPane.rowIndex="1">
+                    <Label styleClass="field-label" text="NÚMERO DE DOCUMENTO *"/>
+                    <TextField fx:id="documentField" promptText="Sin puntos ni espacios"/>
+                </VBox>
+                <VBox styleClass="form-field" GridPane.columnIndex="2" GridPane.rowIndex="1">
+                    <Label styleClass="field-label" text="TELÉFONO"/>
+                    <TextField fx:id="phoneField"/>
+                </VBox>
+                <VBox styleClass="form-field" GridPane.columnIndex="0" GridPane.rowIndex="2">
+                    <Label styleClass="field-label" text="CORREO"/>
+                    <TextField fx:id="emailField"/>
+                </VBox>
+                <VBox styleClass="form-field" GridPane.columnIndex="1" GridPane.rowIndex="2"
+                      GridPane.columnSpan="2">
+                    <Label styleClass="field-label" text="DIRECCIÓN"/>
+                    <TextField fx:id="addressField"/>
+                </VBox>
+            </GridPane>
+
+            <!-- Datos laborales (tabla employee) -->
+            <Label styleClass="section-title" text="Datos laborales"/>
+            <GridPane hgap="18" vgap="12">
+                <columnConstraints>
+                    <ColumnConstraints percentWidth="33.3"/>
+                    <ColumnConstraints percentWidth="33.3"/>
+                    <ColumnConstraints percentWidth="33.3"/>
+                </columnConstraints>
+                <VBox styleClass="form-field" GridPane.columnIndex="0" GridPane.rowIndex="0">
+                    <Label styleClass="field-label" text="CARGO *"/>
+                    <ComboBox fx:id="positionCombo" maxWidth="Infinity" styleClass="form-combo"
+                              promptText="Seleccione"/>
+                </VBox>
+                <VBox styleClass="form-field" GridPane.columnIndex="1" GridPane.rowIndex="0">
+                    <Label styleClass="field-label" text="FECHA DE INGRESO *"/>
+                    <DatePicker fx:id="hireDatePicker" maxWidth="Infinity" promptText="dd/mm/aaaa"/>
+                </VBox>
+                <VBox styleClass="form-field" GridPane.columnIndex="2" GridPane.rowIndex="0">
+                    <Label styleClass="field-label" text="SALARIO (COP) *"/>
+                    <TextField fx:id="salaryField" promptText="1.800.000"/>
+                </VBox>
+            </GridPane>
+            <Label fx:id="accountNote" styleClass="note-info" wrapText="true"/>
+
+            <!-- Vendedor funerario (tabla funeral_salesperson) -->
+            <VBox fx:id="salespersonSection" spacing="12">
+                <Label styleClass="section-title" text="Vendedor funerario"/>
+                <VBox styleClass="form-field" maxWidth="230">
+                    <Label styleClass="field-label" text="PORCENTAJE DE COMISIÓN (%) *"/>
+                    <TextField fx:id="commissionRateField" promptText="5"/>
+                </VBox>
+            </VBox>
+
+            <!-- Tanatólogo (tabla thanatopractor). RN-18: sin número de licencia. -->
+            <VBox fx:id="thanatopractorSection" spacing="12">
+                <Label styleClass="section-title" text="Tanatólogo"/>
+                <GridPane hgap="18" vgap="12">
+                    <columnConstraints>
+                        <ColumnConstraints percentWidth="33.3"/>
+                        <ColumnConstraints percentWidth="33.3"/>
+                        <ColumnConstraints percentWidth="33.3"/>
+                    </columnConstraints>
+                    <VBox styleClass="form-field" GridPane.columnIndex="0" GridPane.rowIndex="0"
+                          GridPane.columnSpan="2">
+                        <Label styleClass="field-label" text="INSTITUCIÓN DE FORMACIÓN *"/>
+                        <TextField fx:id="institutionField"/>
+                    </VBox>
+                    <VBox styleClass="form-field" GridPane.columnIndex="2" GridPane.rowIndex="0">
+                        <Label styleClass="field-label" text="FECHA DE CERTIFICACIÓN *"/>
+                        <DatePicker fx:id="certificationDatePicker" maxWidth="Infinity" promptText="dd/mm/aaaa"/>
+                    </VBox>
+                    <VBox styleClass="form-field" GridPane.columnIndex="0" GridPane.rowIndex="1">
+                        <Label styleClass="field-label" text="COMISIÓN POR CASO (COP) *"/>
+                        <TextField fx:id="commissionPerCaseField" promptText="150.000"/>
+                    </VBox>
+                    <VBox styleClass="form-field" GridPane.columnIndex="1" GridPane.rowIndex="1"
+                          GridPane.columnSpan="2">
+                        <Label styleClass="field-label" text="CERTIFICADO (PDF O IMAGEN) *"/>
+                        <HBox styleClass="file-box" spacing="10">
+                            <Button text="Elegir archivo" styleClass="secondary-button"
+                                    onAction="#onChooseCertificate"/>
+                            <Label fx:id="certificateLabel" styleClass="file-name" text="Ningún archivo"/>
+                        </HBox>
+                    </VBox>
+                </GridPane>
+                <Label styleClass="cell-muted" wrapText="true"
+                       text="No se pide número de licencia: en Colombia no existe registro individual (RN-18)."/>
+            </VBox>
+
+            <!-- Conductor (tabla driver) -->
+            <VBox fx:id="driverSection" spacing="12">
+                <Label styleClass="section-title" text="Conductor"/>
+                <GridPane hgap="18" vgap="12">
+                    <columnConstraints>
+                        <ColumnConstraints percentWidth="33.3"/>
+                        <ColumnConstraints percentWidth="33.3"/>
+                        <ColumnConstraints percentWidth="33.3"/>
+                    </columnConstraints>
+                    <VBox styleClass="form-field" GridPane.columnIndex="0" GridPane.rowIndex="0">
+                        <Label styleClass="field-label" text="CATEGORÍA DE LICENCIA *"/>
+                        <ComboBox fx:id="licenseCategoryCombo" maxWidth="Infinity" styleClass="form-combo"
+                                  promptText="Seleccione"/>
+                    </VBox>
+                    <VBox styleClass="form-field" GridPane.columnIndex="1" GridPane.rowIndex="0">
+                        <Label styleClass="field-label" text="NÚMERO DE LICENCIA *"/>
+                        <TextField fx:id="licenseNumberField"/>
+                    </VBox>
+                    <VBox styleClass="form-field" GridPane.columnIndex="2" GridPane.rowIndex="0">
+                        <Label styleClass="field-label" text="VENCIMIENTO DE LICENCIA *"/>
+                        <DatePicker fx:id="licenseExpiryPicker" maxWidth="Infinity" promptText="dd/mm/aaaa"/>
+                    </VBox>
+                    <VBox styleClass="form-field" GridPane.columnIndex="0" GridPane.rowIndex="1"
+                          GridPane.columnSpan="3">
+                        <Label styleClass="field-label" text="ARCHIVO DE LA LICENCIA (PDF O IMAGEN) *"/>
+                        <HBox styleClass="file-box" spacing="10">
+                            <Button text="Elegir archivo" styleClass="secondary-button"
+                                    onAction="#onChooseLicenseFile"/>
+                            <Label fx:id="licenseFileLabel" styleClass="file-name" text="Ningún archivo"/>
+                        </HBox>
+                    </VBox>
+                </GridPane>
+                <Label fx:id="licenseWarning" styleClass="note-alert" wrapText="true"
+                       text="La licencia está vencida. Se guarda, pero el conductor no podrá asignarse a traslados hasta renovarla (RN-26)."/>
+            </VBox>
+        </VBox>
+    </ScrollPane>
+
+    <HBox styleClass="form-footer" spacing="12" alignment="CENTER_RIGHT">
+        <Label fx:id="errorLabel" styleClass="error-label" wrapText="true" maxWidth="420"/>
+        <Pane HBox.hgrow="ALWAYS"/>
+        <Button text="Cancelar" styleClass="secondary-button" cancelButton="true"
+                onAction="#onCancel"/>
+        <Button fx:id="saveButton" text="Guardar" styleClass="primary-button"
+                defaultButton="true" onAction="#onSave"/>
+        <padding>
+            <Insets top="14" right="28" bottom="18" left="28"/>
+        </padding>
+    </HBox>
+</VBox>
