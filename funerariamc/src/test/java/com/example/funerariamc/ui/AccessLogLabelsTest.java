@@ -23,6 +23,18 @@ class AccessLogLabelsTest {
         assertEquals("Contraseña restablecida", AccessLogLabels.of("PASSWORD_RESET_COMPLETED"));
     }
 
+        @Test
+    void translatesEmployeeActionsKeepingTheDocument() {
+        assertEquals("Registro del empleado con documento 1065234118",
+                AccessLogLabels.of("EMPLOYEE_CREATED: 1065234118"));
+        assertEquals("Actualización del empleado con documento 1065234118",
+                AccessLogLabels.of("EMPLOYEE_UPDATED: 1065234118"));
+        assertEquals("Desactivación del empleado con documento 12725893",
+                AccessLogLabels.of("EMPLOYEE_DEACTIVATED: 12725893"));
+        assertEquals("Activación del empleado con documento 12725893",
+                AccessLogLabels.of("EMPLOYEE_ACTIVATED: 12725893"));
+    }
+
     @Test
     void keepsUnknownActionsAsStored() {
         assertEquals("SOMETHING_NEW", AccessLogLabels.of("SOMETHING_NEW"));

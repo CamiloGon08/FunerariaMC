@@ -21,6 +21,14 @@ public final class AccessLogLabels {
             AccessLogService.PASSWORD_RESET_FAILED, "Recuperación de contraseña: código incorrecto",
             AccessLogService.PASSWORD_RESET_COMPLETED, "Contraseña restablecida");
 
+                /** Acciones del módulo de Personal: guardan el documento del empleado después del prefijo. */
+    private static final Map<String, String> EMPLOYEE_ACTIONS = Map.of(
+            AccessLogService.EMPLOYEE_CREATED, "Registro del empleado con documento ",
+            AccessLogService.EMPLOYEE_UPDATED, "Actualización del empleado con documento ",
+            AccessLogService.EMPLOYEE_DEACTIVATED, "Desactivación del empleado con documento ",
+            AccessLogService.EMPLOYEE_ACTIVATED, "Activación del empleado con documento ");
+
+
     private static final Map<String, String> CHANNELS = Map.of(
             "EMAIL", "correo",
             "TELEGRAM", "Telegram");
@@ -47,7 +55,15 @@ public final class AccessLogLabels {
             String channel = action.substring(AccessLogService.PASSWORD_RESET_REQUESTED.length()).trim();
             return "Solicitud de recuperación de contraseña por " + CHANNELS.getOrDefault(channel, channel);
         }
+        
+        for (Map.Entry<String, String> entry : EMPLOYEE_ACTIONS.entrySet()) {
+            if (action.startsWith(entry.getKey())) {
+                return entry.getValue() + action.substring(entry.getKey().length()).trim();
+            }
+        }
+        
         return action;
+
     }
 
     /** "CLIENTES" pasa a "Clientes" usando el mismo nombre del menú lateral. */
