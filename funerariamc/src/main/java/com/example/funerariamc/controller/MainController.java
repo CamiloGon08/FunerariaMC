@@ -104,6 +104,9 @@ public class MainController {
             if (module == AppModule.BITACORA) {
                 showContent(module.getLabel(), "Registro de ingresos y acciones del sistema",
                         viewLoader.load(FxmlViewLoader.ACCESS_LOG));
+            } else if (module == AppModule.SEGURIDAD) {
+                showContent("Personal", "Registre, consulte, active o desactive a los empleados de la funeraria",
+                        viewLoader.load(FxmlViewLoader.EMPLOYEES));
             } else {
                 showMessage(module.getLabel(), "Este módulo se implementa en un próximo sprint.");
             }
