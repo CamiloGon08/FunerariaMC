@@ -107,6 +107,9 @@ public class MainController {
             } else if (module == AppModule.SEGURIDAD) {
                 showContent("Personal", "Registre, consulte, active o desactive a los empleados de la funeraria",
                         viewLoader.load(FxmlViewLoader.EMPLOYEES));
+            } else if (module == AppModule.CLIENTES) {
+                showContent("Clientes", "Registre y consulte a los clientes titulares, personas naturales o empresas",
+                        viewLoader.load(FxmlViewLoader.CLIENTS));
             } else {
                 showMessage(module.getLabel(), "Este módulo se implementa en un próximo sprint.");
             }
