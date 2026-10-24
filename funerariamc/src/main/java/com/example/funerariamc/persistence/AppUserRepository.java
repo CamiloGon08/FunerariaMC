@@ -24,4 +24,7 @@ public interface AppUserRepository extends JpaRepository<AppUser, Long>{
 
     boolean existsByUsername(String username);
     boolean existsByEmployee_Id(Long employeeId);
+
+    /** al habilitar o deshabilitar un empleado se activa o desactiva su cuenta */
+    Optional<AppUser> findByEmployee_Id(Long employeeId);
 }
