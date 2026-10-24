@@ -1,0 +1,28 @@
+/*
+ * Módulo de Clientes (mockups 11 y 12). Reutiliza la tabla, los chips, el formulario
+ * y los diálogos de personal.css; aquí solo va lo propio de Clientes.
+ */
+
+/* Insignia del tipo de cliente: Natural en salvia, Empresa en caqui */
+.type-badge {
+    -fx-background-radius: 999; -fx-padding: 3 10;
+    -fx-font-size: 11px; -fx-font-weight: bold;
+}
+.type-natural { -fx-background-color: -color-surface; -fx-text-fill: -color-accent; }
+.type-corporate { -fx-background-color: #F1E8D3; -fx-text-fill: -color-gold-text; }
+
+/* Formulario en dos columnas, más angosto que el de Personal */
+.client-form .form-body { -fx-padding: 18 28 10 28; }
+.client-form .text-field:readonly { -fx-text-fill: -color-secondary; }
+.client-form .text-field.read-only-field {
+    -fx-background-color: -color-surface, -color-surface;
+    -fx-background-radius: 8;
+}
+
+/* RF-PER-01 2a: aviso del cliente que ya existe con ese documento */
+.existing-client {
+    -fx-background-color: #F1E8D3; -fx-background-radius: 10;
+    -fx-padding: 10 12; -fx-spacing: 12; -fx-alignment: center-left;
+}
+.existing-client .label { -fx-text-fill: -color-primary; -fx-font-size: 13px; }
+.existing-client .existing-title { -fx-font-weight: bold; }
