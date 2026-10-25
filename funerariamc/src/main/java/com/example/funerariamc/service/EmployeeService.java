@@ -61,11 +61,22 @@ public class EmployeeService {
      */
     @Transactional(readOnly = true)
     public Page<Employee> search(String text, EmployeeStatus status, EmployeePosition position, int page, int size) {
+        return searchByPositions(text, status, position == null ? List.of() : List.of(position), page, size);
+    }
+
+    /** Búsqueda por varios cargos; una colección vacía o null incluye todos los cargos. */
+    @Transactional(readOnly = true)
+    public Page<Employee> searchByPositions(String text, EmployeeStatus status,
+                                            Collection<EmployeePosition> positions, int page, int size) {
         requireMasterAdmin();
         Collection<EmployeeStatus> statuses = status == null ? List.of(EmployeeStatus.values()) : List.of(status);
-        Collection<Class<? extends Employee>> types = position == null
-                ? Arrays.stream(EmployeePosition.values()).<Class<? extends Employee>>map(EmployeePosition::getType).toList()
-                : List.of(position.getType());
+        Collection<EmployeePosition> chosen = positions == null || positions.isEmpty()
+                ? Arrays.asList(EmployeePosition.values()) : positions;
+        if (chosen.stream().anyMatch(position -> position == null)) {
+            throw new InvalidDataException("Seleccione cargos válidos para la búsqueda.");
+        }
+        Collection<Class<? extends Employee>> types = chosen.stream()
+                .<Class<? extends Employee>>map(EmployeePosition::getType).toList();
         int safePage = Math.max(page, 0);
         int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
         return employeeRepository.search(searchPattern(text), statuses, types, PageRequest.of(safePage, safeSize));
