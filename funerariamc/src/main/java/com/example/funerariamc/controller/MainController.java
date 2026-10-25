@@ -2,6 +2,9 @@ package com.example.funerariamc.controller;
 
 import com.example.funerariamc.config.FxmlViewLoader;
 import com.example.funerariamc.exception.BusinessException;
+import com.example.funerariamc.model.AppUser;
+import com.example.funerariamc.model.Employee;
+import com.example.funerariamc.model.enums.Sex;
 import com.example.funerariamc.service.AppModule;
 import com.example.funerariamc.service.AuthService;
 import com.example.funerariamc.service.RoleNames;
@@ -13,12 +16,15 @@ import javafx.scene.Node;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.geometry.Pos;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import org.springframework.context.annotation.Scope;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.TransactionException;
+
+import java.util.List;
 
 /**
  * RF-ACC-04/05/06: menú principal con los módulos del rol de la sesión.
@@ -60,6 +66,12 @@ public class MainController {
     private StackPane contentPane;
 
     private SidebarAnimator sidebarAnimator;
+    /** Primer ítem del menú: vuelve al saludo de inicio. */
+    private Button homePill;
+    /** Grupo desplegable de Finanzas: Resumen financiero y Panel de análisis. */
+    private Button financeGroup;
+    private Node financeChevron;
+    private VBox financeItems;
 
     public MainController(AuthService authService, SessionContext sessionContext, FxmlViewLoader viewLoader) {
         this.authService = authService;
@@ -69,7 +81,9 @@ public class MainController {
 
     @FXML
     private void initialize() {
-        String roleName = sessionContext.getRoleName().map(RoleNames::displayName).orElse("");
+        // "Secretario" o "Secretaria" según el sexo registrado en Personal.
+        Sex sex = sessionContext.getCurrentUser().map(AppUser::getEmployee).map(Employee::getSex).orElse(null);
+        String roleName = sessionContext.getRoleName().map(role -> RoleNames.displayName(role, sex)).orElse("");
         userNameLabel.setText(sessionContext.getDisplayName());
         roleLabel.setText(roleName);
         sessionBadge.setText("Sesión activa · " + roleName);
@@ -81,14 +95,69 @@ public class MainController {
         SidebarAnimator.addHoverScale(avatarButton, 1.1);
         SidebarAnimator.addPressBounce(avatarButton);
 
-        for (AppModule module : authService.visibleModules()) {
-            Button button = new Button(module.getLabel(), ModuleIcons.of(module));
-            button.getStyleClass().add("nav-pill");
-            button.setOnAction(e -> onModuleSelected(module, button));
-            sidebarAnimator.register(button, module.getLabel());
-            menuBox.getChildren().add(button);
+        homePill = new Button("Inicio", ModuleIcons.of("INICIO"));
+        homePill.getStyleClass().add("nav-pill");
+        homePill.setOnAction(e -> onHome());
+        sidebarAnimator.register(homePill, "Inicio");
+        menuBox.getChildren().add(homePill);
+
+        List<AppModule> modules = authService.visibleModules();
+        // El grupo solo tiene sentido si el rol ve también el Panel de análisis (Administrador Maestro).
+        boolean financeGroupNeeded = modules.contains(AppModule.FINANZAS) && modules.contains(AppModule.ANALISIS);
+        for (AppModule module : modules) {
+            if (financeGroupNeeded && module == AppModule.FINANZAS) {
+                addFinanceGroup();
+            } else if (!(financeGroupNeeded && module == AppModule.ANALISIS)) {
+                menuBox.getChildren().add(modulePill(module, module.getLabel(), ModuleIcons.of(module), "nav-pill"));
+            }
         }
         onHome();
+    }
+
+    private Button modulePill(AppModule module, String text, Node icon, String styleClass) {
+        Button button = new Button(text, icon);
+        button.getStyleClass().add(styleClass);
+        button.setOnAction(e -> onModuleSelected(module, button));
+        sidebarAnimator.register(button, text);
+        return button;
+    }
+
+    /** "Finanzas ›": al tocarlo baja la flecha y muestra Resumen financiero y Panel de análisis. */
+    private void addFinanceGroup() {
+        financeGroup = new Button(AppModule.FINANZAS.getLabel(), ModuleIcons.of(AppModule.FINANZAS));
+        financeGroup.getStyleClass().add("nav-pill");
+        sidebarAnimator.register(financeGroup, AppModule.FINANZAS.getLabel());
+        financeChevron = ModuleIcons.of("CHEVRON");
+        financeChevron.getStyleClass().add("nav-chevron");
+        financeChevron.setMouseTransparent(true);
+        StackPane groupRow = new StackPane(financeGroup, financeChevron);
+        groupRow.getStyleClass().add("nav-group");
+        StackPane.setAlignment(financeChevron, Pos.CENTER_RIGHT);
+
+        financeItems = new VBox(3,
+                modulePill(AppModule.FINANZAS, "Resumen financiero", ModuleIcons.of("RESUMEN"), "nav-sub-pill"),
+                modulePill(AppModule.ANALISIS, AppModule.ANALISIS.getLabel(), ModuleIcons.of(AppModule.ANALISIS), "nav-sub-pill"));
+        financeItems.setAlignment(Pos.TOP_RIGHT);
+        financeItems.getStyleClass().add("nav-sub-items");
+        financeItems.managedProperty().bind(financeItems.visibleProperty());
+        financeItems.setVisible(false);
+
+        // Con el menú contraído primero se expande y luego se despliega el grupo.
+        financeGroup.setOnAction(e -> sidebarAnimator.setExpanded(true, () -> showFinanceItems(!financeItems.isVisible())));
+        menuBox.getChildren().addAll(groupRow, financeItems);
+    }
+
+    private void showFinanceItems(boolean show) {
+        if (financeItems == null) {
+            return;
+        }
+        financeItems.setVisible(show);
+        financeChevron.setRotate(show ? 90 : 0);
+        financeGroup.getStyleClass().remove("open");
+        if (show) {
+            financeGroup.getStyleClass().add("open");
+            SidebarAnimator.fadeIn(financeItems);
+        }
     }
 
     /** Como en el diseño: si el menú está contraído, primero se expande y luego abre el módulo. */
@@ -128,13 +197,17 @@ public class MainController {
 
     @FXML
     private void onHome() {
-        sidebarAnimator.markActive(null);
+        sidebarAnimator.markActive(homePill);
         showMessage("Hola, " + firstName(sessionContext.getDisplayName()),
                 "Seleccione un módulo en el menú de la izquierda.");
     }
 
     @FXML
     private void onToggleSidebar() {
+        // Contraído no caben los subítems: el grupo se cierra.
+        if (sidebarAnimator.isExpanded()) {
+            showFinanceItems(false);
+        }
         sidebarAnimator.toggle();
     }
 
