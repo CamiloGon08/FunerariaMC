@@ -2,14 +2,20 @@ package com.example.funerariamc.controller;
 
 import com.example.funerariamc.config.FxmlViewLoader;
 import com.example.funerariamc.exception.BusinessException;
+import com.example.funerariamc.model.Driver;
 import com.example.funerariamc.model.Employee;
+import com.example.funerariamc.model.FuneralSalesperson;
+import com.example.funerariamc.model.Thanatopractor;
 import com.example.funerariamc.model.enums.EmployeePosition;
 import com.example.funerariamc.model.enums.EmployeeStatus;
 import com.example.funerariamc.service.EmployeeService;
+import com.example.funerariamc.service.RoleNames;
+import com.example.funerariamc.service.UserAccountService;
+import com.example.funerariamc.service.UserAccountService.AccountSummary;
+import javafx.animation.FadeTransition;
+import javafx.animation.ParallelTransition;
 import javafx.animation.PauseTransition;
-import javafx.beans.property.ReadOnlyObjectWrapper;
-import javafx.beans.property.ReadOnlyStringWrapper;
-import javafx.collections.FXCollections;
+import javafx.animation.TranslateTransition;
 import javafx.concurrent.Task;
 import javafx.css.PseudoClass;
 import javafx.fxml.FXML;
@@ -22,16 +28,16 @@ import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
-import javafx.scene.control.Pagination;
-import javafx.scene.control.TableCell;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableRow;
-import javafx.scene.control.TableView;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
+import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Pane;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
@@ -41,15 +47,19 @@ import org.springframework.context.annotation.Scope;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-import java.util.function.Function;
-import java.util.stream.Stream;
+import java.util.Map;
+import java.util.Optional;
 
 /**
- * Pantalla de Personal (mockup 08): lista con búsqueda por nombre o documento,
- * filtros por estado y cargo, y las acciones Registrar, Editar y Desactivar/Activar.
+ * Pantalla de Personal (propuesta P-08 / P-08.1): tarjetas por empleado con su cuenta de acceso,
+ * filtros por área y estado, indicadores y un panel lateral de detalle.
+ * Desde aquí el Administrador Maestro crea la cuenta y restablece la contraseña (HU-06, HU-07).
  * Un empleado nunca se elimina (RN-19).
  */
 @Component
@@ -57,129 +67,192 @@ import java.util.stream.Stream;
 public class EmployeeController {
 
     static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-    /** Filas por página de la lista de Personal (la bitácora usa 50 porque sus filas son más bajas). */
-    private static final int PAGE_SIZE = 10;
+    /** Tarjetas por tanda: 4 filas de 3. Al bajar hasta el final se piden 12 más. */
+    private static final int PAGE_SIZE = 12;
+    private static final int COLUMNS = 3;
+    private static final double DRAWER_WIDTH = 440;
     private static final PseudoClass INACTIVE = PseudoClass.getPseudoClass("inactive");
 
+    /** Áreas de la pantalla: cada chip filtra uno o varios cargos. */
+    private record Area(String label, List<EmployeePosition> positions) {
+    }
+
+    private static final List<Area> AREAS = List.of(
+            new Area("Todos", List.of()),
+            new Area("Administración", List.of(EmployeePosition.MANAGER, EmployeePosition.RECEPTIONIST)),
+            new Area("Ventas", List.of(EmployeePosition.FUNERAL_SALESPERSON)),
+            new Area("Tanatopraxia", List.of(EmployeePosition.THANATOPRACTOR, EmployeePosition.THANATOPRAXY_ASSISTANT)),
+            new Area("Conductores", List.of(EmployeePosition.DRIVER)),
+            new Area("Cafetería", List.of(EmployeePosition.CAFETERIA_ATTENDANT)));
+
+    private enum StatusOption {
+        ACTIVE("Activos", EmployeeStatus.ACTIVE),
+        INACTIVE("Inactivos", EmployeeStatus.INACTIVE),
+        ALL("Todos", null);
+
+        private final String label;
+        private final EmployeeStatus status;
+
+        StatusOption(String label, EmployeeStatus status) {
+            this.label = label;
+            this.status = status;
+        }
+    }
+
     private final EmployeeService employeeService;
+    private final UserAccountService userAccountService;
     private final FxmlViewLoader viewLoader;
     /** Espera a que el usuario deje de escribir para no consultar la BD en cada tecla. */
     private final PauseTransition searchDelay = new PauseTransition(Duration.millis(300));
 
     @FXML
+    private StackPane root;
+    @FXML
     private TextField searchField;
     @FXML
-    private ToggleGroup statusGroup;
+    private ToggleGroup areaGroup;
     @FXML
-    private ToggleButton activeToggle;
+    private HBox areaChips;
     @FXML
-    private ToggleButton inactiveToggle;
+    private ComboBox<StatusOption> statusFilter;
     @FXML
-    private ComboBox<EmployeePosition> positionFilter;
+    private Label activeValue;
     @FXML
-    private Label countLabel;
+    private Label activeDetail;
+    @FXML
+    private Label accountsValue;
+    @FXML
+    private Label expiringValue;
+    @FXML
+    private Label inactiveValue;
     @FXML
     private Label showingLabel;
     @FXML
-    private TableView<Employee> employeeTable;
+    private ScrollPane cardScroll;
     @FXML
-    private TableColumn<Employee, String> documentColumn;
+    private GridPane cardGrid;
     @FXML
-    private TableColumn<Employee, Employee> nameColumn;
+    private Label emptyLabel;
     @FXML
-    private TableColumn<Employee, Employee> positionColumn;
+    private Button moreButton;
     @FXML
-    private TableColumn<Employee, String> hireDateColumn;
+    private Region veil;
     @FXML
-    private TableColumn<Employee, Employee> statusColumn;
+    private VBox drawer;
     @FXML
-    private TableColumn<Employee, Employee> actionsColumn;
+    private VBox drawerBody;
     @FXML
-    private Pagination pagination;
+    private HBox drawerActions;
 
-    /** Empleado recién guardado que se resalta cuando llegue su página. */
-    private Long selectAfterLoad;
+    /** Empleados ya cargados (en el orden de las tarjetas) y sus cuentas. */
+    private final List<Employee> employees = new ArrayList<>();
+    private final Map<Long, AccountSummary> accounts = new HashMap<>();
+    private long totalMatches;
+    private boolean loading;
+    /** Cada búsqueda nueva invalida las respuestas que aún vienen en camino. */
+    private int generation;
+    /** Empleado abierto en el panel lateral (null si está cerrado). */
+    private Long drawerEmployeeId;
 
-    public EmployeeController(EmployeeService employeeService, FxmlViewLoader viewLoader) {
+    public EmployeeController(EmployeeService employeeService, UserAccountService userAccountService,
+                              FxmlViewLoader viewLoader) {
         this.employeeService = employeeService;
+        this.userAccountService = userAccountService;
         this.viewLoader = viewLoader;
     }
 
     @FXML
     private void initialize() {
-        positionFilter.getItems().add(null);
-        positionFilter.getItems().addAll(EmployeePosition.values());
-        positionFilter.setButtonCell(positionCell("Cargo: todos"));
-        positionFilter.setCellFactory(list -> positionCell("Todos los cargos"));
-
-        documentColumn.setCellValueFactory(c -> new ReadOnlyStringWrapper(formatDocument(c.getValue().getDocumentNumber())));
-        hireDateColumn.setCellValueFactory(c -> new ReadOnlyStringWrapper(
-                c.getValue().getHireDate() == null ? "—" : DATE.format(c.getValue().getHireDate())));
-        for (TableColumn<Employee, Employee> column : List.of(nameColumn, positionColumn, statusColumn, actionsColumn)) {
-            column.setCellValueFactory(c -> new ReadOnlyObjectWrapper<>(c.getValue()));
+        for (Area area : AREAS) {
+            ToggleButton chip = new ToggleButton(area.label());
+            chip.getStyleClass().addAll("chip", "area-chip");
+            chip.setUserData(area);
+            chip.setToggleGroup(areaGroup);
+            chip.setMinWidth(Region.USE_PREF_SIZE);
+            areaChips.getChildren().add(chip);
         }
-        nameColumn.setCellFactory(column -> graphicCell(this::nameCell));
-        positionColumn.setCellFactory(column -> graphicCell(this::positionCell));
-        statusColumn.setCellFactory(column -> graphicCell(EmployeeController::statusBadge));
-        actionsColumn.setCellFactory(column -> graphicCell(this::actionButtons));
-
-        // Filas de empleados inactivos en gris.
-        employeeTable.setRowFactory(table -> new TableRow<>() {
-            @Override
-            protected void updateItem(Employee item, boolean empty) {
-                super.updateItem(item, empty);
-                pseudoClassStateChanged(INACTIVE, !empty && item != null && !item.isActive());
-            }
-        });
-
-        searchDelay.setOnFinished(e -> goToFirstPage());
-        searchField.textProperty().addListener((obs, old, text) -> searchDelay.playFromStart());
-        statusGroup.selectedToggleProperty().addListener((obs, old, toggle) -> {
+        areaGroup.selectToggle(areaGroup.getToggles().get(0));
+        areaGroup.selectedToggleProperty().addListener((obs, old, toggle) -> {
             if (toggle == null) {
-                old.setSelected(true); // siempre queda un filtro elegido
+                old.setSelected(true); // siempre queda un área elegida
             } else {
-                goToFirstPage();
+                reload();
             }
         });
-        positionFilter.valueProperty().addListener((obs, old, value) -> goToFirstPage());
 
-        // La paginación solo aporta los botones; cada cambio de página consulta esa página.
-        pagination.setPageFactory(index -> new Region());
-        pagination.currentPageIndexProperty().addListener((obs, oldIndex, newIndex) -> loadPage(newIndex.intValue()));
-        loadPage(0);
+        statusFilter.getItems().setAll(StatusOption.values());
+        statusFilter.setValue(StatusOption.ACTIVE);
+        statusFilter.setButtonCell(statusCell());
+        statusFilter.setCellFactory(list -> statusCell());
+        statusFilter.valueProperty().addListener((obs, old, value) -> reload());
+
+        searchDelay.setOnFinished(e -> reload());
+        searchField.textProperty().addListener((obs, old, text) -> searchDelay.playFromStart());
+
+        // Al llegar al final de la barra de desplazamiento se piden las siguientes 12 tarjetas.
+        cardScroll.vvalueProperty().addListener((obs, old, value) -> {
+            if (value.doubleValue() >= cardScroll.getVmax() - 0.02 && hasMore()) {
+                loadMore();
+            }
+        });
+
+        drawer.setTranslateX(DRAWER_WIDTH);
+        reload();
     }
 
-    /** Vuelve a consultar la página que se está viendo (después de guardar, activar o desactivar). */
-    private void refresh() {
-        loadPage(pagination.getCurrentPageIndex());
+    // ---------- carga ----------
+
+    /** Resultado de una consulta: la tanda de empleados, sus cuentas y los indicadores. */
+    private record Batch(Page<Employee> page, Map<Long, AccountSummary> accounts,
+                         long total, long active, long withAccount, long expiring) {
     }
 
-    /** Un filtro cambió: vuelve a la página 1. Si ya está en ella el listener no se dispara, por eso se carga a mano. */
-    private void goToFirstPage() {
-        if (pagination.getCurrentPageIndex() == 0) {
-            loadPage(0);
-        } else {
-            pagination.setCurrentPageIndex(0);
+    /** Un filtro cambió o se guardó algo: vuelve a traer desde el principio lo que ya se veía. */
+    private void reload() {
+        int size = Math.min(Math.max(PAGE_SIZE, employees.size()), EmployeeService.MAX_PAGE_SIZE);
+        query(0, size, true);
+    }
+
+    @FXML
+    private void onLoadMore() {
+        loadMore();
+    }
+
+    private void loadMore() {
+        if (!loading) {
+            query(employees.size() / PAGE_SIZE, PAGE_SIZE, false);
         }
+    }
+
+    private boolean hasMore() {
+        return employees.size() < totalMatches;
     }
 
     /** Igual que la bitácora: la consulta corre en otro hilo para que la ventana no se congele. */
-    private void loadPage(int pageIndex) {
+    private void query(int pageIndex, int size, boolean replace) {
         String text = searchField.getText();
-        EmployeeStatus status = selectedStatus();
-        EmployeePosition position = positionFilter.getValue();
+        EmployeeStatus status = statusFilter.getValue() == null ? null : statusFilter.getValue().status;
+        List<EmployeePosition> positions = selectedArea().positions();
+        int requestGeneration = replace ? ++generation : generation;
+        loading = true;
         showingLabel.setText("Cargando empleados…");
-        pagination.setDisable(true);
-        Task<PageResult> task = new Task<>() {
+        Task<Batch> task = new Task<>() {
             @Override
-            protected PageResult call() {
-                return new PageResult(employeeService.search(text, status, position, pageIndex, PAGE_SIZE),
-                        employeeService.count(null), employeeService.count(EmployeeStatus.ACTIVE));
+            protected Batch call() {
+                Page<Employee> page = employeeService.searchByPositions(text, status, positions, pageIndex, size);
+                List<Long> ids = page.getContent().stream().map(Employee::getId).toList();
+                return new Batch(page, userAccountService.findAccounts(ids),
+                        employeeService.count(null), employeeService.count(EmployeeStatus.ACTIVE),
+                        userAccountService.countActiveAccounts(), employeeService.countExpiringDocuments());
             }
         };
-        task.setOnSucceeded(e -> showPage(pageIndex, task.getValue()));
+        task.setOnSucceeded(e -> {
+            if (requestGeneration == generation) {
+                show(task.getValue(), replace);
+            }
+        });
         task.setOnFailed(e -> {
-            pagination.setDisable(false);
+            loading = false;
             showingLabel.setText("");
             showError(task.getException() instanceof BusinessException business
                     ? business.getMessage()
@@ -190,47 +263,311 @@ public class EmployeeController {
         thread.start();
     }
 
-    private void showPage(int pageIndex, PageResult result) {
-        Page<Employee> page = result.page();
-        int pageCount = Math.max(page.getTotalPages(), 1);
-        pagination.setPageCount(pageCount);
-        pagination.setDisable(false);
-        // Si la página quedó vacía (por ejemplo, se desactivó el único de la última página con el filtro Activos).
-        if (page.getContent().isEmpty() && pageIndex > 0) {
-            pagination.setCurrentPageIndex(pageCount - 1);
+    private void show(Batch batch, boolean replace) {
+        loading = false;
+        if (replace) {
+            employees.clear();
+            accounts.clear();
+        }
+        employees.addAll(batch.page().getContent());
+        accounts.putAll(batch.accounts());
+        totalMatches = batch.page().getTotalElements();
+        renderCards();
+
+        long inactive = batch.total() - batch.active();
+        activeValue.setText(String.valueOf(batch.active()));
+        activeDetail.setText("de " + count(batch.total(), "empleado"));
+        accountsValue.setText(String.valueOf(batch.withAccount()));
+        expiringValue.setText(String.valueOf(batch.expiring()));
+        expiringValue.pseudoClassStateChanged(PseudoClass.getPseudoClass("warning"), batch.expiring() > 0);
+        inactiveValue.setText(String.valueOf(inactive));
+        showingLabel.setText(totalMatches == 0 ? "" : employees.size() + " de " + count(totalMatches, "empleado"));
+
+        // El panel abierto se vuelve a dibujar con los datos recién guardados.
+        if (drawerEmployeeId != null) {
+            findLoaded(drawerEmployeeId).ifPresentOrElse(this::fillDrawer, this::closeDrawer);
+        }
+    }
+
+    private void renderCards() {
+        cardGrid.getChildren().clear();
+        for (int i = 0; i < employees.size(); i++) {
+            cardGrid.add(card(employees.get(i)), i % COLUMNS, i / COLUMNS);
+        }
+        boolean empty = employees.isEmpty();
+        emptyLabel.setVisible(empty);
+        emptyLabel.setManaged(empty);
+        moreButton.setVisible(hasMore());
+        moreButton.setManaged(hasMore());
+    }
+
+    private Optional<Employee> findLoaded(Long id) {
+        return employees.stream().filter(e -> e.getId().equals(id)).findFirst();
+    }
+
+    private Area selectedArea() {
+        return areaGroup.getSelectedToggle() == null ? AREAS.get(0) : (Area) areaGroup.getSelectedToggle().getUserData();
+    }
+
+    // ---------- tarjeta ----------
+
+    private VBox card(Employee e) {
+        EmployeePosition position = EmployeePosition.of(e);
+
+        VBox names = new VBox(6, wrapped(fullName(e), "card-name"), pill(position.getDisplayName(e.getSex()), "pill-neutral"));
+        HBox.setHgrow(names, Priority.ALWAYS);
+        HBox header = new HBox(12, avatar(e, "avatar"), names, statusPill(e));
+        header.setAlignment(Pos.TOP_LEFT);
+
+        GridPane info = infoGrid();
+        infoRow(info, 0, "Documento", formatDocument(e.getDocumentNumber()));
+        infoRow(info, 1, "Teléfono", orDash(e.getPhone()));
+        infoRow(info, 2, "Ingreso", e.getHireDate() == null ? "—" : DATE.format(e.getHireDate()));
+
+        VBox card = new VBox(12, header, divider(), info, accountRow(e, position));
+        warning(e).ifPresent(card.getChildren()::add);
+        if (e instanceof FuneralSalesperson salesperson && salesperson.getCommissionRate() != null) {
+            card.getChildren().add(band("Comisión " + plain(salesperson.getCommissionRate()) + " %", "band-info"));
+        }
+
+        Button detail = cardButton("Ver detalle");
+        detail.setOnAction(event -> openDrawer(e));
+        Button second;
+        if (e.isActive()) {
+            second = cardButton("Editar");
+            second.setOnAction(event -> openForm(e));
+        } else {
+            second = cardButton("Activar");
+            second.getStyleClass().add("card-button-activate");
+            second.setOnAction(event -> onActivate(e));
+        }
+        HBox buttons = new HBox(10, detail, second);
+        Pane spacer = new Pane();
+        VBox.setVgrow(spacer, Priority.ALWAYS);
+        card.getChildren().addAll(spacer, buttons);
+
+        card.getStyleClass().add("employee-card");
+        card.pseudoClassStateChanged(INACTIVE, !e.isActive());
+        card.setMaxHeight(Double.MAX_VALUE);
+        card.setMinWidth(0); // la columna (33 %) manda; el nombre largo pasa a dos líneas
+        card.setPrefWidth(0);
+        GridPane.setFillHeight(card, true);
+        card.setOnMouseClicked(event -> {
+            if (event.getClickCount() == 2) {
+                openDrawer(e);
+            }
+        });
+        return card;
+    }
+
+    /** Fila "Cuenta · usuario  [rol]", o la invitación a crearla, o que el cargo no ingresa al sistema. */
+    private HBox accountRow(Employee e, EmployeePosition position) {
+        AccountSummary account = accounts.get(e.getId());
+        HBox row = new HBox(8);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.getStyleClass().add("account-row");
+        Pane spacer = new Pane();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        if (account != null) {
+            Label user = new Label("Cuenta · " + account.username());
+            user.getStyleClass().add("account-user");
+            row.getChildren().addAll(user, spacer, pill(RoleNames.displayName(account.roleName(), e.getSex()), "pill-role"));
+            if (!account.enabled()) {
+                row.getStyleClass().add("account-disabled");
+            }
+        } else if (position.canHaveUserAccount()) {
+            Label none = new Label("Sin cuenta de acceso");
+            none.getStyleClass().add("account-none");
+            row.getChildren().addAll(none, spacer);
+            if (e.isActive()) {
+                Button create = new Button("Crear cuenta");
+                create.getStyleClass().add("account-link");
+                create.setOnAction(event -> onCreateAccount(e));
+                row.getChildren().add(create);
+            }
+        } else {
+            Label none = new Label("Cargo sin cuenta de acceso");
+            none.getStyleClass().add("account-none");
+            row.getChildren().add(none);
+            row.getStyleClass().add("account-na");
+        }
+        return row;
+    }
+
+    /** Avisos de la tarjeta: licencia (RN-26) y contraseña temporal pendiente. */
+    private Optional<Label> warning(Employee e) {
+        if (employeeService.hasExpiredLicense(e)) {
+            return Optional.of(band("Licencia vencida: no se asigna a servicios (RN-26)", "band-alert"));
+        }
+        if (employeeService.hasLicenseExpiringSoon(e) && e instanceof Driver driver) {
+            return Optional.of(band("Licencia vence el " + DATE.format(driver.getLicenseExpiryDate()), "band-warning"));
+        }
+        AccountSummary account = accounts.get(e.getId());
+        if (account != null && account.enabled() && account.mustChangePassword()) {
+            return Optional.of(band("Debe cambiar la contraseña temporal al ingresar", "band-warning"));
+        }
+        return Optional.empty();
+    }
+
+    // ---------- panel lateral ----------
+
+    private void openDrawer(Employee e) {
+        drawerEmployeeId = e.getId();
+        fillDrawer(e);
+        if (drawer.isVisible()) {
             return;
         }
-        employeeTable.setItems(FXCollections.observableArrayList(page.getContent()));
-        employeeTable.scrollTo(0);
-        if (selectAfterLoad != null) {
-            page.getContent().stream()
-                    .filter(employee -> employee.getId().equals(selectAfterLoad))
-                    .findFirst()
-                    .ifPresent(employee -> employeeTable.getSelectionModel().select(employee));
-            selectAfterLoad = null;
+        veil.setVisible(true);
+        drawer.setVisible(true);
+        TranslateTransition slide = new TranslateTransition(Duration.millis(220), drawer);
+        slide.setToX(0);
+        FadeTransition fade = new FadeTransition(Duration.millis(220), veil);
+        fade.setFromValue(0);
+        fade.setToValue(1);
+        new ParallelTransition(slide, fade).play();
+    }
+
+    @FXML
+    private void onCloseDrawer() {
+        closeDrawer();
+    }
+
+    private void closeDrawer() {
+        drawerEmployeeId = null;
+        if (!drawer.isVisible()) {
+            return;
+        }
+        TranslateTransition slide = new TranslateTransition(Duration.millis(180), drawer);
+        slide.setToX(DRAWER_WIDTH);
+        FadeTransition fade = new FadeTransition(Duration.millis(180), veil);
+        fade.setToValue(0);
+        ParallelTransition out = new ParallelTransition(slide, fade);
+        out.setOnFinished(event -> {
+            if (drawerEmployeeId == null) {
+                drawer.setVisible(false);
+                veil.setVisible(false);
+            }
+        });
+        out.play();
+    }
+
+    private void fillDrawer(Employee e) {
+        EmployeePosition position = EmployeePosition.of(e);
+        AccountSummary account = accounts.get(e.getId());
+
+        Label caption = new Label("EMPLEADO");
+        caption.getStyleClass().add("kpi-caption");
+        Label subtitle = wrapped(position.getDisplayName(e.getSex()) + " · " + documentLabel(e)
+                + (e.getHireDate() == null ? "" : " · desde " + DATE.format(e.getHireDate())), "card-subtitle");
+        VBox titles = new VBox(2, caption, wrapped(fullName(e), "drawer-name"), subtitle);
+        HBox.setHgrow(titles, Priority.ALWAYS);
+        Button close = new Button("✕");
+        close.getStyleClass().add("drawer-close");
+        close.setOnAction(event -> closeDrawer());
+        HBox header = new HBox(14, avatar(e, "avatar-large"), titles, close);
+        header.setAlignment(Pos.TOP_LEFT);
+
+        HBox pills = new HBox(8, statusPill(e));
+        if (employeeService.hasExpiredLicense(e)) {
+            pills.getChildren().add(pill("Licencia vencida", "pill-alert"));
+        } else if (employeeService.hasLicenseExpiringSoon(e)) {
+            pills.getChildren().add(pill("Licencia por vencer", "pill-warning"));
         }
 
-        countLabel.setText(count(result.total(), "empleado") + " · " + count(result.active(), "activo")
-                + " · " + count(result.total() - result.active(), "inactivo"));
-        if (page.getTotalElements() == 0) {
-            showingLabel.setText("");
+        drawerBody.getChildren().setAll(header, pills,
+                section("CONTACTO",
+                        "Teléfono", orDash(e.getPhone()),
+                        "Correo", orDash(e.getEmail()),
+                        "Dirección", orDash(e.getAddress())),
+                section("DATOS LABORALES",
+                        "Cargo", position.getDisplayName(e.getSex()),
+                        "Ingreso", e.getHireDate() == null ? "—" : DATE.format(e.getHireDate()),
+                        "Salario", pesos(e.getSalary())));
+        positionSection(e).ifPresent(drawerBody.getChildren()::add);
+        drawerBody.getChildren().add(accountSection(e, position, account));
+
+        Button toggle = new Button(e.isActive() ? "Desactivar" : "Activar");
+        toggle.getStyleClass().addAll("drawer-button", e.isActive() ? "drawer-danger" : "drawer-activate");
+        toggle.setOnAction(event -> {
+            if (e.isActive()) {
+                onDeactivate(e);
+            } else {
+                onActivate(e);
+            }
+        });
+        Button edit = new Button("Editar");
+        edit.getStyleClass().addAll("drawer-button", "drawer-primary");
+        edit.setOnAction(event -> openForm(e));
+        for (Button button : List.of(toggle, edit)) {
+            button.setMaxWidth(Double.MAX_VALUE);
+            HBox.setHgrow(button, Priority.ALWAYS);
+        }
+        drawerActions.getChildren().setAll(toggle, edit);
+    }
+
+    /** Datos propios del cargo: licencia del conductor, certificación del tanatólogo o comisión del vendedor. */
+    private Optional<VBox> positionSection(Employee e) {
+        if (e instanceof Driver d) {
+            String expiry = d.getLicenseExpiryDate() == null ? "—" : DATE.format(d.getLicenseExpiryDate());
+            VBox box = section("LICENCIA DE CONDUCCIÓN",
+                    "Categoría", orDash(d.getLicenseCategory()),
+                    "Número", orDash(d.getLicenseNumber()),
+                    "Vence", expiry,
+                    "Archivo", fileName(d.getLicenseFileUrl()));
+            if (employeeService.hasExpiredLicense(e) || employeeService.hasLicenseExpiringSoon(e)) {
+                box.lookupAll(".info-value").stream()
+                        .filter(node -> node instanceof Label label && label.getText().equals(expiry))
+                        .forEach(node -> node.getStyleClass().add("info-warning"));
+            }
+            return Optional.of(box);
+        }
+        if (e instanceof Thanatopractor t) {
+            return Optional.of(section("CERTIFICACIÓN",
+                    "Institución", orDash(t.getTrainingInstitution()),
+                    "Fecha", t.getCertificationDate() == null ? "—" : DATE.format(t.getCertificationDate()),
+                    "Comisión por caso", pesos(t.getCommissionPerCase()),
+                    "Archivo", fileName(t.getCertificateFileUrl())));
+        }
+        if (e instanceof FuneralSalesperson s) {
+            return Optional.of(section("VENTAS",
+                    "Comisión", s.getCommissionRate() == null ? "—" : plain(s.getCommissionRate()) + " %"));
+        }
+        return Optional.empty();
+    }
+
+    /** HU-06 / HU-07: la cuenta se crea y se restablece aquí mismo, sin otro módulo. */
+    private VBox accountSection(Employee e, EmployeePosition position, AccountSummary account) {
+        Label title = new Label("CUENTA DE ACCESO");
+        title.getStyleClass().add("kpi-caption");
+        VBox box = new VBox(10);
+        box.getStyleClass().add("info-box");
+        if (!position.canHaveUserAccount()) {
+            GridPane grid = infoGrid();
+            infoRow(grid, 0, "Cuenta", "No aplica: este cargo no ingresa al sistema (RN-23)");
+            box.getChildren().add(grid);
+        } else if (account == null) {
+            box.getChildren().add(wrapped(e.isActive()
+                    ? "Aún no tiene cuenta. Al crearla se genera una contraseña temporal que "
+                    + e.getName() + " cambia en su primer ingreso."
+                    : "Sin cuenta. Active al empleado para poder crearle una.", "account-hint"));
+            if (e.isActive()) {
+                Button create = new Button("Crear cuenta de acceso");
+                create.getStyleClass().add("primary-button");
+                create.setOnAction(event -> onCreateAccount(e));
+                box.getChildren().add(create);
+            }
         } else {
-            long first = (long) pageIndex * PAGE_SIZE + 1;
-            long last = first + page.getNumberOfElements() - 1;
-            showingLabel.setText("Mostrando " + first + "–" + last + " de " + count(page.getTotalElements(), "empleado"));
+            GridPane grid = infoGrid();
+            infoRow(grid, 0, "Usuario", account.username());
+            infoRow(grid, 1, "Rol", RoleNames.displayName(account.roleName(), e.getSex()));
+            infoRow(grid, 2, "Estado", EmployeeFormController.accountState(account));
+            box.getChildren().addAll(grid, wrapped("Para cambiar la contraseña más adelante, el empleado usa "
+                    + "“¿Olvidó su contraseña?” en el inicio de sesión.", "account-hint"));
         }
+        return new VBox(8, title, box);
     }
 
-    /** Página de la tabla más los totales del resumen de arriba. */
-    private record PageResult(Page<Employee> page, long total, long active) {
-    }
-
-    private EmployeeStatus selectedStatus() {
-        if (activeToggle.isSelected()) {
-            return EmployeeStatus.ACTIVE;
-        }
-        return inactiveToggle.isSelected() ? EmployeeStatus.INACTIVE : null;
-    }
+    // ---------- acciones ----------
 
     @FXML
     private void onRegister() {
@@ -243,20 +580,27 @@ public class EmployeeController {
         stage.initOwner(window());
         stage.initModality(Modality.WINDOW_MODAL);
         stage.setTitle(employee == null ? "Registrar empleado" : "Actualizar empleado");
-        Scene scene = new Scene(view.root());
-        stage.setScene(scene);
-        view.controller().init(employee, saved -> {
-            selectAfterLoad = saved.getId();
-            refresh();
-        });
+        stage.setScene(new Scene(view.root()));
+        view.controller().init(employee, saved -> reload());
         stage.showAndWait();
+    }
+
+    private void onCreateAccount(Employee e) {
+        try {
+            AccountDialogs.createAccount(window(), e, userAccountService).ifPresent(credentials -> {
+                AccountDialogs.showCredentials(window(), e, credentials);
+                reload();
+            });
+        } catch (BusinessException ex) {
+            showError(ex.getMessage());
+        }
     }
 
     /** HU-04: pide confirmación y explica que no se borra. */
     private void onDeactivate(Employee employee) {
-        EmployeePosition position = EmployeePosition.of(employee);
-        String consequence = position.canHaveUserAccount()
-                ? "Su cuenta de usuario se deshabilita y no podrá iniciar sesión."
+        boolean hasAccount = accounts.containsKey(employee.getId());
+        String consequence = hasAccount
+                ? "Su cuenta de acceso se deshabilita y no podrá iniciar sesión."
                 : "No podrá asignarse a servicios.";
         ButtonType deactivate = new ButtonType("Desactivar", ButtonBar.ButtonData.OK_DONE);
         ButtonType cancel = new ButtonType("Cancelar", ButtonBar.ButtonData.CANCEL_CLOSE);
@@ -264,7 +608,7 @@ public class EmployeeController {
         alert.initOwner(window());
         alert.setTitle("Desactivar empleado");
         alert.setHeaderText("¿Desactivar a " + fullName(employee) + "?");
-        alert.setContentText(position.getDisplayName() + ", " + documentLabel(employee)
+        alert.setContentText(EmployeePosition.displayNameOf(employee) + ", " + documentLabel(employee)
                 + ", pasará a INACTIVO. " + consequence
                 + "\n\nNo se borra: conserva su historial y puede activarse de nuevo (RN-19).");
         styleDialog(alert);
@@ -272,7 +616,7 @@ public class EmployeeController {
         alert.showAndWait().filter(deactivate::equals).ifPresent(answer -> {
             try {
                 employeeService.deactivate(employee.getId());
-                refresh();
+                reload();
             } catch (BusinessException e) {
                 showError(e.getMessage());
             }
@@ -282,79 +626,110 @@ public class EmployeeController {
     private void onActivate(Employee employee) {
         try {
             employeeService.activate(employee.getId());
-            refresh();
+            reload();
         } catch (BusinessException e) {
             showError(e.getMessage());
         }
     }
 
-    // ---------- celdas ----------
+    // ---------- piezas ----------
 
-    private VBox nameCell(Employee e) {
-        Label name = new Label(fullName(e));
-        name.getStyleClass().add("cell-strong");
-        // Debajo del nombre: correo y teléfono (el teléfono no tiene columna propia para que quepan las acciones).
-        String contact = String.join(" · ", Stream.of(e.getEmail(), e.getPhone())
-                .filter(value -> value != null && !value.isBlank()).toList());
-        Label detail = new Label(contact.isEmpty() ? "Sin correo ni teléfono" : contact);
-        detail.getStyleClass().add("cell-muted");
-        return new VBox(1, name, detail);
-    }
-
-    private VBox positionCell(Employee e) {
-        Label position = new Label(EmployeePosition.of(e).getDisplayName());
-        position.setWrapText(true); // "Auxiliar de tanatopraxia" pasa a dos líneas en vez de cortarse
-        VBox box = new VBox(1, position);
-        box.setAlignment(Pos.CENTER_LEFT);
-        if (employeeService.hasExpiredLicense(e)) {
-            Label warning = new Label("Licencia vencida");
-            warning.getStyleClass().add("cell-warning");
-            box.getChildren().add(warning);
-        }
-        return box;
+    /** Círculo con las iniciales ("JA" para Jorge Araújo). */
+    private static StackPane avatar(Employee e, String styleClass) {
+        Label initials = new Label(initial(e.getName()) + initial(e.getLastname()));
+        initials.getStyleClass().add("avatar-text");
+        StackPane circle = new StackPane(initials);
+        circle.getStyleClass().add(styleClass);
+        circle.setMinSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
+        circle.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
+        return circle;
     }
 
     static Label statusBadge(Employee e) {
-        Label badge = new Label(e.isActive() ? "●  ACTIVO" : "●  INACTIVO");
-        badge.getStyleClass().addAll("status-badge", e.isActive() ? "status-active" : "status-inactive");
-        return badge;
+        return statusPill(e);
     }
 
-    private HBox actionButtons(Employee e) {
-        Button edit = new Button("✎  Editar");
-        edit.getStyleClass().add("row-button");
-        edit.setOnAction(event -> openForm(e));
-        Button toggle = e.isActive() ? new Button("⊘  Desactivar") : new Button("✓  Activar");
-        toggle.getStyleClass().addAll("row-button", e.isActive() ? "row-danger" : "row-activate");
-        toggle.setOnAction(event -> {
-            if (e.isActive()) {
-                onDeactivate(e);
-            } else {
-                onActivate(e);
-            }
-        });
-        HBox box = new HBox(8, edit, toggle);
-        box.setAlignment(Pos.CENTER_RIGHT);
-        return box;
+    private static Label statusPill(Employee e) {
+        Label pill = pill(e.isActive() ? "●  Activo" : "●  Inactivo", e.isActive() ? "status-active" : "status-inactive");
+        pill.getStyleClass().add("status-badge");
+        return pill;
     }
 
-    private static <T extends javafx.scene.Node> TableCell<Employee, Employee> graphicCell(Function<Employee, T> factory) {
-        return new TableCell<>() {
-            @Override
-            protected void updateItem(Employee item, boolean empty) {
-                super.updateItem(item, empty);
-                setText(null);
-                setGraphic(empty || item == null ? null : factory.apply(item));
-            }
-        };
+    private static Label pill(String text, String styleClass) {
+        Label pill = new Label(text);
+        pill.getStyleClass().addAll("pill", styleClass);
+        pill.setMinWidth(Region.USE_PREF_SIZE);
+        return pill;
     }
 
-    private static ListCell<EmployeePosition> positionCell(String emptyText) {
+    private static Label band(String text, String styleClass) {
+        Label band = wrapped(text, "band");
+        band.getStyleClass().add(styleClass);
+        band.setMaxWidth(Double.MAX_VALUE);
+        return band;
+    }
+
+    private static Label wrapped(String text, String styleClass) {
+        Label label = new Label(text);
+        label.getStyleClass().add(styleClass);
+        label.setWrapText(true);
+        return label;
+    }
+
+    private static Region divider() {
+        Region line = new Region();
+        line.getStyleClass().add("card-divider");
+        return line;
+    }
+
+    private static Button cardButton(String text) {
+        Button button = new Button(text);
+        button.getStyleClass().add("card-button");
+        button.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(button, Priority.ALWAYS);
+        return button;
+    }
+
+    private static GridPane infoGrid() {
+        GridPane grid = new GridPane();
+        grid.setHgap(12);
+        grid.setVgap(8);
+        grid.getStyleClass().add("info-grid");
+        return grid;
+    }
+
+    private static void infoRow(GridPane grid, int row, String label, String value) {
+        Label key = new Label(label);
+        key.getStyleClass().add("info-key");
+        key.setMinWidth(Region.USE_PREF_SIZE);
+        Label val = wrapped(value, "info-value");
+        val.setMaxWidth(Double.MAX_VALUE);
+        val.setAlignment(Pos.CENTER_RIGHT);
+        val.setTextAlignment(javafx.scene.text.TextAlignment.RIGHT);
+        GridPane.setHgrow(val, Priority.ALWAYS);
+        grid.add(key, 0, row);
+        grid.add(val, 1, row);
+    }
+
+    /** Sección del panel: título y un recuadro con pares etiqueta / valor. */
+    private static VBox section(String title, String... pairs) {
+        Label caption = new Label(title);
+        caption.getStyleClass().add("kpi-caption");
+        GridPane grid = infoGrid();
+        for (int i = 0; i + 1 < pairs.length; i += 2) {
+            infoRow(grid, i / 2, pairs[i], pairs[i + 1]);
+        }
+        VBox box = new VBox(grid);
+        box.getStyleClass().add("info-box");
+        return new VBox(8, caption, box);
+    }
+
+    private static ListCell<StatusOption> statusCell() {
         return new ListCell<>() {
             @Override
-            protected void updateItem(EmployeePosition item, boolean empty) {
+            protected void updateItem(StatusOption item, boolean empty) {
                 super.updateItem(item, empty);
-                setText(empty ? null : item == null ? emptyText : item.getDisplayName());
+                setText(empty || item == null ? null : item.label);
             }
         };
     }
@@ -380,9 +755,30 @@ public class EmployeeController {
         return String.format("%,d", Long.parseLong(document)).replace(',', '.');
     }
 
+    /** 1850000 → "$ 1.850.000". */
+    private static String pesos(BigDecimal value) {
+        return value == null ? "—" : "$ " + String.format("%,d", value.longValue()).replace(',', '.');
+    }
+
+    /** 5.00 → "5", 2.50 → "2,5". */
+    private static String plain(BigDecimal value) {
+        return value.stripTrailingZeros().toPlainString().replace('.', ',');
+    }
+
+    private static String fileName(String url) {
+        if (url == null || url.isBlank()) {
+            return "Sin archivo";
+        }
+        return url.substring(url.replace('\\', '/').lastIndexOf('/') + 1);
+    }
+
     /** "1 activo", "5 activos". */
     private static String count(long amount, String word) {
         return amount + " " + word + (amount == 1 ? "" : "s");
+    }
+
+    private static String initial(String text) {
+        return text == null || text.isBlank() ? "" : text.trim().substring(0, 1).toUpperCase();
     }
 
     static String fullName(Employee e) {
@@ -409,7 +805,7 @@ public class EmployeeController {
     }
 
     private Window window() {
-        return employeeTable.getScene() == null ? null : employeeTable.getScene().getWindow();
+        return root.getScene() == null ? null : root.getScene().getWindow();
     }
 
     static boolean isPast(LocalDate date) {
