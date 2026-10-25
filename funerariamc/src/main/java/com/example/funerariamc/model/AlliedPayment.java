@@ -1,16 +1,17 @@
-
 package com.example.funerariamc.model;
 
+import com.example.funerariamc.model.enums.AlliedPaymentStatus;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
-import jakarta.persistence.*;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
 /**
- * Stores payments involving an allied funeral home.
+ * Represents a payment made to an allied funeral home.
  */
 @Entity
 @Table(name = "allied_payment")
@@ -38,6 +39,7 @@ public class AlliedPayment {
     @Column(name = "payment_date")
     private LocalDate paymentDate;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "status")
-    private String status;
+    private AlliedPaymentStatus status = AlliedPaymentStatus.PENDING;
 }

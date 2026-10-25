@@ -20,7 +20,8 @@ public final class AccessLogLabels {
             AccessLogService.LOGIN_FAILED_INACTIVE, "Intento de ingreso fallido: empleado inactivo",
             AccessLogService.LOGIN_FAILED_NO_ROLE, "Intento de ingreso fallido: usuario sin rol",
             AccessLogService.PASSWORD_RESET_FAILED, "Recuperación de contraseña: código incorrecto",
-            AccessLogService.PASSWORD_RESET_COMPLETED, "Contraseña restablecida");
+            AccessLogService.PASSWORD_RESET_COMPLETED, "Contraseña restablecida",
+            AccessLogService.PASSWORD_CHANGED, "Cambio de la contraseña temporal por una propia");
 
     /** Acciones del módulo de Personal: guardan el documento del empleado después del prefijo. */
     private static final Map<String, String> EMPLOYEE_ACTIONS = Map.of(
@@ -33,6 +34,10 @@ public final class AccessLogLabels {
     private static final Map<String, String> CLIENT_ACTIONS = Map.of(
             AccessLogService.CLIENT_CREATED, "Registro del cliente con documento ",
             AccessLogService.CLIENT_UPDATED, "Actualización del cliente con documento ");
+
+    /** Cuentas de acceso creadas desde Personal: guardan el usuario después del prefijo. */
+    private static final Map<String, String> ACCOUNT_ACTIONS = Map.of(
+            AccessLogService.USER_ACCOUNT_CREATED, "Creación de la cuenta de acceso del usuario ");
 
     private static final Map<String, String> CHANNELS = Map.of(
             "EMAIL", "correo",
@@ -60,7 +65,7 @@ public final class AccessLogLabels {
             String channel = action.substring(AccessLogService.PASSWORD_RESET_REQUESTED.length()).trim();
             return "Solicitud de recuperación de contraseña por " + CHANNELS.getOrDefault(channel, channel);
         }
-        for (Map<String, String> actions : List.of(EMPLOYEE_ACTIONS, CLIENT_ACTIONS)) {
+        for (Map<String, String> actions : List.of(EMPLOYEE_ACTIONS, CLIENT_ACTIONS, ACCOUNT_ACTIONS)) {
             for (Map.Entry<String, String> entry : actions.entrySet()) {
                 if (action.startsWith(entry.getKey())) {
                     return entry.getValue() + action.substring(entry.getKey().length()).trim();

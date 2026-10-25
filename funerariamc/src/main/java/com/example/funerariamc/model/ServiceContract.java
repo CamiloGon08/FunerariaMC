@@ -1,6 +1,6 @@
-
 package com.example.funerariamc.model;
 
+import com.example.funerariamc.model.enums.ContractStatus;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -9,7 +9,6 @@ import lombok.AllArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import com.example.funerariamc.model.enums.ContractStatus;
 
 /**
  * Stores the details of a funeral service contract.
@@ -41,7 +40,7 @@ public class ServiceContract {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "funeral_salesperson_id")
     private FuneralSalesperson funeralSalesperson;
-    
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "funeral_plan_id")
     private FuneralPlan funeralPlan;
@@ -53,13 +52,17 @@ public class ServiceContract {
     @Column(name = "contract_number", nullable = false, unique = true)
     private String contractNumber;
 
-    @Column(name = "contract_date",
-            insertable = false,
-            updatable = false)
+    @Column(name = "contract_date", insertable = false, updatable = false)
     private LocalDate contractDate;
-    
+
     @Column(name = "preparation_completed_at")
     private LocalDateTime preparationCompletedAt;
+
+    @Column(name = "wake_start_at")
+    private LocalDateTime wakeStartAt;
+
+    @Column(name = "wake_end_at")
+    private LocalDateTime wakeEndAt;
 
     @Column(name = "total_amount")
     private BigDecimal totalAmount;

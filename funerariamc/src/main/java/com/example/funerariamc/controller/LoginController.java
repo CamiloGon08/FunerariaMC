@@ -2,6 +2,7 @@ package com.example.funerariamc.controller;
 
 import com.example.funerariamc.config.FxmlViewLoader;
 import com.example.funerariamc.exception.BusinessException;
+import com.example.funerariamc.model.AppUser;
 import com.example.funerariamc.service.AuthService;
 import com.example.funerariamc.ui.EyeToggle;
 import javafx.fxml.FXML;
@@ -82,8 +83,13 @@ public class LoginController {
         }
         loginButton.setDisable(true);
         try {
-            authService.login(username, password);
-            viewLoader.switchScene(loginButton, FxmlViewLoader.MAIN, FxmlViewLoader.MAIN_TITLE);
+            AppUser user = authService.login(username, password);
+            // Cuenta nueva o contraseña restablecida: primero debe elegir una propia.
+            if (Boolean.TRUE.equals(user.getMustChangePassword())) {
+                viewLoader.switchScene(loginButton, FxmlViewLoader.CHANGE_PASSWORD, FxmlViewLoader.CHANGE_PASSWORD_TITLE);
+            } else {
+                viewLoader.switchScene(loginButton, FxmlViewLoader.MAIN, FxmlViewLoader.MAIN_TITLE);
+            }
         } catch (BusinessException e) {
             passwordField.clear();
             showError(e.getMessage());

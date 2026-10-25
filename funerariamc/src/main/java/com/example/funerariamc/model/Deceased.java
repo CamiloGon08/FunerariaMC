@@ -1,13 +1,15 @@
 package com.example.funerariamc.model;
 
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
-import jakarta.persistence.*;
 import java.time.LocalDate;
 
-/** Datos del difunto atendido por la funeraria. Tabla: deceased */
+/**
+ * Stores information about the deceased person served by the funeral home.
+ */
 @Entity
 @Table(name = "deceased")
 @Getter
@@ -35,15 +37,20 @@ public class Deceased {
     @Column(name = "death_date")
     private LocalDate deathDate;
 
-    // NATURAL o NON_NATURAL
+    // NATURAL or NON_NATURAL
     @Column(name = "death_type", length = 15)
     private String deathType;
 
-    // ACCIDENT, HOMICIDE, SUICIDE, UNDETERMINED (solo si death_type = NON_NATURAL)
+    // ACCIDENT, HOMICIDE, SUICIDE, UNDETERMINED (only when death_type = NON_NATURAL)
     @Column(name = "external_cause", length = 15)
     private String externalCause;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "client_id")
     private Client client;
+
+    // Funeral plan covering the deceased person as a policyholder or beneficiary; null means no plan.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "funeral_plan_id")
+    private FuneralPlan funeralPlan;
 }

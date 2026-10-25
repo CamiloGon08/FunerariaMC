@@ -6,20 +6,29 @@ import com.example.funerariamc.model.Employee;
 import com.example.funerariamc.model.FuneralSalesperson;
 import com.example.funerariamc.model.Thanatopractor;
 import com.example.funerariamc.model.enums.EmployeePosition;
+import com.example.funerariamc.model.enums.Sex;
 import com.example.funerariamc.service.AccessLogService;
 import com.example.funerariamc.service.EmployeeData;
 import com.example.funerariamc.service.EmployeeService;
+import com.example.funerariamc.service.RoleNames;
+import com.example.funerariamc.service.UserAccountService;
+import com.example.funerariamc.service.UserAccountService.AccountCredentials;
+import com.example.funerariamc.service.UserAccountService.AccountSummary;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.DateCell;
 import javafx.scene.control.DatePicker;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.TextField;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import javafx.stage.Window;
 import javafx.util.StringConverter;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
@@ -32,6 +41,7 @@ import java.time.format.DateTimeParseException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Consumer;
 
 /**
@@ -76,6 +86,7 @@ public class EmployeeFormController {
     };
 
     private final EmployeeService employeeService;
+    private final UserAccountService userAccountService;
 
     @FXML
     private Label titleLabel;
@@ -89,6 +100,8 @@ public class EmployeeFormController {
     private DatePicker birthDatePicker;
     @FXML
     private ComboBox<String> documentTypeCombo;
+    @FXML
+    private ComboBox<Sex> sexCombo;
     @FXML
     private TextField documentField;
     @FXML
@@ -105,6 +118,22 @@ public class EmployeeFormController {
     private TextField salaryField;
     @FXML
     private Label accountNote;
+    @FXML
+    private VBox accountSection;
+    @FXML
+    private CheckBox createAccountCheck;
+    @FXML
+    private GridPane accountFields;
+    @FXML
+    private TextField usernameField;
+    @FXML
+    private ComboBox<String> roleCombo;
+    @FXML
+    private HBox existingAccountBox;
+    @FXML
+    private Label existingAccountLabel;
+    @FXML
+    private Label existingAccountDetail;
     @FXML
     private VBox salespersonSection;
     @FXML
@@ -140,9 +169,14 @@ public class EmployeeFormController {
     private Consumer<Employee> onSaved;
     private String certificateFileUrl;
     private String licenseFileUrl;
+    /** Cuenta que ya tiene el empleado que se edita (vacío al registrar). */
+    private Optional<AccountSummary> existingAccount = Optional.empty();
+    /** Mientras el usuario no escriba su propio usuario, se sugiere uno con el nombre y el apellido. */
+    private boolean usernameEdited;
 
-    public EmployeeFormController(EmployeeService employeeService) {
+    public EmployeeFormController(EmployeeService employeeService, UserAccountService userAccountService) {
         this.employeeService = employeeService;
+        this.userAccountService = userAccountService;
     }
 
     @FXML
@@ -160,6 +194,9 @@ public class EmployeeFormController {
             }
         });
         documentTypeCombo.setValue("CC");
+        sexCombo.getItems().setAll(Sex.values());
+        sexCombo.setButtonCell(sexCell());
+        sexCombo.setCellFactory(list -> sexCell());
 
         positionCombo.getItems().addAll(EmployeePosition.values());
         positionCombo.setButtonCell(positionCell());
@@ -183,9 +220,21 @@ public class EmployeeFormController {
         }
         licenseExpiryPicker.valueProperty().addListener((obs, old, date) -> updateLicenseWarning());
 
+        roleCombo.setButtonCell(AccountDialogs.roleCell());
+        roleCombo.setCellFactory(list -> AccountDialogs.roleCell());
+        createAccountCheck.selectedProperty().addListener((obs, old, selected) -> accountFields.setDisable(!selected));
+        usernameField.textProperty().addListener((obs, old, text) -> {
+            if (usernameField.isFocused()) {
+                usernameEdited = true;
+            }
+        });
+        nameField.textProperty().addListener((obs, old, text) -> suggestUsername());
+        lastnameField.textProperty().addListener((obs, old, text) -> suggestUsername());
+
         // Una sección oculta no ocupa espacio.
         for (javafx.scene.Node node : List.of(salespersonSection, thanatopractorSection, driverSection,
-                accountNote, licenseWarning, errorLabel)) {
+                accountNote, accountSection, createAccountCheck, accountFields, existingAccountBox,
+                licenseWarning, errorLabel)) {
             node.managedProperty().bind(node.visibleProperty());
         }
         errorLabel.visibleProperty().bind(errorLabel.textProperty().isNotEmpty());
@@ -213,6 +262,7 @@ public class EmployeeFormController {
         lastnameField.setText(employee.getLastname());
         birthDatePicker.setValue(employee.getBirthDate());
         documentTypeCombo.setValue(employee.getDocumentType());
+        sexCombo.setValue(employee.getSex());
         documentField.setText(employee.getDocumentNumber());
         phoneField.setText(employee.getPhone());
         emailField.setText(employee.getEmail());
@@ -221,8 +271,10 @@ public class EmployeeFormController {
         salaryField.setText(pesos(employee.getSalary()));
 
         // El cargo es la tabla hija: no se cambia al actualizar.
+        existingAccount = userAccountService.findAccount(employee.getId());
         positionCombo.setValue(EmployeePosition.of(employee));
         positionCombo.setDisable(true);
+        showSectionFor(EmployeePosition.of(employee));
 
         if (employee instanceof FuneralSalesperson salesperson) {
             commissionRateField.setText(plain(salesperson.getCommissionRate()));
@@ -245,13 +297,73 @@ public class EmployeeFormController {
         salespersonSection.setVisible(position == EmployeePosition.FUNERAL_SALESPERSON);
         thanatopractorSection.setVisible(position == EmployeePosition.THANATOPRACTOR);
         driverSection.setVisible(position == EmployeePosition.DRIVER);
-        accountNote.setVisible(position != null);
-        if (position != null) {
-            accountNote.setText(position.canHaveUserAccount()
-                    ? "Este cargo puede tener cuenta de usuario. La cuenta se crea aparte, en Cuentas de usuario."
-                    : "Este cargo no tiene acceso al sistema, así que no tendrá cuenta de usuario (RN-23).");
-        }
+        showAccountFor(position);
         updateLicenseWarning();
+    }
+
+    /**
+     * HU-06: Administrador, Secretaría y Vendedor reciben su cuenta desde aquí mismo,
+     * con contraseña temporal; los demás cargos no ingresan al sistema (RN-23).
+     */
+    private void showAccountFor(EmployeePosition position) {
+        boolean canHaveAccount = position != null && position.canHaveUserAccount();
+        accountSection.setVisible(canHaveAccount);
+        accountNote.setVisible(position != null);
+        if (position == null) {
+            return;
+        }
+        if (!canHaveAccount) {
+            accountNote.setText("Este cargo no tiene acceso al sistema, así que no tendrá cuenta de usuario (RN-23).");
+            return;
+        }
+        if (existingAccount.isPresent()) {
+            AccountSummary account = existingAccount.get();
+            createAccountCheck.setVisible(false);
+            accountFields.setVisible(false);
+            existingAccountBox.setVisible(true);
+            existingAccountLabel.setText("Usuario " + account.username() + " · " + RoleNames.displayName(account.roleName(), employee.getSex()));
+            existingAccountDetail.setText(accountState(account));
+            accountNote.setText("El usuario no cambia. Si el empleado olvida la contraseña, la recupera con "
+                    + "“¿Olvidó su contraseña?” en el inicio de sesión.");
+            return;
+        }
+        createAccountCheck.setVisible(true);
+        accountFields.setVisible(true);
+        existingAccountBox.setVisible(false);
+        roleCombo.getItems().setAll(UserAccountService.rolesFor(position));
+        roleCombo.setValue(roleCombo.getItems().isEmpty() ? null : roleCombo.getItems().get(0));
+        roleCombo.setDisable(roleCombo.getItems().size() < 2);
+        suggestUsername();
+        accountNote.setText("El usuario queda fijo; solo la contraseña es temporal. Se genera al guardar y "
+                + "el empleado la cambia la primera vez que ingrese al sistema.");
+    }
+
+    static String accountState(AccountSummary account) {
+        if (!account.enabled()) {
+            return "Cuenta deshabilitada";
+        }
+        if (account.mustChangePassword()) {
+            return "Habilitada · debe cambiar la contraseña temporal";
+        }
+        return account.lastLogin() == null
+                ? "Habilitada · aún no ha ingresado"
+                : "Habilitada · último ingreso " + EmployeeController.DATE.format(account.lastLogin());
+    }
+
+    private void suggestUsername() {
+        if (usernameEdited || existingAccount.isPresent() || !accountSection.isVisible()) {
+            return;
+        }
+        String name = nameField.getText();
+        String lastname = lastnameField.getText();
+        if (name == null || name.isBlank() || lastname == null || lastname.isBlank()) {
+            return;
+        }
+        usernameField.setText(userAccountService.suggestUsername(name, lastname));
+    }
+
+    private boolean creatingAccount() {
+        return accountSection.isVisible() && existingAccount.isEmpty() && createAccountCheck.isSelected();
     }
 
     /** RN-26: avisa, pero deja guardar. */
@@ -308,13 +420,25 @@ public class EmployeeFormController {
         errorLabel.setText("");
         try {
             EmployeeData data = readForm();
+            boolean withAccount = creatingAccount();
+            if (withAccount) {
+                // Se revisa antes de guardar para no dejar un empleado nuevo con la cuenta a medias.
+                userAccountService.validateNewAccount(data.position(), usernameField.getText(), roleCombo.getValue());
+            }
             Employee saved = employee == null
                     ? employeeService.register(data)
                     : employeeService.update(employee.getId(), data);
+            AccountCredentials credentials = withAccount
+                    ? userAccountService.createAccount(saved.getId(), usernameField.getText(), roleCombo.getValue())
+                    : null;
             if (onSaved != null) {
                 onSaved.accept(saved);
             }
+            Window owner = window().getOwner();
             window().close();
+            if (credentials != null) {
+                AccountDialogs.showCredentials(owner, saved, credentials);
+            }
         } catch (NumberFormatException e) {
             errorLabel.setText(e.getMessage());
         } catch (BusinessException e) {
@@ -341,6 +465,7 @@ public class EmployeeFormController {
                 text(emailField),
                 text(addressField),
                 birthDatePicker.getValue(),
+                sexCombo.getValue(),
                 position,
                 hireDatePicker.getValue(),
                 money(salaryField, "El salario"),
@@ -416,5 +541,15 @@ public class EmployeeFormController {
 
     private Stage window() {
         return (Stage) saveButton.getScene().getWindow();
+    }
+
+    private static ListCell<Sex> sexCell() {
+        return new ListCell<>() {
+            @Override
+            protected void updateItem(Sex item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty || item == null ? "Seleccione" : item.getDisplayName());
+            }
+        };
     }
 }
