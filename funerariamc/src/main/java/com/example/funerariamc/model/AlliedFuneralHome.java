@@ -1,4 +1,3 @@
-
 package com.example.funerariamc.model;
 
 import jakarta.persistence.*;
@@ -33,4 +32,14 @@ public class AlliedFuneralHome {
 
     @Column(name = "agreement_start_date")
     private LocalDate agreementStartDate;
+
+    @Column(name = "city", length = 60)
+    private String city;
+
+    @Column(name = "email", length = 120)
+    private String email;
+
+    // An allied funeral home is deactivated, not deleted
+    @Column(name = "active", nullable = false)
+    private Boolean active = true;
 }
