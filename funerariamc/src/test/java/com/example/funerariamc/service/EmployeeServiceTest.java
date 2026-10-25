@@ -27,6 +27,7 @@ import org.springframework.data.domain.PageRequest;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -233,6 +234,40 @@ class EmployeeServiceTest {
     }
 
     @Test
+    void searchByPositionsUsesTheSelectedPositionsStatusAndPage() {
+        Page<Employee> expected = Page.empty(PageRequest.of(2, 10));
+        when(employees.search(any(), any(), any(), any())).thenReturn(expected);
+
+        Page<Employee> result = service.searchByPositions(" Ana ", EmployeeStatus.INACTIVE,
+                List.of(EmployeePosition.MANAGER, EmployeePosition.RECEPTIONIST), 2, 10);
+
+        assertSame(expected, result);
+        verify(employees).search(eq("%ana%"), eq(List.of(EmployeeStatus.INACTIVE)),
+                eq(List.of(Manager.class, Receptionist.class)), eq(PageRequest.of(2, 10)));
+    }
+
+    @Test
+    void searchByPositionsAcceptsNullAndEmptySelectionsAsAllPositions() {
+        when(employees.search(any(), any(), any(), any())).thenReturn(Page.empty());
+
+        service.searchByPositions(null, null, null, 0, 10);
+        service.searchByPositions("", null, List.of(), 1, 10);
+
+        verify(employees).search(eq("%"), eq(List.of(EmployeeStatus.values())),
+                argThat(types -> types.size() == EmployeePosition.values().length), eq(PageRequest.of(0, 10)));
+        verify(employees).search(eq("%"), eq(List.of(EmployeeStatus.values())),
+                argThat(types -> types.size() == EmployeePosition.values().length), eq(PageRequest.of(1, 10)));
+    }
+
+    @Test
+    void searchByPositionsRejectsInvalidSelectionBeforeQuerying() {
+        assertThrows(InvalidDataException.class, () -> service.searchByPositions("", null,
+                Arrays.asList(EmployeePosition.DRIVER, null), 0, 10));
+
+        verifyNoInteractions(employees, persons, users, accessLog);
+    }
+
+    @Test
     void onlyMasterAdminUsesTheModule() {
         session.getCurrentUser().orElseThrow().getEmployee().getRole().setName(RoleNames.SECRETARY);
 
@@ -375,6 +410,8 @@ class EmployeeServiceTest {
 
     private void assertPersonnelAccessDenied() {
         assertThrows(UnauthorizedActionException.class, () -> service.search("", null, null, 0, 10));
+        assertThrows(UnauthorizedActionException.class,
+                () -> service.searchByPositions("", null, List.of(EmployeePosition.MANAGER), 0, 10));
         assertThrows(UnauthorizedActionException.class, () -> service.count(null));
         assertThrows(UnauthorizedActionException.class, () -> service.findById(7L));
         assertThrows(UnauthorizedActionException.class,
