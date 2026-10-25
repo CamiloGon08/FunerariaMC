@@ -1,7 +1,7 @@
-
 package com.example.funerariamc.model;
 
 import com.example.funerariamc.model.enums.EmployeeStatus;
+import com.example.funerariamc.model.enums.Sex;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
@@ -24,6 +24,10 @@ public class Employee extends Person {
 
     @Column(name = "salary")
     private BigDecimal salary;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "sex")
+    private Sex sex;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
