@@ -198,6 +198,7 @@ public class EmployeeService {
         employee.setEmail(blankToNull(data.email()));
         employee.setAddress(blankToNull(data.address()));
         employee.setBirthDate(data.birthDate());
+        employee.setSex(data.sex());
         employee.setHireDate(data.hireDate());
         employee.setSalary(data.salary());
 
@@ -235,6 +236,9 @@ public class EmployeeService {
         maxLength(data.phone(), 20, "El teléfono");
         maxLength(data.email(), 120, "El correo");
         maxLength(data.address(), 200, "La dirección");
+        if (data.sex() == null) {
+            throw new InvalidDataException("Seleccione el sexo del empleado.");
+        }
         if (data.position() == null) {
             throw new InvalidDataException("Seleccione el cargo.");
         }
