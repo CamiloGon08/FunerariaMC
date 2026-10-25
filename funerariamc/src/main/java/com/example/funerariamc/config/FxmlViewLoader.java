@@ -72,7 +72,7 @@ public class FxmlViewLoader {
         return loadView(fxmlPath).root();
     }
 
-    /** Carga una vista y devuelve también su controlador (por ejemplo, el formulario de Personal). */
+    /** Carga una vista y devuelve también su controlador */
     public <C> View<C> loadView(String fxmlPath) {
         URL url = getClass().getResource(fxmlPath);
         if (url == null) {
