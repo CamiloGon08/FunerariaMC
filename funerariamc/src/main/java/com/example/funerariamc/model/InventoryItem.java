@@ -1,4 +1,3 @@
-
 package com.example.funerariamc.model;
 
 import jakarta.persistence.*;
@@ -37,4 +36,7 @@ public class InventoryItem {
 
     @Column(name = "unit_price")
     private BigDecimal unitPrice;
+
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
 }

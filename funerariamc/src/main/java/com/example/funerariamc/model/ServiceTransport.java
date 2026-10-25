@@ -1,10 +1,12 @@
 package com.example.funerariamc.model;
 
+import com.example.funerariamc.model.enums.TransportStatus;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+
 import java.time.LocalDateTime;
 
 /**
@@ -43,4 +45,14 @@ public class ServiceTransport {
 
     @Column(name = "notes")
     private String notes;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 20)
+    private TransportStatus status = TransportStatus.SCHEDULED;
+
+    @Column(name = "started_at")
+    private LocalDateTime startedAt;
+
+    @Column(name = "completed_at")
+    private LocalDateTime completedAt;
 }
