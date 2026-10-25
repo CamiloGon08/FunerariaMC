@@ -37,7 +37,7 @@
 }
 .card-subtitle { -fx-text-fill: -color-secondary; -fx-font-size: 13px; }
 
-/* Tabla */
+/* Tabla (la usa Clientes) */
 .employee-table {
     -fx-background-color: transparent; -fx-border-width: 0;
     -fx-table-cell-border-color: transparent; -fx-fixed-cell-size: 58;
@@ -136,4 +136,116 @@
 .form-footer {
     -fx-background-color: -color-card;
     -fx-border-color: -color-surface transparent transparent transparent; -fx-border-width: 1 0 0 0;
+}
+
+/* ---------- Tarjetas e indicadores (propuesta P-08) ---------- */
+.area-chip { -fx-padding: 5 10; -fx-font-size: 12.5px; }
+.kpi-card {
+    -fx-background-color: -color-card;
+    -fx-border-color: -color-surface; -fx-border-width: 1;
+    -fx-background-radius: 14; -fx-border-radius: 14;
+    -fx-padding: 16 18; -fx-spacing: 4;
+}
+.kpi-caption { -fx-text-fill: -color-secondary; -fx-font-size: 11px; -fx-font-weight: bold; }
+.kpi-value { -fx-text-fill: -color-primary; -fx-font-size: 28px; -fx-font-weight: bold; }
+.kpi-value:warning { -fx-text-fill: -color-gold-text; }
+.kpi-detail { -fx-text-fill: -color-secondary; -fx-font-size: 12px; }
+.section-heading { -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif; -fx-font-size: 26px; -fx-text-fill: -color-primary; }
+
+/* Barra de desplazamiento visible en vez de paginación */
+.card-scroll, .card-scroll > .viewport { -fx-background-color: transparent; -fx-background-insets: 0; -fx-padding: 0; }
+.card-scroll-content { -fx-padding: 0 14 16 0; }
+.card-scroll .scroll-bar:vertical { -fx-background-color: -color-surface; -fx-background-radius: 999; -fx-pref-width: 8; }
+.card-scroll .scroll-bar:vertical .thumb { -fx-background-color: -color-border; -fx-background-radius: 999; }
+.card-scroll .scroll-bar .increment-button, .card-scroll .scroll-bar .decrement-button { -fx-padding: 0; }
+.card-scroll .scroll-bar .increment-arrow, .card-scroll .scroll-bar .decrement-arrow { -fx-shape: " "; -fx-padding: 0; }
+
+.employee-card {
+    -fx-background-color: -color-card;
+    -fx-border-color: -color-surface; -fx-border-width: 1;
+    -fx-background-radius: 14; -fx-border-radius: 14;
+    -fx-padding: 18;
+}
+.employee-card:hover { -fx-border-color: -color-accent; }
+.employee-card:inactive { -fx-opacity: 0.7; }
+.card-name { -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif; -fx-font-size: 21px; -fx-text-fill: -color-primary; }
+.card-divider { -fx-background-color: -color-surface; -fx-pref-height: 1; -fx-min-height: 1; -fx-max-height: 1; }
+
+.avatar, .avatar-large { -fx-background-color: -color-surface; -fx-background-radius: 999; }
+.avatar { -fx-pref-width: 48; -fx-pref-height: 48; }
+.avatar-large { -fx-pref-width: 56; -fx-pref-height: 56; }
+.avatar-text { -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif; -fx-font-size: 20px; -fx-text-fill: -color-accent; }
+
+.pill { -fx-background-radius: 999; -fx-border-radius: 999; -fx-padding: 3 10; -fx-font-size: 11px; -fx-font-weight: bold; }
+.pill-neutral { -fx-background-color: transparent; -fx-border-color: -color-surface; -fx-text-fill: -color-accent; }
+.pill-role { -fx-background-color: -color-card; -fx-text-fill: -color-accent; }
+.pill-warning { -fx-background-color: #F1EAD9; -fx-text-fill: -color-gold-text; }
+.pill-alert { -fx-background-color: -color-error-bg; -fx-text-fill: -color-error; }
+
+.info-key { -fx-text-fill: -color-secondary; -fx-font-size: 13px; }
+.info-value { -fx-text-fill: -color-primary; -fx-font-size: 13px; -fx-font-weight: bold; }
+.info-warning { -fx-text-fill: -color-gold-text; }
+
+.account-row { -fx-background-color: -color-surface; -fx-background-radius: 8; -fx-padding: 8 12; }
+.account-user { -fx-text-fill: -color-primary; -fx-font-size: 13px; -fx-font-weight: bold; }
+.account-none { -fx-text-fill: -color-secondary; -fx-font-size: 13px; }
+.account-na { -fx-background-color: transparent; -fx-border-color: -color-surface; -fx-border-radius: 8; }
+.account-disabled { -fx-opacity: 0.6; }
+.account-link {
+    -fx-background-color: -color-accent; -fx-text-fill: -color-background;
+    -fx-background-radius: 999; -fx-padding: 3 12; -fx-font-size: 12px; -fx-font-weight: bold; -fx-cursor: hand;
+}
+.account-link:hover { -fx-background-color: derive(-color-accent, 12%); }
+.account-hint { -fx-text-fill: -color-secondary; -fx-font-size: 13px; }
+
+.band { -fx-background-radius: 8; -fx-padding: 7 12; -fx-font-size: 12px; -fx-font-weight: bold; }
+.band-info { -fx-background-color: -color-surface; -fx-text-fill: -color-accent; }
+.band-warning { -fx-background-color: #F1EAD9; -fx-text-fill: -color-gold-text; }
+.band-alert { -fx-background-color: -color-error-bg; -fx-text-fill: -color-error; }
+
+.card-button {
+    -fx-background-color: transparent; -fx-text-fill: -color-primary;
+    -fx-border-color: -color-surface; -fx-border-width: 1;
+    -fx-background-radius: 10; -fx-border-radius: 10;
+    -fx-padding: 8 12; -fx-font-weight: bold; -fx-cursor: hand;
+}
+.card-button:hover { -fx-background-color: -color-surface; }
+.card-button-activate { -fx-text-fill: -color-accent; -fx-border-color: -color-accent; }
+
+/* ---------- Panel lateral (propuesta P-08.1) ---------- */
+.drawer-veil { -fx-background-color: rgba(24,47,37,0.28); }
+.drawer {
+    -fx-background-color: -color-card;
+    -fx-effect: dropshadow(gaussian, rgba(24,47,37,0.18), 24, 0, -4, 0);
+}
+.drawer-body { -fx-padding: 22 22 16 22; }
+.drawer-name { -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif; -fx-font-size: 28px; -fx-text-fill: -color-primary; }
+.drawer-close {
+    -fx-background-color: -color-surface; -fx-text-fill: -color-primary;
+    -fx-background-radius: 8; -fx-padding: 4 9; -fx-cursor: hand;
+}
+.info-box { -fx-background-color: -color-background; -fx-background-radius: 10; -fx-padding: 12 14; }
+.drawer-footer {
+    -fx-padding: 14 22 18 22;
+    -fx-border-color: -color-surface transparent transparent transparent; -fx-border-width: 1 0 0 0;
+}
+.drawer-button { -fx-background-radius: 10; -fx-border-radius: 10; -fx-padding: 10 14; -fx-font-weight: bold; -fx-cursor: hand; }
+.drawer-danger { -fx-background-color: transparent; -fx-text-fill: -color-error; -fx-border-color: -color-error; }
+.drawer-danger:hover { -fx-background-color: -color-error-bg; }
+.drawer-activate { -fx-background-color: transparent; -fx-text-fill: -color-accent; -fx-border-color: -color-accent; }
+.drawer-primary { -fx-background-color: -color-accent; -fx-text-fill: -color-background; }
+.drawer-primary:hover { -fx-background-color: derive(-color-accent, 12%); }
+
+/* ---------- Cuenta de acceso en el formulario y los diálogos ---------- */
+.account-box { -fx-background-color: -color-surface; -fx-background-radius: 10; -fx-padding: 10 12; }
+.form-check { -fx-text-fill: -color-primary; -fx-font-weight: bold; }
+.form-check .box { -fx-background-color: -color-card; -fx-border-color: -color-secondary; -fx-border-radius: 4; -fx-background-radius: 4; }
+.form-check:selected .box { -fx-background-color: -color-accent; -fx-border-color: -color-accent; }
+.form-check:selected .mark { -fx-background-color: -color-background; }
+.temporary-password {
+    -fx-font-family: "Consolas", "Menlo", monospace; -fx-font-size: 18px; -fx-font-weight: bold;
+    -fx-text-fill: -color-accent; -fx-background-color: -color-surface; -fx-background-radius: 8;
+}
+.personal-dialog .button-bar .button.primary-dialog-button {
+    -fx-background-color: -color-accent; -fx-text-fill: -color-background; -fx-border-color: -color-accent; -fx-font-weight: bold;
 }
