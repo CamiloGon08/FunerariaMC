@@ -41,7 +41,7 @@
             <!-- Foto del lirio detrás de los módulos (primera capa del StackPane) -->
             <StackPane VBox.vgrow="ALWAYS">
                 <SidebarDecor/>
-                <ScrollPane fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="NEVER"
+                <ScrollPane fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED"
                             styleClass="side-scroll">
                     <VBox fx:id="menuBox" spacing="3" alignment="TOP_CENTER" styleClass="side-menu">
                         <padding>
