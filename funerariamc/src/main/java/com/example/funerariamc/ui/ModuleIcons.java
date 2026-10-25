@@ -32,6 +32,10 @@ public final class ModuleIcons {
             Map.entry("FINANZAS", "M3 6h18v13h-18z M16 12.5h2M3 10h18"),
             Map.entry("RED_ALIADAS", "M9.8 5a2.2 2.2 0 1 0 4.4 0a2.2 2.2 0 1 0 -4.4 0 M2.8 19a2.2 2.2 0 1 0 4.4 0a2.2 2.2 0 1 0 -4.4 0 M16.8 19a2.2 2.2 0 1 0 4.4 0a2.2 2.2 0 1 0 -4.4 0 M12 7.2v4.3M12 11.5 6.5 17.3M12 11.5l5.5 5.8"),
             Map.entry("PARAMETROS", "M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12 M14 6a2 2 0 1 0 4 0a2 2 0 1 0 -4 0 M8 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0 M16 18a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"),
+            Map.entry("INICIO", "M3 3h7v9h-7z M14 3h7v5h-7z M14 12h7v9h-7z M3 16h7v5h-7z"),
+            Map.entry("ANALISIS", "M4 20V10M10 20V4M16 20v-7M22 20H2"),
+            Map.entry("RESUMEN", "M3 17l5-5 4 3 8-8M15 7h5v5"),
+            Map.entry("CHEVRON", "M9 6l6 6-6 6"),
             Map.entry("DEFAULT", "M3 3h7v9h-7z M14 3h7v5h-7z M14 12h7v9h-7z M3 16h7v5h-7z")
     );
 
@@ -40,8 +44,13 @@ public final class ModuleIcons {
 
     /** Ícono del módulo escalado a 20 px; el color lo define la clase CSS {@code nav-icon}. */
     public static Node of(AppModule module) {
+        return of(module.name());
+    }
+
+    /** Ícono por nombre: los de AppModule más INICIO, RESUMEN y CHEVRON (flecha del grupo Finanzas). */
+    public static Node of(String key) {
         SVGPath path = new SVGPath();
-        path.setContent(PATHS.getOrDefault(module.name(), PATHS.get("DEFAULT")));
+        path.setContent(PATHS.getOrDefault(key, PATHS.get("DEFAULT")));
         path.getStyleClass().add("nav-icon");
         path.setScaleX(SIZE / 24);
         path.setScaleY(SIZE / 24);

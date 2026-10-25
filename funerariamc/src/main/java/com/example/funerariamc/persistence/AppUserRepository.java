@@ -5,6 +5,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import com.example.funerariamc.model.enums.EmployeeStatus;
+
+import java.util.Collection;
 import java.util.Optional;
 import java.util.List;
 
@@ -27,4 +30,13 @@ public interface AppUserRepository extends JpaRepository<AppUser, Long>{
 
     /** al habilitar o deshabilitar un empleado se activa o desactiva su cuenta */
     Optional<AppUser> findByEmployee_Id(Long employeeId);
+
+    /** el nombre de usuario no se repite, sin importar mayusculas */
+    boolean existsByUsernameIgnoreCase(String username);
+
+    /** cuentas de los empleados que se ven en una pagina de Personal */
+    List<AppUser> findByEmployee_IdIn(Collection<Long> employeeIds);
+
+    /** indicador "Con cuenta de acceso" de Personal */
+    long countByEmployee_Status(EmployeeStatus status);
 }

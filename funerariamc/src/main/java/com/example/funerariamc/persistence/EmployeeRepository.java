@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.Optional;
 /** Sirve para Employee y sus subtipos (Manager,Recepcionist, etc) */
@@ -39,5 +40,14 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
 
     /**resume numero de empleados, activos e inactivos */
     long countByStatus(EmployeeStatus status);
+
+    /** conductores con la licencia vencida o que vence hasta esa fecha (indicador "Documentos por vencer") */
+    @Query("""
+            select count(d) from Driver d
+            where d.status = :status
+              and d.licenseExpiryDate <= :limit
+            """)
+    long countDriversWithLicenseExpiringBy(@Param("status") EmployeeStatus status,
+                                           @Param("limit") LocalDate limit);
 
 }
