@@ -90,14 +90,15 @@ class ClientServiceTest {
     @Test
     void registersCompanyWithNitAndBusinessNameWithoutLastname() {
         ClientData data = new ClientData(ClientType.CORPORATE, "NIT", "800.197.268-4",
-                "Transportes del Cesar S.A.S.", "ignorado", "605 580 4411", "contabilidad@transcesar.co",
+                "Transportes Cesar S.A.S.", "ignorado", "605 580 4411", "contabilidad@transcesar.co",
                 "Cl. 44 # 4-120, Zona Industrial");
 
         Client saved = service.register(data);
 
         assertEquals("8001972684", saved.getDocumentNumber());
         assertEquals("", saved.getLastname());
-        assertEquals("Transportes del Cesar S.A.S.", ClientService.displayName(saved));
+        assertEquals("Transportes Cesar S.A.S.", ClientService.displayName(saved));
+        assertEquals("6055804411", saved.getPhone());
     }
 
     @Test
@@ -152,7 +153,7 @@ class ClientServiceTest {
     @Test
     void passportKeepsLettersInUpperCase() {
         Client saved = service.register(new ClientData(ClientType.NATURAL, "PA", "ab-123456",
-                "John", "Smith", "+57 301 556 2087", null, "Calle 1"));
+                "John", "Smith", "301 556 2087", null, "Calle 1"));
 
         assertEquals("AB123456", saved.getDocumentNumber());
     }
@@ -294,10 +295,55 @@ class ClientServiceTest {
 
     @Test
     void namesAndAddressesCannotExceedThePersonColumnLengths() {
+        // Límites de person indicados en el contrato de Clientes.
         assertThrows(InvalidDataException.class, () -> service.register(new ClientData(ClientType.NATURAL,
-                "CC", "1065832417", "X".repeat(101), "Durán", "3015562087", null, "Calle 1")));
+                "CC", "1065832417", "X".repeat(26), "Durán", "3015562087", null, "Calle 1")));
         assertThrows(InvalidDataException.class, () -> service.register(new ClientData(ClientType.NATURAL,
-                "CC", "1065832417", "Martha", "Durán", "3015562087", null, "X".repeat(201))));
+                "CC", "1065832417", "Martha", "X".repeat(26), "3015562087", null, "Calle 1")));
+        assertThrows(InvalidDataException.class, () -> service.register(new ClientData(ClientType.NATURAL,
+                "CC", "1065832417", "Martha", "Durán", "3015562087", "x".repeat(21) + "@correo.co", "Calle 1")));
+        assertThrows(InvalidDataException.class, () -> service.register(new ClientData(ClientType.NATURAL,
+                "CC", "1065832417", "Martha", "Durán", "3015562087", null, "X".repeat(41))));
+        assertThrows(InvalidDataException.class, () -> service.register(new ClientData(ClientType.NATURAL,
+                "CC", "1065832417", "Martha", "Durán", "+57 301 556 2087", null, "Calle 1")));
+
+        verifyNoInteractions(clients, persons, accessLog);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"(301) 556-2087", "301.556.2087", " 301 556 2087 "})
+    void storesFormattedPhoneAsDigits(String phone) {
+        Client saved = service.register(new ClientData(ClientType.NATURAL, "CC", "1065832417",
+                "Martha", "Durán", phone, null, "Calle 1"));
+
+        assertEquals("3015562087", saved.getPhone());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"123456", "12345678901", "+573015562087"})
+    void rejectsPhonesOutsideTheStorageLimit(String phone) {
+        assertThrows(InvalidDataException.class, () -> service.register(new ClientData(ClientType.NATURAL,
+                "CC", "1065832417", "Martha", "Durán", phone, null, "Calle 1")));
+
+        verifyNoInteractions(clients, persons, accessLog);
+    }
+
+    @Test
+    void acceptsValuesAtTheDocumentedStorageLimits() {
+        Client saved = service.register(new ClientData(ClientType.NATURAL, "PA", "AB123456789",
+                "N".repeat(25), "A".repeat(25), "3015562087", "x".repeat(19) + "@correo.com", "D".repeat(40)));
+
+        assertEquals("AB123456789", saved.getDocumentNumber());
+        assertEquals(25, saved.getName().length());
+        assertEquals(25, saved.getLastname().length());
+        assertEquals(30, saved.getEmail().length());
+        assertEquals(40, saved.getAddress().length());
+    }
+
+    @Test
+    void passportCannotExceedTheStorageLimit() {
+        assertThrows(InvalidDataException.class, () -> service.register(new ClientData(ClientType.NATURAL,
+                "PA", "AB1234567890", "John", "Smith", "3015562087", null, "Calle 1")));
 
         verifyNoInteractions(clients, persons, accessLog);
     }
