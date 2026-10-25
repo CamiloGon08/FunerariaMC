@@ -42,6 +42,12 @@ public class ClientService {
     private static final int[] NIT_WEIGHTS = {3, 7, 13, 17, 19, 23, 29, 37, 41, 43, 47, 53, 59, 67, 71};
     private static final Set<String> NUMERIC_DOCUMENTS = Set.of("CC", NIT);
 
+    /** Límites de almacenamiento de person indicados en el contrato del módulo de Clientes. */
+    static final int MAX_NAME = 25;
+    static final int MAX_DOCUMENT = 11;
+    static final int MAX_EMAIL = 30;
+    static final int MAX_ADDRESS = 40;
+
     private final ClientRepository clientRepository;
     private final PersonRepository personRepository;
     private final AccessLogService accessLogService;
@@ -173,7 +179,7 @@ public class ClientService {
         client.setName(data.name().trim());
         // person.lastname es NOT NULL: una empresa no tiene apellidos, se guarda vacío.
         client.setLastname(corporate ? "" : data.lastname().trim());
-        client.setPhone(data.phone().trim());
+        client.setPhone(normalizePhone(data.phone()));
         client.setEmail(blankToNull(data.email()));
         client.setAddress(data.address().trim());
     }
@@ -197,29 +203,29 @@ public class ClientService {
         validateDocument(data.documentType(), normalizeDocument(data.documentNumber()));
 
         require(data.name(), corporate ? "La razón social es obligatoria." : "Los nombres son obligatorios.");
-        maxLength(data.name(), 100, corporate ? "La razón social" : "Los nombres");
+        maxLength(data.name(), MAX_NAME, corporate ? "La razón social" : "Los nombres");
         if (!corporate) {
             require(data.lastname(), "Los apellidos son obligatorios.");
-            maxLength(data.lastname(), 100, "Los apellidos");
+            maxLength(data.lastname(), MAX_NAME, "Los apellidos");
         }
 
         require(data.phone(), "El teléfono es obligatorio.");
-        if (!data.phone().replaceAll("[\\s()-]", "").matches("\\+?\\d{7,15}")) {
-            throw new InvalidDataException("El teléfono debe tener entre 7 y 15 dígitos.");
+        // person.phone es varchar(10): se guardan solo los dígitos (celular 10, fijo 7).
+        if (!normalizePhone(data.phone()).matches("\\d{7,10}")) {
+            throw new InvalidDataException("El teléfono debe tener entre 7 y 10 dígitos.");
         }
-        maxLength(data.phone(), 20, "El teléfono");
         if (data.email() != null && !data.email().isBlank()) {
             if (!data.email().trim().matches("[^@\\s]+@[^@\\s]+\\.[^@\\s]+")) {
                 throw new InvalidDataException("El correo no es válido.");
             }
-            maxLength(data.email(), 120, "El correo");
+            maxLength(data.email(), MAX_EMAIL, "El correo");
         }
         require(data.address(), "La dirección es obligatoria.");
-        maxLength(data.address(), 200, "La dirección");
+        maxLength(data.address(), MAX_ADDRESS, "La dirección");
     }
 
     private static void validateDocument(String type, String document) {
-        if (document.length() > 30) {
+        if (document.length() > MAX_DOCUMENT) {
             throw new InvalidDataException("El número de documento es demasiado largo.");
         }
         if (NUMERIC_DOCUMENTS.contains(type) && !document.matches("\\d+")) {
@@ -278,6 +284,11 @@ public class ClientService {
     /** "1.065.832.417", "800 197 268-4" y "8001972684" se guardan sin puntos, espacios ni guiones. */
     static String normalizeDocument(String document) {
         return document.replaceAll("[.\\s-]", "").trim().toUpperCase(Locale.ROOT);
+    }
+
+    /** "301 556 2087" y "(605) 580-4411" se guardan como "3015562087" y "6055804411". */
+    static String normalizePhone(String phone) {
+        return phone == null ? "" : phone.replaceAll("[\\s().-]", "");
     }
 
     /** "%texto%" en minúsculas; "1.065.832" se busca como "1065832". */
