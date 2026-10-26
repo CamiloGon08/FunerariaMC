@@ -12,9 +12,7 @@ import java.util.Optional;
 import java.util.List;
 
 
-/**trae el usuario con el empleado y su rol en una sola consulta, 
- * para que la sesion pueda usarlos
- */
+/**trae el usuario con el empleado y su rol en una sola consulta*/
 public interface AppUserRepository extends JpaRepository<AppUser, Long>{
     @Query("""
         select u from AppUser u 

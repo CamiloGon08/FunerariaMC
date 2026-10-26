@@ -38,4 +38,9 @@ public class AppUser {
 
     @Column(name = "last_login")
     private LocalDateTime lastLogin;
+
+    
+    /** Verdadero mientras la cuenta tenga una contraseña temporal: el usuario debe cambiarla en el siguiente inicio de sesión. */
+    @Column(name = "must_change_password", nullable = false)
+    private Boolean mustChangePassword = false;
 }
