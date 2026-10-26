@@ -49,6 +49,7 @@ class PasswordResetServiceTest {
         user.setId(42L);
         user.setEmployee(employee);
         user.setPasswordHash("previous-password-hash");
+        user.setMustChangePassword(true);
         pending = new PasswordResetCode();
         pending.setAppUser(user);
         pending.setCodeHash("stored-code-hash");
@@ -180,6 +181,7 @@ class PasswordResetServiceTest {
         service.resetPassword(" user ", " 123456 ", "new-password");
 
         assertEquals("new-password-hash", user.getPasswordHash());
+        assertFalse(user.getMustChangePassword());
         assertNotNull(pending.getUsedAt());
         verify(codes).invalidatePending(eq(42L), any(LocalDateTime.class));
         verify(audit).record(42L, "PASSWORD_RESET_COMPLETED");
@@ -193,6 +195,7 @@ class PasswordResetServiceTest {
                 () -> service.resetPassword("user", "wrong-code", "new-password"));
 
         assertEquals(1, pending.getAttempts());
+        assertTrue(user.getMustChangePassword());
         assertNull(pending.getUsedAt());
         assertEquals("previous-password-hash", user.getPasswordHash());
         verify(audit).record(42L, "PASSWORD_RESET_FAILED: INVALID_CODE");

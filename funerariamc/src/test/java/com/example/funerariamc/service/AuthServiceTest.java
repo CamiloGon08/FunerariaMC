@@ -182,6 +182,25 @@ class AuthServiceTest {
     }
 
     @Test
+    void temporaryPasswordAllowsLoginButBlocksModulesUntilChanged() {
+        validCredentials();
+        user.setMustChangePassword(true);
+
+        service.login("salesperson", "secret");
+
+        assertSame(user, session.getCurrentUser().orElseThrow());
+        assertTrue(service.visibleModules().isEmpty());
+        assertFalse(service.canAccess(AppModule.CLIENTES));
+        assertThrows(UnauthorizedActionException.class, () -> service.checkAccess(AppModule.CLIENTES));
+        verify(audit).record(42L, "ACCESS_DENIED: CLIENTES");
+
+        user.setMustChangePassword(false);
+        assertTrue(service.canAccess(AppModule.CLIENTES));
+        service.checkAccess(AppModule.CLIENTES);
+        verify(audit).record(42L, "OPEN_MODULE: CLIENTES");
+    }
+
+    @Test
     void unauthenticatedUserHasNoModulesAndCannotOpenOne() {
         assertTrue(service.visibleModules().isEmpty());
         assertFalse(service.canAccess(AppModule.CLIENTES));

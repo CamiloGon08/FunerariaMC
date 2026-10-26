@@ -146,6 +146,8 @@ public class PasswordResetService {
         }
 
         user.setPasswordHash(passwordEncoder.encode(newPassword));
+        // La contraseña ya fue elegida por el usuario, deja de ser temporal.
+        user.setMustChangePassword(false);
         resetCode.setUsedAt(now);
         // Por si quedó otro pendiente: ningún código sirve después del cambio.
         resetCodeRepository.invalidatePending(user.getId(), now);

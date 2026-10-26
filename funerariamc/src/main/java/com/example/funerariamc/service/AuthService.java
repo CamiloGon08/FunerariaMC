@@ -88,7 +88,8 @@ public class AuthService {
     }
 
     public boolean canAccess(AppModule module) {
-        if (module == null) {
+        if (module == null || sessionContext.getCurrentUser()
+                .map(user -> Boolean.TRUE.equals(user.getMustChangePassword())).orElse(false)) {
             return false;
         }
         return sessionContext.getRoleName()
