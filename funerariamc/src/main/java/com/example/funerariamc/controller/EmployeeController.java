@@ -1,6 +1,7 @@
 package com.example.funerariamc.controller;
 
 import com.example.funerariamc.config.FxmlViewLoader;
+import com.example.funerariamc.config.ReadOnlyWork;
 import com.example.funerariamc.exception.BusinessException;
 import com.example.funerariamc.model.Driver;
 import com.example.funerariamc.model.Employee;
@@ -12,6 +13,7 @@ import com.example.funerariamc.service.EmployeeService;
 import com.example.funerariamc.service.RoleNames;
 import com.example.funerariamc.service.UserAccountService;
 import com.example.funerariamc.service.UserAccountService.AccountSummary;
+import com.example.funerariamc.ui.RefreshableView;
 import javafx.animation.FadeTransition;
 import javafx.animation.ParallelTransition;
 import javafx.animation.PauseTransition;
@@ -64,7 +66,7 @@ import java.util.Optional;
  */
 @Component
 @Scope("prototype")
-public class EmployeeController {
+public class EmployeeController implements RefreshableView {
 
     static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     /** Tarjetas por tanda: 4 filas de 3. Al bajar hasta el final se piden 12 más. */
@@ -102,6 +104,7 @@ public class EmployeeController {
     private final EmployeeService employeeService;
     private final UserAccountService userAccountService;
     private final FxmlViewLoader viewLoader;
+    private final ReadOnlyWork readOnlyWork;
     /** Espera a que el usuario deje de escribir para no consultar la BD en cada tecla. */
     private final PauseTransition searchDelay = new PauseTransition(Duration.millis(300));
 
@@ -155,10 +158,17 @@ public class EmployeeController {
     private Long drawerEmployeeId;
 
     public EmployeeController(EmployeeService employeeService, UserAccountService userAccountService,
-                              FxmlViewLoader viewLoader) {
+                              FxmlViewLoader viewLoader, ReadOnlyWork readOnlyWork) {
         this.employeeService = employeeService;
         this.userAccountService = userAccountService;
         this.viewLoader = viewLoader;
+        this.readOnlyWork = readOnlyWork;
+    }
+
+    /** El menú guarda la pantalla abierta: al volver a Personal se traen los datos nuevos. */
+    @Override
+    public void refresh() {
+        reload();
     }
 
     @FXML
@@ -239,11 +249,14 @@ public class EmployeeController {
         Task<Batch> task = new Task<>() {
             @Override
             protected Batch call() {
-                Page<Employee> page = employeeService.searchByPositions(text, status, positions, pageIndex, size);
-                List<Long> ids = page.getContent().stream().map(Employee::getId).toList();
-                return new Batch(page, userAccountService.findAccounts(ids),
-                        employeeService.count(null), employeeService.count(EmployeeStatus.ACTIVE),
-                        userAccountService.countActiveAccounts(), employeeService.countExpiringDocuments());
+                // Una sola transacción y los indicadores en una consulta: menos viajes a Supabase.
+                return readOnlyWork.run(() -> {
+                    Page<Employee> page = employeeService.searchByPositions(text, status, positions, pageIndex, size);
+                    List<Long> ids = page.getContent().stream().map(Employee::getId).toList();
+                    EmployeeService.StaffKpis kpis = employeeService.kpis();
+                    return new Batch(page, userAccountService.findAccounts(ids),
+                            kpis.total(), kpis.active(), kpis.withAccount(), kpis.expiring());
+                });
             }
         };
         task.setOnSucceeded(e -> {
