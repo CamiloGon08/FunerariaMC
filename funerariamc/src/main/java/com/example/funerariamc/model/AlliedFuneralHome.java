@@ -7,9 +7,7 @@ import lombok.Setter;
 
 import java.time.LocalDate;
 
-/**
- * Stores information about an allied funeral home.
- */
+/**Guarda la información de una funeraria aliada.*/
 @Entity
 @Table(name = "allied_funeral_home")
 @Getter
@@ -33,13 +31,13 @@ public class AlliedFuneralHome {
     @Column(name = "agreement_start_date")
     private LocalDate agreementStartDate;
 
-    @Column(name = "city", length = 60)
+    @Column(name = "city", length = 50)
     private String city;
 
-    @Column(name = "email", length = 120)
+    @Column(name = "email", length = 50)
     private String email;
 
-    // An allied funeral home is deactivated, not deleted
+    // Una funeraria aliada se desactiva, no se borra
     @Column(name = "active", nullable = false)
     private Boolean active = true;
 }

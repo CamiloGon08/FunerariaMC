@@ -9,9 +9,7 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import java.time.LocalDate;
 
-/**
- * Represents a client who contracts funeral services or plans.
- */
+/** Representa a un cliente que contrata servicios o planes funerarios*/
 @Entity
 @Table(name = "client")
 @Getter
@@ -24,8 +22,7 @@ public class Client extends Person {
     @Column(name = "client_type", length = 20)
     private ClientType clientType;
 
-    @Column(name = "registration_date",
-            insertable = false,
-            updatable = false)
+    /**Muestra la hora en hora de bogota */
+    @Column(name = "registration_date", updatable = false)
     private LocalDate registrationDate;
 }
