@@ -26,6 +26,8 @@ public enum AppModule {
     TRANSPORTE("Transporte", SECRETARY),
     CREMACIONES("Cremaciones", CEMETERY_ADMIN),
     FINANZAS("Finanzas", SECRETARY),
+    /** Panel de análisis de solo lectura: solo el Administrador Maestro. */
+    ANALISIS("Panel de análisis"),
     RED_ALIADAS("Red de funerarias aliadas"),
     PARAMETROS("Parámetros del sistema");
 

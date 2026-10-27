@@ -14,6 +14,7 @@ import com.example.funerariamc.model.Role;
 import com.example.funerariamc.model.Thanatopractor;
 import com.example.funerariamc.model.enums.EmployeePosition;
 import com.example.funerariamc.model.enums.EmployeeStatus;
+import com.example.funerariamc.model.enums.Sex;
 import com.example.funerariamc.persistence.AppUserRepository;
 import com.example.funerariamc.persistence.EmployeeRepository;
 import com.example.funerariamc.persistence.PersonRepository;
@@ -27,6 +28,7 @@ import org.springframework.data.domain.PageRequest;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -72,6 +74,20 @@ class EmployeeServiceTest {
     }
 
     @Test
+    void savesSexAndRequiresIt() {
+        Employee saved = service.register(driver("12725893", "file:/C:/licencia.pdf", LocalDate.now().plusYears(2)));
+        assertEquals(Sex.MALE, saved.getSex());
+
+        EmployeeData noSex = new EmployeeData("Jorge Luis", "Araújo", "CC", "12725894", null, null, null, null, null,
+                EmployeePosition.DRIVER, LocalDate.of(2021, 6, 20), new BigDecimal("1850000"),
+                null, null, null, null, null, "C2", "123-C2", LocalDate.now().plusYears(2), "file:/C:/licencia.pdf");
+        clearInvocations(employees, persons, users, accessLog);
+        assertThrows(InvalidDataException.class, () -> service.register(noSex));
+        assertThrows(InvalidDataException.class, () -> service.update(7L, noSex));
+        verifyNoInteractions(employees, persons, users, accessLog);
+    }
+
+    @Test
     void rejectsDocumentAlreadyRegisteredForAnyPerson() {
         when(persons.existsByDocumentNumber("12725893")).thenReturn(true);
 
@@ -90,7 +106,7 @@ class EmployeeServiceTest {
 
     @Test
     void salespersonCommissionMustBeBetweenZeroAndHundred() {
-        EmployeeData data = new EmployeeData("Laura", "Daza", "CC", "1065000111", null, null, null, null,
+        EmployeeData data = new EmployeeData("Laura", "Daza", "CC", "1065000111", null, null, null, null, Sex.FEMALE,
                 EmployeePosition.FUNERAL_SALESPERSON, LocalDate.of(2024, 3, 1), new BigDecimal("1600000"),
                 new BigDecimal("120"), null, null, null, null, null, null, null, null);
 
@@ -99,7 +115,7 @@ class EmployeeServiceTest {
 
     @Test
     void salespersonKeepsCommissionRate() {
-        EmployeeData data = new EmployeeData("Laura", "Daza", "CC", "1065000111", null, null, null, null,
+        EmployeeData data = new EmployeeData("Laura", "Daza", "CC", "1065000111", null, null, null, null, Sex.FEMALE,
                 EmployeePosition.FUNERAL_SALESPERSON, LocalDate.of(2024, 3, 1), new BigDecimal("1600000"),
                 new BigDecimal("5.5"), null, null, null, null, null, null, null, null);
 
@@ -110,7 +126,7 @@ class EmployeeServiceTest {
 
     @Test
     void hireDateCannotBeInTheFuture() {
-        EmployeeData data = new EmployeeData("Ana", "Mejía", "CC", "77000111", null, null, null, null,
+        EmployeeData data = new EmployeeData("Ana", "Mejía", "CC", "77000111", null, null, null, null, Sex.FEMALE,
                 EmployeePosition.RECEPTIONIST, LocalDate.now(AccessLogService.APP_ZONE).plusDays(3), new BigDecimal("1423500"),
                 null, null, null, null, null, null, null, null, null);
 
@@ -121,7 +137,7 @@ class EmployeeServiceTest {
 
     @Test
     void thanatopractorWithoutLicenseNumberIsAccepted() {
-        EmployeeData data = new EmployeeData("Andrea", "Pumarejo", "CC", "1003418267", null, null, null, null,
+        EmployeeData data = new EmployeeData("Andrea", "Pumarejo", "CC", "1003418267", null, null, null, null, Sex.FEMALE,
                 EmployeePosition.THANATOPRACTOR, LocalDate.of(2023, 1, 15), new BigDecimal("2000000"),
                 null, "SENA", LocalDate.of(2022, 5, 1), "file:/C:/certificado.pdf", new BigDecimal("80000"),
                 null, null, null, null);
@@ -131,7 +147,7 @@ class EmployeeServiceTest {
 
     @Test
     void thanatopractorNeedsCertificateFile() {
-        EmployeeData data = new EmployeeData("Andrea", "Pumarejo", "CC", "1003418267", null, null, null, null,
+        EmployeeData data = new EmployeeData("Andrea", "Pumarejo", "CC", "1003418267", null, null, null, null, Sex.FEMALE,
                 EmployeePosition.THANATOPRACTOR, LocalDate.of(2023, 1, 15), new BigDecimal("2000000"),
                 null, "SENA", LocalDate.of(2022, 5, 1), null, new BigDecimal("80000"),
                 null, null, null, null);
@@ -233,6 +249,40 @@ class EmployeeServiceTest {
     }
 
     @Test
+    void searchByPositionsUsesTheSelectedPositionsStatusAndPage() {
+        Page<Employee> expected = Page.empty(PageRequest.of(2, 10));
+        when(employees.search(any(), any(), any(), any())).thenReturn(expected);
+
+        Page<Employee> result = service.searchByPositions(" Ana ", EmployeeStatus.INACTIVE,
+                List.of(EmployeePosition.MANAGER, EmployeePosition.RECEPTIONIST), 2, 10);
+
+        assertSame(expected, result);
+        verify(employees).search(eq("%ana%"), eq(List.of(EmployeeStatus.INACTIVE)),
+                eq(List.of(Manager.class, Receptionist.class)), eq(PageRequest.of(2, 10)));
+    }
+
+    @Test
+    void searchByPositionsAcceptsNullAndEmptySelectionsAsAllPositions() {
+        when(employees.search(any(), any(), any(), any())).thenReturn(Page.empty());
+
+        service.searchByPositions(null, null, null, 0, 10);
+        service.searchByPositions("", null, List.of(), 1, 10);
+
+        verify(employees).search(eq("%"), eq(List.of(EmployeeStatus.values())),
+                argThat(types -> types.size() == EmployeePosition.values().length), eq(PageRequest.of(0, 10)));
+        verify(employees).search(eq("%"), eq(List.of(EmployeeStatus.values())),
+                argThat(types -> types.size() == EmployeePosition.values().length), eq(PageRequest.of(1, 10)));
+    }
+
+    @Test
+    void searchByPositionsRejectsInvalidSelectionBeforeQuerying() {
+        assertThrows(InvalidDataException.class, () -> service.searchByPositions("", null,
+                Arrays.asList(EmployeePosition.DRIVER, null), 0, 10));
+
+        verifyNoInteractions(employees, persons, users, accessLog);
+    }
+
+    @Test
     void onlyMasterAdminUsesTheModule() {
         session.getCurrentUser().orElseThrow().getEmployee().getRole().setName(RoleNames.SECRETARY);
 
@@ -290,6 +340,7 @@ class EmployeeServiceTest {
         assertEquals("CC", updated.getDocumentType());
         assertEquals("77000111", updated.getDocumentNumber());
         assertEquals("ana@example.com", updated.getEmail());
+        assertEquals(Sex.FEMALE, updated.getSex());
         verify(persons).existsByDocumentNumberAndIdNot("77000111", 7L);
         verify(accessLog).record(5L, "EMPLOYEE_UPDATED: 77000111");
     }
@@ -375,6 +426,8 @@ class EmployeeServiceTest {
 
     private void assertPersonnelAccessDenied() {
         assertThrows(UnauthorizedActionException.class, () -> service.search("", null, null, 0, 10));
+        assertThrows(UnauthorizedActionException.class,
+                () -> service.searchByPositions("", null, List.of(EmployeePosition.MANAGER), 0, 10));
         assertThrows(UnauthorizedActionException.class, () -> service.count(null));
         assertThrows(UnauthorizedActionException.class, () -> service.findById(7L));
         assertThrows(UnauthorizedActionException.class,
@@ -388,12 +441,12 @@ class EmployeeServiceTest {
 
     private static EmployeeData receptionist(String document, String email) {
         return new EmployeeData(" Ana ", " Mejía ", " CC ", document, " 3001234567 ", email,
-                " Calle 1 ", null, EmployeePosition.RECEPTIONIST, LocalDate.of(2024, 3, 1),
+                " Calle 1 ", null, Sex.FEMALE, EmployeePosition.RECEPTIONIST, LocalDate.of(2024, 3, 1),
                 new BigDecimal("1600000"), null, null, null, null, null, null, null, null, null);
     }
 
     private static EmployeeData driver(String document, String licenseFile, LocalDate licenseExpiry) {
-        return new EmployeeData("Jorge Luis", "Araújo", "CC", document, null, null, null, null,
+        return new EmployeeData("Jorge Luis", "Araújo", "CC", document, null, null, null, null, Sex.MALE,
                 EmployeePosition.DRIVER, LocalDate.of(2021, 6, 20), new BigDecimal("1850000"),
                 null, null, null, null, null, "C2", "123-C2", licenseExpiry, licenseFile);
     }

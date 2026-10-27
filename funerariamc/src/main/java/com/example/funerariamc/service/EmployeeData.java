@@ -1,6 +1,7 @@
 package com.example.funerariamc.service;
 
 import com.example.funerariamc.model.enums.EmployeePosition;
+import com.example.funerariamc.model.enums.Sex;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -20,6 +21,7 @@ public record EmployeeData(
         String address,
         LocalDate birthDate,
         // employee
+        Sex sex,
         EmployeePosition position,
         LocalDate hireDate,
         BigDecimal salary,

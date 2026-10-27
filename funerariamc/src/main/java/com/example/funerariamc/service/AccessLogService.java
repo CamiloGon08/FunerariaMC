@@ -41,6 +41,8 @@ public class AccessLogService {
     public static final String EMPLOYEE_ACTIVATED = "EMPLOYEE_ACTIVATED: ";
     public static final String CLIENT_CREATED = "CLIENT_CREATED: ";
     public static final String CLIENT_UPDATED = "CLIENT_UPDATED: ";
+    public static final String USER_ACCOUNT_CREATED = "USER_ACCOUNT_CREATED: ";
+    public static final String PASSWORD_CHANGED = "PASSWORD_CHANGED";
 
     /** Límite técnico de filas por página del contrato de bitácora EP-01. */
     public static final int MAX_PAGE_SIZE = 100;

@@ -1,5 +1,7 @@
 package com.example.funerariamc.service;
 
+import com.example.funerariamc.model.enums.EmployeePosition;
+import com.example.funerariamc.model.enums.Sex;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -27,5 +29,16 @@ class RoleNamesTest {
     @Test
     void missingRoleHasNoDisplayLabel() {
         assertEquals("", RoleNames.displayName(null));
+    }
+
+    @Test
+    void roleNameFollowsSex() {
+        assertEquals("Secretario", RoleNames.displayName(RoleNames.SECRETARY, Sex.MALE));
+        assertEquals("Secretaria", RoleNames.displayName(RoleNames.SECRETARY, Sex.FEMALE));
+        assertEquals("Administradora Maestra",
+                RoleNames.displayName(RoleNames.MASTER_ADMIN, Sex.FEMALE));
+        assertEquals("Secretaría", RoleNames.displayName(RoleNames.SECRETARY, null));
+        assertEquals("Conductora", EmployeePosition.DRIVER
+                .getDisplayName(Sex.FEMALE));
     }
 }
