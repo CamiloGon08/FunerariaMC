@@ -36,20 +36,25 @@ public class EmployeeService {
 
     private static final BigDecimal HUNDRED = new BigDecimal("100");
 
+    /** Clave acordada para la anticipación de documentos, compartida con las alertas de n8n. */
+    public static final String DOC_EXPIRY_WARNING_DAYS = "DOC_EXPIRY_WARNING_DAYS";
+
     private final EmployeeRepository employeeRepository;
     private final PersonRepository personRepository;
     private final AppUserRepository appUserRepository;
     private final AccessLogService accessLogService;
     private final SessionContext sessionContext;
+    private final SystemParameterService parameters;
 
     public EmployeeService(EmployeeRepository employeeRepository, PersonRepository personRepository,
                            AppUserRepository appUserRepository, AccessLogService accessLogService,
-                           SessionContext sessionContext) {
+                           SessionContext sessionContext, SystemParameterService parameters) {
         this.employeeRepository = employeeRepository;
         this.personRepository = personRepository;
         this.appUserRepository = appUserRepository;
         this.accessLogService = accessLogService;
         this.sessionContext = sessionContext;
+        this.parameters = parameters;
     }
 
     /** Máximo de filas por página que acepta la búsqueda. */
@@ -87,6 +92,38 @@ public class EmployeeService {
     public long count(EmployeeStatus status) {
         requireMasterAdmin();
         return status == null ? employeeRepository.count() : employeeRepository.countByStatus(status);
+    }
+
+    /** Conductores activos con licencia vencida o próxima a vencer, según el parámetro acordado. */
+    @Transactional(readOnly = true)
+    public long countExpiringDocuments() {
+        requireMasterAdmin();
+        LocalDate limit = LocalDate.now(AccessLogService.APP_ZONE).plusDays(expiryWarningDays());
+        return employeeRepository.countDriversWithLicenseExpiringBy(EmployeeStatus.ACTIVE, limit);
+    }
+
+    /** La licencia sigue vigente y está dentro de la ventana de anticipación configurada. */
+    @Transactional(readOnly = true)
+    public boolean hasLicenseExpiringSoon(Employee employee) {
+        requireMasterAdmin();
+        if (!(employee instanceof Driver driver) || driver.getLicenseExpiryDate() == null) {
+            return false;
+        }
+        LocalDate today = LocalDate.now(AccessLogService.APP_ZONE);
+        LocalDate expiry = driver.getLicenseExpiryDate();
+        if (expiry.isBefore(today)) {
+            return false;
+        }
+        return !expiry.isAfter(today.plusDays(expiryWarningDays()));
+    }
+
+    private int expiryWarningDays() {
+        long days = parameters.getLong(DOC_EXPIRY_WARNING_DAYS);
+        if (days < 0 || days > Integer.MAX_VALUE) {
+            throw new InvalidDataException(
+                    "Los días de anticipación de documentos deben ser un entero no negativo dentro del rango permitido.");
+        }
+        return (int) days;
     }
 
     @Transactional(readOnly = true)

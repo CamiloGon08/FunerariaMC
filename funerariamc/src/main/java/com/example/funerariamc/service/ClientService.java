@@ -7,6 +7,8 @@ import com.example.funerariamc.exception.UnauthorizedActionException;
 import com.example.funerariamc.model.AppUser;
 import com.example.funerariamc.model.Client;
 import com.example.funerariamc.model.enums.ClientType;
+import com.example.funerariamc.model.enums.TransactionStatus;
+import com.example.funerariamc.model.enums.TransactionType;
 import com.example.funerariamc.persistence.ClientRepository;
 import com.example.funerariamc.persistence.PersonRepository;
 import org.springframework.data.domain.Page;
@@ -48,6 +50,25 @@ public class ClientService {
     static final int MAX_EMAIL = 30;
     static final int MAX_ADDRESS = 40;
 
+    /** Filtro de saldo de la pantalla (propuesta P-11): todos, con saldo pendiente o al día. */
+    public enum BalanceFilter {
+        ALL("Con saldo y sin saldo", "ALL"),
+        WITH_BALANCE("Con saldo pendiente", "WITH"),
+        UP_TO_DATE("Al día", "WITHOUT");
+
+        private final String label;
+        private final String code;
+
+        BalanceFilter(String label, String code) {
+            this.label = label;
+            this.code = code;
+        }
+
+        public String getLabel() {
+            return label;
+        }
+    }
+
     private final ClientRepository clientRepository;
     private final PersonRepository personRepository;
     private final AccessLogService accessLogService;
@@ -72,6 +93,23 @@ public class ClientService {
         int safePage = Math.max(page, 0);
         int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
         return clientRepository.search(searchPattern(text), types, PageRequest.of(safePage, safeSize));
+    }
+
+    /**
+     * Igual que la búsqueda anterior, más el filtro de saldo de las tarjetas (P-11).
+     * balance en null equivale a ALL.
+     */
+    @Transactional(readOnly = true)
+    public Page<Client> search(String text, ClientType type, BalanceFilter balance, int page, int size) {
+        if (balance == null || balance == BalanceFilter.ALL) {
+            return search(text, type, page, size);
+        }
+        requireAccess();
+        Collection<ClientType> types = type == null ? List.of(ClientType.values()) : List.of(type);
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
+        return clientRepository.searchByBalance(searchPattern(text), types, balance.code,
+                TransactionType.INCOME, TransactionStatus.ACTIVE, PageRequest.of(safePage, safeSize));
     }
 
     /** Cuántos clientes hay de ese tipo; type en null cuenta a todos. */
