@@ -11,6 +11,7 @@ import com.example.funerariamc.model.FuneralSalesperson;
 import com.example.funerariamc.model.Manager;
 import com.example.funerariamc.model.Receptionist;
 import com.example.funerariamc.model.Role;
+import com.example.funerariamc.model.SystemParameter;
 import com.example.funerariamc.model.Thanatopractor;
 import com.example.funerariamc.model.enums.EmployeePosition;
 import com.example.funerariamc.model.enums.EmployeeStatus;
@@ -18,13 +19,18 @@ import com.example.funerariamc.model.enums.Sex;
 import com.example.funerariamc.persistence.AppUserRepository;
 import com.example.funerariamc.persistence.EmployeeRepository;
 import com.example.funerariamc.persistence.PersonRepository;
+import com.example.funerariamc.persistence.SystemParameterRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.aop.framework.ProxyFactory;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.AnnotationTransactionAttributeSource;
+import org.springframework.transaction.interceptor.TransactionInterceptor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -468,6 +474,34 @@ class EmployeeServiceTest {
         assertFalse(service.hasLicenseExpiringSoon(driver));
         driver.setLicenseExpiryDate(today.minusDays(1));
         assertFalse(service.hasLicenseExpiringSoon(driver));
+    }
+
+    @Test
+    void renderingMultipleLicenseWarningsUsesOneParameterQueryAndNoPerCardTransactions() {
+        SystemParameterRepository parameterRepository = mock(SystemParameterRepository.class);
+        SystemParameter warning = new SystemParameter();
+        warning.setParamName(EmployeeService.DOC_EXPIRY_WARNING_DAYS);
+        warning.setParamValue("12");
+        when(parameterRepository.findByParamName(EmployeeService.DOC_EXPIRY_WARNING_DAYS))
+                .thenReturn(Optional.of(warning));
+        SystemParameterService cachedParameters = new SystemParameterService(parameterRepository, accessLog, session);
+        EmployeeService target = new EmployeeService(employees, persons, users, accessLog, session, cachedParameters);
+        PlatformTransactionManager transactions = mock(PlatformTransactionManager.class);
+        TransactionInterceptor advice = new TransactionInterceptor();
+        advice.setTransactionManager(transactions);
+        advice.setTransactionAttributeSource(new AnnotationTransactionAttributeSource());
+        ProxyFactory factory = new ProxyFactory(target);
+        factory.addAdvice(advice);
+        EmployeeService proxy = (EmployeeService) factory.getProxy();
+
+        for (int card = 0; card < 20; card++) {
+            Driver driver = new Driver();
+            driver.setLicenseExpiryDate(LocalDate.now(AccessLogService.APP_ZONE).plusDays(12));
+            assertTrue(proxy.hasLicenseExpiringSoon(driver));
+        }
+
+        verify(parameterRepository).findByParamName(EmployeeService.DOC_EXPIRY_WARNING_DAYS);
+        verifyNoInteractions(transactions, employees, persons, users, accessLog);
     }
 
     @Test
