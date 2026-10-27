@@ -12,32 +12,36 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-/**cuotas de plaanes exequiales */
-public interface PlanPaymentRepository {
+/**
+ * Cuotas de los planes exequiales (tabla plan_payment). Solo cuentan las cuotas PAID;
+ * una cuota anulada (VOIDED) se conserva pero no suma.
+ */
+public interface PlanPaymentRepository extends JpaRepository<PlanPayment, Long> {
 
-    /**cuotas pagadas por plan hasta un mes */
-    interface PaidSumary{
+    /** Cuotas pagadas por plan hasta un mes, para saber cuántas debe (mora). */
+    interface PaidSummary {
         Long getPlanId();
         long getPaidMonths();
         LocalDateTime getLastPaidAt();
     }
 
-    /** Total recaudado de un mes */
-    interface MonthTotal{
+    /** Total recaudado de un mes. */
+    interface MonthTotal {
         LocalDate getPeriodMonth();
         BigDecimal getTotal();
         long getPayments();
     }
 
-    @Query(""" 
-        select pp.funeralPlan.id as planId, count(pp) as paidMonths, max(pp.paidAt) as lastPaidAt
-        from PlanPayment pp
-        where pp.status = :paid and pp.periodMonth <= :untilMonth
-        group by pp.funeralPlan.id
-        """)
+    @Query("""
+            select pp.funeralPlan.id as planId, count(pp) as paidMonths, max(pp.paidAt) as lastPaidAt
+            from PlanPayment pp
+            where pp.status = :paid and pp.periodMonth <= :untilMonth
+            group by pp.funeralPlan.id
+            """)
     List<PaidSummary> summarizePaid(@Param("paid") PlanPaymentStatus paid,
-                                    @Param("untilMonth") LocalDate untiilMonth);
+                                    @Param("untilMonth") LocalDate untilMonth);
 
+    /** Recaudo por mes entre dos meses (incluidos), para la gráfica de cuotas. */
     @Query("""
             select pp.periodMonth as periodMonth, sum(pp.amount) as total, count(pp) as payments
             from PlanPayment pp
@@ -45,17 +49,18 @@ public interface PlanPaymentRepository {
             group by pp.periodMonth
             order by pp.periodMonth
             """)
-    List<MonthTotal> totalByMonth(@Param("paid") PlanPaymentStatus paid,
-                                    @Param("fromMonth") LocalDate fromMonth,
-                                    @Param("toMonth") LocalDate toMonth);
+    List<MonthTotal> totalsByMonth(@Param("paid") PlanPaymentStatus paid,
+                                   @Param("fromMonth") LocalDate fromMonth,
+                                   @Param("toMonth") LocalDate toMonth);
 
-
-    /**cuotas de un plan (pagadas y anuladas) */
+    /** Cuotas de un plan (pagadas y anuladas), de la más reciente a la más antigua. */
     List<PlanPayment> findByFuneralPlanIdOrderByPeriodMonthDescPaidAtDesc(Long funeralPlanId);
 
-    boolean existByFuneralPlanIdAndPeriodMonthAndStatus(Long funeralPlanId, LocalDate periodMonth,
-                                                        PlanPaymentStatus status);
-    
+    /** Una sola cuota pagada por plan y mes (índice ux_plan_payment_plan_month_paid). */
+    boolean existsByFuneralPlanIdAndPeriodMonthAndStatus(Long funeralPlanId, LocalDate periodMonth,
+                                                         PlanPaymentStatus status);
+
+    /** Una cuota con su plan y su movimiento, para anularla. */
     @Query("""
             select pp from PlanPayment pp
             join fetch pp.funeralPlan
