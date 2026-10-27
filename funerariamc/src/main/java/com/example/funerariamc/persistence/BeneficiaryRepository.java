@@ -8,39 +8,39 @@ import org.springframework.data.repository.query.Param;
 import java.util.Collection;
 import java.util.List;
 
-    /**Beneficiario de los planes exequiales */
-public interface BeneficiaryRepository extends JpaRepository<Beneficiary, Long>{
+/** Beneficiarios de los planes exequiales (RF-PLA-02). */
+public interface BeneficiaryRepository extends JpaRepository<Beneficiary, Long> {
 
-    /**Nombre corto del beneficiario para las iniciales de las tarjetas */
-    interface BeneficiaryNameRow{
+    /** Nombre corto del beneficiario para las iniciales de las tarjetas. */
+    interface BeneficiaryNameRow {
         Long getPlanId();
         String getName();
-        String getLastName();
+        String getLastname();
     }
 
-    List<Beneficiary> findByFuneralPlanIdAndDocumentNumber(Long funeralPlanId, String documentNumber);
+    List<Beneficiary> findByFuneralPlanIdOrderByIdAsc(Long funeralPlanId);
 
-    long countByFuneralPlanId(Long funeralPlanID);
+    long countByFuneralPlanId(Long funeralPlanId);
 
-    /** Un mismo documento no se puede repetir dentro del plan*/ 
-    boolean existsByFuneralPlanIdAndDocumentNumber(Long funeralPlanId);
+    /** Un mismo documento no se repite dentro del plan. */
+    boolean existsByFuneralPlanIdAndDocumentNumber(Long funeralPlanId, String documentNumber);
 
-    /**Muestra a lo beneficiarios de varios planes en el orden en que fueron registrados */
+    /** Beneficiarios de varios planes a la vez, en el orden en que se registraron. */
     @Query("""
-        select b.funeralPlan.id as planId, b.name as name, b.lastname as lastname
-        from Beneficiary b
-        where b.funeralPlan.id in :planIds
-        order  by b.funerariaPlan.id, b.id
-        """)
+            select b.funeralPlan.id as planId, b.name as name, b.lastname as lastname
+            from Beneficiary b
+            where b.funeralPlan.id in :planIds
+            order by b.funeralPlan.id, b.id
+            """)
     List<BeneficiaryNameRow> findNames(@Param("planIds") Collection<Long> planIds);
 
-    /**documento que cubre a un difunto como beneficiario */
+    /** Plan que cubre un documento: el difunto puede ser beneficiario de un plan (HU-56). */
     @Query("""
-        select b from Benefiary b
-        join fetch b.funeralPlan p
-        join fetch p.client
-        where b.doumentNumber = :document
-        order by p.startDate desc
-        """)
-    List<Beneficiary> findByDocumentWitjPlan(@Param("document") String document);
+            select b from Beneficiary b
+            join fetch b.funeralPlan p
+            join fetch p.client
+            where b.documentNumber = :document
+            order by p.startDate desc
+            """)
+    List<Beneficiary> findByDocumentWithPlan(@Param("document") String document);
 }
