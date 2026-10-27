@@ -103,7 +103,6 @@ public class EmployeeService {
     }
 
     /** La licencia sigue vigente y está dentro de la ventana de anticipación configurada. */
-    @Transactional(readOnly = true)
     public boolean hasLicenseExpiringSoon(Employee employee) {
         requireMasterAdmin();
         if (!(employee instanceof Driver driver) || driver.getLicenseExpiryDate() == null) {
