@@ -14,7 +14,7 @@ public interface CremationRepository extends JpaRepository<Cremation, Long>{
     @Query("""
         select c from Cremation c
         join fetch c.cremationBatch
-        where c.deceased.Id = :deceasedID
+        where c.deceased.id = :deceasedId
         """)
     Optional<Cremation> findByDeceasedWithBatch(@Param("deceasedId") Long deceasedId);
 }
