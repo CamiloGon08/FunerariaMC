@@ -9,9 +9,7 @@ import lombok.AllArgsConstructor;
 
 import java.time.LocalDateTime;
 
-/**
- * Stores the system configuration parameters.
- */
+/** Guarda los parámetros de configuración del sistema.*/
 @Entity
 @Table(name = "system_parameter")
 @Getter
@@ -34,14 +32,14 @@ public class SystemParameter {
     private String description;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "category", nullable = false, length = 20)
+    @Column(name = "category", nullable = false, length = 15)
     private ParameterCategory category = ParameterCategory.GENERAL;
 
-    // Unit shown next to the value: days, years, %, COP...
-    @Column(name = "unit", length = 20)
+    // Unidad que se muestra junto al valor: días, años, %, COP
+    @Column(name = "unit", length = 10)
     private String unit;
 
-    // Set by the app in America/Bogota time on every change
+    // La pone la app en hora de Bogotá en cada cambio
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
