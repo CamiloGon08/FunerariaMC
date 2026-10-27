@@ -9,9 +9,7 @@ import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-/**
- * Stores the common information for all employees.
- */
+/**Guarda la información común de todos los empleados.*/
 @Entity
 @Table(name = "employee")
 @Getter
@@ -25,8 +23,9 @@ public class Employee extends Person {
     @Column(name = "salary")
     private BigDecimal salary;
 
+    // Hombre o Mujer obligatorio
     @Enumerated(EnumType.STRING)
-    @Column(name = "sex")
+    @Column(name = "sex", length = 6, nullable = false)
     private Sex sex;
 
     @Enumerated(EnumType.STRING)
