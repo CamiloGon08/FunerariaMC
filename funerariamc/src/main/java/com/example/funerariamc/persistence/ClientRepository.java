@@ -35,8 +35,8 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
             Page<Client> search(@Param("pattern") String pattern,
                                 @Param("types") Collection<ClientType> types,
                                 Pageable pageable);
-    
-    /**Página de las tarjetas de Clientes con el filtro de saldo. */
+
+    /**Página de las tarjetas de Clientes con el filtro de saldo.*/
     @Query(value = """
             select c from Client c
             where c.clientType in :types
@@ -93,7 +93,7 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
 
     long countByClientType(ClientType clientType);
 
-    /** Indicador "Nuevos este mes": clientes registrados desde esa fecha. */
+    /** Indicador "Nuevos este mes" */
     long countByRegistrationDateGreaterThanEqual(LocalDate date);
 
 }
