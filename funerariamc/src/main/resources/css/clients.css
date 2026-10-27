@@ -1,13 +1,9 @@
 /*
- * Módulo de Clientes (mockups 11 y 12). Reutiliza la tabla, los chips, el formulario
- * y los diálogos de personal.css; aquí solo va lo propio de Clientes.
+ * Módulo de Clientes (propuesta P-11 / P-11.1 y mockup 12). Reutiliza las tarjetas, los chips,
+ * el panel lateral, el formulario y los diálogos de personal.css; aquí solo va lo propio de Clientes.
  */
 
-/* Insignia del tipo de cliente: Natural en salvia, Empresa en caqui */
-.type-badge {
-    -fx-background-radius: 999; -fx-padding: 3 10;
-    -fx-font-size: 11px; -fx-font-weight: bold;
-}
+/* Píldora del tipo de cliente (con .pill de personal.css): Natural en salvia, Empresa en caqui */
 .type-natural { -fx-background-color: -color-surface; -fx-text-fill: -color-accent; }
 .type-corporate { -fx-background-color: #F1E8D3; -fx-text-fill: -color-gold-text; }
 
@@ -26,3 +22,48 @@
 }
 .existing-client .label { -fx-text-fill: -color-primary; -fx-font-size: 13px; }
 .existing-client .existing-title { -fx-font-weight: bold; }
+
+/* ---------- Tarjetas e indicadores (propuesta P-11) ---------- */
+/* La tarjeta, los indicadores, los botones y el panel lateral vienen de personal.css. */
+.client-card:selected { -fx-border-color: -color-accent; -fx-border-width: 2; }
+.card-document { -fx-text-fill: -color-secondary; -fx-font-size: 12px; }
+.kpi-detail-gold { -fx-text-fill: -color-gold-text; }
+
+/* Empresa: iniciales en cuadro redondeado, no en círculo */
+.avatar-company { -fx-background-radius: 12; -fx-background-color: #EFE9DC; }
+.avatar-company .avatar-text { -fx-text-fill: -color-gold-text; }
+
+/* Fila del plan exequial y de los contratos */
+.plan-row { -fx-background-color: -color-background; -fx-background-radius: 8; -fx-padding: 8 12; }
+.plan-row-none { -fx-background-color: transparent; -fx-border-color: -color-surface; -fx-border-radius: 8; }
+.plan-text { -fx-text-fill: -color-primary; -fx-font-size: 12.5px; -fx-font-weight: bold; }
+.plan-contracts { -fx-text-fill: -color-secondary; -fx-font-size: 12px; }
+
+/* Saldo: caqui si debe, salvia si está al día */
+.balance-row { -fx-background-radius: 8; -fx-padding: 8 12; -fx-font-size: 12.5px; }
+.balance-row .label { -fx-font-size: 12.5px; }
+.balance-due { -fx-background-color: #F1EAD9; }
+.balance-due .label { -fx-text-fill: -color-gold-text; }
+.balance-clear { -fx-background-color: -color-surface; }
+.balance-clear .label { -fx-text-fill: -color-accent; }
+.balance-amount { -fx-font-weight: bold; }
+
+/* Botón principal de la tarjeta (Nuevo contrato) */
+.card-button-primary {
+    -fx-background-color: -color-accent; -fx-text-fill: -color-background;
+    -fx-background-radius: 10; -fx-padding: 8 12; -fx-font-weight: bold; -fx-cursor: hand;
+}
+.card-button-primary:hover { -fx-background-color: derive(-color-accent, 12%); }
+
+/* ---------- Panel del cliente (propuesta P-11.1) ---------- */
+.beneficiary-name { -fx-text-fill: -color-primary; -fx-font-size: 13px; -fx-font-weight: bold; }
+.beneficiary-state { -fx-font-size: 12.5px; }
+.state-covered { -fx-text-fill: -color-accent; }
+.state-waiting { -fx-text-fill: -color-gold-text; -fx-font-weight: bold; }
+.sale-title { -fx-text-fill: -color-primary; -fx-font-size: 13px; -fx-font-weight: bold; }
+.sale-subtitle { -fx-text-fill: -color-secondary; -fx-font-size: 12px; }
+.sale-state { -fx-font-size: 12.5px; -fx-font-weight: bold; }
+.sale-due { -fx-text-fill: -color-gold-text; }
+.sale-paid { -fx-text-fill: -color-accent; }
+.drawer-outline { -fx-background-color: transparent; -fx-text-fill: -color-primary; -fx-border-color: -color-border; }
+.drawer-outline:hover { -fx-background-color: -color-surface; }
