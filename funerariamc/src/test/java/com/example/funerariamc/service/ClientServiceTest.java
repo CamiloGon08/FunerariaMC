@@ -211,6 +211,47 @@ class ClientServiceTest {
     }
 
     @Test
+    void balanceFilterUsesActiveIncomeOnly() {
+        when(clients.searchByBalance(anyString(), any(), anyString(), any(), any(), any())).thenReturn(Page.empty());
+
+        service.search("", ClientType.NATURAL, ClientService.BalanceFilter.WITH_BALANCE, 0, 12);
+
+        verify(clients).searchByBalance(eq("%"), eq(List.of(ClientType.NATURAL)), eq("WITH"),
+                eq(com.example.funerariamc.model.enums.TransactionType.INCOME),
+                eq(com.example.funerariamc.model.enums.TransactionStatus.ACTIVE), eq(PageRequest.of(0, 12)));
+    }
+
+    @Test
+    void balanceFilterAllUsesPlainSearch() {
+        when(clients.search(anyString(), any(), any())).thenReturn(Page.empty());
+
+        service.search("", null, ClientService.BalanceFilter.ALL, 0, 12);
+
+        verify(clients).search(eq("%"), eq(List.of(ClientType.values())), eq(PageRequest.of(0, 12)));
+        verify(clients, never()).searchByBalance(anyString(), any(), anyString(), any(), any(), any());
+    }
+
+    @Test
+    void upToDateFilterPreservesSearchNormalizationAndPageBounds() {
+        when(clients.searchByBalance(anyString(), any(), anyString(), any(), any(), any())).thenReturn(Page.empty());
+
+        service.search(" 1.065.832 ", null, ClientService.BalanceFilter.UP_TO_DATE, -3, 500);
+
+        verify(clients).searchByBalance(eq("%1065832%"), eq(List.of(ClientType.values())), eq("WITHOUT"),
+                eq(com.example.funerariamc.model.enums.TransactionType.INCOME),
+                eq(com.example.funerariamc.model.enums.TransactionStatus.ACTIVE),
+                eq(PageRequest.of(0, ClientService.MAX_PAGE_SIZE)));
+    }
+
+    @Test
+    void nullBalanceFilterUsesPlainSearch() {
+        when(clients.search(anyString(), any(), any())).thenReturn(Page.empty());
+        service.search("", null, null, 0, 10);
+        verify(clients).search(eq("%"), eq(List.of(ClientType.values())), eq(PageRequest.of(0, 10)));
+        verify(clients, never()).searchByBalance(anyString(), any(), anyString(), any(), any(), any());
+    }
+
+    @Test
     void findByDocumentNormalizesBeforeLooking() {
         service.findByDocument("1.065.832.417");
 
@@ -389,6 +430,8 @@ class ClientServiceTest {
 
     private void assertClientAccessDenied() {
         assertThrows(UnauthorizedActionException.class, () -> service.search("", null, 0, 10));
+        assertThrows(UnauthorizedActionException.class,
+                () -> service.search("", null, ClientService.BalanceFilter.WITH_BALANCE, 0, 10));
         assertThrows(UnauthorizedActionException.class, () -> service.count(null));
         assertThrows(UnauthorizedActionException.class, () -> service.findById(40L));
         assertThrows(UnauthorizedActionException.class, () -> service.findByDocument("1065832417"));

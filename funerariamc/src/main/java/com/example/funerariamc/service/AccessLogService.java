@@ -43,6 +43,18 @@ public class AccessLogService {
     public static final String CLIENT_UPDATED = "CLIENT_UPDATED: ";
     public static final String USER_ACCOUNT_CREATED = "USER_ACCOUNT_CREATED: ";
     public static final String PASSWORD_CHANGED = "PASSWORD_CHANGED";
+    public static final String SYSTEM_PARAMETER_UPDATED = "SYSTEM_PARAMETER_UPDATED: ";
+    public static final String DECEASED_REGISTERED = "DECEASED_REGISTERED: ";
+    public static final String DEATH_DOCUMENT_ADDED = "DEATH_DOCUMENT_ADDED: ";
+    public static final String DECEASED_PLAN_LINKED = "DECEASED_PLAN_LINKED: ";
+    public static final String PLAN_REGISTERED = "PLAN_REGISTERED: ";
+    public static final String BENEFICIARY_ADDED = "BENEFICIARY_ADDED: ";
+    public static final String PLAN_PAYMENT_REGISTERED = "PLAN_PAYMENT_REGISTERED: ";
+    public static final String PLAN_PAYMENT_VOIDED = "PLAN_PAYMENT_VOIDED: ";
+    public static final String PLAN_SUSPENDED = "PLAN_SUSPENDED: ";
+    public static final String PLAN_REACTIVATED = "PLAN_REACTIVATED: ";
+    public static final String PLAN_CANCELLED = "PLAN_CANCELLED: ";
+    public static final String PLAN_HOLDER_CHANGED = "PLAN_HOLDER_CHANGED: ";
 
     /** Límite técnico de filas por página del contrato de bitácora EP-01. */
     public static final int MAX_PAGE_SIZE = 100;

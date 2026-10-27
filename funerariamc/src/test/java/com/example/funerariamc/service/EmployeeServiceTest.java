@@ -46,7 +46,8 @@ class EmployeeServiceTest {
     private final AppUserRepository users = mock(AppUserRepository.class);
     private final AccessLogService accessLog = mock(AccessLogService.class);
     private final SessionContext session = new SessionContext();
-    private final EmployeeService service = new EmployeeService(employees, persons, users, accessLog, session);
+    private final SystemParameterService parameters = mock(SystemParameterService.class);
+    private final EmployeeService service = new EmployeeService(employees, persons, users, accessLog, session, parameters);
 
     @BeforeEach
     void loginAsMasterAdmin() {
@@ -429,6 +430,8 @@ class EmployeeServiceTest {
         assertThrows(UnauthorizedActionException.class,
                 () -> service.searchByPositions("", null, List.of(EmployeePosition.MANAGER), 0, 10));
         assertThrows(UnauthorizedActionException.class, () -> service.count(null));
+        assertThrows(UnauthorizedActionException.class, service::countExpiringDocuments);
+        assertThrows(UnauthorizedActionException.class, () -> service.hasLicenseExpiringSoon(new Driver()));
         assertThrows(UnauthorizedActionException.class, () -> service.findById(7L));
         assertThrows(UnauthorizedActionException.class,
                 () -> service.register(receptionist("77000111", null)));
@@ -436,6 +439,90 @@ class EmployeeServiceTest {
                 () -> service.update(7L, receptionist("77000111", null)));
         assertThrows(UnauthorizedActionException.class, () -> service.activate(7L));
         assertThrows(UnauthorizedActionException.class, () -> service.deactivate(7L));
+        verifyNoInteractions(employees, persons, users, accessLog, parameters);
+    }
+
+    @Test
+    void documentCountUsesTheAgreedParameterAndOnlyActiveDrivers() {
+        LocalDate limit = LocalDate.now(AccessLogService.APP_ZONE).plusDays(12);
+        when(parameters.getLong("DOC_EXPIRY_WARNING_DAYS")).thenReturn(12L);
+        when(employees.countDriversWithLicenseExpiringBy(EmployeeStatus.ACTIVE, limit)).thenReturn(3L);
+
+        assertEquals(3L, service.countExpiringDocuments());
+
+        verify(parameters).getLong("DOC_EXPIRY_WARNING_DAYS");
+        verify(employees).countDriversWithLicenseExpiringBy(EmployeeStatus.ACTIVE, limit);
+    }
+
+    @Test
+    void warningWindowIncludesTodayAndItsLastDayButNotExpiredOrLaterLicenses() {
+        LocalDate today = LocalDate.now(AccessLogService.APP_ZONE);
+        when(parameters.getLong(EmployeeService.DOC_EXPIRY_WARNING_DAYS)).thenReturn(12L);
+        Driver driver = new Driver();
+
+        driver.setLicenseExpiryDate(today);
+        assertTrue(service.hasLicenseExpiringSoon(driver));
+        driver.setLicenseExpiryDate(today.plusDays(12));
+        assertTrue(service.hasLicenseExpiringSoon(driver));
+        driver.setLicenseExpiryDate(today.plusDays(13));
+        assertFalse(service.hasLicenseExpiringSoon(driver));
+        driver.setLicenseExpiryDate(today.minusDays(1));
+        assertFalse(service.hasLicenseExpiringSoon(driver));
+    }
+
+    @Test
+    void changedConfigurationChangesTheWarningWithoutAFixedThirtyDayDefault() {
+        when(parameters.getLong(EmployeeService.DOC_EXPIRY_WARNING_DAYS)).thenReturn(10L, 15L);
+        Driver driver = new Driver();
+        driver.setLicenseExpiryDate(LocalDate.now(AccessLogService.APP_ZONE).plusDays(12));
+
+        assertFalse(service.hasLicenseExpiringSoon(driver));
+        assertTrue(service.hasLicenseExpiringSoon(driver));
+    }
+
+    @Test
+    void zeroDayWindowOnlyFlagsLicensesExpiringToday() {
+        when(parameters.getLong(EmployeeService.DOC_EXPIRY_WARNING_DAYS)).thenReturn(0L);
+        Driver driver = new Driver();
+        driver.setLicenseExpiryDate(LocalDate.now(AccessLogService.APP_ZONE));
+        assertTrue(service.hasLicenseExpiringSoon(driver));
+        driver.setLicenseExpiryDate(LocalDate.now(AccessLogService.APP_ZONE).plusDays(1));
+        assertFalse(service.hasLicenseExpiringSoon(driver));
+    }
+
+    @Test
+    void nonDriversMissingDatesAndExpiredLicensesDoNotReadTheWarningParameter() {
+        Driver expired = new Driver();
+        expired.setLicenseExpiryDate(LocalDate.now(AccessLogService.APP_ZONE).minusDays(1));
+
+        assertFalse(service.hasLicenseExpiringSoon(new Receptionist()));
+        assertFalse(service.hasLicenseExpiringSoon(new Driver()));
+        assertFalse(service.hasLicenseExpiringSoon(expired));
+        assertFalse(service.hasLicenseExpiringSoon(null));
+        verifyNoInteractions(parameters, employees);
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = {-1, 2147483648L, Long.MAX_VALUE})
+    void invalidWarningDaysAreRejectedBeforeQueryingDrivers(long days) {
+        when(parameters.getLong(EmployeeService.DOC_EXPIRY_WARNING_DAYS)).thenReturn(days);
+        Driver driver = new Driver();
+        driver.setLicenseExpiryDate(LocalDate.now(AccessLogService.APP_ZONE).plusDays(1));
+
+        assertThrows(InvalidDataException.class, service::countExpiringDocuments);
+        assertThrows(InvalidDataException.class, () -> service.hasLicenseExpiringSoon(driver));
+        verifyNoInteractions(employees);
+    }
+
+    @Test
+    void missingWarningParameterIsReportedInsteadOfInventingADefault() {
+        InvalidDataException failure = new InvalidDataException("Falta configuración");
+        when(parameters.getLong(EmployeeService.DOC_EXPIRY_WARNING_DAYS)).thenThrow(failure);
+        Driver driver = new Driver();
+        driver.setLicenseExpiryDate(LocalDate.now(AccessLogService.APP_ZONE).plusDays(1));
+
+        assertSame(failure, assertThrows(InvalidDataException.class, service::countExpiringDocuments));
+        assertSame(failure, assertThrows(InvalidDataException.class, () -> service.hasLicenseExpiringSoon(driver)));
         verifyNoInteractions(employees, persons, users, accessLog);
     }
 
