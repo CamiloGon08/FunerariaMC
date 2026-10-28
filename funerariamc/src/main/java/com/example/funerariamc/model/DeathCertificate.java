@@ -1,5 +1,6 @@
 package com.example.funerariamc.model;
 
+import com.example.funerariamc.model.enums.DocumentType;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
@@ -25,9 +26,9 @@ public class DeathCertificate {
     @JoinColumn(name = "deceased_id", nullable = false)
     private Deceased deceased;
 
-    // MEDICAL_CERTIFICATE, FORENSIC_REPORT, BODY_RELEASE_ORDER
+    @Enumerated(EnumType.STRING)
     @Column(name = "document_type", length = 40)
-    private String documentType;
+    private DocumentType documentType;
 
     @Column(name = "issuing_authority", length = 100)
     private String issuingAuthority;
@@ -48,6 +49,8 @@ public class DeathCertificate {
     @JoinColumn(name = "registered_by_employee_id")
     private Employee registeredByEmployee;
 
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 }
+

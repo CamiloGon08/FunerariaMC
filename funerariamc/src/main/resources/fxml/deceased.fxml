@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ProgressBar?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.ToggleButton?>
+<?import javafx.scene.control.ToggleGroup?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Pane?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.shape.SVGPath?>
+
+<!--
+  Módulo Difuntos (RF-DIF-01 a RF-DIF-03, HU-56), propuesta P-13 / P-13.1: indicadores,
+  servicios en curso con su etapa, registro de difuntos, documentos pendientes, salidas de hoy
+  y el panel lateral con el expediente. Se muestra dentro del contentPane de main.fxml.
+-->
+<StackPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+           fx:id="root" fx:controller="com.example.funerariamc.controller.DeceasedController"
+           styleClass="personal-root"
+           stylesheets="@../css/personal.css, @../css/cemetery.css, @../css/deceased.css">
+
+    <fx:define>
+        <ToggleGroup fx:id="segmentGroup"/>
+    </fx:define>
+
+    <VBox spacing="18">
+        <!-- Búsqueda, segmentos, tipo de muerte, mes y registrar -->
+        <HBox styleClass="filter-card">
+            <HBox styleClass="search-box" HBox.hgrow="ALWAYS" minWidth="150">
+                <SVGPath content="M7 1.5a5.5 5.5 0 1 1 0 11a5.5 5.5 0 0 1 0-11z M11.2 11.2 L15 15" styleClass="search-icon"/>
+                <TextField fx:id="searchField" promptText="Buscar nombre, documento o contrato" HBox.hgrow="ALWAYS"/>
+            </HBox>
+            <HBox styleClass="segmented" minWidth="-Infinity">
+                <ToggleButton fx:id="allToggle" text="Todos" toggleGroup="$segmentGroup" selected="true" styleClass="segment"/>
+                <ToggleButton fx:id="serviceToggle" text="En servicio" toggleGroup="$segmentGroup" styleClass="segment"/>
+                <ToggleButton fx:id="planToggle" text="Con plan" toggleGroup="$segmentGroup" styleClass="segment"/>
+                <ToggleButton fx:id="noPlanToggle" text="Sin plan" toggleGroup="$segmentGroup" styleClass="segment"/>
+            </HBox>
+            <ComboBox fx:id="deathTypeFilter" styleClass="chip-combo" prefWidth="165" minWidth="165"/>
+            <ComboBox fx:id="monthFilter" styleClass="chip-combo" prefWidth="175" minWidth="175"/>
+            <Button text="+  Registrar difunto" onAction="#onRegister" styleClass="primary-button" minWidth="-Infinity"/>
+        </HBox>
+
+        <!-- Todo lo de abajo se desplaza con la barra visible (sin paginación) -->
+        <ScrollPane fx:id="pageScroll" fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="ALWAYS"
+                    styleClass="card-scroll" VBox.vgrow="ALWAYS">
+            <VBox spacing="18" styleClass="card-scroll-content">
+                <!-- Indicadores -->
+                <HBox spacing="16">
+                    <VBox styleClass="kpi-card" HBox.hgrow="ALWAYS" prefWidth="0">
+                        <Label fx:id="monthCaption" text="INGRESOS DEL MES" styleClass="kpi-caption"/>
+                        <Label fx:id="monthValue" text="—" styleClass="kpi-value"/>
+                        <Label fx:id="monthDetail" styleClass="kpi-detail" wrapText="true"/>
+                    </VBox>
+                    <VBox styleClass="kpi-card" HBox.hgrow="ALWAYS" prefWidth="0">
+                        <Label text="EN SERVICIO AHORA" styleClass="kpi-caption"/>
+                        <Label fx:id="serviceValue" text="—" styleClass="kpi-value"/>
+                        <Label fx:id="serviceDetail" styleClass="kpi-detail" wrapText="true"/>
+                    </VBox>
+                    <VBox styleClass="kpi-card" HBox.hgrow="ALWAYS" prefWidth="0">
+                        <Label text="DOCUMENTOS PENDIENTES" styleClass="kpi-caption"/>
+                        <Label fx:id="pendingValue" text="—" styleClass="kpi-value"/>
+                        <Label fx:id="pendingDetail" styleClass="kpi-detail" wrapText="true"/>
+                    </VBox>
+                    <VBox styleClass="kpi-card" HBox.hgrow="ALWAYS" prefWidth="0">
+                        <Label text="CON PLAN EXEQUIAL" styleClass="kpi-caption"/>
+                        <Label fx:id="planValue" text="—" styleClass="kpi-value"/>
+                        <ProgressBar fx:id="planBar" progress="0" maxWidth="Infinity" styleClass="occupancy-bar"/>
+                        <Label fx:id="planDetail" styleClass="kpi-detail"/>
+                    </VBox>
+                </HBox>
+
+                <!-- En servicio ahora: una tarjeta por difunto con contrato activo -->
+                <HBox alignment="CENTER_LEFT" spacing="12">
+                    <Label text="En servicio ahora" styleClass="section-heading-serif"/>
+                    <Pane HBox.hgrow="ALWAYS"/>
+                    <HBox fx:id="legend" spacing="12" alignment="CENTER_RIGHT"/>
+                </HBox>
+                <HBox fx:id="serviceCards" spacing="16"/>
+                <Label fx:id="serviceEmpty" styleClass="card-subtitle" managed="false" visible="false"
+                       text="No hay difuntos en servicio en este momento."/>
+
+                <HBox spacing="16" fillHeight="false">
+                    <!-- Registro de difuntos -->
+                    <VBox styleClass="table-card" HBox.hgrow="ALWAYS" minWidth="0" spacing="6">
+                        <HBox alignment="CENTER_LEFT" spacing="12">
+                            <Label text="Registro de difuntos" styleClass="card-title"/>
+                            <Pane HBox.hgrow="ALWAYS"/>
+                            <Label fx:id="countLabel" styleClass="card-subtitle"/>
+                        </HBox>
+                        <HBox styleClass="registry-header">
+                            <Label text="DIFUNTO" styleClass="col-name"/>
+                            <Label text="FALLECIMIENTO" styleClass="col-date"/>
+                            <Label text="MUERTE" styleClass="col-type"/>
+                            <Label text="PLAN EXEQUIAL" styleClass="col-plan"/>
+                            <Label text="DESTINO" styleClass="col-destination"/>
+                            <Label text="DOCUMENTOS" styleClass="col-docs"/>
+                        </HBox>
+                        <VBox fx:id="registryBox"/>
+                        <Label fx:id="emptyLabel" styleClass="card-subtitle" wrapText="true" managed="false" visible="false"/>
+                    </VBox>
+
+                    <!-- Columna derecha -->
+                    <VBox spacing="16" prefWidth="320" minWidth="290" maxWidth="340">
+                        <VBox styleClass="table-card" spacing="10">
+                            <HBox alignment="CENTER_LEFT">
+                                <Label text="Documentos pendientes" styleClass="side-title"/>
+                                <Pane HBox.hgrow="ALWAYS"/>
+                                <Label fx:id="pendingCount" styleClass="count-badge"/>
+                            </HBox>
+                            <VBox fx:id="pendingBox" spacing="8"/>
+                        </VBox>
+                        <VBox styleClass="table-card" spacing="10">
+                            <Label text="Salidas de hoy" styleClass="side-title"/>
+                            <VBox fx:id="departureBox" spacing="10"/>
+                        </VBox>
+                    </VBox>
+                </HBox>
+            </VBox>
+        </ScrollPane>
+    </VBox>
+
+    <!-- Expediente (P-13.1): velo que oscurece la pantalla y panel a la derecha -->
+    <Region fx:id="veil" styleClass="drawer-veil" visible="false" onMouseClicked="#onCloseDrawer"/>
+    <VBox fx:id="drawer" styleClass="drawer" StackPane.alignment="CENTER_RIGHT"
+          prefWidth="460" maxWidth="460" visible="false">
+        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="card-scroll" VBox.vgrow="ALWAYS">
+            <VBox fx:id="drawerBody" spacing="14" styleClass="drawer-body"/>
+        </ScrollPane>
+        <HBox fx:id="drawerActions" spacing="10" styleClass="drawer-footer"/>
+    </VBox>
+</StackPane>
