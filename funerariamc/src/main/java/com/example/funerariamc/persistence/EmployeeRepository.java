@@ -51,4 +51,22 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
     long countDriversWithLicenseExpiringBy(@Param("status") EmployeeStatus status,
                                            @Param("limit") LocalDate limit);
 
+    /** Los 4 indicadores de Personal en una sola consulta (antes eran 4 viajes a Supabase). */
+    interface StaffCounts {
+        long getTotal();
+        long getActive();
+        long getWithAccount();
+        long getExpiring();
+    }
+
+    @Query(value = """
+            select (select count(*) from employee) as total,
+                   (select count(*) from employee where status = 'ACTIVE') as active,
+                   (select count(*) from app_user u join employee e on e.id = u.employee_id
+                     where e.status = 'ACTIVE') as withAccount,
+                   (select count(*) from driver d join employee e on e.id = d.id
+                     where e.status = 'ACTIVE' and d.license_expiry_date <= :limit) as expiring
+            """, nativeQuery = true)
+    StaffCounts countStaff(@Param("limit") LocalDate limit);
+
 }
