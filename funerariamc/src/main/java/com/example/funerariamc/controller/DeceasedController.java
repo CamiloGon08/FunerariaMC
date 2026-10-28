@@ -30,12 +30,13 @@ import javafx.animation.FadeTransition;
 import javafx.animation.ParallelTransition;
 import javafx.animation.PauseTransition;
 import javafx.animation.TranslateTransition;
+import javafx.beans.binding.Bindings;
+import javafx.beans.value.ObservableBooleanValue;
 import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.geometry.VPos;
 import javafx.scene.Node;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
@@ -52,6 +53,7 @@ import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
+import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
@@ -515,6 +517,7 @@ public class DeceasedController implements RefreshableView {
                 label(item.planCode() + " · " + orDash(item.coverage()).toLowerCase(ES), "row-detail"))
                 : new VBox(label("Sin plan", "row-detail"));
         plan.getStyleClass().add("col-plan");
+        plan.setAlignment(Pos.CENTER_LEFT);
 
         Label destination = label(item.destination() == null ? item.stage().getLabel() : item.destination(), "row-text");
         destination.getStyleClass().add("col-destination");
@@ -694,9 +697,10 @@ public class DeceasedController implements RefreshableView {
         caption.getStyleClass().add("kpi-caption");
         List<String> facts = new ArrayList<>();
         facts.add(item.unidentified() ? "Sin identificar" : "CC " + orDash(item.documentNumber()));
-        String born = d.deceased().getBirthDate() == null ? "?" : DATE.format(d.deceased().getBirthDate());
-        String died = item.deathDate() == null ? "?" : DATE.format(item.deathDate());
-        facts.add(born + " – " + died);
+        // Sin fecha de nacimiento solo se muestra la de defunción (no un «?»)
+        String died = item.deathDate() == null ? "Sin fecha de defunción" : "Falleció el " + DATE.format(item.deathDate());
+        facts.add(d.deceased().getBirthDate() == null ? died
+                : DATE.format(d.deceased().getBirthDate()) + " – " + orDash(item.deathDate() == null ? null : DATE.format(item.deathDate())));
         if (item.age() != null) {
             facts.add(item.age() + " años");
         }
@@ -916,67 +920,64 @@ public class DeceasedController implements RefreshableView {
             node.disableProperty().bind(unidentified.selectedProperty());
         }
         unidentified.selectedProperty().addListener((obs, old, nn) -> {
-            lastname.setPromptText(nn ? "Descripción corta (ej. hombre adulto)" : "Apellidos");
             if (nn) {
                 planBox.setValue(null);
             }
         });
+        // RF-DIF-02: el NN se registra solo con el nombre «NN», sin apellidos ni documento
+        Label nnNote = note("Se registrará con el nombre «NN» y sin número de documento (RF-DIF-02). "
+                + "El cliente responsable es opcional y no se vincula a un plan.");
 
         // Certificado de defunción (RN-02)
         TextField authority = new TextField();
-        authority.setPromptText("Entidad que lo expide (clínica, Medicina Legal…)");
+        authority.setPromptText("Clínica, Medicina Legal…");
         TextField number = new TextField();
         number.setPromptText("Número del certificado");
         DatePicker issued = new DatePicker(LocalDate.now(AccessLogService.APP_ZONE));
         Path[] file = new Path[1];
         HBox fileBox = fileChooser(file);
 
-        GridPane form = dialogForm();
-        int row = 0;
-        addField(form, row++, "", unidentified);
-        addField(form, row++, "NOMBRES", name);
-        addField(form, row++, "APELLIDOS", lastname);
-        addField(form, row++, "DOCUMENTO", document);
-        addField(form, row++, "NACIMIENTO", birth);
-        addField(form, row++, "DEFUNCIÓN", death);
-        addField(form, row++, "TIPO DE MUERTE", new VBox(6, type, cause, typeHint));
-        addField(form, row++, "RESPONSABLE", new VBox(6, clientSearch, clientBox));
-        addField(form, row++, "PLAN EXEQUIAL", new VBox(4, planBox, planHint));
-        Label certTitle = new Label("CERTIFICADO DE DEFUNCIÓN (obligatorio)");
-        certTitle.getStyleClass().add("kpi-caption");
-        form.add(certTitle, 0, row++, 2, 1);
-        addField(form, row++, "ENTIDAD", authority);
-        addField(form, row++, "NÚMERO", number);
-        addField(form, row++, "EXPEDICIÓN", issued);
-        addField(form, row, "ARCHIVO", fileBox);
+        unidentified.getStyleClass().add("form-check");
+        Label causeHint = typeHint;
+        causeHint.setPrefWidth(Region.USE_COMPUTED_SIZE);
+        Form form = new Form()
+                .section("Datos del difunto", 3)
+                .wide(null, unidentified)
+                .wide(null, nnNote).hideWhen(unidentified.selectedProperty().not())
+                .field("NOMBRES *", name).hideWhen(unidentified.selectedProperty())
+                .field("APELLIDOS *", lastname).hideWhen(unidentified.selectedProperty())
+                .field("NÚMERO DE DOCUMENTO *", document).hideWhen(unidentified.selectedProperty())
+                .field("FECHA DE NACIMIENTO", birth)
+                .field("FECHA DE DEFUNCIÓN *", death)
+                .field("TIPO DE MUERTE *", type)
+                .field("CAUSA EXTERNA", cause)
+                .span(null, causeHint, 2)
+                .section("Responsable y plan exequial", 2)
+                .field("CLIENTE RESPONSABLE *", new VBox(6, clientSearch, clientBox))
+                .captionWhen(unidentified.selectedProperty(), "CLIENTE RESPONSABLE")
+                .field("PLAN EXEQUIAL", new VBox(4, planBox, planHint))
+                .section("Certificado de defunción (RN-02)", 3)
+                .field("ENTIDAD QUE LO EXPIDE *", authority)
+                .field("NÚMERO DEL CERTIFICADO *", number)
+                .field("FECHA DE EXPEDICIÓN *", issued)
+                .wide("ARCHIVO *", fileBox);
 
-        ScrollPane scroll = new ScrollPane(form);
-        scroll.setFitToWidth(true);
-        scroll.setPrefViewportHeight(560);
-        scroll.getStyleClass().add("card-scroll");
-        Dialog<ButtonType> dialog = dialog("Registrar difunto", scroll);
-        ButtonType save = new ButtonType("Registrar", ButtonBar.ButtonData.OK_DONE);
-        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.CANCEL, save);
-        Button saveButton = (Button) dialog.getDialogPane().lookupButton(save);
-        saveButton.getStyleClass().add("primary-dialog-button");
+        Dialog<ButtonType> dialog = formDialog("Registrar difunto",
+                "Los campos con * son obligatorios. Sin el certificado de defunción no se registra el difunto.",
+                form, 760, true);
         Long[] savedId = new Long[1];
-        saveButton.addEventFilter(ActionEvent.ACTION, event -> {
-            try {
-                boolean nn = unidentified.isSelected();
-                PlanSuggestion plan = planBox.getValue();
-                DeceasedData data = new DeceasedData(nn, nn ? DeceasedService.UNIDENTIFIED_NAME : name.getText(),
-                        lastname.getText(), nn ? null : document.getText(), birth.getValue(), death.getValue(),
-                        type.getValue(), cause.getValue(), idOf(clientBox.getValue()),
-                        nn || plan == null ? null : plan.planId());
-                DeathDocumentData certificate = new DeathDocumentData(DocumentType.MEDICAL_CERTIFICATE,
-                        authority.getText(), number.getText(), issued.getValue(), file[0], null);
-                savedId[0] = deceasedService.register(data, certificate).getId();
-            } catch (BusinessException e) {
-                event.consume(); // el diálogo sigue abierto para corregir
-                showError(e.getMessage());
-            }
+        boolean saved = runForm(dialog, form, "Registrar", () -> {
+            boolean nn = unidentified.isSelected();
+            PlanSuggestion plan = planBox.getValue();
+            DeceasedData data = new DeceasedData(nn, nn ? DeceasedService.UNIDENTIFIED_NAME : name.getText(),
+                    nn ? null : lastname.getText(), nn ? null : document.getText(), birth.getValue(), death.getValue(),
+                    type.getValue(), cause.getValue(), idOf(clientBox.getValue()),
+                    nn || plan == null ? null : plan.planId());
+            DeathDocumentData certificate = new DeathDocumentData(DocumentType.MEDICAL_CERTIFICATE,
+                    authority.getText(), number.getText(), issued.getValue(), file[0], null);
+            savedId[0] = deceasedService.register(data, certificate).getId();
         });
-        if (dialog.showAndWait().filter(save::equals).isPresent()) {
+        if (saved) {
             loadOverview(savedId[0]);
         }
     }
@@ -1023,30 +1024,21 @@ public class DeceasedController implements RefreshableView {
         notes.setPromptText("Opcional, máximo 150 caracteres");
         Path[] file = new Path[1];
 
-        GridPane form = dialogForm();
-        addField(form, 0, "DIFUNTO", label(fullName, "cell-strong"));
-        addField(form, 1, "DOCUMENTO", type);
-        addField(form, 2, "ENTIDAD", authority);
-        addField(form, 3, "NÚMERO", number);
-        addField(form, 4, "EXPEDICIÓN", issued);
-        addField(form, 5, "ARCHIVO", fileChooser(file));
-        addField(form, 6, "OBSERVACIONES", notes);
+        Form form = new Form()
+                .section(null, 2)
+                .wide("TIPO DE DOCUMENTO *", type)
+                .field("ENTIDAD QUE LO EXPIDE *", authority)
+                .field("NÚMERO DEL DOCUMENTO *", number)
+                .field("FECHA DE EXPEDICIÓN *", issued)
+                .field("OBSERVACIONES", notes)
+                .wide("ARCHIVO *", fileChooser(file));
 
-        Dialog<ButtonType> dialog = dialog("Subir documento", form);
-        ButtonType save = new ButtonType("Guardar", ButtonBar.ButtonData.OK_DONE);
-        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.CANCEL, save);
-        Button saveButton = (Button) dialog.getDialogPane().lookupButton(save);
-        saveButton.getStyleClass().add("primary-dialog-button");
-        saveButton.addEventFilter(ActionEvent.ACTION, event -> {
-            try {
-                certificateService.addDocument(deceasedId, new DeathDocumentData(type.getValue(), authority.getText(),
-                        number.getText(), issued.getValue(), file[0], notes.getText()));
-            } catch (BusinessException e) {
-                event.consume();
-                showError(e.getMessage());
-            }
-        });
-        if (dialog.showAndWait().filter(save::equals).isPresent()) {
+        Dialog<ButtonType> dialog = formDialog("Subir documento",
+                fullName + ". Los campos con * son obligatorios.", form, 640, false);
+        boolean saved = runForm(dialog, form, "Guardar", () -> certificateService.addDocument(deceasedId,
+                new DeathDocumentData(type.getValue(), authority.getText(), number.getText(), issued.getValue(),
+                        file[0], notes.getText())));
+        if (saved) {
             loadOverview(drawerDeceasedId != null ? deceasedId : null);
         }
     }
@@ -1059,25 +1051,17 @@ public class DeceasedController implements RefreshableView {
         Label hint = wrapped("", "dialog-hint");
         refreshPlans(d.deceased().getDocumentNumber(), d.deceased().getDeathDate(), planBox, hint);
 
-        GridPane form = dialogForm();
-        addField(form, 0, "DIFUNTO", label(d.item().fullName(), "cell-strong"));
-        addField(form, 1, "PLAN EXEQUIAL", new VBox(4, planBox, hint));
+        Form form = new Form()
+                .section(null, 1)
+                .field("PLAN EXEQUIAL", new VBox(4, planBox, hint));
 
-        Dialog<ButtonType> dialog = dialog("Vincular plan exequial", form);
-        ButtonType save = new ButtonType("Guardar", ButtonBar.ButtonData.OK_DONE);
-        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.CANCEL, save);
-        Button saveButton = (Button) dialog.getDialogPane().lookupButton(save);
-        saveButton.getStyleClass().add("primary-dialog-button");
-        saveButton.addEventFilter(ActionEvent.ACTION, event -> {
-            try {
-                PlanSuggestion plan = planBox.getValue();
-                deceasedService.linkPlan(d.item().id(), plan == null ? null : plan.planId());
-            } catch (BusinessException e) {
-                event.consume();
-                showError(e.getMessage());
-            }
+        Dialog<ButtonType> dialog = formDialog("Vincular plan exequial", d.item().fullName()
+                + ". Se buscan los planes donde su documento es titular o beneficiario.", form, 540, false);
+        boolean saved = runForm(dialog, form, "Guardar", () -> {
+            PlanSuggestion plan = planBox.getValue();
+            deceasedService.linkPlan(d.item().id(), plan == null ? null : plan.planId());
         });
-        if (dialog.showAndWait().filter(save::equals).isPresent()) {
+        if (saved) {
             loadOverview(d.item().id());
         }
     }
@@ -1184,19 +1168,117 @@ public class DeceasedController implements RefreshableView {
         return button;
     }
 
-    private static GridPane dialogForm() {
-        GridPane form = new GridPane();
-        form.getStyleClass().add("dialog-form");
-        return form;
+    /**
+     * Formulario de diálogo con el estilo de Registrar empleado (Personal): secciones con título y
+     * campos en columnas con la etiqueta en mayúsculas arriba.
+     */
+    private static final class Form {
+        private final VBox body = new VBox(14);
+        private final Label error = new Label();
+        private GridPane grid;
+        private int columns;
+        private int column;
+        private int row;
+        private VBox last;
+
+        Form() {
+            body.getStyleClass().add("form-body");
+            error.getStyleClass().add("error-label");
+            error.setWrapText(true);
+            error.managedProperty().bind(error.textProperty().isNotEmpty());
+            error.visibleProperty().bind(error.managedProperty());
+        }
+
+        Form section(String title, int columns) {
+            if (title != null) {
+                Label caption = new Label(title);
+                caption.getStyleClass().add("section-title");
+                body.getChildren().add(caption);
+            }
+            grid = new GridPane();
+            grid.setHgap(18);
+            grid.setVgap(12);
+            for (int i = 0; i < columns; i++) {
+                ColumnConstraints constraints = new ColumnConstraints();
+                constraints.setPercentWidth(100.0 / columns);
+                grid.getColumnConstraints().add(constraints);
+            }
+            this.columns = columns;
+            column = 0;
+            row = 0;
+            body.getChildren().add(grid);
+            return this;
+        }
+
+        Form field(String label, Node input) {
+            return span(label, input, 1);
+        }
+
+        Form wide(String label, Node input) {
+            return span(label, input, columns);
+        }
+
+        Form span(String label, Node input, int span) {
+            if (column + span > columns) {
+                column = 0;
+                row++;
+            }
+            VBox box = new VBox(2);
+            box.getStyleClass().add("form-field");
+            if (label != null) {
+                Label caption = new Label(label);
+                caption.getStyleClass().add("field-label");
+                box.getChildren().add(caption);
+            }
+            box.getChildren().add(input);
+            stretch(input);
+            grid.add(box, column, row, span, 1);
+            last = box;
+            column += span;
+            if (column >= columns) {
+                column = 0;
+                row++;
+            }
+            return this;
+        }
+
+        /** Oculta el último campo agregado mientras la condición sea verdadera (no deja hueco). */
+        Form hideWhen(ObservableBooleanValue condition) {
+            last.managedProperty().bind(Bindings.not(condition));
+            last.visibleProperty().bind(Bindings.not(condition));
+            return this;
+        }
+
+        /** Cambia la etiqueta del último campo mientras la condición sea verdadera. */
+        Form captionWhen(ObservableBooleanValue condition, String caption) {
+            Label label = (Label) last.getChildren().get(0);
+            label.textProperty().bind(Bindings.when(condition).then(caption).otherwise(label.getText()));
+            return this;
+        }
+
+        Form note(Node note) {
+            body.getChildren().add(note);
+            return this;
+        }
+
+        /** Los campos ocupan todo el ancho de su columna, también dentro de un VBox. */
+        private static void stretch(Node node) {
+            if (node instanceof Region region && !(node instanceof Label) && !(node instanceof CheckBox)) {
+                region.setMaxWidth(Double.MAX_VALUE);
+            }
+            if (node instanceof VBox box) {
+                box.getChildren().forEach(Form::stretch);
+            }
+        }
     }
 
-    private static void addField(GridPane form, int row, String label, Node field) {
-        Label caption = new Label(label);
-        caption.getStyleClass().add("field-label");
-        caption.setMinWidth(Region.USE_PREF_SIZE);
-        GridPane.setValignment(caption, VPos.TOP);
-        form.add(caption, 0, row);
-        form.add(field, 1, row);
+    /** Recuadro salvia de aviso (como en Crear cuenta); se oculta mientras no tenga texto. */
+    private static Label note(String text) {
+        Label note = wrapped(text, "note-info");
+        note.setMaxWidth(Double.MAX_VALUE);
+        note.managedProperty().bind(note.textProperty().isNotEmpty());
+        note.visibleProperty().bind(note.managedProperty());
+        return note;
     }
 
     private static TextField searchInput(String prompt) {
@@ -1231,15 +1313,50 @@ public class DeceasedController implements RefreshableView {
         refresh.run();
     }
 
-    private Dialog<ButtonType> dialog(String title, Node content) {
+    /** Diálogo de formulario: título, subtítulo, el formulario y abajo Cancelar y la acción. */
+    private Dialog<ButtonType> formDialog(String title, String subtitle, Form form, double width, boolean scroll) {
+        VBox header = new VBox(2, label(title, "form-title"), wrapped(subtitle, "card-subtitle"));
+        header.getStyleClass().add("form-header");
+        Node center = form.body;
+        if (scroll) {
+            ScrollPane pane = new ScrollPane(form.body);
+            pane.setFitToWidth(true);
+            pane.setPrefViewportHeight(520);
+            pane.getStyleClass().add("form-scroll");
+            center = pane;
+        }
+        // El error va fuera del desplazamiento para que se vea aunque el formulario sea largo.
+        VBox.setMargin(form.error, new Insets(6, 28, 4, 28));
+        VBox content = new VBox(header, center, form.error);
+        content.getStyleClass().add("form-root");
+        content.setPrefWidth(width);
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle(title);
-        dialog.setHeaderText(title);
         dialog.initOwner(window());
         DialogPane pane = dialog.getDialogPane();
         pane.setContent(content);
         styleDialog(pane);
+        pane.getStyleClass().add("form-dialog");
         return dialog;
+    }
+
+    /** Muestra el formulario; si el servicio rechaza los datos, el mensaje sale abajo y el diálogo sigue abierto. */
+    private boolean runForm(Dialog<ButtonType> dialog, Form form, String okText, Runnable save) {
+        ButtonType ok = new ButtonType(okText, ButtonBar.ButtonData.OK_DONE);
+        ButtonType cancel = new ButtonType("Cancelar", ButtonBar.ButtonData.CANCEL_CLOSE);
+        dialog.getDialogPane().getButtonTypes().setAll(cancel, ok);
+        Button okButton = (Button) dialog.getDialogPane().lookupButton(ok);
+        okButton.getStyleClass().add("primary-dialog-button");
+        okButton.addEventFilter(ActionEvent.ACTION, event -> {
+            try {
+                form.error.setText("");
+                save.run();
+            } catch (BusinessException | NumberFormatException e) {
+                event.consume();
+                form.error.setText(e.getMessage());
+            }
+        });
+        return dialog.showAndWait().filter(ok::equals).isPresent();
     }
 
     private static void styleDialog(DialogPane pane) {
@@ -1248,6 +1365,10 @@ public class DeceasedController implements RefreshableView {
                 DeceasedController.class.getResource("/css/personal.css").toExternalForm(),
                 DeceasedController.class.getResource("/css/deceased.css").toExternalForm());
         pane.getStyleClass().add("personal-dialog");
+        // Cancelar a la izquierda y la acción a la derecha también en Windows, como en Personal.
+        if (pane.lookup(".button-bar") instanceof ButtonBar bar) {
+            bar.setButtonOrder(ButtonBar.BUTTON_ORDER_LINUX);
+        }
     }
 
     private void showError(String message) {
