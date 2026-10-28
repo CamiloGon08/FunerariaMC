@@ -1,8 +1,46 @@
 /*
- * Módulo Difuntos (propuesta P-13 / P-13.1). Se carga después de personal.css y cemetery.css
- * (segmentos, indicadores, columna derecha, panel lateral) y usa los colores de app.css.
+ * Módulo Difuntos (propuesta P-13 / P-13.1). Se carga después de personal.css y usa los colores de app.css.
+ * No depende de cemetery.css: los estilos compartidos están copiados abajo.
  * Etapas: preparación en caqui, velación y traslado en verde, falta de documento en terracota.
  */
+
+/* ---------- Comunes (segmentos, indicadores, columna derecha, panel y diálogos) ---------- */
+.segmented { -fx-background-color: -color-surface; -fx-background-radius: 12; -fx-padding: 3; -fx-spacing: 2; -fx-alignment: center-left; }
+.segment { -fx-background-color: transparent; -fx-text-fill: -color-primary; -fx-background-radius: 10; -fx-padding: 7 14; -fx-font-weight: bold; -fx-font-size: 12.5px; -fx-cursor: hand; }
+.segment:hover { -fx-background-color: rgba(250,249,246,0.6); }
+.segment:selected { -fx-background-color: -color-accent; -fx-text-fill: -color-background; }
+.segmented.view .segment:selected { -fx-background-color: -color-card; -fx-text-fill: -color-primary; }
+.kpi-alert { -fx-text-fill: -color-error; }
+.occupancy-bar > .track { -fx-background-color: -color-surface; -fx-background-radius: 999; -fx-background-insets: 0; }
+.occupancy-bar > .bar { -fx-background-color: -color-accent; -fx-background-radius: 999; -fx-background-insets: 0; -fx-padding: 3; }
+.legend-item { -fx-spacing: 5; -fx-alignment: center-left; }
+.legend-text { -fx-text-fill: -color-secondary; -fx-font-size: 11.5px; }
+.side-title { -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif; -fx-font-size: 21px; -fx-text-fill: -color-primary; }
+.count-badge { -fx-background-color: -color-error-bg; -fx-text-fill: -color-error; -fx-background-radius: 999; -fx-padding: 2 8; -fx-font-size: 11px; -fx-font-weight: bold; }
+.attention-row { -fx-spacing: 10; -fx-alignment: center-left; -fx-padding: 4 0; }
+.attention-code { -fx-min-width: 44; -fx-pref-width: 44; -fx-min-height: 38; -fx-alignment: center; -fx-background-radius: 8; -fx-font-weight: bold; -fx-font-size: 12px; }
+.code-overdue { -fx-background-color: -color-error-bg; -fx-text-fill: -color-error; }
+.code-expiring { -fx-background-color: #F1EAD9; -fx-text-fill: -color-gold-text; }
+.attention-name { -fx-text-fill: -color-primary; -fx-font-weight: bold; -fx-font-size: 13px; }
+.attention-detail-overdue { -fx-text-fill: -color-error; -fx-font-size: 12px; }
+.attention-detail-expiring { -fx-text-fill: -color-gold-text; -fx-font-size: 12px; }
+.text-action { -fx-background-color: transparent; -fx-text-fill: -color-primary; -fx-font-weight: bold; -fx-font-size: 12.5px; -fx-padding: 4 6; -fx-cursor: hand; -fx-background-radius: 8; }
+.text-action:hover { -fx-background-color: -color-surface; }
+.exhumation-title { -fx-text-fill: -color-primary; -fx-font-weight: bold; -fx-font-size: 13px; }
+.exhumation-detail { -fx-text-fill: -color-secondary; -fx-font-size: 12px; }
+.timeline-row { -fx-spacing: 12; -fx-alignment: top-left; }
+.timeline-dot { -fx-fill: -color-primary; }
+.timeline-dot.past { -fx-fill: -color-border; }
+.timeline-title { -fx-text-fill: -color-primary; -fx-font-weight: bold; -fx-font-size: 13px; }
+.timeline-title.past { -fx-text-fill: -color-secondary; }
+.timeline-date { -fx-text-fill: -color-secondary; -fx-font-size: 11.5px; }
+.drawer-secondary { -fx-background-color: transparent; -fx-text-fill: -color-primary; -fx-border-color: -color-border; }
+.drawer-secondary:hover { -fx-background-color: -color-surface; }
+.drawer-secondary:disabled { -fx-opacity: 0.55; }
+.dialog-form { -fx-hgap: 14; -fx-vgap: 10; -fx-padding: 4 16 8 16; }
+.dialog-form .combo-box, .dialog-form .date-picker { -fx-pref-width: 300; }
+.dialog-hint { -fx-text-fill: -color-secondary; -fx-font-size: 12px; }
+
 
 .section-heading-serif { -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif; -fx-font-size: 24px; -fx-text-fill: -color-primary; }
 .kpi-up { -fx-text-fill: -color-accent; }

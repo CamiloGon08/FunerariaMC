@@ -15,15 +15,11 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.shape.SVGPath?>
 
-<!--
-  Módulo Difuntos (RF-DIF-01 a RF-DIF-03, HU-56), propuesta P-13 / P-13.1: indicadores,
-  servicios en curso con su etapa, registro de difuntos, documentos pendientes, salidas de hoy
-  y el panel lateral con el expediente. Se muestra dentro del contentPane de main.fxml.
--->
+
 <StackPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
            fx:id="root" fx:controller="com.example.funerariamc.controller.DeceasedController"
            styleClass="personal-root"
-           stylesheets="@../css/personal.css, @../css/cemetery.css, @../css/deceased.css">
+           stylesheets="@../css/personal.css, @../css/deceased.css">
 
     <fx:define>
         <ToggleGroup fx:id="segmentGroup"/>
