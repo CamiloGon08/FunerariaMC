@@ -1175,7 +1175,6 @@ public class FuneralPlanController implements RefreshableView {
         pane.getStylesheets().addAll(
                 FuneralPlanController.class.getResource("/css/app.css").toExternalForm(),
                 FuneralPlanController.class.getResource("/css/personal.css").toExternalForm(),
-                FuneralPlanController.class.getResource("/css/cemetery.css").toExternalForm(),
                 FuneralPlanController.class.getResource("/css/funeral-plans.css").toExternalForm());
         pane.getStyleClass().add("personal-dialog");
     }
