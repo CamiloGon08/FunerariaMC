@@ -8,11 +8,22 @@ import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-/**Cuotas de los planes exequiales (tabla plan_payment)*/
+/**
+ * Cuotas de los planes exequiales (tabla plan_payment). Solo cuentan las cuotas PAID;
+ * una cuota anulada (VOIDED) se conserva pero no suma.
+ */
 public interface PlanPaymentRepository extends JpaRepository<PlanPayment, Long> {
+
+    /** Cuotas pagadas por plan hasta un mes, para saber cuántas debe (mora). */
+    interface PaidSummary {
+        Long getPlanId();
+        long getPaidMonths();
+        LocalDateTime getLastPaidAt();
+    }
 
     /** Total recaudado de un mes. */
     interface MonthTotal {
@@ -20,6 +31,15 @@ public interface PlanPaymentRepository extends JpaRepository<PlanPayment, Long> 
         BigDecimal getTotal();
         long getPayments();
     }
+
+    @Query("""
+            select pp.funeralPlan.id as planId, count(pp) as paidMonths, max(pp.paidAt) as lastPaidAt
+            from PlanPayment pp
+            where pp.status = :paid and pp.periodMonth <= :untilMonth
+            group by pp.funeralPlan.id
+            """)
+    List<PaidSummary> summarizePaid(@Param("paid") PlanPaymentStatus paid,
+                                    @Param("untilMonth") LocalDate untilMonth);
 
     /** Recaudo por mes entre dos meses (incluidos), para la gráfica de cuotas. */
     @Query("""
@@ -33,14 +53,8 @@ public interface PlanPaymentRepository extends JpaRepository<PlanPayment, Long> 
                                    @Param("fromMonth") LocalDate fromMonth,
                                    @Param("toMonth") LocalDate toMonth);
 
-    /**Cuotas de un plan (pagadas y anuladas) con el empleado que las registró*/
-    @Query("""
-            select pp from PlanPayment pp
-            left join fetch pp.registeredByEmployee
-            where pp.funeralPlan.id = :planId
-            order by pp.periodMonth desc, pp.paidAt desc
-            """)
-    List<PlanPayment> findHistory(@Param("planId") Long planId);
+    /** Cuotas de un plan (pagadas y anuladas), de la más reciente a la más antigua. */
+    List<PlanPayment> findByFuneralPlanIdOrderByPeriodMonthDescPaidAtDesc(Long funeralPlanId);
 
     /** Una sola cuota pagada por plan y mes (índice ux_plan_payment_plan_month_paid). */
     boolean existsByFuneralPlanIdAndPeriodMonthAndStatus(Long funeralPlanId, LocalDate periodMonth,
