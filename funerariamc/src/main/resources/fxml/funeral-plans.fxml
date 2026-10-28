@@ -18,15 +18,11 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.shape.SVGPath?>
 
-<!--
-  Módulo Planes exequiales (RF-PLA-01 a RF-PLA-04), propuesta P-15 / P-15.1: recaudo del mes,
-  indicadores, gráfica de recaudo, planes por tipo, carencias que terminan pronto, tarjetas de
-  afiliados y el panel lateral del plan. Se muestra dentro del contentPane de main.fxml.
--->
+
 <StackPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
            fx:id="root" fx:controller="com.example.funerariamc.controller.FuneralPlanController"
            styleClass="personal-root"
-           stylesheets="@../css/personal.css, @../css/cemetery.css, @../css/funeral-plans.css">
+           stylesheets="@../css/personal.css, @../css/funeral-plans.css">
 
     <fx:define>
         <ToggleGroup fx:id="statusGroup"/>
