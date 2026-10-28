@@ -1,8 +1,6 @@
 package com.example.funerariamc.service;
 
 import com.example.funerariamc.model.AppUser;
-import com.example.funerariamc.model.Employee;
-import com.example.funerariamc.model.Role;
 import org.springframework.stereotype.Component;
 
 import java.util.Objects;
@@ -36,15 +34,15 @@ public class SessionContext {
     /** Nombre del rol en la BD (MASTER_ADMIN, SALESPERSON...). */
     public Optional<String> getRoleName() {
         return getCurrentUser()
-                .map(AppUser::getEmployee)
-                .map(Employee::getRole)
-                .map(Role::getName);
+                .map(user -> user.getEmployee())
+                .map(employee -> employee.getRole())
+                .map(role -> role.getName());
     }
 
     /** Nombre y apellido del empleado que inició sesión. */
     public String getDisplayName() {
         return getCurrentUser()
-                .map(AppUser::getEmployee)
+                .map(user -> user.getEmployee())
                 .map(e -> e.getName() + " " + e.getLastname())
                 .orElse("");
     }

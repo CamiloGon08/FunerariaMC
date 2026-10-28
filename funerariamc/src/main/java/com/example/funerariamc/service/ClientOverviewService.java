@@ -126,8 +126,8 @@ public class ClientOverviewService {
         Map<Long, BigDecimal> balances = new HashMap<>();
         Map<Long, Long> sales = new HashMap<>();
         for (SaleRow row : overviewRepository.findSales(clientIds, TransactionType.INCOME, TransactionStatus.ACTIVE)) {
-            balances.merge(row.getClientId(), positive(balance(row)), BigDecimal::add);
-            sales.merge(row.getClientId(), 1L, Long::sum);
+            balances.merge(row.getClientId(), positive(balance(row)), (total, amount) -> total.add(amount));
+            sales.merge(row.getClientId(), 1L, (total, increment) -> total + increment);
         }
         for (Long id : clientIds) {
             result.put(id, new ClientSummary(plans.get(id), contracts.getOrDefault(id, 0L),
