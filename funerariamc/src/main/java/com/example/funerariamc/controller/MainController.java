@@ -183,7 +183,11 @@ public class MainController {
             Map.entry(AppModule.SEGURIDAD, new ModuleScreen("Personal",
                     "Registre, consulte, active o desactive a los empleados de la funeraria", FxmlViewLoader.EMPLOYEES)),
             Map.entry(AppModule.CLIENTES, new ModuleScreen("Clientes",
-                    "Titulares y empresas con su plan exequial, contratos y saldo pendiente", FxmlViewLoader.CLIENTS)));
+                    "Titulares y empresas con su plan exequial, contratos y saldo pendiente", FxmlViewLoader.CLIENTS)),
+            Map.entry(AppModule.DIFUNTOS, new ModuleScreen("Difuntos",
+                    "Servicio en curso, documentos y destino final. Toque una tarjeta o fila para ver el expediente", FxmlViewLoader.DECEASED)),
+            Map.entry(AppModule.PLANES, new ModuleScreen("Planes exequiales",
+                    "Afiliados, beneficiarios y cuotas. Toque un plan para ver beneficiarios, pagos y servicios usados", FxmlViewLoader.FUNERAL_PLANS)));
 
     /**
      * El permiso se revisa en memoria y la pantalla se muestra al instante; la entrada de la
