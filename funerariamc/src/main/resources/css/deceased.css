@@ -1,0 +1,90 @@
+/*
+ * Módulo Difuntos (propuesta P-13 / P-13.1). Se carga después de personal.css y cemetery.css
+ * (segmentos, indicadores, columna derecha, panel lateral) y usa los colores de app.css.
+ * Etapas: preparación en caqui, velación y traslado en verde, falta de documento en terracota.
+ */
+
+.section-heading-serif { -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif; -fx-font-size: 24px; -fx-text-fill: -color-primary; }
+.kpi-up { -fx-text-fill: -color-accent; }
+
+/* ---------- Leyenda ---------- */
+.legend-dot { -fx-min-width: 8; -fx-min-height: 8; -fx-max-width: 8; -fx-max-height: 8; -fx-background-radius: 999; }
+.dot-preparation { -fx-background-color: -color-detail; }
+.dot-wake { -fx-background-color: -color-accent; }
+.dot-transfer { -fx-background-color: -color-primary; }
+.dot-missing { -fx-background-color: -color-error; }
+
+/* ---------- Tarjetas "En servicio ahora" ---------- */
+.service-card {
+    -fx-background-color: -color-card; -fx-background-radius: 14;
+    -fx-border-color: -color-accent transparent transparent transparent; -fx-border-width: 4 0 0 0; -fx-border-radius: 14 14 0 0;
+    -fx-effect: dropshadow(gaussian, rgba(24,47,37,0.06), 14, 0, 0, 3);
+    -fx-padding: 14 16 12 16; -fx-spacing: 8; -fx-cursor: hand;
+}
+.service-card:hover { -fx-effect: dropshadow(gaussian, rgba(24,47,37,0.14), 16, 0, 0, 4); }
+.service-card.stage-preparation { -fx-border-color: -color-detail transparent transparent transparent; }
+.service-card.stage-transfer { -fx-border-color: -color-primary transparent transparent transparent; }
+.service-card.stage-missing { -fx-border-color: -color-error transparent transparent transparent; }
+.service-name { -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif; -fx-font-size: 22px; -fx-text-fill: -color-primary; }
+.service-meta { -fx-text-fill: -color-secondary; -fx-font-size: 12px; }
+.service-code { -fx-text-fill: -color-secondary; -fx-font-size: 11.5px; }
+.service-box { -fx-background-color: -color-background; -fx-background-radius: 10; -fx-padding: 9 10; -fx-spacing: 2; }
+.service-box.missing { -fx-background-color: -color-error-bg; }
+.service-box-caption { -fx-text-fill: -color-secondary; -fx-font-size: 10px; -fx-font-weight: bold; }
+.service-box.missing .service-box-caption, .service-box.missing .service-box-text { -fx-text-fill: -color-error; }
+.service-box-text { -fx-text-fill: -color-primary; -fx-font-size: 12.5px; -fx-font-weight: bold; }
+.service-footer { -fx-border-color: -color-surface transparent transparent transparent; -fx-border-width: 1 0 0 0; -fx-padding: 8 0 0 0; -fx-alignment: center-left; }
+.service-link { -fx-text-fill: -color-primary; -fx-font-weight: bold; -fx-font-size: 12px; }
+.pill-dark { -fx-background-color: -color-primary; -fx-text-fill: -color-background; }
+
+/* Barra de pasos Ingreso / Preparación / Velación / Destino */
+.stepper-line { -fx-stroke: -color-surface; -fx-stroke-width: 2; }
+.stepper-line.done { -fx-stroke: -color-accent; }
+.stepper-dot { -fx-fill: -color-surface; -fx-stroke: -color-surface; -fx-stroke-width: 1.5; }
+.stepper-dot.done { -fx-fill: -color-accent; -fx-stroke: -color-accent; }
+.stepper-dot.current { -fx-fill: -color-card; -fx-stroke: -color-accent; -fx-stroke-width: 2; }
+.stepper-dot.current.preparation { -fx-stroke: -color-detail; }
+.stepper-label { -fx-text-fill: -color-secondary; -fx-font-size: 10px; }
+
+/* ---------- Registro ---------- */
+.registry-header { -fx-padding: 8 10 6 10; -fx-border-color: transparent transparent -color-surface transparent; -fx-border-width: 0 0 1 0; -fx-spacing: 8; }
+.registry-header .label { -fx-text-fill: -color-secondary; -fx-font-size: 10.5px; -fx-font-weight: bold; }
+.registry-row {
+    -fx-padding: 10; -fx-spacing: 8; -fx-alignment: center-left; -fx-cursor: hand;
+    -fx-border-color: transparent transparent -color-surface transparent; -fx-border-width: 0 0 1 0;
+}
+.registry-row:hover { -fx-background-color: -color-background; -fx-background-radius: 8; }
+.col-name { -fx-min-width: 170; -fx-pref-width: 220; }
+.col-date { -fx-min-width: 86; -fx-pref-width: 86; }
+.col-type { -fx-min-width: 86; -fx-pref-width: 86; }
+.col-plan { -fx-min-width: 120; -fx-pref-width: 130; }
+.col-destination { -fx-min-width: 92; -fx-pref-width: 92; }
+.col-docs { -fx-min-width: 76; -fx-pref-width: 76; }
+.row-title { -fx-text-fill: -color-primary; -fx-font-weight: bold; -fx-font-size: 13px; }
+.row-detail { -fx-text-fill: -color-secondary; -fx-font-size: 11.5px; }
+.row-text { -fx-text-fill: -color-primary; -fx-font-size: 12.5px; }
+.docs-ok { -fx-text-fill: -color-accent; -fx-font-size: 12.5px; }
+.docs-missing { -fx-text-fill: -color-error; -fx-font-size: 12.5px; -fx-font-weight: bold; }
+
+/* ---------- Columna derecha ---------- */
+.doc-code { -fx-min-width: 62; -fx-pref-width: 62; -fx-font-size: 11px; }
+.departure-time { -fx-text-fill: -color-primary; -fx-font-weight: bold; -fx-font-size: 14px; -fx-min-width: 48; }
+
+/* ---------- Expediente (P-13.1) ---------- */
+.file-badge {
+    -fx-border-color: -color-primary; -fx-border-width: 1.5; -fx-border-radius: 10;
+    -fx-background-color: -color-card; -fx-background-radius: 10;
+    -fx-min-width: 56; -fx-min-height: 56; -fx-max-width: 56; -fx-max-height: 56; -fx-alignment: center;
+}
+.file-badge .cross { -fx-stroke: -color-primary; -fx-stroke-width: 1.6; -fx-fill: transparent; }
+.timeline-box { -fx-background-color: -color-background; -fx-background-radius: 12; -fx-padding: 14; -fx-spacing: 12; }
+.timeline-dot.pending { -fx-fill: -color-card; -fx-stroke: -color-border; -fx-stroke-width: 1.5; }
+.timeline-title.pending { -fx-text-fill: -color-secondary; }
+.doc-row { -fx-spacing: 12; -fx-alignment: center-left; }
+.doc-check {
+    -fx-min-width: 28; -fx-min-height: 28; -fx-max-width: 28; -fx-max-height: 28; -fx-alignment: center;
+    -fx-background-color: -color-surface; -fx-background-radius: 8; -fx-text-fill: -color-accent; -fx-font-weight: bold;
+}
+.doc-check.missing { -fx-background-color: -color-error-bg; -fx-text-fill: -color-error; }
+.doc-check.na { -fx-background-color: -color-card; -fx-border-color: -color-border; -fx-border-radius: 8; -fx-text-fill: -color-secondary; }
+.chip-flow { -fx-hgap: 8; -fx-vgap: 8; }
