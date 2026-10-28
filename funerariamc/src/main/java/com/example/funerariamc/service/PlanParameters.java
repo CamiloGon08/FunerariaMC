@@ -15,6 +15,9 @@ public class PlanParameters {
     public static final String BENEFICIARY_LIMIT = "PLAN_BENEFICIARY_LIMIT";
     public static final String NON_DIRECT_SURCHARGE = "PLAN_NON_DIRECT_SURCHARGE";
     public static final String EXTRA_BENEFICIARY_SURCHARGE = "PLAN_EXTRA_BENEFICIARY_SURCHARGE";
+    public static final String MAX_MONTHS_AHEAD = "PLAN_MAX_MONTHS_AHEAD";
+    public static final String WAITING_SOON_DAYS = "PLAN_WAITING_SOON_DAYS";
+    public static final String MAX_START_MONTHS_AHEAD = "PLAN_MAX_START_MONTHS_AHEAD";
 
     private final SystemParameterService parameters;
 
@@ -36,6 +39,18 @@ public class PlanParameters {
 
     public BigDecimal extraBeneficiarySurcharge() {
         return nonNegativeAmount(EXTRA_BENEFICIARY_SURCHARGE);
+    }
+
+    public int maxMonthsAhead() {
+        return nonNegativeInteger(MAX_MONTHS_AHEAD);
+    }
+
+    public int waitingSoonDays() {
+        return nonNegativeInteger(WAITING_SOON_DAYS);
+    }
+
+    public int maxStartMonthsAhead() {
+        return nonNegativeInteger(MAX_START_MONTHS_AHEAD);
     }
 
     private int nonNegativeInteger(String name) {

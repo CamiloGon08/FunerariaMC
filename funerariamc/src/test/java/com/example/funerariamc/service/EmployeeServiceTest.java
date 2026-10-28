@@ -11,6 +11,7 @@ import com.example.funerariamc.model.FuneralSalesperson;
 import com.example.funerariamc.model.Manager;
 import com.example.funerariamc.model.Receptionist;
 import com.example.funerariamc.model.Role;
+import com.example.funerariamc.model.SystemParameter;
 import com.example.funerariamc.model.Thanatopractor;
 import com.example.funerariamc.model.enums.EmployeePosition;
 import com.example.funerariamc.model.enums.EmployeeStatus;
@@ -18,13 +19,18 @@ import com.example.funerariamc.model.enums.Sex;
 import com.example.funerariamc.persistence.AppUserRepository;
 import com.example.funerariamc.persistence.EmployeeRepository;
 import com.example.funerariamc.persistence.PersonRepository;
+import com.example.funerariamc.persistence.SystemParameterRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.aop.framework.ProxyFactory;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.AnnotationTransactionAttributeSource;
+import org.springframework.transaction.interceptor.TransactionInterceptor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -431,6 +437,7 @@ class EmployeeServiceTest {
                 () -> service.searchByPositions("", null, List.of(EmployeePosition.MANAGER), 0, 10));
         assertThrows(UnauthorizedActionException.class, () -> service.count(null));
         assertThrows(UnauthorizedActionException.class, service::countExpiringDocuments);
+        assertThrows(UnauthorizedActionException.class, service::kpis);
         assertThrows(UnauthorizedActionException.class, () -> service.hasLicenseExpiringSoon(new Driver()));
         assertThrows(UnauthorizedActionException.class, () -> service.findById(7L));
         assertThrows(UnauthorizedActionException.class,
@@ -455,6 +462,25 @@ class EmployeeServiceTest {
     }
 
     @Test
+    void kpisComeFromOneQueryWithTheAgreedWarningWindow() {
+        LocalDate limit = LocalDate.now(AccessLogService.APP_ZONE).plusDays(12);
+        when(parameters.getLong(EmployeeService.DOC_EXPIRY_WARNING_DAYS)).thenReturn(12L);
+        when(employees.countStaff(limit)).thenReturn(new EmployeeRepository.StaffCounts() {
+            public long getTotal() { return 9; }
+            public long getActive() { return 7; }
+            public long getWithAccount() { return 4; }
+            public long getExpiring() { return 2; }
+        });
+
+        assertEquals(new EmployeeService.StaffKpis(9, 7, 4, 2), service.kpis());
+
+        verify(parameters).getLong(EmployeeService.DOC_EXPIRY_WARNING_DAYS);
+        verify(employees).countStaff(limit);
+        verifyNoMoreInteractions(employees);
+        verifyNoInteractions(users, persons, accessLog);
+    }
+
+    @Test
     void warningWindowIncludesTodayAndItsLastDayButNotExpiredOrLaterLicenses() {
         LocalDate today = LocalDate.now(AccessLogService.APP_ZONE);
         when(parameters.getLong(EmployeeService.DOC_EXPIRY_WARNING_DAYS)).thenReturn(12L);
@@ -468,6 +494,34 @@ class EmployeeServiceTest {
         assertFalse(service.hasLicenseExpiringSoon(driver));
         driver.setLicenseExpiryDate(today.minusDays(1));
         assertFalse(service.hasLicenseExpiringSoon(driver));
+    }
+
+    @Test
+    void renderingMultipleLicenseWarningsUsesOneParameterQueryAndNoPerCardTransactions() {
+        SystemParameterRepository parameterRepository = mock(SystemParameterRepository.class);
+        SystemParameter warning = new SystemParameter();
+        warning.setParamName(EmployeeService.DOC_EXPIRY_WARNING_DAYS);
+        warning.setParamValue("12");
+        when(parameterRepository.findByParamName(EmployeeService.DOC_EXPIRY_WARNING_DAYS))
+                .thenReturn(Optional.of(warning));
+        SystemParameterService cachedParameters = new SystemParameterService(parameterRepository, accessLog, session);
+        EmployeeService target = new EmployeeService(employees, persons, users, accessLog, session, cachedParameters);
+        PlatformTransactionManager transactions = mock(PlatformTransactionManager.class);
+        TransactionInterceptor advice = new TransactionInterceptor();
+        advice.setTransactionManager(transactions);
+        advice.setTransactionAttributeSource(new AnnotationTransactionAttributeSource());
+        ProxyFactory factory = new ProxyFactory(target);
+        factory.addAdvice(advice);
+        EmployeeService proxy = (EmployeeService) factory.getProxy();
+
+        for (int card = 0; card < 20; card++) {
+            Driver driver = new Driver();
+            driver.setLicenseExpiryDate(LocalDate.now(AccessLogService.APP_ZONE).plusDays(12));
+            assertTrue(proxy.hasLicenseExpiringSoon(driver));
+        }
+
+        verify(parameterRepository).findByParamName(EmployeeService.DOC_EXPIRY_WARNING_DAYS);
+        verifyNoInteractions(transactions, employees, persons, users, accessLog);
     }
 
     @Test
@@ -510,6 +564,7 @@ class EmployeeServiceTest {
         driver.setLicenseExpiryDate(LocalDate.now(AccessLogService.APP_ZONE).plusDays(1));
 
         assertThrows(InvalidDataException.class, service::countExpiringDocuments);
+        assertThrows(InvalidDataException.class, service::kpis);
         assertThrows(InvalidDataException.class, () -> service.hasLicenseExpiringSoon(driver));
         verifyNoInteractions(employees);
     }
@@ -522,6 +577,7 @@ class EmployeeServiceTest {
         driver.setLicenseExpiryDate(LocalDate.now(AccessLogService.APP_ZONE).plusDays(1));
 
         assertSame(failure, assertThrows(InvalidDataException.class, service::countExpiringDocuments));
+        assertSame(failure, assertThrows(InvalidDataException.class, service::kpis));
         assertSame(failure, assertThrows(InvalidDataException.class, () -> service.hasLicenseExpiringSoon(driver)));
         verifyNoInteractions(employees, persons, users, accessLog);
     }

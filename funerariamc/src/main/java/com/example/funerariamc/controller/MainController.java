@@ -10,7 +10,9 @@ import com.example.funerariamc.service.AuthService;
 import com.example.funerariamc.service.RoleNames;
 import com.example.funerariamc.service.SessionContext;
 import com.example.funerariamc.ui.ModuleIcons;
+import com.example.funerariamc.ui.RefreshableView;
 import com.example.funerariamc.ui.SidebarAnimator;
+import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
 import javafx.scene.control.Alert;
@@ -20,11 +22,11 @@ import javafx.geometry.Pos;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import org.springframework.context.annotation.Scope;
-import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.TransactionException;
 
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * RF-ACC-04/05/06: menú principal con los módulos del rol de la sesión.
@@ -72,6 +74,10 @@ public class MainController {
     private Button financeGroup;
     private Node financeChevron;
     private VBox financeItems;
+    /** Pantallas ya abiertas en esta sesión; al cerrar sesión se descartan con este controlador. */
+    private final Map<AppModule, FxmlViewLoader.View<Object>> openViews = new EnumMap<>(AppModule.class);
+    /** Módulo que se está viendo, para no cerrar otro si falla la bitácora de uno anterior. */
+    private AppModule currentModule;
 
     public MainController(AuthService authService, SessionContext sessionContext, FxmlViewLoader viewLoader) {
         this.authService = authService;
@@ -166,37 +172,83 @@ public class MainController {
        
     }
 
+    /** Pantalla de cada módulo ya construido: título, subtítulo y vista FXML. */
+    private record ModuleScreen(String title, String subtitle, String fxml) {
+    }
+
+    /** Cada módulo nuevo agrega aquí su línea; los que no están muestran "próximo sprint". */
+    private static final Map<AppModule, ModuleScreen> SCREENS = Map.ofEntries(
+            Map.entry(AppModule.BITACORA, new ModuleScreen(AppModule.BITACORA.getLabel(),
+                    "Registro de ingresos y acciones del sistema", FxmlViewLoader.ACCESS_LOG)),
+            Map.entry(AppModule.SEGURIDAD, new ModuleScreen("Personal",
+                    "Registre, consulte, active o desactive a los empleados de la funeraria", FxmlViewLoader.EMPLOYEES)),
+            Map.entry(AppModule.CLIENTES, new ModuleScreen("Clientes",
+                    "Titulares y empresas con su plan exequial, contratos y saldo pendiente", FxmlViewLoader.CLIENTS)));
+
+    /**
+     * El permiso se revisa en memoria y la pantalla se muestra al instante; la entrada de la
+     * bitácora se escribe en otro hilo. Si no se puede escribir, el módulo se cierra (HU-11).
+     */
     private void openModule(AppModule module, Button button) {
-        try {
-            authService.checkAccess(module);
-            sidebarAnimator.markActive(button);
-            if (module == AppModule.BITACORA) {
-                showContent(module.getLabel(), "Registro de ingresos y acciones del sistema",
-                        viewLoader.load(FxmlViewLoader.ACCESS_LOG));
-            } else if (module == AppModule.SEGURIDAD) {
-                showContent("Personal", "Registre, consulte, active o desactive a los empleados de la funeraria",
-                        viewLoader.load(FxmlViewLoader.EMPLOYEES));
-            } else if (module == AppModule.CLIENTES) {
-                showContent("Clientes", "Titulares y empresas con su plan exequial, contratos y saldo pendiente",
-                        viewLoader.load(FxmlViewLoader.CLIENTS));
-            } else {
-                showMessage(module.getLabel(), "Este módulo se implementa en un próximo sprint.");
-            }
-        } catch (BusinessException e) {
-            Alert alert = new Alert(Alert.AlertType.WARNING, e.getMessage());
-            alert.setHeaderText(null);
-            alert.showAndWait();
-        } catch (DataAccessException | TransactionException e) {
-            // HU-11: si la bitácora no se puede escribir, el módulo no se abre y se informa el error.
-            Alert alert = new Alert(Alert.AlertType.ERROR,
-                    "No se pudo registrar el acceso en la bitácora, por eso el módulo no se abrió. Intente de nuevo.");
-            alert.setHeaderText(null);
-            alert.showAndWait();
+        if (!authService.canAccess(module)) {
+            // checkAccess deja ACCESS_DENIED en la bitácora y lanza la excepción que se muestra.
+            recordAccess(module);
+            return;
         }
+        sidebarAnimator.markActive(button);
+        currentModule = module;
+        ModuleScreen screen = SCREENS.get(module);
+        if (screen == null) {
+            showMessage(module.getLabel(), "Este módulo se implementa en un próximo sprint.");
+        } else {
+            showContent(screen.title(), screen.subtitle(), moduleView(module, screen));
+        }
+        recordAccess(module);
+    }
+
+    /** La primera vez arma la pantalla; las siguientes reutiliza la misma y le pide datos nuevos. */
+    private Node moduleView(AppModule module, ModuleScreen screen) {
+        FxmlViewLoader.View<Object> view = openViews.get(module);
+        if (view == null) {
+            view = viewLoader.loadView(screen.fxml());
+            openViews.put(module, view);
+        } else if (view.controller() instanceof RefreshableView refreshable) {
+            refreshable.refresh();
+        }
+        return view.root();
+    }
+
+    private void recordAccess(AppModule module) {
+        Task<Void> task = new Task<>() {
+            @Override
+            protected Void call() {
+                authService.checkAccess(module);
+                return null;
+            }
+        };
+        task.setOnFailed(e -> accessFailed(module, task.getException()));
+        Thread thread = new Thread(task, "access-log-writer");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    private void accessFailed(AppModule module, Throwable failure) {
+        if (module == currentModule) {
+            onHome();
+        }
+        String message = failure instanceof BusinessException business
+                ? business.getMessage()
+                // HU-11: si la bitácora no se puede escribir, el módulo no queda abierto y se informa el error.
+                : "No se pudo registrar el acceso en la bitácora, por eso el módulo no se abrió. Intente de nuevo.";
+        Alert alert = new Alert(failure instanceof BusinessException ? Alert.AlertType.WARNING : Alert.AlertType.ERROR,
+                message);
+        alert.setHeaderText(null);
+        alert.showAndWait();
     }
 
     @FXML
     private void onHome() {
+        currentModule = null;
         sidebarAnimator.markActive(homePill);
         showMessage("Hola, " + firstName(sessionContext.getDisplayName()),
                 "Seleccione un módulo en el menú de la izquierda.");

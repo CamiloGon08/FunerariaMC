@@ -102,8 +102,19 @@ public class EmployeeService {
         return employeeRepository.countDriversWithLicenseExpiringBy(EmployeeStatus.ACTIVE, limit);
     }
 
-    /** La licencia sigue vigente y está dentro de la ventana de anticipación configurada. */
+    /** Indicadores de Personal para que la pantalla evite cuatro consultas separadas. */
+    public record StaffKpis(long total, long active, long withAccount, long expiring) {
+    }
+
     @Transactional(readOnly = true)
+    public StaffKpis kpis() {
+        requireMasterAdmin();
+        LocalDate limit = LocalDate.now(AccessLogService.APP_ZONE).plusDays(expiryWarningDays());
+        EmployeeRepository.StaffCounts counts = employeeRepository.countStaff(limit);
+        return new StaffKpis(counts.getTotal(), counts.getActive(), counts.getWithAccount(), counts.getExpiring());
+    }
+
+    /** La licencia sigue vigente y está dentro de la ventana de anticipación configurada. */
     public boolean hasLicenseExpiringSoon(Employee employee) {
         requireMasterAdmin();
         if (!(employee instanceof Driver driver) || driver.getLicenseExpiryDate() == null) {

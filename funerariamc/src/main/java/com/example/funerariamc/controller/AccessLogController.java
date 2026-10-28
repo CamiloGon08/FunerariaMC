@@ -4,6 +4,7 @@ import com.example.funerariamc.model.AccessLog;
 import com.example.funerariamc.service.AccessLogService;
 import com.example.funerariamc.ui.AccessLogLabels;
 import com.example.funerariamc.ui.EyeToggle;
+import com.example.funerariamc.ui.RefreshableView;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
 import javafx.concurrent.Task;
@@ -33,7 +34,7 @@ import java.time.format.DateTimeParseException;
  */
 @Component
 @Scope("prototype")
-public class AccessLogController {
+public class AccessLogController implements RefreshableView {
 
     private static final int PAGE_SIZE = 50;
     private static final String MASKED_IP = "***.***.***.***";
@@ -111,6 +112,12 @@ public class AccessLogController {
     @FXML
     private void onRefresh() {
         loadPage(pagination.getCurrentPageIndex());
+    }
+
+    /** El menú guarda la pantalla abierta: al volver a la bitácora se recarga la página actual. */
+    @Override
+    public void refresh() {
+        onRefresh();
     }
 
     /** RF-ACC-08: aplica los filtros y vuelve a la primera página. También se llama con Enter. */
