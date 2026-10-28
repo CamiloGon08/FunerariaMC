@@ -4,15 +4,15 @@ import com.example.funerariamc.exception.ResourceNotFoundException;
 import com.example.funerariamc.exception.UnauthorizedActionException;
 import com.example.funerariamc.model.Beneficiary;
 import com.example.funerariamc.model.Client;
-import com.example.funerariamc.model.enums.ClientType;
 import com.example.funerariamc.model.enums.PlanStatus;
+import com.example.funerariamc.model.enums.Relationship;
 import com.example.funerariamc.model.enums.SaleType;
 import com.example.funerariamc.model.enums.TransactionStatus;
 import com.example.funerariamc.model.enums.TransactionType;
 import com.example.funerariamc.persistence.ClientOverviewRepository;
+import com.example.funerariamc.persistence.ClientOverviewRepository.ClientCounts;
 import com.example.funerariamc.persistence.ClientOverviewRepository.ContractCount;
 import com.example.funerariamc.persistence.ClientOverviewRepository.PlanRow;
-import com.example.funerariamc.persistence.ClientOverviewRepository.ReceivableSummary;
 import com.example.funerariamc.persistence.ClientOverviewRepository.SaleRow;
 import com.example.funerariamc.persistence.ClientRepository;
 import org.springframework.stereotype.Service;
@@ -147,7 +147,7 @@ public class ClientOverviewService {
         if (summary.plan() != null) {
             for (Beneficiary b : overviewRepository.findBeneficiaries(summary.plan().id())) {
                 beneficiaries.add(new BeneficiaryInfo(fullName(b.getName(), b.getLastname()),
-                        b.getRelationship(), b.getDocumentNumber()));
+                        relationshipLabel(b.getRelationship()), b.getDocumentNumber()));
             }
         }
         List<SaleInfo> sales = overviewRepository
@@ -165,15 +165,12 @@ public class ClientOverviewService {
     @Transactional(readOnly = true)
     public ClientKpis kpis() {
         requireAccess();
-        long total = clientRepository.count();
-        long natural = clientRepository.countByClientType(ClientType.NATURAL);
-        ReceivableSummary receivable = overviewRepository.receivableSummary();
         LocalDate firstOfMonth = LocalDate.now(AccessLogService.APP_ZONE).withDayOfMonth(1);
-        return new ClientKpis(total, natural, total - natural,
-                overviewRepository.countClientsWithPlan(PlanStatus.ACTIVE),
-                receivable == null ? BigDecimal.ZERO : orZero(receivable.getReceivable()),
-                receivable == null ? 0 : receivable.getSalesWithBalance(),
-                clientRepository.countByRegistrationDateGreaterThanEqual(firstOfMonth));
+        ClientCounts counts = overviewRepository.countClients(firstOfMonth);
+        long total = counts.getTotal();
+        long natural = counts.getNaturalClients();
+        return new ClientKpis(total, natural, total - natural, counts.getWithPlan(),
+                orZero(counts.getReceivable()), counts.getSalesWithBalance(), counts.getNewThisMonth());
     }
 
     /** Hoy en Colombia, para comparar con la carencia. */
@@ -207,6 +204,12 @@ public class ClientOverviewService {
 
     private static BigDecimal orZero(BigDecimal value) {
         return value == null ? BigDecimal.ZERO : value;
+    }
+
+    /** Conserva los textos históricos que todavía no corresponden a un código del catálogo. */
+    private static String relationshipLabel(String code) {
+        Relationship relationship = Relationship.fromCode(code);
+        return relationship == null ? code : relationship.getDisplayName();
     }
 
     private static String fullName(String name, String lastname) {

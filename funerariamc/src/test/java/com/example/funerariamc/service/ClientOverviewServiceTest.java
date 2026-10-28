@@ -8,19 +8,22 @@ import com.example.funerariamc.model.Beneficiary;
 import com.example.funerariamc.model.Client;
 import com.example.funerariamc.model.Manager;
 import com.example.funerariamc.model.Role;
-import com.example.funerariamc.model.enums.ClientType;
 import com.example.funerariamc.model.enums.PlanStatus;
 import com.example.funerariamc.model.enums.SaleType;
 import com.example.funerariamc.model.enums.TransactionStatus;
 import com.example.funerariamc.model.enums.TransactionType;
 import com.example.funerariamc.persistence.ClientOverviewRepository;
+import com.example.funerariamc.persistence.ClientOverviewRepository.ClientCounts;
 import com.example.funerariamc.persistence.ClientOverviewRepository.ContractCount;
 import com.example.funerariamc.persistence.ClientOverviewRepository.PlanRow;
-import com.example.funerariamc.persistence.ClientOverviewRepository.ReceivableSummary;
 import com.example.funerariamc.persistence.ClientOverviewRepository.SaleRow;
 import com.example.funerariamc.persistence.ClientRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -117,20 +120,45 @@ class ClientOverviewServiceTest {
 
     @Test
     void kpisCountPlansReceivableAndNewClientsOfTheMonth() {
-        when(clients.count()).thenReturn(248L);
-        when(clients.countByClientType(ClientType.NATURAL)).thenReturn(212L);
-        when(overview.countClientsWithPlan(PlanStatus.ACTIVE)).thenReturn(132L);
-        when(overview.receivableSummary()).thenReturn(receivable("41900000", 27));
         LocalDate firstOfMonth = LocalDate.now(AccessLogService.APP_ZONE).withDayOfMonth(1);
-        when(clients.countByRegistrationDateGreaterThanEqual(firstOfMonth)).thenReturn(9L);
+        when(overview.countClients(firstOfMonth))
+                .thenReturn(counts(248, 212, 132, new BigDecimal("41900000"), 27, 9));
 
         ClientOverviewService.ClientKpis kpis = service.kpis();
 
-        assertEquals(36, kpis.corporate());
+        assertEquals(new ClientOverviewService.ClientKpis(248, 212, 36, 132,
+                new BigDecimal("41900000"), 27, 9), kpis);
         assertEquals(53, kpis.planPercent());
-        assertEquals(new BigDecimal("41900000"), kpis.receivable());
-        assertEquals(27, kpis.salesWithBalance());
-        assertEquals(9, kpis.newThisMonth());
+        verify(overview).countClients(firstOfMonth);
+        verifyNoMoreInteractions(overview);
+        verifyNoInteractions(clients, parameters);
+    }
+
+    @Test
+    void emptyKpisHaveNoReceivableAndDoNotDivideByZero() {
+        LocalDate firstOfMonth = LocalDate.now(AccessLogService.APP_ZONE).withDayOfMonth(1);
+        when(overview.countClients(firstOfMonth)).thenReturn(counts(0, 0, 0, null, 0, 0));
+
+        ClientOverviewService.ClientKpis kpis = service.kpis();
+
+        assertEquals(new ClientOverviewService.ClientKpis(0, 0, 0, 0, BigDecimal.ZERO, 0, 0), kpis);
+        assertEquals(0, kpis.planPercent());
+        verify(overview).countClients(firstOfMonth);
+        verifyNoMoreInteractions(overview);
+        verifyNoInteractions(clients, parameters);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"CHILD, Hijo(a)", "SPOUSE, Cónyuge o compañero(a)", "EMPLOYEE, Empleado (plan empresarial)"})
+    void beneficiaryCodesAreDisplayedInSpanish(String code, String label) {
+        assertEquals(label, relationshipShownInDetail(code));
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = {"Hijo", "CUSTOM_RELATION", ""})
+    void historicalOrMissingRelationshipsArePreserved(String code) {
+        assertEquals(code, relationshipShownInDetail(code));
     }
 
     @Test
@@ -189,6 +217,20 @@ class ClientOverviewServiceTest {
 
     // ---------- datos ----------
 
+    private String relationshipShownInDetail(String code) {
+        Client client = new Client();
+        client.setId(1L);
+        when(clients.findById(1L)).thenReturn(Optional.of(client));
+        when(overview.findPlans(List.of(1L))).thenReturn(List.of(
+                plan(1L, 412L, "Plan familiar", LocalDate.of(2026, 1, 10), PlanStatus.ACTIVE, 1)));
+        Beneficiary beneficiary = new Beneficiary();
+        beneficiary.setName("Cliente");
+        beneficiary.setLastname("De prueba");
+        beneficiary.setRelationship(code);
+        when(overview.findBeneficiaries(412L)).thenReturn(List.of(beneficiary));
+        return service.detail(1L).beneficiaries().get(0).relationship();
+    }
+
     private void loginAs(String roleName) {
         Manager employee = new Manager();
         employee.setId(99L);
@@ -230,10 +272,15 @@ class ClientOverviewServiceTest {
         };
     }
 
-    private static ReceivableSummary receivable(String amount, long sales) {
-        return new ReceivableSummary() {
-            public BigDecimal getReceivable() { return new BigDecimal(amount); }
+    private static ClientCounts counts(long total, long natural, long withPlan, BigDecimal amount,
+                                       long sales, long newThisMonth) {
+        return new ClientCounts() {
+            public long getTotal() { return total; }
+            public long getNaturalClients() { return natural; }
+            public long getWithPlan() { return withPlan; }
+            public BigDecimal getReceivable() { return amount; }
             public long getSalesWithBalance() { return sales; }
+            public long getNewThisMonth() { return newThisMonth; }
         };
     }
 }
