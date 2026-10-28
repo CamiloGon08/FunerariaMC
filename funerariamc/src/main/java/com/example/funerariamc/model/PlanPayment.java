@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 
 
 @Entity 
-@Table(name = "paln_payment")
+@Table(name = "plan_payment")
 @Getter 
 @Setter 
 @NoArgsConstructor 
