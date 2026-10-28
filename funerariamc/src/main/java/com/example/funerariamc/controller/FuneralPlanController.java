@@ -23,6 +23,7 @@ import com.example.funerariamc.service.FuneralPlanService.TypeSlice;
 import com.example.funerariamc.service.FuneralPlanService.UsedService;
 import com.example.funerariamc.service.FuneralPlanService.WaitingSoon;
 import com.example.funerariamc.service.PlanData;
+import com.example.funerariamc.service.PlanParameters;
 import com.example.funerariamc.service.PlanPaymentData;
 import com.example.funerariamc.ui.DetailCache;
 import com.example.funerariamc.ui.RefreshableView;
@@ -109,6 +110,8 @@ public class FuneralPlanController implements RefreshableView {
     private static final int COLUMNS = 3;
 
     private final FuneralPlanService planService;
+    // Límites del plan leídos de system_parameter (por ejemplo, cuotas que se pueden adelantar).
+    private final PlanParameters planParameters;
     /** Paneles de plan ya consultados o adelantados; se vacía en cada recarga. */
     private final DetailCache<PlanDetail> details;
     private final PauseTransition searchDelay = new PauseTransition(Duration.millis(250));
@@ -186,8 +189,9 @@ public class FuneralPlanController implements RefreshableView {
     /** Animación del panel en curso (abrir o cerrar); null si está quieto. */
     private ParallelTransition drawerMotion;
 
-    public FuneralPlanController(FuneralPlanService planService) {
+    public FuneralPlanController(FuneralPlanService planService, PlanParameters planParameters) {
         this.planService = planService;
+        this.planParameters = planParameters;
         this.details = new DetailCache<>(planService::detail, "plan-detail");
     }
 
@@ -892,9 +896,9 @@ public class FuneralPlanController implements RefreshableView {
         PlanCard c = d.card();
         YearMonth first = d.nextDue() == null ? YearMonth.now(AccessLogService.APP_ZONE) : d.nextDue();
         ComboBox<YearMonth> month = new ComboBox<>();
-        YearMonth limit = YearMonth.now(AccessLogService.APP_ZONE).plusMonths(FuneralPlanService.MAX_MONTHS_AHEAD);
+        YearMonth limit = YearMonth.now(AccessLogService.APP_ZONE).plusMonths(planParameters.maxMonthsAhead());
         List<YearMonth> months = new ArrayList<>();
-        // Meses sin pagar desde el inicio del plan hasta 12 adelante.
+        // Meses sin pagar desde el inicio del plan hasta el máximo de cuotas adelantadas configurado.
         YearMonth from = c.startDate() == null ? first : YearMonth.from(c.startDate());
         java.util.Set<YearMonth> paid = new java.util.HashSet<>();
         d.payments().stream().filter(p -> p.status() == PlanPaymentStatus.PAID).forEach(p -> paid.add(p.period()));
