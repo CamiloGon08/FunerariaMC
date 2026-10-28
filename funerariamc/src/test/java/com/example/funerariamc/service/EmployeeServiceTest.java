@@ -437,6 +437,7 @@ class EmployeeServiceTest {
                 () -> service.searchByPositions("", null, List.of(EmployeePosition.MANAGER), 0, 10));
         assertThrows(UnauthorizedActionException.class, () -> service.count(null));
         assertThrows(UnauthorizedActionException.class, service::countExpiringDocuments);
+        assertThrows(UnauthorizedActionException.class, service::kpis);
         assertThrows(UnauthorizedActionException.class, () -> service.hasLicenseExpiringSoon(new Driver()));
         assertThrows(UnauthorizedActionException.class, () -> service.findById(7L));
         assertThrows(UnauthorizedActionException.class,
@@ -458,6 +459,25 @@ class EmployeeServiceTest {
 
         verify(parameters).getLong("DOC_EXPIRY_WARNING_DAYS");
         verify(employees).countDriversWithLicenseExpiringBy(EmployeeStatus.ACTIVE, limit);
+    }
+
+    @Test
+    void kpisComeFromOneQueryWithTheAgreedWarningWindow() {
+        LocalDate limit = LocalDate.now(AccessLogService.APP_ZONE).plusDays(12);
+        when(parameters.getLong(EmployeeService.DOC_EXPIRY_WARNING_DAYS)).thenReturn(12L);
+        when(employees.countStaff(limit)).thenReturn(new EmployeeRepository.StaffCounts() {
+            public long getTotal() { return 9; }
+            public long getActive() { return 7; }
+            public long getWithAccount() { return 4; }
+            public long getExpiring() { return 2; }
+        });
+
+        assertEquals(new EmployeeService.StaffKpis(9, 7, 4, 2), service.kpis());
+
+        verify(parameters).getLong(EmployeeService.DOC_EXPIRY_WARNING_DAYS);
+        verify(employees).countStaff(limit);
+        verifyNoMoreInteractions(employees);
+        verifyNoInteractions(users, persons, accessLog);
     }
 
     @Test
@@ -544,6 +564,7 @@ class EmployeeServiceTest {
         driver.setLicenseExpiryDate(LocalDate.now(AccessLogService.APP_ZONE).plusDays(1));
 
         assertThrows(InvalidDataException.class, service::countExpiringDocuments);
+        assertThrows(InvalidDataException.class, service::kpis);
         assertThrows(InvalidDataException.class, () -> service.hasLicenseExpiringSoon(driver));
         verifyNoInteractions(employees);
     }
@@ -556,6 +577,7 @@ class EmployeeServiceTest {
         driver.setLicenseExpiryDate(LocalDate.now(AccessLogService.APP_ZONE).plusDays(1));
 
         assertSame(failure, assertThrows(InvalidDataException.class, service::countExpiringDocuments));
+        assertSame(failure, assertThrows(InvalidDataException.class, service::kpis));
         assertSame(failure, assertThrows(InvalidDataException.class, () -> service.hasLicenseExpiringSoon(driver)));
         verifyNoInteractions(employees, persons, users, accessLog);
     }
