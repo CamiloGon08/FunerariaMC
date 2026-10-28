@@ -4,7 +4,6 @@ import com.example.funerariamc.exception.ExistingClientException;
 import com.example.funerariamc.exception.InvalidDataException;
 import com.example.funerariamc.exception.ResourceNotFoundException;
 import com.example.funerariamc.exception.UnauthorizedActionException;
-import com.example.funerariamc.model.AppUser;
 import com.example.funerariamc.model.Client;
 import com.example.funerariamc.model.enums.ClientType;
 import com.example.funerariamc.model.enums.TransactionStatus;
@@ -299,7 +298,7 @@ public class ClientService {
 
     private Long currentUserId() {
         return sessionContext.getCurrentUser()
-                .map(AppUser::getId)
+                .map(user -> user.getId())
                 .orElseThrow(UnauthorizedActionException::new);
     }
 

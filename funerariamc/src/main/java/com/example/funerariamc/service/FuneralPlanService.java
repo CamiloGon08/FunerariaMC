@@ -259,12 +259,13 @@ public class FuneralPlanService {
             probe.setStatus(PlanPaymentStatus.PAID);
             probe.setPeriodMonth(current.atDay(1));
             for (PlanPayment payment : paymentRepository.findAll(Example.of(probe))) {
-                earlyCurrentPayments.merge(payment.getFuneralPlan().getId(), 1L, Long::sum);
+                earlyCurrentPayments.merge(payment.getFuneralPlan().getId(), 1L,
+                        (total, increment) -> total + increment);
             }
         }
         Map<Long, List<String>> initials = new HashMap<>();
         if (!rows.isEmpty()) {
-            for (BeneficiaryNameRow row : beneficiaryRepository.findNames(rows.stream().map(PlanCardRow::getPlanId).toList())) {
+            for (BeneficiaryNameRow row : beneficiaryRepository.findNames(rows.stream().map(row -> row.getPlanId()).toList())) {
                 initials.computeIfAbsent(row.getPlanId(), key -> new ArrayList<>()).add(initials(row.getName(), row.getLastname()));
             }
         }
@@ -284,21 +285,21 @@ public class FuneralPlanService {
             collection.add(new MonthPoint(month, expected(cards, month), totalOf(totals.get(month))));
         }
 
-        List<PlanCard> active = cards.stream().filter(PlanCard::isActive).toList();
+        List<PlanCard> active = cards.stream().filter(card -> card.isActive()).toList();
         LocalDate firstOfMonth = current.atDay(1);
         Kpis kpis = new Kpis(
                 totalOf(totals.get(current)), totalOf(totals.get(current.minusMonths(1))),
                 totals.get(current) == null ? 0 : totals.get(current).getPayments(),
                 active.size(),
                 active.stream().filter(c -> c.startDate() != null && !c.startDate().isBefore(firstOfMonth)).count(),
-                active.stream().filter(PlanCard::isOverdue).count(),
-                active.stream().map(PlanCard::overdueAmount).reduce(BigDecimal.ZERO, BigDecimal::add),
-                active.stream().filter(PlanCard::inWaiting).count(),
+                active.stream().filter(card -> card.isOverdue()).count(),
+                active.stream().map(card -> card.overdueAmount()).reduce(BigDecimal.ZERO, (total, amount) -> total.add(amount)),
+                active.stream().filter(card -> card.inWaiting()).count(),
                 active.stream().filter(c -> c.inWaiting() && c.waitingDaysLeft() <= waitingSoonDays).count());
 
         List<WaitingSoon> waitingSoon = active.stream()
                 .filter(c -> c.inWaiting() && c.waitingDaysLeft() <= waitingSoonDays)
-                .sorted(Comparator.comparing(PlanCard::waitingEnds))
+                .sorted(Comparator.comparing(card -> card.waitingEnds()))
                 .map(c -> new WaitingSoon(c.id(), c.code(), c.holderName(), c.waitingEnds()))
                 .toList();
 
@@ -393,7 +394,7 @@ public class FuneralPlanService {
 
         PlanCardRow row = new SimpleCardRow(plan, beneficiaries.size(), deceased.size(), paidUntilNow,
                 payments.stream().filter(p -> p.getStatus() == PlanPaymentStatus.PAID)
-                        .map(PlanPayment::getPaidAt).filter(Objects::nonNull)
+                        .map(payment -> payment.getPaidAt()).filter(Objects::nonNull)
                         .max(Comparator.naturalOrder()).orElse(null));
         PlanCard card = card(row, beneficiaries.stream().map(b -> initials(b.getName(), b.getLastname())).toList(),
                 waitingDays, today, 0);
@@ -772,15 +773,15 @@ public class FuneralPlanService {
     private static BigDecimal expected(List<PlanCard> cards, YearMonth month) {
         return cards.stream()
                 .filter(c -> c.isActive() && c.startDate() != null && !YearMonth.from(c.startDate()).isAfter(month))
-                .map(PlanCard::monthlyFee)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                .map(card -> card.monthlyFee())
+                .reduce(BigDecimal.ZERO, (total, amount) -> total.add(amount));
     }
 
     /** Las 3 clases de plan más comunes y el resto en "Otros". */
     private static List<TypeSlice> types(List<PlanCard> active) {
         Map<String, Long> counts = new LinkedHashMap<>();
         for (PlanCard card : active) {
-            counts.merge(card.planName(), 1L, Long::sum);
+            counts.merge(card.planName(), 1L, (total, increment) -> total + increment);
         }
         List<Map.Entry<String, Long>> sorted = counts.entrySet().stream()
                 .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
@@ -801,7 +802,7 @@ public class FuneralPlanService {
     }
 
     private static List<String> planNames(List<PlanCard> cards) {
-        return cards.stream().map(PlanCard::planName).distinct().sorted().toList();
+        return cards.stream().map(card -> card.planName()).distinct().sorted().toList();
     }
 
     private void changeStatus(Long planId, PlanStatus from, PlanStatus to, String action, String error) {
@@ -938,7 +939,7 @@ public class FuneralPlanService {
 
     private Long currentUserId() {
         return sessionContext.getCurrentUser()
-                .map(AppUser::getId)
+                .map(user -> user.getId())
                 .orElseThrow(UnauthorizedActionException::new);
     }
 
