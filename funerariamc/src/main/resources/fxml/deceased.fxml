@@ -91,7 +91,7 @@
                             <Label fx:id="countLabel" styleClass="card-subtitle"/>
                         </HBox>
                         <HBox styleClass="registry-header">
-                            <Label text="DIFUNTO" styleClass="col-name"/>
+                            <Label text="DIFUNTO" styleClass="col-name" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
                             <Label text="FALLECIMIENTO" styleClass="col-date"/>
                             <Label text="MUERTE" styleClass="col-type"/>
                             <Label text="PLAN EXEQUIAL" styleClass="col-plan"/>
