@@ -119,3 +119,17 @@
 .list-detail { -fx-text-fill: -color-secondary; -fx-font-size: 11.5px; }
 .list-voided { -fx-text-fill: -color-border; -fx-font-size: 12.5px; -fx-strikethrough: true; }
 .surcharge { -fx-text-fill: -color-gold-text; -fx-font-size: 11.5px; }
+
+/* ---------- Formularios en diálogo: mismo estilo que Registrar empleado (personal.css) ---------- */
+.form-dialog { -fx-padding: 0; }
+.form-dialog > .content { -fx-padding: 0; }
+.form-dialog .form-title { -fx-font-size: 26px; }
+.form-dialog .form-body { -fx-padding: 18 28 8 28; }
+.form-dialog > .button-bar {
+    -fx-background-color: -color-card;
+    -fx-border-color: -color-surface transparent transparent transparent; -fx-border-width: 1 0 0 0;
+}
+.form-dialog > .button-bar > .container { -fx-padding: 14 28 18 28; }
+/* Nombre del plan: combo editable sin el recuadro gris de la flecha */
+.form-dialog .combo-box.form-combo > .arrow-button,
+.form-dialog .combo-box.form-combo > .text-field { -fx-background-color: transparent; }
