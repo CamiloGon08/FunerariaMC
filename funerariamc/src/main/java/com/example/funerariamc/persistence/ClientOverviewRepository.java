@@ -129,4 +129,32 @@ public interface ClientOverviewRepository extends Repository<Client, Long> {
             """, nativeQuery = true)
     ReceivableSummary receivableSummary();
 
+    /** Los indicadores de Clientes en una sola consulta (antes eran 5 viajes a Supabase). */
+    interface ClientCounts {
+        long getTotal();
+        long getNaturalClients();
+        long getWithPlan();
+        BigDecimal getReceivable();
+        long getSalesWithBalance();
+        long getNewThisMonth();
+    }
+
+    @Query(value = """
+            select (select count(*) from client) as total,
+                   (select count(*) from client where client_type = 'NATURAL') as naturalClients,
+                   (select count(distinct p.client_id) from funeral_plan p where p.status = 'ACTIVE') as withPlan,
+                   coalesce(r.receivable, 0) as receivable,
+                   r.sales_with_balance as salesWithBalance,
+                   (select count(*) from client where registration_date >= :firstOfMonth) as newThisMonth
+            from (select sum(x.balance) as receivable, count(*) as sales_with_balance
+                  from (select coalesce(s.total_amount, 0)
+                               - coalesce((select sum(t.amount) from financial_transaction t
+                                           where t.related_sale_id = s.id
+                                             and t.transaction_type = 'INCOME'
+                                             and t.status = 'ACTIVE'), 0) as balance
+                        from sale s) x
+                  where x.balance > 0) r
+            """, nativeQuery = true)
+    ClientCounts countClients(@Param("firstOfMonth") LocalDate firstOfMonth);
+
 }
