@@ -30,6 +30,9 @@ public class FxmlViewLoader {
     public static final String CLIENTS = "/fxml/clients.fxml";
     public static final String CLIENT_FORM = "/fxml/client-form.fxml";
     public static final String CHANGE_PASSWORD = "/fxml/change-password.fxml";
+    public static final String CEMETERY = "/fxml/cemetery.fxml";
+    public static final String DECEASED = "/fxml/deceased.fxml";
+    public static final String FUNERAL_PLANS = "/fxml/funeral-plans.fxml";
 
     
     private static final String[] FONTS = {
