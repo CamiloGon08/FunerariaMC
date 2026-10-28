@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.chart.CategoryAxis?>
+<?import javafx.scene.chart.LineChart?>
+<?import javafx.scene.chart.NumberAxis?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.ToggleButton?>
+<?import javafx.scene.control.ToggleGroup?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Pane?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.shape.SVGPath?>
+
+<!--
+  Módulo Planes exequiales (RF-PLA-01 a RF-PLA-04), propuesta P-15 / P-15.1: recaudo del mes,
+  indicadores, gráfica de recaudo, planes por tipo, carencias que terminan pronto, tarjetas de
+  afiliados y el panel lateral del plan. Se muestra dentro del contentPane de main.fxml.
+-->
+<StackPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+           fx:id="root" fx:controller="com.example.funerariamc.controller.FuneralPlanController"
+           styleClass="personal-root"
+           stylesheets="@../css/personal.css, @../css/cemetery.css, @../css/funeral-plans.css">
+
+    <fx:define>
+        <ToggleGroup fx:id="statusGroup"/>
+    </fx:define>
+
+    <VBox spacing="18">
+        <!-- Búsqueda, estado del plan, tipo, pagos y afiliar -->
+        <HBox styleClass="filter-card">
+            <HBox styleClass="search-box" HBox.hgrow="ALWAYS" minWidth="150">
+                <SVGPath content="M7 1.5a5.5 5.5 0 1 1 0 11a5.5 5.5 0 0 1 0-11z M11.2 11.2 L15 15" styleClass="search-icon"/>
+                <TextField fx:id="searchField" promptText="Buscar titular, documento o plan" HBox.hgrow="ALWAYS"/>
+            </HBox>
+            <HBox styleClass="segmented" minWidth="-Infinity">
+                <ToggleButton fx:id="activeToggle" text="Activos" toggleGroup="$statusGroup" selected="true" styleClass="segment"/>
+                <ToggleButton fx:id="suspendedToggle" text="Suspendidos" toggleGroup="$statusGroup" styleClass="segment"/>
+                <ToggleButton fx:id="cancelledToggle" text="Cancelados" toggleGroup="$statusGroup" styleClass="segment"/>
+            </HBox>
+            <ComboBox fx:id="typeFilter" styleClass="chip-combo" prefWidth="150" minWidth="130"/>
+            <ComboBox fx:id="paymentFilter" styleClass="chip-combo" prefWidth="140" minWidth="130"/>
+            <Button text="+  Afiliar plan" onAction="#onRegister" styleClass="primary-button" minWidth="-Infinity"/>
+        </HBox>
+
+        <ScrollPane fx:id="pageScroll" fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="ALWAYS"
+                    styleClass="card-scroll" VBox.vgrow="ALWAYS">
+            <VBox spacing="18" styleClass="card-scroll-content">
+                <!-- Indicadores: el recaudo va en la tarjeta oscura -->
+                <HBox spacing="16">
+                    <VBox styleClass="kpi-card,kpi-dark" HBox.hgrow="ALWAYS" prefWidth="0">
+                        <Label fx:id="collectedCaption" text="RECAUDO DEL MES" styleClass="kpi-caption"/>
+                        <Label fx:id="collectedValue" text="—" styleClass="kpi-value"/>
+                        <Label fx:id="collectedDetail" styleClass="kpi-detail" wrapText="true"/>
+                    </VBox>
+                    <VBox styleClass="kpi-card" HBox.hgrow="ALWAYS" prefWidth="0">
+                        <Label text="PLANES ACTIVOS" styleClass="kpi-caption"/>
+                        <Label fx:id="activeValue" text="—" styleClass="kpi-value"/>
+                        <Label fx:id="activeDetail" styleClass="kpi-detail"/>
+                    </VBox>
+                    <VBox styleClass="kpi-card" HBox.hgrow="ALWAYS" prefWidth="0">
+                        <Label text="EN MORA" styleClass="kpi-caption"/>
+                        <Label fx:id="overdueValue" text="—" styleClass="kpi-value"/>
+                        <Label fx:id="overdueDetail" styleClass="kpi-detail,kpi-alert" wrapText="true"/>
+                    </VBox>
+                    <VBox styleClass="kpi-card" HBox.hgrow="ALWAYS" prefWidth="0">
+                        <Label text="EN CARENCIA" styleClass="kpi-caption"/>
+                        <Label fx:id="waitingValue" text="—" styleClass="kpi-value"/>
+                        <Label fx:id="waitingDetail" styleClass="kpi-detail,kpi-gold" wrapText="true"/>
+                    </VBox>
+                </HBox>
+
+                <HBox spacing="16" fillHeight="false">
+                    <!-- Recaudo de cuotas: recaudado contra esperado, últimos 6 meses -->
+                    <VBox styleClass="table-card" HBox.hgrow="ALWAYS" minWidth="0" spacing="6">
+                        <HBox alignment="CENTER_LEFT" spacing="12">
+                            <Label text="Recaudo de cuotas" styleClass="side-title"/>
+                            <Pane HBox.hgrow="ALWAYS"/>
+                            <Label text="Últimos 6 meses" styleClass="card-subtitle"/>
+                        </HBox>
+                        <HBox spacing="14" alignment="CENTER">
+                            <HBox styleClass="legend-item">
+                                <Region styleClass="legend-line,line-collected"/>
+                                <Label text="Recaudado" styleClass="legend-text"/>
+                            </HBox>
+                            <HBox styleClass="legend-item">
+                                <Region styleClass="legend-line,line-expected"/>
+                                <Label text="Esperado" styleClass="legend-text"/>
+                            </HBox>
+                        </HBox>
+                        <LineChart fx:id="collectionChart" styleClass="collection-chart" legendVisible="false"
+                                   animated="false" createSymbols="true" prefHeight="250" minHeight="220">
+                            <xAxis>
+                                <CategoryAxis fx:id="monthAxis" tickMarkVisible="false"/>
+                            </xAxis>
+                            <yAxis>
+                                <NumberAxis fx:id="amountAxis" tickMarkVisible="false" minorTickVisible="false"/>
+                            </yAxis>
+                        </LineChart>
+                    </VBox>
+
+                    <VBox spacing="16" prefWidth="330" minWidth="300" maxWidth="350">
+                        <VBox styleClass="table-card" spacing="10">
+                            <Label text="Planes por tipo" styleClass="side-title"/>
+                            <HBox spacing="16" alignment="CENTER_LEFT">
+                                <StackPane fx:id="donut" minWidth="130" minHeight="130" prefWidth="130" prefHeight="130"/>
+                                <VBox fx:id="typeLegend" spacing="8" HBox.hgrow="ALWAYS"/>
+                            </HBox>
+                            <Label fx:id="averageFee" styleClass="card-subtitle"/>
+                        </VBox>
+                        <VBox styleClass="table-card" spacing="10">
+                            <HBox alignment="CENTER_LEFT">
+                                <Label text="Terminan carencia" styleClass="side-title"/>
+                                <Pane HBox.hgrow="ALWAYS"/>
+                                <Label text="próximos 30 días" styleClass="card-subtitle"/>
+                            </HBox>
+                            <VBox fx:id="waitingBox" spacing="8"/>
+                        </VBox>
+                    </VBox>
+                </HBox>
+
+                <!-- Afiliados: se agregan tarjetas al llegar al final (sin paginación) -->
+                <HBox alignment="BOTTOM_LEFT" spacing="12">
+                    <Label text="Afiliados" styleClass="section-heading-serif"/>
+                    <Pane HBox.hgrow="ALWAYS"/>
+                    <Label fx:id="countLabel" styleClass="card-subtitle"/>
+                </HBox>
+                <GridPane fx:id="cardGrid" hgap="16" vgap="16"/>
+                <Label fx:id="emptyLabel" styleClass="card-subtitle" wrapText="true" managed="false" visible="false"/>
+            </VBox>
+        </ScrollPane>
+    </VBox>
+
+    <!-- Panel del plan (P-15.1) -->
+    <Region fx:id="veil" styleClass="drawer-veil" visible="false" onMouseClicked="#onCloseDrawer"/>
+    <VBox fx:id="drawer" styleClass="drawer" StackPane.alignment="CENTER_RIGHT"
+          prefWidth="460" maxWidth="460" visible="false">
+        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="card-scroll" VBox.vgrow="ALWAYS">
+            <VBox fx:id="drawerBody" spacing="14" styleClass="drawer-body"/>
+        </ScrollPane>
+        <HBox fx:id="drawerActions" spacing="10" styleClass="drawer-footer"/>
+    </VBox>
+</StackPane>
