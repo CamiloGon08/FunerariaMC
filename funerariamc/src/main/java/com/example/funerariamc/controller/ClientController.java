@@ -1,6 +1,7 @@
 package com.example.funerariamc.controller;
 
 import com.example.funerariamc.config.FxmlViewLoader;
+import com.example.funerariamc.config.ReadOnlyWork;
 import com.example.funerariamc.exception.BusinessException;
 import com.example.funerariamc.model.Client;
 import com.example.funerariamc.model.enums.ClientType;
@@ -15,6 +16,7 @@ import com.example.funerariamc.service.ClientOverviewService.PlanInfo;
 import com.example.funerariamc.service.ClientOverviewService.SaleInfo;
 import com.example.funerariamc.service.ClientService;
 import com.example.funerariamc.service.ClientService.BalanceFilter;
+import com.example.funerariamc.ui.RefreshableView;
 import javafx.animation.FadeTransition;
 import javafx.animation.ParallelTransition;
 import javafx.animation.PauseTransition;
@@ -66,7 +68,7 @@ import java.util.Optional;
  */
 @Component
 @Scope("prototype")
-public class ClientController {
+public class ClientController implements RefreshableView {
 
     /** Tarjetas por tanda: 4 filas de 3. Al bajar hasta el final se piden 12 más. */
     private static final int PAGE_SIZE = 12;
@@ -78,6 +80,7 @@ public class ClientController {
     private final ClientService clientService;
     private final ClientOverviewService overviewService;
     private final FxmlViewLoader viewLoader;
+    private final ReadOnlyWork readOnlyWork;
     /** Espera a que el usuario deje de escribir para no consultar la BD en cada tecla. */
     private final PauseTransition searchDelay = new PauseTransition(Duration.millis(300));
 
@@ -140,10 +143,17 @@ public class ClientController {
     private Long drawerClientId;
 
     public ClientController(ClientService clientService, ClientOverviewService overviewService,
-                            FxmlViewLoader viewLoader) {
+                            FxmlViewLoader viewLoader, ReadOnlyWork readOnlyWork) {
         this.clientService = clientService;
         this.overviewService = overviewService;
         this.viewLoader = viewLoader;
+        this.readOnlyWork = readOnlyWork;
+    }
+
+    /** El menú guarda la pantalla abierta: al volver a Clientes se traen los datos nuevos. */
+    @Override
+    public void refresh() {
+        reload();
     }
 
     @FXML
@@ -214,9 +224,12 @@ public class ClientController {
         Task<Batch> task = new Task<>() {
             @Override
             protected Batch call() {
-                Page<Client> page = clientService.search(text, type, balance, pageIndex, size);
-                List<Long> ids = page.getContent().stream().map(Client::getId).toList();
-                return new Batch(page, overviewService.summaries(ids), overviewService.kpis());
+                // Una sola transacción para las tarjetas, sus resúmenes y los indicadores.
+                return readOnlyWork.run(() -> {
+                    Page<Client> page = clientService.search(text, type, balance, pageIndex, size);
+                    List<Long> ids = page.getContent().stream().map(Client::getId).toList();
+                    return new Batch(page, overviewService.summaries(ids), overviewService.kpis());
+                });
             }
         };
         task.setOnSucceeded(e -> {
