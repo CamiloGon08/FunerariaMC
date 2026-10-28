@@ -126,3 +126,14 @@
 .doc-check.missing { -fx-background-color: -color-error-bg; -fx-text-fill: -color-error; }
 .doc-check.na { -fx-background-color: -color-card; -fx-border-color: -color-border; -fx-border-radius: 8; -fx-text-fill: -color-secondary; }
 .chip-flow { -fx-hgap: 8; -fx-vgap: 8; }
+
+/* ---------- Formularios en diálogo: mismo estilo que Registrar empleado (personal.css) ---------- */
+.form-dialog { -fx-padding: 0; }
+.form-dialog > .content { -fx-padding: 0; }
+.form-dialog .form-title { -fx-font-size: 26px; }
+.form-dialog .form-body { -fx-padding: 18 28 8 28; }
+.form-dialog > .button-bar {
+    -fx-background-color: -color-card;
+    -fx-border-color: -color-surface transparent transparent transparent; -fx-border-width: 1 0 0 0;
+}
+.form-dialog > .button-bar > .container { -fx-padding: 14 28 18 28; }
