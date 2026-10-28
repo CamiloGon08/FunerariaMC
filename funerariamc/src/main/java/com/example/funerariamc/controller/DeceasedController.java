@@ -24,6 +24,8 @@ import com.example.funerariamc.service.DeceasedService.Segment;
 import com.example.funerariamc.service.DeceasedService.Stage;
 import com.example.funerariamc.service.DeceasedService.TimelineStep;
 import com.example.funerariamc.service.FileStorageService;
+import com.example.funerariamc.ui.DetailCache;
+import com.example.funerariamc.ui.RefreshableView;
 import javafx.animation.FadeTransition;
 import javafx.animation.ParallelTransition;
 import javafx.animation.PauseTransition;
@@ -90,7 +92,7 @@ import java.util.function.Function;
  */
 @Component
 @Scope("prototype")
-public class DeceasedController {
+public class DeceasedController implements RefreshableView {
 
     static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter DAY_TIME = DateTimeFormatter.ofPattern("dd/MM · HH:mm");
@@ -110,6 +112,8 @@ public class DeceasedController {
 
     private final DeceasedService deceasedService;
     private final DeathCertificateService certificateService;
+    /** Expedientes ya consultados o adelantados; se vacía en cada recarga. */
+    private final DetailCache<DeceasedDetail> details;
     private final PauseTransition searchDelay = new PauseTransition(Duration.millis(250));
 
     @FXML
@@ -182,10 +186,19 @@ public class DeceasedController {
     private Overview overview;
     /** Difunto del panel abierto; null si está cerrado. */
     private Long drawerDeceasedId;
+    /** Animación del panel en curso (abrir o cerrar); null si está quieto. */
+    private ParallelTransition drawerMotion;
 
     public DeceasedController(DeceasedService deceasedService, DeathCertificateService certificateService) {
         this.deceasedService = deceasedService;
         this.certificateService = certificateService;
+        this.details = new DetailCache<>(deceasedService::detail, "deceased-detail");
+    }
+
+    /** Al volver al módulo se recargan los datos sin limpiar la pantalla; el expediente abierto sigue abierto. */
+    @Override
+    public void refresh() {
+        loadOverview(drawerDeceasedId);
     }
 
     @FXML
@@ -232,7 +245,10 @@ public class DeceasedController {
     }
 
     private void loadOverview(Long reopenId) {
-        countLabel.setText("Cargando difuntos…");
+        details.clear(); // después de guardar o al volver, nada de lo guardado puede quedar viejo
+        if (overview == null) {
+            countLabel.setText("Cargando difuntos…");
+        }
         run(deceasedService::overview, result -> {
             overview = result;
             fillMonths(result.items());
@@ -244,6 +260,8 @@ public class DeceasedController {
             if (reopenId != null) {
                 openDrawer(reopenId);
             }
+            // Los expedientes de "En servicio ahora" son los que más se abren: se adelantan en segundo plano.
+            details.prefetchAll(inServiceCards().stream().map(DeceasedItem::id).toList());
         }, "No se pudieron cargar los difuntos.");
     }
 
@@ -306,11 +324,15 @@ public class DeceasedController {
         serviceToggle.setText("En servicio · " + k.inService());
     }
 
-    private void renderServiceCards() {
-        List<DeceasedItem> inService = overview.items().stream().filter(DeceasedItem::inService)
+    private List<DeceasedItem> inServiceCards() {
+        return overview.items().stream().filter(DeceasedItem::inService)
                 .sorted(java.util.Comparator.comparing((DeceasedItem i) -> i.stage().getStep()).reversed())
                 .limit(MAX_SERVICE_CARDS)
                 .toList();
+    }
+
+    private void renderServiceCards() {
+        List<DeceasedItem> inService = inServiceCards();
         serviceCards.getChildren().setAll(inService.stream().map(this::serviceCard).toList());
         // Rellena con espacios para que las tarjetas no se estiren cuando hay pocas.
         for (int i = inService.size(); i < MAX_SERVICE_CARDS && !inService.isEmpty(); i++) {
@@ -372,6 +394,7 @@ public class DeceasedController {
         HBox.setHgrow(card, Priority.ALWAYS);
         card.setPrefWidth(0);
         card.setMinWidth(200);
+        card.setOnMouseEntered(e -> details.prefetch(item.id()));
         card.setOnMouseClicked(e -> openDrawer(item.id()));
         return card;
     }
@@ -502,6 +525,7 @@ public class DeceasedController {
 
         HBox row = new HBox(name, date, typeBox, plan, destination, docs);
         row.getStyleClass().add("registry-row");
+        row.setOnMouseEntered(e -> details.prefetch(item.id()));
         row.setOnMouseClicked(e -> openDrawer(item.id()));
         return row;
     }
@@ -562,25 +586,71 @@ public class DeceasedController {
 
     // ---------- expediente (P-13.1) ----------
 
+    /**
+     * Abre el panel al instante: con el expediente si ya está guardado, o con el nombre de la fila y
+     * "Cargando expediente…" mientras llega. Si el panel ya muestra ese difunto (recarga después de
+     * guardar), conserva lo que se ve hasta que llegue lo nuevo.
+     */
     private void openDrawer(Long deceasedId) {
+        boolean sameOpen = drawer.isVisible() && deceasedId.equals(drawerDeceasedId);
         drawerDeceasedId = deceasedId;
-        run(() -> deceasedService.detail(deceasedId), detail -> {
-            if (!deceasedId.equals(drawerDeceasedId)) {
-                return;
+        DeceasedDetail cached = details.get(deceasedId);
+        if (cached != null) {
+            fillDrawer(cached);
+        } else {
+            if (!sameOpen) {
+                fillDrawerLoading(deceasedId);
             }
-            fillDrawer(detail);
-            if (drawer.isVisible()) {
-                return;
-            }
-            veil.setVisible(true);
-            drawer.setVisible(true);
-            TranslateTransition slide = new TranslateTransition(Duration.millis(220), drawer);
-            slide.setToX(0);
-            FadeTransition fade = new FadeTransition(Duration.millis(220), veil);
-            fade.setFromValue(0);
-            fade.setToValue(1);
-            new ParallelTransition(slide, fade).play();
-        }, "No se pudo cargar el expediente.");
+            details.load(deceasedId, detail -> {
+                if (deceasedId.equals(drawerDeceasedId)) {
+                    fillDrawer(detail);
+                }
+            }, error -> {
+                if (deceasedId.equals(drawerDeceasedId)) {
+                    closeDrawer();
+                    showError(error instanceof BusinessException business ? business.getMessage()
+                            : "No se pudo cargar el expediente.");
+                }
+            });
+        }
+        slideIn();
+    }
+
+    private void fillDrawerLoading(Long deceasedId) {
+        DeceasedItem item = overview == null ? null : overview.items().stream()
+                .filter(i -> deceasedId.equals(i.id())).findFirst().orElse(null);
+        Label caption = new Label("EXPEDIENTE" + (item == null ? "" : " · "
+                + (item.contractNumber() == null ? item.code() : item.contractNumber())));
+        caption.getStyleClass().add("kpi-caption");
+        VBox titles = new VBox(2, caption, wrapped(item == null ? "Difunto" : item.fullName(), "drawer-name"));
+        HBox.setHgrow(titles, Priority.ALWAYS);
+        Button close = new Button("✕");
+        close.getStyleClass().add("drawer-close");
+        close.setOnAction(event -> closeDrawer());
+        HBox header = new HBox(14, titles, close);
+        header.setAlignment(Pos.TOP_LEFT);
+        drawerBody.getChildren().setAll(header, wrapped("Cargando expediente…", "card-subtitle"));
+        drawerActions.getChildren().clear();
+    }
+
+    private void slideIn() {
+        if (drawer.isVisible() && drawer.getTranslateX() == 0 && drawerMotion == null) {
+            return;
+        }
+        if (drawerMotion != null) {
+            drawerMotion.stop(); // si se estaba cerrando, vuelve a abrir desde donde iba
+        }
+        boolean hidden = !drawer.isVisible();
+        veil.setVisible(true);
+        drawer.setVisible(true);
+        TranslateTransition slide = new TranslateTransition(Duration.millis(220), drawer);
+        slide.setToX(0);
+        FadeTransition fade = new FadeTransition(Duration.millis(220), veil);
+        fade.setFromValue(hidden ? 0 : veil.getOpacity());
+        fade.setToValue(1);
+        drawerMotion = new ParallelTransition(slide, fade);
+        drawerMotion.setOnFinished(event -> drawerMotion = null);
+        drawerMotion.play();
     }
 
     @FXML
@@ -597,8 +667,13 @@ public class DeceasedController {
         slide.setToX(DRAWER_WIDTH);
         FadeTransition fade = new FadeTransition(Duration.millis(180), veil);
         fade.setToValue(0);
+        if (drawerMotion != null) {
+            drawerMotion.stop();
+        }
         ParallelTransition out = new ParallelTransition(slide, fade);
+        drawerMotion = out;
         out.setOnFinished(event -> {
+            drawerMotion = null;
             if (drawerDeceasedId == null) {
                 drawer.setVisible(false);
                 veil.setVisible(false);

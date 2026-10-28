@@ -8,13 +8,10 @@ import com.example.funerariamc.exception.WaitingPeriodException;
 import com.example.funerariamc.model.AppUser;
 import com.example.funerariamc.model.Beneficiary;
 import com.example.funerariamc.model.Client;
-import com.example.funerariamc.model.Cremation;
 import com.example.funerariamc.model.DeathCertificate;
 import com.example.funerariamc.model.Deceased;
 import com.example.funerariamc.model.FuneralPlan;
-import com.example.funerariamc.model.ServiceContract;
 import com.example.funerariamc.model.ServiceTransport;
-import com.example.funerariamc.model.Vault;
 import com.example.funerariamc.model.enums.ClientType;
 import com.example.funerariamc.model.enums.ContractStatus;
 import com.example.funerariamc.model.enums.DeathType;
@@ -27,15 +24,14 @@ import com.example.funerariamc.model.enums.TransportStatus;
 import com.example.funerariamc.model.enums.VehicleType;
 import com.example.funerariamc.persistence.BeneficiaryRepository;
 import com.example.funerariamc.persistence.ClientRepository;
-import com.example.funerariamc.persistence.CremationRepository;
 import com.example.funerariamc.persistence.DeathCertificateRepository;
 import com.example.funerariamc.persistence.DeceasedRepository;
 import com.example.funerariamc.persistence.DeceasedRepository.DeceasedRow;
+import com.example.funerariamc.persistence.DeceasedRepository.DetailRow;
 import com.example.funerariamc.persistence.DeceasedRepository.DepartureRow;
 import com.example.funerariamc.persistence.FuneralPlanRepository;
 import com.example.funerariamc.persistence.ServiceContractRepository;
 import com.example.funerariamc.persistence.ServiceTransportRepository;
-import com.example.funerariamc.persistence.VaultRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -80,8 +76,6 @@ public class DeceasedService {
     private final FuneralPlanRepository planRepository;
     private final BeneficiaryRepository beneficiaryRepository;
     private final ServiceContractRepository contractRepository;
-    private final VaultRepository vaultRepository;
-    private final CremationRepository cremationRepository;
     private final ServiceTransportRepository transportRepository;
     private final PlanParameters parameters;
     private final AccessLogService accessLogService;
@@ -92,20 +86,18 @@ public class DeceasedService {
     public DeceasedService(DeceasedRepository deceasedRepository, DeathCertificateRepository certificateRepository,
                            DeathCertificateService certificateService, ClientRepository clientRepository,
                            FuneralPlanRepository planRepository, BeneficiaryRepository beneficiaryRepository,
-                           ServiceContractRepository contractRepository, VaultRepository vaultRepository,
-                           CremationRepository cremationRepository, ServiceTransportRepository transportRepository,
+                           ServiceContractRepository contractRepository, ServiceTransportRepository transportRepository,
                            PlanParameters parameters, AccessLogService accessLogService,
                            SessionContext sessionContext) {
         this(deceasedRepository, certificateRepository, certificateService, clientRepository, planRepository,
-                beneficiaryRepository, contractRepository, vaultRepository, cremationRepository, transportRepository,
+                beneficiaryRepository, contractRepository, transportRepository,
                 parameters, accessLogService, sessionContext, Clock.system(AccessLogService.APP_ZONE));
     }
 
     DeceasedService(DeceasedRepository deceasedRepository, DeathCertificateRepository certificateRepository,
                     DeathCertificateService certificateService, ClientRepository clientRepository,
                     FuneralPlanRepository planRepository, BeneficiaryRepository beneficiaryRepository,
-                    ServiceContractRepository contractRepository, VaultRepository vaultRepository,
-                    CremationRepository cremationRepository, ServiceTransportRepository transportRepository,
+                    ServiceContractRepository contractRepository, ServiceTransportRepository transportRepository,
                     PlanParameters parameters, AccessLogService accessLogService, SessionContext sessionContext,
                     Clock clock) {
         this.deceasedRepository = deceasedRepository;
@@ -115,8 +107,6 @@ public class DeceasedService {
         this.planRepository = planRepository;
         this.beneficiaryRepository = beneficiaryRepository;
         this.contractRepository = contractRepository;
-        this.vaultRepository = vaultRepository;
-        this.cremationRepository = cremationRepository;
         this.transportRepository = transportRepository;
         this.parameters = parameters;
         this.accessLogService = accessLogService;
@@ -331,14 +321,12 @@ public class DeceasedService {
         LocalDateTime now = LocalDateTime.now(clock);
         Deceased deceased = deceasedRepository.findDetailById(deceasedId)
                 .orElseThrow(() -> new ResourceNotFoundException("Difunto", deceasedId));
-        DeceasedItem item = deceasedRepository.findRegistry(
+        // Supabase está lejos: la fila trae de una vez contrato, bóveda y cremación (antes 4 consultas).
+        DetailRow row = deceasedRepository.findDetailRow(deceasedId,
                         List.of(TransportStatus.SCHEDULED, TransportStatus.IN_PROGRESS), TransportStatus.IN_PROGRESS,
-                        DocumentType.MEDICAL_CERTIFICATE, DocumentType.FORENSIC_REPORT,
-                        DocumentType.BODY_RELEASE_ORDER).stream()
-                .filter(row -> row.getId().equals(deceasedId))
-                .findFirst()
-                .map(row -> item(row, now))
+                        DocumentType.MEDICAL_CERTIFICATE, DocumentType.FORENSIC_REPORT, DocumentType.BODY_RELEASE_ORDER)
                 .orElseThrow(() -> new ResourceNotFoundException("Difunto", deceasedId));
+        DeceasedItem item = item(row, now);
 
         List<DeathCertificate> certificates = certificateRepository.findByDeceased(deceasedId);
         List<DocumentInfo> documents = certificates.stream()
@@ -350,14 +338,16 @@ public class DeceasedService {
                         c.getCreatedAt()))
                 .toList();
 
-        List<TimelineStep> timeline = timeline(deceased, item, certificates, now);
+        List<TimelineStep> timeline = timeline(row, item, certificates, now);
 
         PlanCoverage plan = null;
         List<String> others = List.of();
         FuneralPlan funeralPlan = deceased.getFuneralPlan();
         if (funeralPlan != null) {
-            plan = coverage(funeralPlan, deceased.getDocumentNumber(), deceased.getDeathDate());
-            others = beneficiaryRepository.findByFuneralPlanIdOrderByIdAsc(funeralPlan.getId()).stream()
+            // Una sola lista de beneficiarios sirve para el parentesco, el conteo y "otros beneficiarios".
+            List<Beneficiary> beneficiaries = beneficiaryRepository.findByFuneralPlanIdOrderByIdAsc(funeralPlan.getId());
+            plan = coverage(funeralPlan, deceased.getDocumentNumber(), deceased.getDeathDate(), beneficiaries);
+            others = beneficiaries.stream()
                     .filter(b -> !Objects.equals(b.getDocumentNumber(), deceased.getDocumentNumber()))
                     .map(b -> fullName(b.getName(), b.getLastname()) + relationshipSuffix(b.getRelationship()))
                     .toList();
@@ -589,7 +579,7 @@ public class DeceasedService {
         return row.getPreparationCompletedAt() != null ? Stage.READY : Stage.PREPARATION;
     }
 
-    private List<TimelineStep> timeline(Deceased deceased, DeceasedItem item, List<DeathCertificate> certificates,
+    private List<TimelineStep> timeline(DetailRow row, DeceasedItem item, List<DeathCertificate> certificates,
                                         LocalDateTime now) {
         List<TimelineStep> steps = new ArrayList<>();
         DeathCertificate first = certificates.stream()
@@ -601,43 +591,38 @@ public class DeceasedService {
                 first.getRegisteredByEmployee().getLastname());
         steps.add(new TimelineStep("Ingreso", by, first == null ? null : first.getCreatedAt(), true));
 
-        ServiceContract contract = contractRepository.findDetailByDeceasedId(deceased.getId()).orElse(null);
-        if (contract == null) {
+        if (row.getContractId() == null) {
             steps.add(new TimelineStep("Contrato de servicio", "Pendiente en Contratos y ventas", null, false));
         } else {
-            String thanato = contract.getThanatopractor() == null ? "Sin tanatopractor asignado"
-                    : "Tanatopractor " + fullName(contract.getThanatopractor().getName(),
-                    contract.getThanatopractor().getLastname());
-            steps.add(new TimelineStep("Preparación", thanato, contract.getPreparationCompletedAt(),
-                    contract.getPreparationCompletedAt() != null));
-            String room = contract.getWakeRoom() == null ? "Sin sala asignada" : contract.getWakeRoom().getName();
-            boolean wakeDone = contract.getWakeEndAt() != null && !now.isBefore(contract.getWakeEndAt());
-            steps.add(new TimelineStep("Velación", room, contract.getWakeStartAt(), wakeDone));
-            for (ServiceTransportRepository.TransportRow row
-                    : transportRepository.findByContract(contract.getId(), StopType.DESTINATION)) {
-                ServiceTransport t = row.getTransport();
+            String thanato = row.getThanatopractorName() == null ? "Sin tanatopractor asignado"
+                    : "Tanatopractor " + fullName(row.getThanatopractorName(), row.getThanatopractorLastname());
+            steps.add(new TimelineStep("Preparación", thanato, row.getPreparationCompletedAt(),
+                    row.getPreparationCompletedAt() != null));
+            String room = row.getWakeRoom() == null ? "Sin sala asignada" : row.getWakeRoom();
+            boolean wakeDone = row.getWakeEndAt() != null && !now.isBefore(row.getWakeEndAt());
+            steps.add(new TimelineStep("Velación", room, row.getWakeStartAt(), wakeDone));
+            for (ServiceTransportRepository.TransportRow transport
+                    : transportRepository.findByContract(row.getContractId(), StopType.DESTINATION)) {
+                ServiceTransport t = transport.getTransport();
                 String vehicle = vehicleLabel(t.getVehicle().getVehicleType()) + " " + t.getVehicle().getPlate();
-                String detail = vehicle + (row.getDestination() == null ? "" : " → " + row.getDestination())
+                String detail = vehicle + (transport.getDestination() == null ? "" : " → " + transport.getDestination())
                         + " · " + t.getStatus().getDisplayName();
                 steps.add(new TimelineStep("Traslado", detail, t.getScheduledAt(),
                         t.getStatus() == TransportStatus.COMPLETED));
             }
         }
-        Vault vault = vaultRepository.findByDeceasedWithCemetery(deceased.getId()).orElse(null);
-        Cremation cremation = vault != null ? null
-                : cremationRepository.findByDeceasedWithBatch(deceased.getId()).orElse(null);
-        if (vault != null) {
+        if (row.getVaultCode() != null) {
             // La bóveda se asigna antes de la inhumación: el paso queda hecho cuando el servicio terminó.
-            String since = vault.getLeaseStartDate() == null ? ""
-                    : " · desde el " + vault.getLeaseStartDate().format(DATE);
-            steps.add(new TimelineStep("Destino", "Inhumación en bóveda " + vault.getCode() + " · "
-                    + vault.getCemetery().getName() + since, null, item.stage() == Stage.FINISHED));
-        } else if (cremation != null) {
-            String detail = "Cremación · horno " + orDash(cremation.getCremationBatch().getFurnaceCode())
+            String since = row.getVaultLeaseStart() == null ? ""
+                    : " · desde el " + row.getVaultLeaseStart().format(DATE);
+            steps.add(new TimelineStep("Destino", "Inhumación en bóveda " + row.getVaultCode() + " · "
+                    + orDash(row.getCemeteryName()) + since, null, item.stage() == Stage.FINISHED));
+        } else if (row.getCremationId() != null) {
+            String detail = "Cremación · horno " + orDash(row.getFurnaceCode())
                     + (item.blocksCremation() ? " · falta la orden de entrega (RN-03)" : "");
-            LocalDateTime at = cremation.getCompletedAt() != null ? cremation.getCompletedAt()
-                    : cremation.getCremationBatch().getScheduledDate();
-            steps.add(new TimelineStep("Destino", detail, at, cremation.getCompletedAt() != null));
+            LocalDateTime at = row.getCremationCompletedAt() != null ? row.getCremationCompletedAt()
+                    : row.getCremationScheduledAt();
+            steps.add(new TimelineStep("Destino", detail, at, row.getCremationCompletedAt() != null));
         } else {
             steps.add(new TimelineStep("Destino", "Bóveda o cremación sin asignar", null, false));
         }
@@ -667,17 +652,18 @@ public class DeceasedService {
         return plan;
     }
 
-    private PlanCoverage coverage(FuneralPlan plan, String document, LocalDate deathDate) {
+    private PlanCoverage coverage(FuneralPlan plan, String document, LocalDate deathDate,
+                                  List<Beneficiary> beneficiaries) {
         boolean holder = Objects.equals(plan.getClient().getDocumentNumber(), document);
-        String relationship = holder ? "Titular" : beneficiaryRepository.findByDocumentWithPlan(document).stream()
-                .filter(b -> b.getFuneralPlan().getId().equals(plan.getId()))
+        String relationship = holder ? "Titular" : beneficiaries.stream()
+                .filter(b -> Objects.equals(b.getDocumentNumber(), document))
                 .map(b -> relationshipLabel(b.getRelationship()))
                 .findFirst().orElse("Beneficiario");
         LocalDate ends = waitingEnds(plan);
         return new PlanCoverage(plan.getId(), FuneralPlanService.code(plan.getId()), planName(plan), plan.getStatus(),
                 ClientService.displayName(plan.getClient()), plan.getClient().getDocumentNumber(), relationship,
                 plan.getStartDate(), ends, ends != null && deathDate != null && !deathDate.isBefore(ends),
-                beneficiaryRepository.countByFuneralPlanId(plan.getId()));
+                beneficiaries.size());
     }
 
     private PlanSuggestion suggestion(FuneralPlan plan, String relationship, LocalDate date) {
