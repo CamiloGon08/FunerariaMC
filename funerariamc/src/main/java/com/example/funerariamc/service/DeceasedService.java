@@ -417,7 +417,8 @@ public class DeceasedService {
                 throw new UnauthorizedActionException();
             }
             deceased.setName(UNIDENTIFIED_NAME);
-            deceased.setLastname(required(data.lastname(), "una descripción del cuerpo (ej. hombre adulto)", 25));
+            // RF-DIF-02: solo el nombre «NN», sin apellidos ni documento (lastname es NOT NULL en la BD)
+            deceased.setLastname("");
             if (data.planId() != null) {
                 throw new InvalidDataException("Un cuerpo no identificado no se puede vincular a un plan.");
             }

@@ -11,7 +11,7 @@ import java.time.LocalDate;
 
 /**
  * Stores information about the deceased person served by the funeral home.
- * An unidentified body (NN) is stored with name "NN", a short description as lastname
+ * An unidentified body (NN) is stored with name "NN", an empty lastname
  * and no document number (RF-DIF-02).
  */
 @Entity

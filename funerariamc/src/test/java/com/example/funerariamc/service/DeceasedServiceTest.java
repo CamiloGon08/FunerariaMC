@@ -137,7 +137,7 @@ class DeceasedServiceTest {
         Deceased saved = service.register(nn(), certificate);
 
         assertEquals("NN", saved.getName());
-        assertEquals("hombre adulto", saved.getLastname());
+        assertEquals("", saved.getLastname());
         assertNull(saved.getDocumentNumber());
         verify(accessLog).record(5L, "DECEASED_REGISTERED: DF-0042");
     }
@@ -216,7 +216,7 @@ class DeceasedServiceTest {
     }
 
     private static DeceasedData nn() {
-        return new DeceasedData(true, "NN", "hombre adulto", null, null, TODAY, DeathType.NON_NATURAL,
+        return new DeceasedData(true, "NN", null, null, null, TODAY, DeathType.NON_NATURAL,
                 ExternalCause.UNDETERMINED, null, null);
     }
 
