@@ -1,0 +1,94 @@
+/*
+ * Módulo Planes exequiales (propuesta P-15 / P-15.1). Se carga después de personal.css y
+ * cemetery.css y usa los colores de app.css. Recaudado en musgo, esperado en niebla;
+ * al día en salvia, mora en terracota, carencia en caqui.
+ */
+
+.section-heading-serif { -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif; -fx-font-size: 24px; -fx-text-fill: -color-primary; }
+
+/* ---------- Indicador oscuro (recaudo del mes) ---------- */
+.kpi-dark { -fx-background-color: -color-primary; }
+.kpi-dark .kpi-caption { -fx-text-fill: -color-detail; }
+.kpi-dark .kpi-value { -fx-text-fill: -color-background; }
+.kpi-dark .kpi-detail { -fx-text-fill: derive(-color-surface, -8%); }
+
+/* ---------- Gráfica de recaudo ---------- */
+.legend-line { -fx-min-width: 16; -fx-max-width: 16; -fx-min-height: 3; -fx-max-height: 3; -fx-background-radius: 2; }
+.line-collected { -fx-background-color: -color-accent; }
+.line-expected { -fx-background-color: -color-border; }
+.collection-chart { -fx-padding: 0; }
+.collection-chart .chart-plot-background { -fx-background-color: transparent; }
+.collection-chart .chart-vertical-grid-lines { -fx-stroke: transparent; }
+.collection-chart .chart-horizontal-grid-lines { -fx-stroke: -color-surface; -fx-stroke-dash-array: 3 4; }
+.collection-chart .chart-alternative-row-fill { -fx-fill: transparent; }
+.collection-chart .chart-vertical-zero-line, .collection-chart .chart-horizontal-zero-line { -fx-stroke: transparent; }
+.collection-chart .axis { -fx-tick-label-fill: -color-secondary; -fx-tick-label-font-size: 11px; }
+.collection-chart .axis:bottom, .collection-chart .axis:left { -fx-border-color: transparent; }
+.collection-chart .default-color0.chart-series-line { -fx-stroke: -color-accent; -fx-stroke-width: 2.5px; }
+.collection-chart .default-color0.chart-line-symbol { -fx-background-color: -color-accent, -color-card; -fx-background-insets: 0, 2.5; -fx-background-radius: 6; -fx-padding: 5; }
+.collection-chart .default-color1.chart-series-line { -fx-stroke: -color-border; -fx-stroke-width: 1.8px; -fx-stroke-dash-array: 6 4; }
+.collection-chart .default-color1.chart-line-symbol { -fx-background-color: -color-border, -color-card; -fx-background-insets: 0, 2; -fx-background-radius: 5; -fx-padding: 4; }
+
+/* ---------- Dona ---------- */
+.donut-track { -fx-stroke: -color-surface; -fx-fill: transparent; }
+.donut-arc { -fx-fill: transparent; -fx-stroke-line-cap: butt; }
+.donut-0 { -fx-stroke: -color-accent; }
+.donut-1 { -fx-stroke: -color-detail; }
+.donut-2 { -fx-stroke: -color-primary; }
+.donut-3 { -fx-stroke: -color-olive; }
+.donut-4 { -fx-stroke: -color-border; }
+.swatch-0 { -fx-background-color: -color-accent; }
+.swatch-1 { -fx-background-color: -color-detail; }
+.swatch-2 { -fx-background-color: -color-primary; }
+.swatch-3 { -fx-background-color: -color-olive; }
+.swatch-4 { -fx-background-color: -color-border; }
+.donut-value { -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif; -fx-font-size: 26px; -fx-text-fill: -color-primary; }
+.donut-caption { -fx-text-fill: -color-secondary; -fx-font-size: 10.5px; }
+.type-name { -fx-text-fill: -color-primary; -fx-font-size: 12.5px; }
+.type-count { -fx-text-fill: -color-primary; -fx-font-size: 12.5px; -fx-font-weight: bold; }
+
+.plan-code { -fx-min-width: 62; -fx-pref-width: 62; -fx-font-size: 11px; }
+
+/* ---------- Tarjetas de afiliados ---------- */
+.plan-card {
+    -fx-background-color: -color-card; -fx-background-radius: 14; -fx-border-color: transparent;
+    -fx-border-radius: 14; -fx-border-width: 1.2;
+    -fx-effect: dropshadow(gaussian, rgba(24,47,37,0.06), 14, 0, 0, 3);
+    -fx-padding: 16 18 14 18; -fx-spacing: 10; -fx-cursor: hand;
+}
+.plan-card:hover { -fx-border-color: -color-accent; }
+.plan-card.inactive { -fx-opacity: 0.75; }
+.plan-holder { -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif; -fx-font-size: 22px; -fx-text-fill: -color-primary; }
+.plan-meta { -fx-text-fill: -color-secondary; -fx-font-size: 11.5px; }
+.plan-name { -fx-text-fill: -color-primary; -fx-font-size: 15px; -fx-font-weight: bold; }
+.plan-fee { -fx-text-fill: -color-secondary; -fx-font-size: 12px; }
+.mini-avatar {
+    -fx-min-width: 26; -fx-min-height: 26; -fx-max-width: 26; -fx-max-height: 26;
+    -fx-background-radius: 999; -fx-background-color: -color-surface; -fx-border-color: -color-card;
+    -fx-border-width: 2; -fx-border-radius: 999; -fx-alignment: center;
+    -fx-font-size: 9.5px; -fx-font-weight: bold; -fx-text-fill: -color-primary;
+}
+.mini-avatar.holder { -fx-background-color: -color-detail; }
+.card-footer { -fx-border-color: -color-surface transparent transparent transparent; -fx-border-width: 1 0 0 0; -fx-padding: 8 0 0 0; -fx-alignment: center-left; -fx-spacing: 8; }
+.footer-text { -fx-text-fill: -color-secondary; -fx-font-size: 11.5px; }
+.footer-strong { -fx-text-fill: -color-primary; -fx-font-size: 11.5px; -fx-font-weight: bold; }
+.footer-alert { -fx-text-fill: -color-error; -fx-font-size: 11.5px; -fx-font-weight: bold; }
+.footer-gold { -fx-text-fill: -color-gold-text; -fx-font-size: 11.5px; -fx-font-weight: bold; }
+.waiting-bar > .track { -fx-background-color: -color-surface; -fx-background-radius: 999; -fx-background-insets: 0; }
+.waiting-bar > .bar { -fx-background-color: -color-detail; -fx-background-radius: 999; -fx-background-insets: 0; -fx-padding: 2.5; }
+
+/* ---------- Panel del plan (P-15.1) ---------- */
+.avatar-gold { -fx-background-color: -color-detail; }
+.section-box { -fx-background-color: -color-background; -fx-background-radius: 12; -fx-padding: 14; -fx-spacing: 10; }
+.month-cell { -fx-min-width: 26; -fx-pref-width: 26; -fx-min-height: 22; -fx-pref-height: 22; -fx-background-radius: 5; }
+.month-paid_on_time { -fx-background-color: -color-accent; }
+.month-paid_late { -fx-background-color: -color-detail; }
+.month-unpaid { -fx-background-color: -color-error-bg; -fx-border-color: -color-error; -fx-border-radius: 5; -fx-border-width: 1; }
+.month-upcoming { -fx-background-color: -color-card; -fx-border-color: -color-border; -fx-border-radius: 5; -fx-border-style: segments(3, 3); }
+.month-before_start { -fx-background-color: transparent; -fx-border-color: -color-surface; -fx-border-radius: 5; }
+.month-label { -fx-text-fill: -color-secondary; -fx-font-size: 9.5px; }
+.list-row { -fx-spacing: 12; -fx-alignment: center-left; -fx-padding: 6 0; -fx-border-color: transparent transparent -color-surface transparent; -fx-border-width: 0 0 1 0; }
+.list-name { -fx-text-fill: -color-primary; -fx-font-weight: bold; -fx-font-size: 13px; }
+.list-detail { -fx-text-fill: -color-secondary; -fx-font-size: 11.5px; }
+.list-voided { -fx-text-fill: -color-border; -fx-font-size: 12.5px; -fx-strikethrough: true; }
+.surcharge { -fx-text-fill: -color-gold-text; -fx-font-size: 11.5px; }
