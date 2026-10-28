@@ -1,5 +1,7 @@
 package com.example.funerariamc.model;
 
+import com.example.funerariamc.model.enums.DeathType;
+import com.example.funerariamc.model.enums.ExternalCause;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -9,6 +11,8 @@ import java.time.LocalDate;
 
 /**
  * Stores information about the deceased person served by the funeral home.
+ * An unidentified body (NN) is stored with name "NN", a short description as lastname
+ * and no document number (RF-DIF-02).
  */
 @Entity
 @Table(name = "deceased")
@@ -37,13 +41,14 @@ public class Deceased {
     @Column(name = "death_date")
     private LocalDate deathDate;
 
-    // NATURAL or NON_NATURAL
+    @Enumerated(EnumType.STRING)
     @Column(name = "death_type", length = 15)
-    private String deathType;
+    private DeathType deathType;
 
-    // ACCIDENT, HOMICIDE, SUICIDE, UNDETERMINED (only when death_type = NON_NATURAL)
+    // Only when deathType is NON_NATURAL (RN-01); null when NATURAL.
+    @Enumerated(EnumType.STRING)
     @Column(name = "external_cause", length = 15)
-    private String externalCause;
+    private ExternalCause externalCause;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "client_id")
