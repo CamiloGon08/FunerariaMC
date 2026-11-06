@@ -64,6 +64,16 @@ class AuthServiceTest {
     }
 
     @Test
+    void usernameWithAccentsAndUppercaseFindsTheAsciiAccount() {
+        validCredentials();
+
+        // El usuario se guarda sin tildes ni eñes; "Salespérson" debe encontrar "salesperson".
+        assertSame(user, service.login(" Salespérson ", "secret"));
+
+        verify(users).findByUsernameWithEmployeeAndRole("salesperson");
+    }
+
+    @Test
     void unknownUserAndWrongPasswordHaveTheSamePublicMessage() {
         when(users.findByUsernameWithEmployeeAndRole("missing")).thenReturn(Optional.empty());
         String unknown = assertThrows(AuthenticationFailedException.class,

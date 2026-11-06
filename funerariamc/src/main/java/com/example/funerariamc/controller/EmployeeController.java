@@ -81,7 +81,8 @@ public class EmployeeController implements RefreshableView {
 
     private static final List<Area> AREAS = List.of(
             new Area("Todos", List.of()),
-            new Area("Administración", List.of(EmployeePosition.MANAGER, EmployeePosition.RECEPTIONIST)),
+            new Area("Administración", List.of(EmployeePosition.MANAGER)),
+            new Area("Secretaría", List.of(EmployeePosition.RECEPTIONIST)),
             new Area("Ventas", List.of(EmployeePosition.FUNERAL_SALESPERSON)),
             new Area("Tanatopraxia", List.of(EmployeePosition.THANATOPRACTOR, EmployeePosition.THANATOPRAXY_ASSISTANT)),
             new Area("Conductores", List.of(EmployeePosition.DRIVER)),

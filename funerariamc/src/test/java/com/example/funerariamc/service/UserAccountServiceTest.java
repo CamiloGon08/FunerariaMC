@@ -407,4 +407,11 @@ class UserAccountServiceTest {
         user.setMustChangePassword(mustChange);
         return user;
     }
+
+    @Test
+    void normalizeUsernameRemovesSpacesUppercaseAccentsAndEnye() {
+        assertEquals("flinan", UserAccountService.normalizeUsername("  FLiñán "));
+        assertEquals("j.perez_2", UserAccountService.normalizeUsername("J.Pérez_2"));
+        assertEquals("", UserAccountService.normalizeUsername(null));
+    }
 }

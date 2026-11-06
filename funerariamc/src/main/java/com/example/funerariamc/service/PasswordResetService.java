@@ -73,7 +73,7 @@ public class PasswordResetService {
         if (username == null || username.isBlank()) {
             return;
         }
-        Optional<AppUser> found = appUserRepository.findByUsernameWithEmployeeAndRole(username.trim());
+        Optional<AppUser> found = appUserRepository.findByUsernameWithEmployeeAndRole(UserAccountService.normalizeUsername(username));
         if (found.isEmpty() || !canRecover(found.get())) {
             return;
         }
@@ -121,7 +121,7 @@ public class PasswordResetService {
         if (username == null || username.isBlank() || code == null || code.isBlank()) {
             throw InvalidResetCodeException.invalidCode();
         }
-        AppUser user = appUserRepository.findByUsernameWithEmployeeAndRole(username.trim())
+        AppUser user = appUserRepository.findByUsernameWithEmployeeAndRole(UserAccountService.normalizeUsername(username))
                 .orElseThrow(InvalidResetCodeException::expired);
         if (!canRecover(user)) {
             throw InvalidResetCodeException.expired();

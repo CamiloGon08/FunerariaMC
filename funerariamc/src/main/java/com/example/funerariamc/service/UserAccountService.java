@@ -298,6 +298,18 @@ public class UserAccountService {
         return alphabet.charAt(random.nextInt(alphabet.length()));
     }
 
+    /**
+     * Limpia el usuario que se escribe al iniciar sesión o recuperar la contraseña:
+     * quita espacios, mayúsculas, tildes y eñes ("Fliñán" → "flinan"), igual que al crearlo.
+     */
+    public static String normalizeUsername(String username) {
+        if (username == null) {
+            return "";
+        }
+        return Normalizer.normalize(username.trim().toLowerCase(Locale.ROOT), Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "");
+    }
+
     private static String asciiLetters(String text) {
         if (text == null) {
             return "";
