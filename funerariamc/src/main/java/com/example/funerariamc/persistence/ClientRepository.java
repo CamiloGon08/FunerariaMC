@@ -37,7 +37,9 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
                                 @Param("types") Collection<ClientType> types,
                                 Pageable pageable);
 
-    /**Primeros clientes que coinciden con el texto,Devuelve una lista y no una página*/
+    /**
+     * filtro Primeros clientes que coinciden con el texto
+     */
     @Query("""
             select c from Client c
             where lower(concat(c.name, ' ', c.lastname)) like :pattern
@@ -56,6 +58,7 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
                    or (:balance = 'WITH' and exists (
                         select s.id from Sale s
                         where s.client = c
+                          and s.status = com.example.funerariamc.model.enums.SaleStatus.ACTIVE
                           and coalesce(s.totalAmount, 0) > (select coalesce(sum(t.amount), 0)
                                                             from FinancialTransaction t
                                                             where t.relatedSale = s
@@ -64,6 +67,7 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
                    or (:balance = 'WITHOUT' and not exists (
                         select s.id from Sale s
                         where s.client = c
+                          and s.status = com.example.funerariamc.model.enums.SaleStatus.ACTIVE
                           and coalesce(s.totalAmount, 0) > (select coalesce(sum(t.amount), 0)
                                                             from FinancialTransaction t
                                                             where t.relatedSale = s
@@ -80,6 +84,7 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
                    or (:balance = 'WITH' and exists (
                         select s.id from Sale s
                         where s.client = c
+                          and s.status = com.example.funerariamc.model.enums.SaleStatus.ACTIVE
                           and coalesce(s.totalAmount, 0) > (select coalesce(sum(t.amount), 0)
                                                             from FinancialTransaction t
                                                             where t.relatedSale = s
@@ -88,6 +93,7 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
                    or (:balance = 'WITHOUT' and not exists (
                         select s.id from Sale s
                         where s.client = c
+                          and s.status = com.example.funerariamc.model.enums.SaleStatus.ACTIVE
                           and coalesce(s.totalAmount, 0) > (select coalesce(sum(t.amount), 0)
                                                             from FinancialTransaction t
                                                             where t.relatedSale = s
