@@ -12,6 +12,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 public interface ClientRepository extends JpaRepository<Client, Long> {
@@ -35,6 +36,15 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
             Page<Client> search(@Param("pattern") String pattern,
                                 @Param("types") Collection<ClientType> types,
                                 Pageable pageable);
+
+    /**Primeros clientes que coinciden con el texto,Devuelve una lista y no una página*/
+    @Query("""
+            select c from Client c
+            where lower(concat(c.name, ' ', c.lastname)) like :pattern
+               or lower(c.documentNumber) like :pattern
+            order by c.name, c.lastname, c.id
+            """)
+    List<Client> searchOptions(@Param("pattern") String pattern, Pageable pageable);
 
     /**Página de las tarjetas de Clientes con el filtro de saldo.*/
     @Query(value = """
