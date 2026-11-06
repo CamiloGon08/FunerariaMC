@@ -4,7 +4,6 @@ import com.example.funerariamc.exception.DuplicateDocumentException;
 import com.example.funerariamc.exception.InvalidDataException;
 import com.example.funerariamc.exception.ResourceNotFoundException;
 import com.example.funerariamc.exception.UnauthorizedActionException;
-import com.example.funerariamc.model.AppUser;
 import com.example.funerariamc.model.Driver;
 import com.example.funerariamc.model.Employee;
 import com.example.funerariamc.model.FuneralSalesperson;
@@ -81,7 +80,7 @@ public class EmployeeService {
             throw new InvalidDataException("Seleccione cargos válidos para la búsqueda.");
         }
         Collection<Class<? extends Employee>> types = chosen.stream()
-                .<Class<? extends Employee>>map(EmployeePosition::getType).toList();
+                .<Class<? extends Employee>>map(position -> position.getType()).toList();
         int safePage = Math.max(page, 0);
         int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
         return employeeRepository.search(searchPattern(text), statuses, types, PageRequest.of(safePage, safeSize));
@@ -190,8 +189,8 @@ public class EmployeeService {
         Long actorId = currentUserId();
         Employee employee = getEmployee(id);
         boolean isCurrentUser = sessionContext.getCurrentUser()
-                .map(AppUser::getEmployee)
-                .map(Employee::getId)
+                .map(user -> user.getEmployee())
+                .map(currentEmployee -> currentEmployee.getId())
                 .filter(id::equals)
                 .isPresent();
         if (isCurrentUser) {
@@ -337,7 +336,7 @@ public class EmployeeService {
 
     private Long currentUserId() {
         return sessionContext.getCurrentUser()
-                .map(AppUser::getId)
+                .map(user -> user.getId())
                 .orElseThrow(UnauthorizedActionException::new);
     }
 

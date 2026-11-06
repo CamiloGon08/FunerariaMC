@@ -297,7 +297,7 @@ class UserAccountServiceTest {
 
         assertTrue(sessionUser.getMustChangePassword());
         assertFalse(managedUser.getMustChangePassword());
-        TransactionSynchronizationManager.getSynchronizations().forEach(TransactionSynchronization::afterCommit);
+        TransactionSynchronizationManager.getSynchronizations().forEach(synchronization -> synchronization.afterCommit());
         assertFalse(sessionUser.getMustChangePassword());
     }
 
@@ -325,7 +325,7 @@ class UserAccountServiceTest {
         AppUser replacementSession = account(secretary, "OtraClave2026", true);
         session.start(replacementSession);
 
-        TransactionSynchronizationManager.getSynchronizations().forEach(TransactionSynchronization::afterCommit);
+        TransactionSynchronizationManager.getSynchronizations().forEach(synchronization -> synchronization.afterCommit());
 
         assertSame(replacementSession, session.getCurrentUser().orElseThrow());
         assertTrue(replacementSession.getMustChangePassword());
