@@ -139,7 +139,7 @@ class AuthServiceTest {
         service.login("salesperson", "secret");
         assertFalse(session.isAuthenticated());
         TransactionSynchronizationManager.getSynchronizations()
-                .forEach(TransactionSynchronization::afterCommit);
+                .forEach(synchronization -> synchronization.afterCommit());
 
         assertTrue(session.isAuthenticated());
     }

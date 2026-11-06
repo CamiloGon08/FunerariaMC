@@ -318,7 +318,7 @@ public class UserAccountService {
 
     private Long currentUserId() {
         return sessionContext.getCurrentUser()
-                .map(AppUser::getId)
+                .map(user -> user.getId())
                 .orElseThrow(UnauthorizedActionException::new);
     }
 }
