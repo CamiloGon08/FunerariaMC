@@ -35,6 +35,7 @@ public class FxmlViewLoader {
     public static final String FUNERAL_PLANS = "/fxml/funeral-plans.fxml";
     public static final String WAKE_ROOMS = "/fxml/wake-rooms.fxml";
     public static final String CONTRACTS = "/fxml/contracts.fxml";
+    public static final String INVENTORY = "/fxml/inventory.fxml";
 
     
     private static final String[] FONTS = {
@@ -55,7 +56,7 @@ public class FxmlViewLoader {
         loadFonts();
     }
 
-    /** Registra las fuentes de la marca. */
+    /** Registra las fuentes de la marca; @font-face falla si la ruta tiene espacios. */
     private void loadFonts() {
         for (String font : FONTS) {
             try (InputStream in = getClass().getResourceAsStream(font)) {
@@ -93,7 +94,7 @@ public class FxmlViewLoader {
         }
     }
 
-    /** Reemplaza la escena de la ventana donde está. */
+    /** Reemplaza la escena de la ventana donde está {@code source}. */
     public void switchScene(Node source, String fxmlPath, String title) {
         Stage stage = (Stage) source.getScene().getWindow();
         stage.setScene(new Scene(load(fxmlPath)));
