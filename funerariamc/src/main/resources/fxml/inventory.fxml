@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.ToggleButton?>
+<?import javafx.scene.control.ToggleGroup?>
+<?import javafx.scene.layout.FlowPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.shape.SVGPath?>
+
+<!--
+  Módulo Inventario, pantalla 22 de Figma con la paleta verde
+  oscura (captura 09_inventario): banda verde con el título y 4 indicadores, buscador, vista
+  Tarjetas / Tabla, filtro Para la venta / Uso de la funeraria / "Bajo mínimo", tarjetas con foto y panel lateral.
+  Se muestra dentro del contentPane de main.fxml. El menú la guarda abierta (RefreshableView).
+-->
+<StackPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+           fx:id="root" fx:controller="com.example.funerariamc.controller.InventoryController"
+           styleClass="personal-root,inventory-root" stylesheets="@../css/personal.css, @../css/inventory.css">
+
+    <fx:define>
+        <ToggleGroup fx:id="viewGroup"/>
+        <ToggleGroup fx:id="filterGroup"/>
+    </fx:define>
+
+    <VBox spacing="16">
+        <!-- Banda verde: arriba el encabezado del menú (MainController lo pone en #heroHeaderSlot) -->
+        <VBox styleClass="hero-band" spacing="18">
+            <StackPane id="heroHeaderSlot" alignment="TOP_LEFT"/>
+            <HBox spacing="16">
+                <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
+                    <Label text="ARTÍCULOS" styleClass="hero-kpi-caption"/>
+                    <Label fx:id="itemsValue" text="—" styleClass="hero-kpi-value"/>
+                    <Label fx:id="itemsDetail" styleClass="hero-kpi-detail"/>
+                </VBox>
+                <VBox fx:id="lowCard" styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
+                    <Label text="EN NIVEL MÍNIMO" styleClass="hero-kpi-caption"/>
+                    <Label fx:id="lowValue" text="—" styleClass="hero-kpi-value"/>
+                    <Label fx:id="lowDetail" styleClass="hero-kpi-detail"/>
+                </VBox>
+                <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
+                    <Label text="VALOR DEL INVENTARIO" styleClass="hero-kpi-caption"/>
+                    <Label fx:id="valueValue" text="—" styleClass="hero-kpi-value"/>
+                    <Label text="a precio de venta" styleClass="hero-kpi-detail"/>
+                </VBox>
+                <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
+                    <Label fx:id="movesCaption" text="MOVIMIENTOS DEL MES" styleClass="hero-kpi-caption"/>
+                    <Label fx:id="movesValue" text="—" styleClass="hero-kpi-value"/>
+                    <Label fx:id="movesDetail" styleClass="hero-kpi-detail"/>
+                </VBox>
+            </HBox>
+        </VBox>
+
+        <!-- Buscador, vista, filtro y Nuevo artículo -->
+        <HBox styleClass="filter-card">
+            <HBox styleClass="search-box" HBox.hgrow="ALWAYS" minWidth="180">
+                <SVGPath content="M7 1.5a5.5 5.5 0 1 1 0 11a5.5 5.5 0 0 1 0-11z M11.2 11.2 L15 15" styleClass="search-icon"/>
+                <TextField fx:id="searchField" promptText="Buscar artículo o código" HBox.hgrow="ALWAYS"/>
+            </HBox>
+            <HBox styleClass="segmented" minWidth="-Infinity">
+                <ToggleButton fx:id="cardsToggle" text="Tarjetas" toggleGroup="$viewGroup" selected="true" styleClass="segment"/>
+                <ToggleButton fx:id="tableToggle" text="Tabla" toggleGroup="$viewGroup" styleClass="segment"/>
+            </HBox>
+            <HBox styleClass="segmented" minWidth="-Infinity">
+                <ToggleButton fx:id="allToggle" text="Todos" toggleGroup="$filterGroup" selected="true" styleClass="segment"/>
+                <ToggleButton fx:id="saleToggle" text="Para la venta" toggleGroup="$filterGroup" styleClass="segment"/>
+                <ToggleButton fx:id="useToggle" text="Uso de la funeraria" toggleGroup="$filterGroup" styleClass="segment"/>
+                <ToggleButton fx:id="lowToggle" text="Bajo mínimo" toggleGroup="$filterGroup" styleClass="segment"/>
+            </HBox>
+            <Button fx:id="newButton" text="+  Nuevo artículo" onAction="#onNewItem" styleClass="primary-button" minWidth="-Infinity"/>
+        </HBox>
+
+        <!-- Aviso de reposición: solo aparece si hay artículos en nivel mínimo -->
+        <HBox fx:id="restockBanner" styleClass="restock-banner" managed="false" visible="false">
+            <SVGPath content="M8 1.5 L15 14 L1 14 Z M8 6v3.6 M8 11.6v.2" styleClass="restock-icon"/>
+            <Label fx:id="restockText" styleClass="restock-text" wrapText="true" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+            <Button text="Ver cuáles" onAction="#onShowLow" styleClass="restock-link" minWidth="-Infinity"/>
+        </HBox>
+
+        <StackPane VBox.vgrow="ALWAYS">
+            <!-- Tarjetas con barra de desplazamiento visible (sin paginación); se dibujan por tandas al bajar -->
+            <ScrollPane fx:id="cardScroll" fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="ALWAYS" styleClass="card-scroll">
+                <VBox styleClass="card-scroll-content" spacing="12">
+                    <VBox spacing="2">
+                        <Label text="Artículos en inventario" styleClass="grid-title"/>
+                        <Label fx:id="countLabel" styleClass="grid-subtitle"/>
+                    </VBox>
+                    <FlowPane fx:id="cardFlow" hgap="18" vgap="18"/>
+                    <Label fx:id="emptyLabel" styleClass="empty-board" wrapText="true" managed="false" visible="false"/>
+                </VBox>
+            </ScrollPane>
+
+            <!-- Vista tabla: la lista solo dibuja las filas visibles -->
+            <VBox fx:id="tableCard" styleClass="table-card" spacing="12" visible="false">
+                <VBox spacing="2">
+                    <Label text="Artículos en inventario" styleClass="grid-title"/>
+                    <Label fx:id="tableCountLabel" styleClass="grid-subtitle"/>
+                </VBox>
+                <HBox fx:id="tableHead" styleClass="table-head"/>
+                <StackPane VBox.vgrow="ALWAYS">
+                    <ListView fx:id="itemsList" styleClass="items-list"/>
+                    <Label fx:id="tableEmptyLabel" styleClass="empty-board" wrapText="true" StackPane.alignment="TOP_LEFT"
+                           visible="false" mouseTransparent="true"/>
+                </StackPane>
+            </VBox>
+        </StackPane>
+    </VBox>
+
+    <!-- Panel lateral del artículo: foto, datos e historial de movimientos -->
+    <Region fx:id="veil" styleClass="drawer-veil" visible="false" onMouseClicked="#onCloseDrawer"/>
+    <VBox fx:id="drawer" styleClass="drawer" StackPane.alignment="CENTER_RIGHT"
+          prefWidth="480" maxWidth="480" visible="false">
+        <VBox fx:id="drawerHead" styleClass="drawer-head"/>
+        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="card-scroll" VBox.vgrow="ALWAYS">
+            <VBox fx:id="drawerBody" spacing="12" styleClass="drawer-body"/>
+        </ScrollPane>
+        <HBox fx:id="drawerActions" spacing="10" styleClass="drawer-footer"/>
+    </VBox>
+
+    <!-- Aviso corto al guardar; se desvanece solo -->
+    <Label fx:id="toast" styleClass="toast" StackPane.alignment="BOTTOM_LEFT" wrapText="true" maxWidth="420">
+        <StackPane.margin>
+            <Insets bottom="24" left="24"/>
+        </StackPane.margin>
+    </Label>
+</StackPane>
