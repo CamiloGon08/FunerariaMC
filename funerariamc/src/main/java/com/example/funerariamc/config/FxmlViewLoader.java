@@ -36,6 +36,7 @@ public class FxmlViewLoader {
     public static final String WAKE_ROOMS = "/fxml/wake-rooms.fxml";
     public static final String CONTRACTS = "/fxml/contracts.fxml";
     public static final String INVENTORY = "/fxml/inventory.fxml";
+    public static final String TRANSPORT = "/fxml/transport.fxml";
 
     
     private static final String[] FONTS = {
