@@ -52,6 +52,12 @@
             <version>${javafx.version}</version>
         </dependency>
 
+                <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-web</artifactId>
+            <version>${javafx.version}</version>
+        </dependency>
+
         <!-- BCrypt para cifrar y verificar contraseñas (RNF-SEC-03) -->
         <dependency>
             <groupId>org.springframework.security</groupId>

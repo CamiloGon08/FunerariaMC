@@ -12,6 +12,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 public interface ClientRepository extends JpaRepository<Client, Long> {
@@ -36,6 +37,17 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
                                 @Param("types") Collection<ClientType> types,
                                 Pageable pageable);
 
+    /**
+     * filtro Primeros clientes que coinciden con el texto
+     */
+    @Query("""
+            select c from Client c
+            where lower(concat(c.name, ' ', c.lastname)) like :pattern
+               or lower(c.documentNumber) like :pattern
+            order by c.name, c.lastname, c.id
+            """)
+    List<Client> searchOptions(@Param("pattern") String pattern, Pageable pageable);
+
     /**Página de las tarjetas de Clientes con el filtro de saldo.*/
     @Query(value = """
             select c from Client c
@@ -46,6 +58,7 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
                    or (:balance = 'WITH' and exists (
                         select s.id from Sale s
                         where s.client = c
+                          and s.status = com.example.funerariamc.model.enums.SaleStatus.ACTIVE
                           and coalesce(s.totalAmount, 0) > (select coalesce(sum(t.amount), 0)
                                                             from FinancialTransaction t
                                                             where t.relatedSale = s
@@ -54,6 +67,7 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
                    or (:balance = 'WITHOUT' and not exists (
                         select s.id from Sale s
                         where s.client = c
+                          and s.status = com.example.funerariamc.model.enums.SaleStatus.ACTIVE
                           and coalesce(s.totalAmount, 0) > (select coalesce(sum(t.amount), 0)
                                                             from FinancialTransaction t
                                                             where t.relatedSale = s
@@ -70,6 +84,7 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
                    or (:balance = 'WITH' and exists (
                         select s.id from Sale s
                         where s.client = c
+                          and s.status = com.example.funerariamc.model.enums.SaleStatus.ACTIVE
                           and coalesce(s.totalAmount, 0) > (select coalesce(sum(t.amount), 0)
                                                             from FinancialTransaction t
                                                             where t.relatedSale = s
@@ -78,6 +93,7 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
                    or (:balance = 'WITHOUT' and not exists (
                         select s.id from Sale s
                         where s.client = c
+                          and s.status = com.example.funerariamc.model.enums.SaleStatus.ACTIVE
                           and coalesce(s.totalAmount, 0) > (select coalesce(sum(t.amount), 0)
                                                             from FinancialTransaction t
                                                             where t.relatedSale = s

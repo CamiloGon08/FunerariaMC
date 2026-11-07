@@ -79,6 +79,7 @@ public interface ClientOverviewRepository extends Repository<Client, Long> {
                    sc.contractNumber as contractNumber
             from Sale s left join s.serviceContract sc
             where s.client.id in :clientIds
+              and s.status = com.example.funerariamc.model.enums.SaleStatus.ACTIVE
             order by s.saleDate desc, s.id desc
             """)
     List<SaleRow> findSales(@Param("clientIds") Collection<Long> clientIds,
@@ -116,7 +117,7 @@ public interface ClientOverviewRepository extends Repository<Client, Long> {
             """)
     long countClientsWithPlan(@Param("status") PlanStatus status);
 
-    /** Suma en PostgreSQL el saldo de cada venta (total menos abonos activos) y se queda con los positivos. */
+    /** Suma en PostgreSQL el saldo de cada venta (total - abonos activos) y se queda con los positivos. */
     @Query(value = """
             select coalesce(sum(x.balance), 0) as receivable, count(*) as salesWithBalance
             from (select coalesce(s.total_amount, 0)
@@ -124,12 +125,13 @@ public interface ClientOverviewRepository extends Repository<Client, Long> {
                                      where t.related_sale_id = s.id
                                        and t.transaction_type = 'INCOME'
                                        and t.status = 'ACTIVE'), 0) as balance
-                  from sale s) x
+                  from sale s
+                  where s.status = 'ACTIVE') x
             where x.balance > 0
             """, nativeQuery = true)
     ReceivableSummary receivableSummary();
 
-    /** Los indicadores de Clientes en una sola consulta (antes eran 5 viajes a Supabase). */
+    /** Los indicadores de Clientes en una sola consulta. */
     interface ClientCounts {
         long getTotal();
         long getNaturalClients();
@@ -152,7 +154,8 @@ public interface ClientOverviewRepository extends Repository<Client, Long> {
                                            where t.related_sale_id = s.id
                                              and t.transaction_type = 'INCOME'
                                              and t.status = 'ACTIVE'), 0) as balance
-                        from sale s) x
+                        from sale s
+                  where s.status = 'ACTIVE') x
                   where x.balance > 0) r
             """, nativeQuery = true)
     ClientCounts countClients(@Param("firstOfMonth") LocalDate firstOfMonth);
