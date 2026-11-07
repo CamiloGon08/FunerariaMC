@@ -7,6 +7,8 @@ import lombok.AllArgsConstructor;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
+import com.example.funerariamc.model.enums.CremationBatchStatus;
+
 /**
  * Stores a scheduled cremation batch.
  */
@@ -28,6 +30,7 @@ public class CremationBatch {
     @Column(name = "furnace_code")
     private String furnaceCode;
 
-    @Column(name = "status")
-    private String status;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", length = 15)
+    private CremationBatchStatus status;
 }

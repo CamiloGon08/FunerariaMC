@@ -39,4 +39,9 @@ public class Cremation {
 
     @Column(name = "certificate_number")
     private String certificateNumber;
+
+    // Cupo prepagado que usa: separado mientras no tiene certificado, restado cuando ya se cremó.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cremation_purchase_id")
+    private CremationPurchase cremationPurchase;
 }
