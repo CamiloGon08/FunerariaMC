@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<!--
+  Mapa del módulo Transporte: Leaflet (incluido en la app, carpeta web/leaflet) con el mapa de
+  OpenStreetMap. TransportController llama a showRoute(json) con las paradas, la ruta y el vehículo.
+  Sin internet no cargan las calles, pero la app sigue mostrando la línea de paradas.
+-->
+<link rel="stylesheet" href="leaflet/leaflet.css">
+<style>
+  html, body, #map { height: 100%; margin: 0; background: #EEEEE6; }
+  .leaflet-container { font-family: "Source Sans 3", "Segoe UI", Arial, sans-serif; }
+  .stop-tip { background: #FAF9F5; border: 1px solid #C4AF84; border-radius: 8px; color: #1E2A22;
+              font-size: 12px; padding: 3px 8px; box-shadow: none; }
+  .stop-tip::before { display: none; }
+  .vehicle-tag { background: #182F25; color: #F4F1EC; border-radius: 99px; padding: 3px 9px;
+                 font-size: 11px; white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,.25); }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<script src="leaflet/leaflet.js"></script>
+<script>
+  var map = L.map('map', { zoomControl: true, attributionControl: true }).setView([10.4631, -73.2532], 13);
+  // Textos sin enlaces: un clic en un enlace sacaría a la WebView de esta página.
+  map.attributionControl.setPrefix('Leaflet');
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap'
+  }).addTo(map);
+  var lastBounds = null;
+  // La WebView puede cambiar de tamaño después de dibujar (al abrir la pestaña): se vuelve a encuadrar.
+  window.addEventListener('resize', function () {
+    map.invalidateSize();
+    if (lastBounds) { map.fitBounds(lastBounds, { padding: [40, 40], maxZoom: 16 }); }
+  });
+  var layer = L.layerGroup().addTo(map);
+  function esc(t) { return String(t).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); }
+  var COLORS = { done: '#182F25', current: '#C4AF84', pending: '#FAF9F5' };
+
+  /* data: { stops:[{lat,lon,name,time,state}], line:[[lat,lon]...] o null, vehicle:{lat,lon,label} o null } */
+  function showRoute(text) {
+    var data = JSON.parse(text);
+    layer.clearLayers();
+    var points = data.stops.map(function (s) { return [s.lat, s.lon]; });
+    if (data.line && data.line.length > 1) {
+      L.polyline(data.line, { color: '#465E47', weight: 5, opacity: 0.9 }).addTo(layer);
+    } else if (points.length > 1) {
+      // Sin ruta calculada: línea recta punteada entre paradas.
+      L.polyline(points, { color: '#465E47', weight: 4, dashArray: '8 8', opacity: 0.8 }).addTo(layer);
+    }
+    data.stops.forEach(function (s, i) {
+      L.circleMarker([s.lat, s.lon], {
+        radius: 9, weight: 3, color: '#182F25', fillOpacity: 1, fillColor: COLORS[s.state] || COLORS.pending
+      }).bindTooltip((i + 1) + '. ' + esc(s.name) + (s.time ? ' · ' + esc(s.time) : ''),
+        { permanent: true, direction: i % 2 === 0 ? 'top' : 'bottom', offset: [0, i % 2 === 0 ? -10 : 10],
+          className: 'stop-tip' }).addTo(layer);
+    });
+    if (data.vehicle) {
+      L.marker([data.vehicle.lat, data.vehicle.lon], {
+        icon: L.divIcon({ className: '', html: '<span class="vehicle-tag">' + esc(data.vehicle.label) + '</span>',
+                          iconSize: null, iconAnchor: [-16, 10] })
+      }).addTo(layer);
+    }
+    var all = (data.line && data.line.length > 1) ? data.line : points;
+    if (all.length > 0) {
+      lastBounds = L.latLngBounds(all);
+      map.invalidateSize();
+      map.fitBounds(lastBounds, { padding: [40, 40], maxZoom: 16 });
+    }
+    return true;
+  }
+</script>
+</body>
+</html>
