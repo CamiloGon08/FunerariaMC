@@ -64,6 +64,27 @@ public final class AccessLogLabels {
             AccessLogService.PLAN_CANCELLED, "Cancelación del plan ",
             AccessLogService.PLAN_HOLDER_CHANGED, "Cambio de titular del plan ");
 
+    /** Acciones del módulo Salas de velación: guardan el nombre de la sala o el número del contrato y la sala. */
+    private static final Map<String, String> WAKE_ROOM_ACTIONS = Map.of(
+            AccessLogService.WAKE_ROOM_REGISTERED, "Registro de la sala de velación ",
+            AccessLogService.WAKE_ROOM_ASSIGNED, "Sala de velación asignada al contrato ",
+            AccessLogService.WAKE_ROOM_CHANGED, "Cambio de sala de velación del contrato ");
+
+    /** Acciones del módulo Contratos y ventas: guardan el número del contrato o de la venta y, a veces, un dato más. */
+    private static final Map<String, String> SALE_ACTIONS = Map.of(
+            AccessLogService.CONTRACT_REGISTERED, "Registro del contrato ",
+            AccessLogService.SALE_REGISTERED, "Registro de la venta N.° ",
+            AccessLogService.SALE_PAYMENT_REGISTERED, "Abono a la venta N.° ",
+            AccessLogService.SALE_VOIDED, "Anulación de la venta N.° ",
+            AccessLogService.PREPARATION_REGISTERED, "Preparación del cuerpo registrada en el contrato ");
+
+    /** Tipos de venta que se guardan en inglés después del número. */
+    private static final Map<String, String> SALE_KINDS = Map.of(
+            "PLAN", "· contrato con plan",
+            "PENSION", "· contrato por pensión",
+            "PRIVATE", "· particular",
+            "PRODUCT", "· venta de productos");
+
     private static final Map<String, String> CHANNELS = Map.of(
             "EMAIL", "correo",
             "TELEGRAM", "Telegram");
@@ -91,14 +112,39 @@ public final class AccessLogLabels {
             return "Solicitud de recuperación de contraseña por " + CHANNELS.getOrDefault(channel, channel);
         }
         for (Map<String, String> actions : List.of(EMPLOYEE_ACTIONS, CLIENT_ACTIONS, ACCOUNT_ACTIONS, VAULT_ACTIONS,
-                DECEASED_ACTIONS, PLAN_ACTIONS)) {
+                DECEASED_ACTIONS, PLAN_ACTIONS, WAKE_ROOM_ACTIONS)) {
             for (Map.Entry<String, String> entry : actions.entrySet()) {
                 if (action.startsWith(entry.getKey())) {
                     return entry.getValue() + details(action.substring(entry.getKey().length()).trim());
                 }
             }
         }
+        for (Map.Entry<String, String> entry : SALE_ACTIONS.entrySet()) {
+            if (action.startsWith(entry.getKey())) {
+                return entry.getValue() + saleDetails(action.substring(entry.getKey().length()).trim());
+            }
+        }
         return action;
+    }
+
+    /** "CT-2026-0001 PLAN" pasa a "CT-2026-0001 · contrato con plan"; el valor del abono va en pesos. */
+    private static String saleDetails(String text) {
+        String[] parts = text.split(" ");
+        StringBuilder result = new StringBuilder(parts[0]);
+        for (int i = 1; i < parts.length; i++) {
+            String part = parts[i];
+            String kind = SALE_KINDS.get(part);
+            if (kind != null) {
+                result.append(' ').append(kind);
+            } else if (part.matches("\\d+(\\.\\d+)?")) {
+                java.math.BigDecimal value = new java.math.BigDecimal(part).setScale(0, java.math.RoundingMode.HALF_UP);
+                result.append(" · $ ").append(java.text.NumberFormat.getIntegerInstance(Locale.forLanguageTag("es-CO"))
+                        .format(value));
+            } else {
+                result.append(' ').append(part);
+            }
+        }
+        return result.toString();
     }
 
     /** Pasa a español los valores en inglés que van después del código (tipo de documento, PARTICULAR). */
