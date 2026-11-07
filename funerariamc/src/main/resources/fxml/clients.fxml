@@ -23,13 +23,41 @@
 -->
 <StackPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
            fx:id="root" fx:controller="com.example.funerariamc.controller.ClientController"
-           styleClass="personal-root" stylesheets="@../css/personal.css, @../css/clients.css">
+           styleClass="personal-root, eden-green" stylesheets="@../css/personal.css, @../css/clients.css">
 
     <fx:define>
         <ToggleGroup fx:id="typeGroup"/>
     </fx:define>
 
     <VBox spacing="18">
+        <!-- Banda verde (paleta verde oscura): arriba el encabezado del menú (MainController lo pone en
+             #heroHeaderSlot) y debajo los indicadores en tarjetas translúcidas. -->
+        <VBox styleClass="hero-band">
+            <StackPane id="heroHeaderSlot" alignment="TOP_LEFT"/>
+            <HBox spacing="16">
+                <VBox styleClass="kpi-card" HBox.hgrow="ALWAYS" prefWidth="0">
+                    <Label text="CLIENTES" styleClass="kpi-caption"/>
+                    <Label fx:id="totalValue" text="—" styleClass="kpi-value"/>
+                    <Label fx:id="totalDetail" styleClass="kpi-detail"/>
+                </VBox>
+                <VBox styleClass="kpi-card" HBox.hgrow="ALWAYS" prefWidth="0">
+                    <Label text="CON PLAN EXEQUIAL ACTIVO" styleClass="kpi-caption"/>
+                    <Label fx:id="planValue" text="—" styleClass="kpi-value"/>
+                    <Label fx:id="planDetail" styleClass="kpi-detail"/>
+                </VBox>
+                <VBox styleClass="kpi-card" HBox.hgrow="ALWAYS" prefWidth="0">
+                    <Label text="SALDO POR COBRAR" styleClass="kpi-caption"/>
+                    <Label fx:id="receivableValue" text="—" styleClass="kpi-value"/>
+                    <Label fx:id="receivableDetail" styleClass="kpi-detail, kpi-detail-gold"/>
+                </VBox>
+                <VBox styleClass="kpi-card" HBox.hgrow="ALWAYS" prefWidth="0">
+                    <Label text="NUEVOS ESTE MES" styleClass="kpi-caption"/>
+                    <Label fx:id="newValue" text="—" styleClass="kpi-value"/>
+                    <Label fx:id="newDetail" styleClass="kpi-detail"/>
+                </VBox>
+            </HBox>
+        </VBox>
+
         <!-- Búsqueda, tipo, saldo y nuevo cliente (.filter-card y .search-box en app.css) -->
         <HBox styleClass="filter-card">
             <HBox styleClass="search-box" HBox.hgrow="ALWAYS" minWidth="180">
@@ -47,30 +75,6 @@
             <ComboBox fx:id="balanceFilter" styleClass="chip-combo" prefWidth="186" minWidth="186"/>
             <Button text="+  Nuevo cliente" onAction="#onRegister" styleClass="primary-button"
                     minWidth="-Infinity"/>
-        </HBox>
-
-        <!-- Indicadores -->
-        <HBox spacing="16">
-            <VBox styleClass="kpi-card" HBox.hgrow="ALWAYS" prefWidth="0">
-                <Label text="CLIENTES" styleClass="kpi-caption"/>
-                <Label fx:id="totalValue" text="—" styleClass="kpi-value"/>
-                <Label fx:id="totalDetail" styleClass="kpi-detail"/>
-            </VBox>
-            <VBox styleClass="kpi-card" HBox.hgrow="ALWAYS" prefWidth="0">
-                <Label text="CON PLAN EXEQUIAL ACTIVO" styleClass="kpi-caption"/>
-                <Label fx:id="planValue" text="—" styleClass="kpi-value"/>
-                <Label fx:id="planDetail" styleClass="kpi-detail"/>
-            </VBox>
-            <VBox styleClass="kpi-card" HBox.hgrow="ALWAYS" prefWidth="0">
-                <Label text="SALDO POR COBRAR" styleClass="kpi-caption"/>
-                <Label fx:id="receivableValue" text="—" styleClass="kpi-value"/>
-                <Label fx:id="receivableDetail" styleClass="kpi-detail, kpi-detail-gold"/>
-            </VBox>
-            <VBox styleClass="kpi-card" HBox.hgrow="ALWAYS" prefWidth="0">
-                <Label text="NUEVOS ESTE MES" styleClass="kpi-caption"/>
-                <Label fx:id="newValue" text="—" styleClass="kpi-value"/>
-                <Label fx:id="newDetail" styleClass="kpi-detail"/>
-            </VBox>
         </HBox>
 
         <HBox alignment="BOTTOM_LEFT">
