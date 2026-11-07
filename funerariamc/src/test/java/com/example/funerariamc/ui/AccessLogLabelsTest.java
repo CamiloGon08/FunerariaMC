@@ -66,6 +66,18 @@ class AccessLogLabelsTest {
     }
 
     @Test
+    void translatesInventoryActions() {
+        assertEquals("Registro del artículo de inventario IN-0012",
+                AccessLogLabels.of("INVENTORY_ITEM_REGISTERED: IN-0012"));
+        assertEquals("Actualización del artículo de inventario IN-0012",
+                AccessLogLabels.of("INVENTORY_ITEM_UPDATED: IN-0012"));
+        assertEquals("Entrada de 5 unidades del artículo IN-0012",
+                AccessLogLabels.of("INVENTORY_MOVEMENT_REGISTERED: IN-0012 ENTRY 5"));
+        assertEquals("Salida de 1 unidad del artículo IN-0012",
+                AccessLogLabels.of("INVENTORY_MOVEMENT_REGISTERED: IN-0012 EXIT 1"));
+    }
+
+    @Test
     void keepsUnknownActionsAsStored() {
         assertEquals("SOMETHING_NEW", AccessLogLabels.of("SOMETHING_NEW"));
         assertEquals("Ingreso a MODULO_X", AccessLogLabels.of("OPEN_MODULE: MODULO_X"));
