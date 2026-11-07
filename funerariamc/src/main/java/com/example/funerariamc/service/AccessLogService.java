@@ -58,6 +58,37 @@ public class AccessLogService {
     public static final String PLAN_REACTIVATED = "PLAN_REACTIVATED: ";
     public static final String PLAN_CANCELLED = "PLAN_CANCELLED: ";
     public static final String PLAN_HOLDER_CHANGED = "PLAN_HOLDER_CHANGED: ";
+    public static final String WAKE_ROOM_REGISTERED = "WAKE_ROOM_REGISTERED: ";
+    public static final String WAKE_ROOM_ASSIGNED = "WAKE_ROOM_ASSIGNED: ";
+    public static final String WAKE_ROOM_CHANGED = "WAKE_ROOM_CHANGED: ";
+    public static final String CONTRACT_REGISTERED = "CONTRACT_REGISTERED: ";
+    public static final String SALE_REGISTERED = "SALE_REGISTERED: ";
+    public static final String SALE_PAYMENT_REGISTERED = "SALE_PAYMENT_REGISTERED: ";
+    public static final String SALE_VOIDED = "SALE_VOIDED: ";
+    public static final String PREPARATION_REGISTERED = "PREPARATION_REGISTERED: ";
+    public static final String INVENTORY_ITEM_REGISTERED = "INVENTORY_ITEM_REGISTERED: ";
+    public static final String INVENTORY_ITEM_UPDATED = "INVENTORY_ITEM_UPDATED: ";
+    public static final String INVENTORY_MOVEMENT_REGISTERED = "INVENTORY_MOVEMENT_REGISTERED: ";
+    public static final String VEHICLE_REGISTERED = "VEHICLE_REGISTERED: ";
+    public static final String VEHICLE_UPDATED = "VEHICLE_UPDATED: ";
+    public static final String VEHICLE_MAINTENANCE = "VEHICLE_MAINTENANCE: ";
+    public static final String VEHICLE_AVAILABLE = "VEHICLE_AVAILABLE: ";
+    public static final String TRANSPORT_ASSIGNED = "TRANSPORT_ASSIGNED: ";
+    public static final String TRANSPORT_STARTED = "TRANSPORT_STARTED: ";
+    public static final String TRANSPORT_ARRIVED = "TRANSPORT_ARRIVED: ";
+    public static final String TRANSPORT_COMPLETED = "TRANSPORT_COMPLETED: ";
+    public static final String TRANSPORT_CANCELLED = "TRANSPORT_CANCELLED: ";
+    public static final String CREMATION_BATCH_SCHEDULED = "CREMATION_BATCH_SCHEDULED: ";
+    public static final String CREMATION_BATCH_RESCHEDULED = "CREMATION_BATCH_RESCHEDULED: ";
+    public static final String CREMATION_ASSIGNED = "CREMATION_ASSIGNED: ";
+    public static final String CREMATION_REMOVED = "CREMATION_REMOVED: ";
+    public static final String CREMATION_BATCH_STARTED = "CREMATION_BATCH_STARTED: ";
+    public static final String CREMATION_REGISTERED = "CREMATION_REGISTERED: ";
+    public static final String CREMATION_PROVIDER_SAVED = "CREMATION_PROVIDER_SAVED: ";
+    public static final String CREMATION_PURCHASE_REQUESTED = "CREMATION_PURCHASE_REQUESTED: ";
+    public static final String CREMATION_PURCHASE_CONFIRMED = "CREMATION_PURCHASE_CONFIRMED: ";
+    public static final String CREMATION_PURCHASE_RECEIVED = "CREMATION_PURCHASE_RECEIVED: ";
+    public static final String CREMATION_PURCHASE_CANCELLED = "CREMATION_PURCHASE_CANCELLED: ";
 
     /** Límite técnico de filas por página del contrato de bitácora EP-01. */
     public static final int MAX_PAGE_SIZE = 100;
