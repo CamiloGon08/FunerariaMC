@@ -13,11 +13,13 @@ import javafx.scene.control.DateCell;
 import javafx.scene.control.DatePicker;
 import javafx.scene.control.Label;
 import javafx.scene.control.Pagination;
+import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.layout.Region;
+import javafx.scene.shape.Circle;
 import javafx.util.StringConverter;
 import org.springframework.context.annotation.Scope;
 import org.springframework.data.domain.Page;
@@ -92,6 +94,7 @@ public class AccessLogController implements RefreshableView {
         userColumn.setCellValueFactory(cell -> new ReadOnlyStringWrapper(cell.getValue().getAppUser().getUsername()));
         employeeColumn.setCellValueFactory(cell -> new ReadOnlyStringWrapper(employeeName(cell.getValue())));
         actionColumn.setCellValueFactory(cell -> new ReadOnlyStringWrapper(AccessLogLabels.of(cell.getValue().getAction())));
+        actionColumn.setCellFactory(column -> new ActionChipCell());
         ipColumn.setCellValueFactory(cell -> new ReadOnlyStringWrapper(maskIp(cell.getValue().getIpAddress())));
         EyeToggle.install(showIpButton, "Mostrar IP", "Ocultar IP");
         showIpButton.selectedProperty().addListener((obs, oldValue, shown) -> logTable.refresh());
@@ -255,5 +258,45 @@ public class AccessLogController implements RefreshableView {
             return "";
         }
         return showIpButton.isSelected() ? ip : MASKED_IP;
+    }
+
+    /**
+     * Celda de la columna Acción: muestra el texto en una píldora suave con punto (paleta verde oscura).
+     * Los intentos fallidos van en oliva y los accesos denegados en terracota; el resto en verde.
+     */
+    private static final class ActionChipCell extends TableCell<AccessLog, String> {
+        private final Label chip = new Label();
+
+        private ActionChipCell() {
+            Circle dot = new Circle(3);
+            dot.getStyleClass().add("action-dot");
+            chip.setGraphic(dot);
+            chip.setMinWidth(Region.USE_PREF_SIZE);
+            setText(null);
+        }
+
+        @Override
+        protected void updateItem(String text, boolean empty) {
+            super.updateItem(text, empty);
+            AccessLog log = empty || getTableRow() == null ? null : getTableRow().getItem();
+            if (empty || text == null || log == null) {
+                setGraphic(null);
+                return;
+            }
+            chip.setText(text);
+            chip.getStyleClass().setAll("label", "action-chip", tone(log.getAction()));
+            setGraphic(chip);
+        }
+    }
+
+    /** Tono de la píldora según la acción guardada en inglés (LOGIN_FAILED: ..., ACCESS_DENIED: ...). */
+    static String tone(String action) {
+        if (action == null) {
+            return "normal";
+        }
+        if (action.startsWith("ACCESS_DENIED")) {
+            return "alert";
+        }
+        return action.startsWith("LOGIN_FAILED") ? "warn" : "normal";
     }
 }
