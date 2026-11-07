@@ -27,7 +27,8 @@ public class CremationBatch {
     @Column(name = "scheduled_date")
     private LocalDateTime scheduledDate;
 
-    @Column(name = "furnace_code")
+    // Código del horno o del proveedor externo (máximo 15 caracteres en la BD).
+    @Column(name = "furnace_code", length = 15)
     private String furnaceCode;
 
     @Enumerated(EnumType.STRING)
