@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.ToggleButton?>
+<?import javafx.scene.control.ToggleGroup?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.shape.SVGPath?>
+
+<!--
+  Módulo Contratos y ventas, pantalla 08 de Figma con la paleta verde
+  oscura (captura 08_contratos): banda verde con el título y 4 indicadores, buscador, filtro por
+  tipo y por pago, tabla "Contratos registrados" con barra visible y panel lateral "Ver".
+  Se muestra dentro del contentPane de main.fxml. El menú la guarda abierta (RefreshableView).
+-->
+<StackPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+           fx:id="root" fx:controller="com.example.funerariamc.controller.ContractController"
+           styleClass="personal-root,contracts-root" stylesheets="@../css/personal.css, @../css/contracts.css">
+
+    <fx:define>
+        <ToggleGroup fx:id="typeGroup"/>
+    </fx:define>
+
+    <VBox spacing="16">
+        <!-- Banda verde: arriba el encabezado del menú (MainController lo pone en #heroHeaderSlot) -->
+        <VBox styleClass="hero-band" spacing="18">
+            <StackPane id="heroHeaderSlot" alignment="TOP_LEFT"/>
+            <HBox spacing="16">
+                <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
+                    <Label text="REGISTROS" styleClass="hero-kpi-caption"/>
+                    <Label fx:id="recordsValue" text="—" styleClass="hero-kpi-value"/>
+                    <Label fx:id="recordsDetail" styleClass="hero-kpi-detail"/>
+                </VBox>
+                <VBox styleClass="hero-kpi,highlight" HBox.hgrow="ALWAYS" prefWidth="0">
+                    <Label fx:id="soldCaption" text="VENDIDO EN EL MES" styleClass="hero-kpi-caption"/>
+                    <Label fx:id="soldValue" text="—" styleClass="hero-kpi-value"/>
+                    <Label fx:id="soldDetail" styleClass="hero-kpi-detail"/>
+                </VBox>
+                <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
+                    <Label text="POR COBRAR" styleClass="hero-kpi-caption"/>
+                    <Label fx:id="receivableValue" text="—" styleClass="hero-kpi-value"/>
+                    <Label fx:id="receivableDetail" styleClass="hero-kpi-detail"/>
+                </VBox>
+                <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
+                    <Label text="ANULADAS" styleClass="hero-kpi-caption"/>
+                    <Label fx:id="voidedValue" text="—" styleClass="hero-kpi-value"/>
+                    <Label text="se anulan, no se borran" styleClass="hero-kpi-detail"/>
+                </VBox>
+            </HBox>
+        </VBox>
+
+        <!-- Buscador, tipo de venta, estado de pago y Nuevo contrato -->
+        <HBox styleClass="filter-card">
+            <HBox styleClass="search-box" HBox.hgrow="ALWAYS" minWidth="180">
+                <SVGPath content="M7 1.5a5.5 5.5 0 1 1 0 11a5.5 5.5 0 0 1 0-11z M11.2 11.2 L15 15" styleClass="search-icon"/>
+                <TextField fx:id="searchField" promptText="Buscar por número, difunto o cliente" HBox.hgrow="ALWAYS"/>
+            </HBox>
+            <Label text="TIPO" styleClass="segment-caption" minWidth="-Infinity"/>
+            <HBox styleClass="segmented" minWidth="-Infinity">
+                <ToggleButton fx:id="allToggle" text="Todos" toggleGroup="$typeGroup" selected="true" styleClass="segment"/>
+                <ToggleButton fx:id="contractToggle" text="Contrato" toggleGroup="$typeGroup" styleClass="segment"/>
+                <ToggleButton fx:id="privateToggle" text="Particular" toggleGroup="$typeGroup" styleClass="segment"/>
+                <ToggleButton fx:id="productToggle" text="Venta" toggleGroup="$typeGroup" styleClass="segment"/>
+            </HBox>
+            <ComboBox fx:id="paymentCombo" styleClass="chip-combo" minWidth="-Infinity" prefWidth="160"/>
+            <Button fx:id="newButton" text="+  Nuevo contrato" onAction="#onNewContract" styleClass="primary-button" minWidth="-Infinity"/>
+        </HBox>
+
+        <!-- Tabla con barra de desplazamiento visible (sin paginación); la lista solo dibuja las filas visibles -->
+        <VBox styleClass="table-card" spacing="12" VBox.vgrow="ALWAYS">
+            <VBox spacing="2">
+                <Label text="Contratos registrados" styleClass="card-title"/>
+                <Label fx:id="countLabel" styleClass="card-subtitle"/>
+            </VBox>
+            <HBox fx:id="tableHead" styleClass="table-head"/>
+            <StackPane VBox.vgrow="ALWAYS">
+                <ListView fx:id="salesList" styleClass="sales-list"/>
+                <Label fx:id="emptyLabel" styleClass="empty-table" wrapText="true" StackPane.alignment="TOP_LEFT"
+                       visible="false" mouseTransparent="true"/>
+            </StackPane>
+        </VBox>
+    </VBox>
+
+    <!-- Panel "Ver" de la venta -->
+    <Region fx:id="veil" styleClass="drawer-veil" visible="false" onMouseClicked="#onCloseDrawer"/>
+    <VBox fx:id="drawer" styleClass="drawer" StackPane.alignment="CENTER_RIGHT"
+          prefWidth="500" maxWidth="500" visible="false">
+        <VBox fx:id="drawerHead" styleClass="drawer-head"/>
+        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="card-scroll" VBox.vgrow="ALWAYS">
+            <VBox fx:id="drawerBody" spacing="12" styleClass="drawer-body"/>
+        </ScrollPane>
+        <HBox fx:id="drawerActions" spacing="10" styleClass="drawer-footer"/>
+    </VBox>
+
+    <!-- Aviso corto al guardar; se desvanece solo -->
+    <Label fx:id="toast" styleClass="toast" StackPane.alignment="BOTTOM_LEFT" wrapText="true" maxWidth="420">
+        <StackPane.margin>
+            <Insets bottom="24" left="24"/>
+        </StackPane.margin>
+    </Label>
+</StackPane>
