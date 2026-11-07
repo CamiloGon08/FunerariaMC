@@ -78,6 +78,11 @@ public final class AccessLogLabels {
             AccessLogService.SALE_VOIDED, "Anulación de la venta N.° ",
             AccessLogService.PREPARATION_REGISTERED, "Preparación del cuerpo registrada en el contrato ");
 
+    /** Acciones del módulo Inventario: guardan el código del artículo (IN-0012) y, en los movimientos, el tipo y las unidades. */
+    private static final Map<String, String> INVENTORY_ACTIONS = Map.of(
+            AccessLogService.INVENTORY_ITEM_REGISTERED, "Registro del artículo de inventario ",
+            AccessLogService.INVENTORY_ITEM_UPDATED, "Actualización del artículo de inventario ");
+
     /** Tipos de venta que se guardan en inglés después del número. */
     private static final Map<String, String> SALE_KINDS = Map.of(
             "PLAN", "· contrato con plan",
@@ -119,6 +124,15 @@ public final class AccessLogLabels {
                 }
             }
         }
+        // Inventario: artículos (código IN-0012) y movimientos (código, tipo y unidades).
+        for (Map.Entry<String, String> entry : INVENTORY_ACTIONS.entrySet()) {
+            if (action.startsWith(entry.getKey())) {
+                return entry.getValue() + action.substring(entry.getKey().length()).trim();
+            }
+        }
+        if (action.startsWith(AccessLogService.INVENTORY_MOVEMENT_REGISTERED)) {
+            return movementDetails(action.substring(AccessLogService.INVENTORY_MOVEMENT_REGISTERED.length()).trim());
+        }
         for (Map.Entry<String, String> entry : SALE_ACTIONS.entrySet()) {
             if (action.startsWith(entry.getKey())) {
                 return entry.getValue() + saleDetails(action.substring(entry.getKey().length()).trim());
@@ -145,6 +159,21 @@ public final class AccessLogLabels {
             }
         }
         return result.toString();
+    }
+
+    /** "IN-0012 EXIT 3" pasa a "Salida de 3 unidades del artículo IN-0012". */
+    private static String movementDetails(String text) {
+        String[] parts = text.split(" ");
+        if (parts.length < 3) {
+            return "Movimiento de inventario " + text;
+        }
+        String kind = switch (parts[1]) {
+            case "ENTRY" -> "Entrada";
+            case "EXIT" -> "Salida";
+            default -> "Movimiento";
+        };
+        String units = "1".equals(parts[2]) ? " unidad" : " unidades";
+        return kind + " de " + parts[2] + units + " del artículo " + parts[0];
     }
 
     /** Pasa a español los valores en inglés que van después del código (tipo de documento, PARTICULAR). */
