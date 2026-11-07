@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.ToggleButton?>
+<?import javafx.scene.control.ToggleGroup?>
+<?import javafx.scene.layout.FlowPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Pane?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+
+<!--
+  Módulo Transporte, pantallas 23 Monitor, 23.1 Vehículos,
+  23.2 Conductores y 23.3 Traslados de Figma con la paleta verde oscura (captura 10_transporte):
+  banda verde con el título y 4 indicadores, pestañas y una sola zona de contenido.
+  Los espacios #monitorRouteSlot y #transferRouteSlot muestran el mapa (Leaflet + OpenStreetMap,
+  ver RouteMapPane); mientras carga, o si no hay clave o internet, muestran la línea de paradas.
+  Se muestra dentro del contentPane de main.fxml. El menú la guarda abierta (RefreshableView).
+-->
+<StackPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+           fx:id="root" fx:controller="com.example.funerariamc.controller.TransportController"
+           styleClass="personal-root,transport-root" stylesheets="@../css/personal.css, @../css/transport.css">
+
+    <fx:define>
+        <ToggleGroup fx:id="tabGroup"/>
+        <ToggleGroup fx:id="filterGroup"/>
+    </fx:define>
+
+    <VBox spacing="16">
+        <!-- Banda verde: arriba el encabezado del menú (MainController lo pone en #heroHeaderSlot) -->
+        <VBox styleClass="hero-band" spacing="18">
+            <StackPane id="heroHeaderSlot" alignment="TOP_LEFT"/>
+            <HBox spacing="16">
+                <VBox styleClass="hero-kpi,highlight" HBox.hgrow="ALWAYS" prefWidth="0">
+                    <Label text="EN RUTA" styleClass="hero-kpi-caption"/>
+                    <Label fx:id="inRouteValue" text="—" styleClass="hero-kpi-value"/>
+                    <Label fx:id="inRouteDetail" styleClass="hero-kpi-detail"/>
+                </VBox>
+                <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
+                    <Label text="DISPONIBLES" styleClass="hero-kpi-caption"/>
+                    <Label fx:id="availableValue" text="—" styleClass="hero-kpi-value"/>
+                    <Label fx:id="availableDetail" styleClass="hero-kpi-detail"/>
+                </VBox>
+                <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
+                    <Label text="MANTENIMIENTO" styleClass="hero-kpi-caption"/>
+                    <Label fx:id="maintenanceValue" text="—" styleClass="hero-kpi-value"/>
+                    <Label fx:id="maintenanceDetail" styleClass="hero-kpi-detail"/>
+                </VBox>
+                <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
+                    <Label text="DOCUMENTOS VENCIDOS" styleClass="hero-kpi-caption"/>
+                    <Label fx:id="expiredValue" text="—" styleClass="hero-kpi-value"/>
+                    <Label fx:id="expiredDetail" styleClass="hero-kpi-detail"/>
+                </VBox>
+            </HBox>
+        </VBox>
+
+        <!-- Pestañas, hora de actualización, filtro de la pestaña y botón principal -->
+        <HBox styleClass="filter-card">
+            <HBox styleClass="segmented,tab-segmented" minWidth="-Infinity">
+                <ToggleButton fx:id="monitorTab" text="Monitor" toggleGroup="$tabGroup" selected="true" styleClass="segment"/>
+                <ToggleButton fx:id="vehiclesTab" text="Vehículos" toggleGroup="$tabGroup" styleClass="segment"/>
+                <ToggleButton fx:id="driversTab" text="Conductores" toggleGroup="$tabGroup" styleClass="segment"/>
+                <ToggleButton fx:id="transfersTab" text="Traslados" toggleGroup="$tabGroup" styleClass="segment"/>
+            </HBox>
+            <Label fx:id="updatedLabel" styleClass="update-chip" minWidth="-Infinity"/>
+            <Pane HBox.hgrow="ALWAYS"/>
+            <HBox fx:id="filterBox" styleClass="segmented,sub-segmented" minWidth="-Infinity"/>
+            <Button fx:id="mainButton" text="+  Asignar traslado" onAction="#onMainAction" styleClass="primary-button" minWidth="-Infinity"/>
+        </HBox>
+
+        <!-- Contenido de la pestaña con barra de desplazamiento visible (sin paginación) -->
+        <ScrollPane fx:id="contentScroll" fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="ALWAYS"
+                    styleClass="card-scroll" VBox.vgrow="ALWAYS">
+            <StackPane>
+                <!-- 23 Monitor -->
+                <VBox fx:id="monitorPane" spacing="16">
+                    <HBox spacing="16">
+                        <VBox styleClass="route-card" HBox.hgrow="ALWAYS" prefWidth="0">
+                            <HBox alignment="CENTER_LEFT">
+                                <Label text="Ubicación de traslados activos" styleClass="card-title"/>
+                                <Pane HBox.hgrow="ALWAYS"/>
+                                <Label fx:id="monitorRouteHint" styleClass="route-hint"/>
+                            </HBox>
+                            <StackPane fx:id="monitorRouteSlot" styleClass="route-canvas" minHeight="230"/>
+                        </VBox>
+                        <VBox fx:id="monitorDetail" styleClass="detail-card" prefWidth="430" minWidth="380" maxWidth="460"/>
+                    </HBox>
+                    <VBox styleClass="table-card" spacing="12">
+                        <HBox alignment="CENTER_LEFT">
+                            <Label text="Monitor de flota" styleClass="card-title"/>
+                            <Pane HBox.hgrow="ALWAYS"/>
+                            <Label fx:id="fleetCount" styleClass="card-subtitle"/>
+                        </HBox>
+                        <HBox fx:id="fleetHead" styleClass="table-head"/>
+                        <VBox fx:id="fleetRows"/>
+                    </VBox>
+                </VBox>
+
+                <!-- 23.1 Vehículos -->
+                <VBox fx:id="vehiclesPane" spacing="12" visible="false" managed="false">
+                    <FlowPane fx:id="vehicleCards" hgap="18" vgap="18"/>
+                    <Label fx:id="vehiclesEmpty" styleClass="empty-table" wrapText="true" visible="false" managed="false"/>
+                </VBox>
+
+                <!-- 23.2 Conductores -->
+                <VBox fx:id="driversPane" spacing="12" visible="false" managed="false">
+                    <VBox styleClass="table-card" spacing="12">
+                        <VBox spacing="2">
+                            <Label text="Conductores registrados" styleClass="card-title"/>
+                            <Label fx:id="driversCount" styleClass="card-subtitle" wrapText="true"/>
+                        </VBox>
+                        <HBox fx:id="driversHead" styleClass="table-head"/>
+                        <VBox fx:id="driverRows"/>
+                    </VBox>
+                    <Label styleClass="rule-note" wrapText="true" maxWidth="Infinity"
+                           text="Un conductor con la licencia vencida no puede asignarse a un traslado. Los conductores se registran en Seguridad: personal y cuentas."/>
+                </VBox>
+
+                <!-- 23.3 Traslados -->
+                <VBox fx:id="transfersPane" spacing="16" visible="false" managed="false">
+                    <HBox spacing="16">
+                        <VBox styleClass="table-card" spacing="10" prefWidth="380" minWidth="340" maxWidth="400">
+                            <Label fx:id="transfersTitle" text="Traslados de hoy" styleClass="card-title"/>
+                            <VBox fx:id="transferList" spacing="10"/>
+                        </VBox>
+                        <VBox spacing="16" HBox.hgrow="ALWAYS" prefWidth="0">
+                            <VBox styleClass="route-card">
+                                <HBox alignment="CENTER_LEFT">
+                                    <Label fx:id="transferRouteTitle" text="Ruta del traslado" styleClass="card-title"/>
+                                    <Pane HBox.hgrow="ALWAYS"/>
+                                    <Label fx:id="transferRouteHint" styleClass="route-hint"/>
+                                </HBox>
+                                <StackPane fx:id="transferRouteSlot" styleClass="route-canvas" minHeight="200"/>
+                            </VBox>
+                            <VBox styleClass="table-card" spacing="12">
+                                <HBox alignment="CENTER_LEFT" spacing="10">
+                                    <VBox spacing="2">
+                                        <Label text="Paradas planeadas" styleClass="card-title"/>
+                                        <Label text="Orden, dirección y hora prevista y real de cada parada" styleClass="card-subtitle"/>
+                                    </VBox>
+                                    <Pane HBox.hgrow="ALWAYS"/>
+                                    <HBox fx:id="transferActions" spacing="8" alignment="CENTER_RIGHT"/>
+                                </HBox>
+                                <HBox fx:id="stopsHead" styleClass="table-head"/>
+                                <VBox fx:id="stopRows"/>
+                            </VBox>
+                        </VBox>
+                    </HBox>
+                </VBox>
+            </StackPane>
+        </ScrollPane>
+    </VBox>
+
+    <!-- Aviso corto al guardar; se desvanece solo -->
+    <Label fx:id="toast" styleClass="toast" StackPane.alignment="BOTTOM_LEFT" wrapText="true" maxWidth="460">
+        <StackPane.margin>
+            <Insets bottom="24" left="24"/>
+        </StackPane.margin>
+    </Label>
+</StackPane>
