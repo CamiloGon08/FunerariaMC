@@ -82,6 +82,17 @@ public final class AccessLogLabels {
     private static final Map<String, String> INVENTORY_ACTIONS = Map.of(
             AccessLogService.INVENTORY_ITEM_REGISTERED, "Registro del artículo de inventario ",
             AccessLogService.INVENTORY_ITEM_UPDATED, "Actualización del artículo de inventario ");
+    /** Acciones del módulo Transporte: guardan la placa o el número del contrato y, a veces, las placas o la parada. */
+    private static final Map<String, String> TRANSPORT_ACTIONS = Map.of(
+            AccessLogService.VEHICLE_REGISTERED, "Registro del vehículo ",
+            AccessLogService.VEHICLE_UPDATED, "Actualización del vehículo ",
+            AccessLogService.VEHICLE_MAINTENANCE, "Vehículo enviado a mantenimiento ",
+            AccessLogService.VEHICLE_AVAILABLE, "Vehículo disponible de nuevo ",
+            AccessLogService.TRANSPORT_ASSIGNED, "Traslado asignado al contrato ",
+            AccessLogService.TRANSPORT_STARTED, "Salida del traslado del contrato ",
+            AccessLogService.TRANSPORT_ARRIVED, "Llegada a una parada del traslado del contrato ",
+            AccessLogService.TRANSPORT_COMPLETED, "Traslado completado del contrato ",
+            AccessLogService.TRANSPORT_CANCELLED, "Traslado cancelado del contrato ");
 
     /** Tipos de venta que se guardan en inglés después del número. */
     private static final Map<String, String> SALE_KINDS = Map.of(
@@ -136,6 +147,11 @@ public final class AccessLogLabels {
         for (Map.Entry<String, String> entry : SALE_ACTIONS.entrySet()) {
             if (action.startsWith(entry.getKey())) {
                 return entry.getValue() + saleDetails(action.substring(entry.getKey().length()).trim());
+            }
+        }
+        for (Map.Entry<String, String> entry : TRANSPORT_ACTIONS.entrySet()) {
+            if (action.startsWith(entry.getKey())) {
+                return entry.getValue() + action.substring(entry.getKey().length()).trim();
             }
         }
         return action;
