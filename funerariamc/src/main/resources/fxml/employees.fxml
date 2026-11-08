@@ -22,13 +22,41 @@
 -->
 <StackPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
            fx:id="root" fx:controller="com.example.funerariamc.controller.EmployeeController"
-           styleClass="personal-root" stylesheets="@../css/personal.css">
+           styleClass="personal-root, eden-green" stylesheets="@../css/personal.css">
 
     <fx:define>
         <ToggleGroup fx:id="areaGroup"/>
     </fx:define>
 
     <VBox spacing="18">
+        <!-- Banda verde (paleta verde oscura): arriba el encabezado del menú (MainController lo pone en
+             #heroHeaderSlot) y debajo los indicadores en tarjetas translúcidas. -->
+        <VBox styleClass="hero-band">
+            <StackPane id="heroHeaderSlot" alignment="TOP_LEFT"/>
+            <HBox spacing="16">
+                <VBox styleClass="kpi-card" HBox.hgrow="ALWAYS" prefWidth="0">
+                    <Label text="ACTIVOS" styleClass="kpi-caption"/>
+                    <Label fx:id="activeValue" text="—" styleClass="kpi-value"/>
+                    <Label fx:id="activeDetail" styleClass="kpi-detail"/>
+                </VBox>
+                <VBox styleClass="kpi-card" HBox.hgrow="ALWAYS" prefWidth="0">
+                    <Label text="CON CUENTA DE ACCESO" styleClass="kpi-caption"/>
+                    <Label fx:id="accountsValue" text="—" styleClass="kpi-value"/>
+                    <Label text="administración, secretaría y ventas" styleClass="kpi-detail"/>
+                </VBox>
+                <VBox styleClass="kpi-card" HBox.hgrow="ALWAYS" prefWidth="0">
+                    <Label text="DOCUMENTOS POR VENCER" styleClass="kpi-caption"/>
+                    <Label fx:id="expiringValue" text="—" styleClass="kpi-value"/>
+                    <Label fx:id="expiringDetail" text="licencias en los próximos 30 días" styleClass="kpi-detail"/>
+                </VBox>
+                <VBox styleClass="kpi-card" HBox.hgrow="ALWAYS" prefWidth="0">
+                    <Label text="INACTIVOS" styleClass="kpi-caption"/>
+                    <Label fx:id="inactiveValue" text="—" styleClass="kpi-value"/>
+                    <Label text="no se borran (RN-19)" styleClass="kpi-detail"/>
+                </VBox>
+            </HBox>
+        </VBox>
+
         <!-- Búsqueda, áreas, estado y registrar (.filter-card y .search-box en app.css) -->
         <HBox fx:id="filterBar" styleClass="filter-card">
             <HBox styleClass="search-box" HBox.hgrow="ALWAYS" minWidth="150">
@@ -40,30 +68,6 @@
             <ComboBox fx:id="statusFilter" styleClass="chip-combo" prefWidth="118" minWidth="118"/>
             <Button text="+  Registrar empleado" onAction="#onRegister" styleClass="primary-button"
                     minWidth="-Infinity"/>
-        </HBox>
-
-        <!-- Indicadores -->
-        <HBox spacing="16">
-            <VBox styleClass="kpi-card" HBox.hgrow="ALWAYS" prefWidth="0">
-                <Label text="ACTIVOS" styleClass="kpi-caption"/>
-                <Label fx:id="activeValue" text="—" styleClass="kpi-value"/>
-                <Label fx:id="activeDetail" styleClass="kpi-detail"/>
-            </VBox>
-            <VBox styleClass="kpi-card" HBox.hgrow="ALWAYS" prefWidth="0">
-                <Label text="CON CUENTA DE ACCESO" styleClass="kpi-caption"/>
-                <Label fx:id="accountsValue" text="—" styleClass="kpi-value"/>
-                <Label text="administración, secretaría y ventas" styleClass="kpi-detail"/>
-            </VBox>
-            <VBox styleClass="kpi-card" HBox.hgrow="ALWAYS" prefWidth="0">
-                <Label text="DOCUMENTOS POR VENCER" styleClass="kpi-caption"/>
-                <Label fx:id="expiringValue" text="—" styleClass="kpi-value"/>
-                <Label fx:id="expiringDetail" text="licencias en los próximos 30 días" styleClass="kpi-detail"/>
-            </VBox>
-            <VBox styleClass="kpi-card" HBox.hgrow="ALWAYS" prefWidth="0">
-                <Label text="INACTIVOS" styleClass="kpi-caption"/>
-                <Label fx:id="inactiveValue" text="—" styleClass="kpi-value"/>
-                <Label text="no se borran (RN-19)" styleClass="kpi-detail"/>
-            </VBox>
         </HBox>
 
         <HBox alignment="BOTTOM_LEFT">

@@ -10,14 +10,22 @@
 <?import javafx.scene.control.ToggleButton?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.shape.SVGPath?>
 
 <!-- Bitácora (RF-ACC-07) con paginación y filtros por fecha y usuario (RF-ACC-08).
-     Se muestra dentro del contentPane de main.fxml -->
+     Paleta verde oscura (nov 2026): banda verde con el encabezado del menú, barra de filtros y
+     la tabla dentro de una tarjeta clara. Se muestra dentro del contentPane de main.fxml -->
 <VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.example.funerariamc.controller.AccessLogController"
-      spacing="12">
+      styleClass="eden-green, access-log-root" stylesheets="@../css/personal.css, @../css/access-log.css"
+      spacing="16">
+
+    <!-- Banda verde: MainController pone aquí el título, la sesión y Cerrar sesión -->
+    <VBox styleClass="hero-band, compact">
+        <StackPane id="heroHeaderSlot" alignment="TOP_LEFT"/>
+    </VBox>
 
     <!-- Filtros: búsqueda por usuario (estilo del módulo de Personal) y rango de fechas con calendario -->
     <HBox styleClass="filter-card">
@@ -33,29 +41,33 @@
     </HBox>
     <Label fx:id="filterErrorLabel" styleClass="error-label"/>
 
-    <HBox alignment="CENTER_LEFT" spacing="12">
-        <Label fx:id="countLabel" styleClass="placeholder"/>
-        <Region HBox.hgrow="ALWAYS"/>
-        <ToggleButton fx:id="showIpButton"/>
-        <Button text="Actualizar" onAction="#onRefresh" styleClass="primary-button"/>
-    </HBox>
+    <!-- Registro: título, conteo, ojito de la IP y actualizar; abajo la tabla y las páginas -->
+    <VBox styleClass="table-card" spacing="12" VBox.vgrow="ALWAYS">
+        <HBox alignment="CENTER_LEFT" spacing="12">
+            <Label text="Registro de accesos" styleClass="card-title"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Label fx:id="countLabel" styleClass="card-subtitle"/>
+            <ToggleButton fx:id="showIpButton"/>
+            <Button text="Actualizar" onAction="#onRefresh" styleClass="secondary-button"/>
+        </HBox>
 
-    <TableView fx:id="logTable" VBox.vgrow="ALWAYS">
-        <columnResizePolicy>
-            <TableView fx:constant="CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN"/>
-        </columnResizePolicy>
-        <placeholder>
-            <Label fx:id="emptyLabel" text="Aún no hay registros en la bitácora." styleClass="placeholder"/>
-        </placeholder>
-        <columns>
-            <TableColumn fx:id="dateColumn" text="Fecha y hora" prefWidth="170"/>
-            <TableColumn fx:id="userColumn" text="Usuario" prefWidth="110"/>
-            <TableColumn fx:id="employeeColumn" text="Empleado" prefWidth="170"/>
-            <TableColumn fx:id="actionColumn" text="Acción" prefWidth="330"/>
-            <TableColumn fx:id="ipColumn" text="IP" prefWidth="130"/>
-        </columns>
-    </TableView>
+        <TableView fx:id="logTable" styleClass="log-table" VBox.vgrow="ALWAYS">
+            <columnResizePolicy>
+                <TableView fx:constant="CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN"/>
+            </columnResizePolicy>
+            <placeholder>
+                <Label fx:id="emptyLabel" text="Aún no hay registros en la bitácora." styleClass="placeholder"/>
+            </placeholder>
+            <columns>
+                <TableColumn fx:id="dateColumn" text="FECHA Y HORA" prefWidth="170"/>
+                <TableColumn fx:id="userColumn" text="USUARIO" prefWidth="110"/>
+                <TableColumn fx:id="employeeColumn" text="EMPLEADO" prefWidth="170"/>
+                <TableColumn fx:id="actionColumn" text="ACCIÓN" prefWidth="330"/>
+                <TableColumn fx:id="ipColumn" text="IP" prefWidth="130"/>
+            </columns>
+        </TableView>
 
-    <!-- Solo la barra de páginas: la tabla de arriba es la que cambia -->
-    <Pagination fx:id="pagination" styleClass="log-pagination" pageCount="1" maxPageIndicatorCount="7"/>
+        <!-- Solo la barra de páginas: la tabla de arriba es la que cambia -->
+        <Pagination fx:id="pagination" styleClass="log-pagination" pageCount="1" maxPageIndicatorCount="7"/>
+    </VBox>
 </VBox>

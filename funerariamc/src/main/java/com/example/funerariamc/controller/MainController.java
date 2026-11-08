@@ -19,7 +19,10 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.geometry.Pos;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
+import javafx.scene.shape.Circle;
 import javafx.scene.layout.VBox;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
@@ -66,6 +69,15 @@ public class MainController {
     private VBox menuBox;
     @FXML
     private StackPane contentPane;
+    @FXML
+    private VBox centerBox;
+    @FXML
+    private HBox headerBar;
+
+    /** Id del espacio para el encabezado dentro de la banda verde de un módulo. */
+    private static final String HERO_HEADER_SLOT = "heroHeaderSlot";
+    /** Clase que pone el encabezado en colores claros cuando está sobre la banda verde. */
+    private static final String ON_HERO = "on-hero";
 
     private SidebarAnimator sidebarAnimator;
     /** Primer ítem del menú: vuelve al saludo de inicio. */
@@ -93,6 +105,10 @@ public class MainController {
         userNameLabel.setText(sessionContext.getDisplayName());
         roleLabel.setText(roleName);
         sessionBadge.setText("Sesión activa · " + roleName);
+        // Punto verde antes del texto: la sesión está activa.
+        Circle sessionDot = new Circle(4);
+        sessionDot.getStyleClass().add("session-dot");
+        sessionBadge.setGraphic(sessionDot);
         avatarButton.setText(initials(sessionContext.getDisplayName()));
 
         sidebarAnimator = new SidebarAnimator(sidebar, brandText, collapseButton, profileText);
@@ -187,7 +203,17 @@ public class MainController {
             Map.entry(AppModule.DIFUNTOS, new ModuleScreen("Difuntos",
                     "Servicio en curso, documentos y destino final. Toque una tarjeta o fila para ver el expediente", FxmlViewLoader.DECEASED)),
             Map.entry(AppModule.PLANES, new ModuleScreen("Planes exequiales",
-                    "Afiliados, beneficiarios y cuotas. Toque un plan para ver beneficiarios, pagos y servicios usados", FxmlViewLoader.FUNERAL_PLANS)));
+                    "Afiliados, beneficiarios y cuotas. Toque un plan para ver beneficiarios, pagos y servicios usados", FxmlViewLoader.FUNERAL_PLANS)),
+            Map.entry(AppModule.CEMENTERIO, new ModuleScreen(AppModule.CEMENTERIO.getLabel(),
+                    "Muro de bóvedas por pabellón. Toque una bóveda para ver quién reposa, la familia y el arriendo", FxmlViewLoader.CEMETERY)),
+            Map.entry(AppModule.SALAS, new ModuleScreen("Salas de velación",
+                    "Ocupación de las salas por día. Toque una sala para ver quién está y el detalle del servicio", FxmlViewLoader.WAKE_ROOMS)),
+            Map.entry(AppModule.TRANSPORTE, new ModuleScreen("Transporte",
+                    "Monitor de la flota: dónde va cada vehículo, su ruta y los traslados del día", FxmlViewLoader.TRANSPORT)),
+            Map.entry(AppModule.CONTRATOS, new ModuleScreen("Contratos y ventas",
+                    "Filtre por tipo de venta: contrato con plan o pensión, servicio particular o venta de productos", FxmlViewLoader.CONTRACTS)),
+            Map.entry(AppModule.INVENTARIO, new ModuleScreen(AppModule.INVENTARIO.getLabel(),
+                    "Cada artículo con su foto para reconocerlo rápido. El sistema alerta cuando llega al nivel mínimo", FxmlViewLoader.INVENTORY)));
 
     /**
      * El permiso se revisa en memoria y la pantalla se muestra al instante; la entrada de la
@@ -279,7 +305,32 @@ public class MainController {
         subtitleLabel.setVisible(!subtitle.isEmpty());
         subtitleLabel.setManaged(!subtitle.isEmpty());
         contentPane.getChildren().setAll(content);
+        placeHeader(content);
         SidebarAnimator.fadeIn(content);
+    }
+
+    /**
+     * Las pantallas con banda verde (paleta El Edén verde) traen un espacio vacío con id
+     * "heroHeaderSlot": el encabezado del menú (título, sesión y Cerrar sesión) se pasa ahí
+     * para que quede dentro de la banda. Las demás pantallas lo siguen mostrando arriba.
+     */
+    private void placeHeader(Node content) {
+        Node slot = content.lookup("#" + HERO_HEADER_SLOT);
+        if (slot instanceof Pane heroSlot) {
+            if (headerBar.getParent() != heroSlot) {
+                centerBox.getChildren().remove(headerBar);
+                heroSlot.getChildren().setAll(headerBar);
+            }
+            if (!headerBar.getStyleClass().contains(ON_HERO)) {
+                headerBar.getStyleClass().add(ON_HERO);
+            }
+        } else if (headerBar.getParent() != centerBox) {
+            if (headerBar.getParent() instanceof Pane previous) {
+                previous.getChildren().remove(headerBar);
+            }
+            centerBox.getChildren().add(0, headerBar);
+            headerBar.getStyleClass().remove(ON_HERO);
+        }
     }
 
     private static String firstName(String displayName) {

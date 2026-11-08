@@ -44,6 +44,40 @@ class AccessLogLabelsTest {
     }
 
     @Test
+    void translatesWakeRoomActions() {
+        assertEquals("Registro de la sala de velación Sala 03", AccessLogLabels.of("WAKE_ROOM_REGISTERED: Sala 03"));
+        assertEquals("Sala de velación asignada al contrato CT-2026-0001 Sala 01",
+                AccessLogLabels.of("WAKE_ROOM_ASSIGNED: CT-2026-0001 Sala 01"));
+        assertEquals("Cambio de sala de velación del contrato CT-2026-0001 Sala 01 > Sala 02",
+                AccessLogLabels.of("WAKE_ROOM_CHANGED: CT-2026-0001 Sala 01 > Sala 02"));
+    }
+
+    @Test
+    void translatesSaleActions() {
+        assertEquals("Registro del contrato CT-2026-0001 · contrato con plan",
+                AccessLogLabels.of("CONTRACT_REGISTERED: CT-2026-0001 PLAN"));
+        assertEquals("Registro de la venta N.° 0007 · venta de productos",
+                AccessLogLabels.of("SALE_REGISTERED: 0007 PRODUCT"));
+        assertEquals("Abono a la venta N.° 0007 · $ 500.000",
+                AccessLogLabels.of("SALE_PAYMENT_REGISTERED: 0007 500000.00"));
+        assertEquals("Anulación de la venta N.° 0007", AccessLogLabels.of("SALE_VOIDED: 0007"));
+        assertEquals("Preparación del cuerpo registrada en el contrato CT-2026-0001",
+                AccessLogLabels.of("PREPARATION_REGISTERED: CT-2026-0001"));
+    }
+
+    @Test
+    void translatesInventoryActions() {
+        assertEquals("Registro del artículo de inventario IN-0012",
+                AccessLogLabels.of("INVENTORY_ITEM_REGISTERED: IN-0012"));
+        assertEquals("Actualización del artículo de inventario IN-0012",
+                AccessLogLabels.of("INVENTORY_ITEM_UPDATED: IN-0012"));
+        assertEquals("Entrada de 5 unidades del artículo IN-0012",
+                AccessLogLabels.of("INVENTORY_MOVEMENT_REGISTERED: IN-0012 ENTRY 5"));
+        assertEquals("Salida de 1 unidad del artículo IN-0012",
+                AccessLogLabels.of("INVENTORY_MOVEMENT_REGISTERED: IN-0012 EXIT 1"));
+    }
+
+    @Test
     void keepsUnknownActionsAsStored() {
         assertEquals("SOMETHING_NEW", AccessLogLabels.of("SOMETHING_NEW"));
         assertEquals("Ingreso a MODULO_X", AccessLogLabels.of("OPEN_MODULE: MODULO_X"));

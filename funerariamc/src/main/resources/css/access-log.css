@@ -1,0 +1,51 @@
+/*
+ * Bitácora de accesos con la paleta verde oscura (nov 2026). Se carga junto con personal.css,
+ * que trae la banda verde, la barra de filtros y la tarjeta (.eden-green). Aquí va solo la tabla:
+ * encabezado en una franja lino redondeada, filas claras separadas por una línea fina y la acción
+ * en una píldora suave (verde normal, oliva para intentos fallidos, terracota para accesos denegados).
+ */
+.access-log-root .log-table {
+    -fx-background-color: transparent; -fx-border-color: transparent; -fx-border-width: 0;
+    -fx-table-cell-border-color: transparent; -fx-padding: 0;
+    -fx-selection-bar: #EEF0E6; -fx-selection-bar-non-focused: #EEF0E6; -fx-selection-bar-text: #1E2A22;
+}
+.access-log-root .log-table > .column-header-background {
+    -fx-background-color: #EEF0E6; -fx-background-radius: 12; -fx-padding: 0;
+}
+.access-log-root .log-table .column-header,
+.access-log-root .log-table .filler {
+    -fx-background-color: transparent; -fx-border-color: transparent; -fx-border-width: 0;
+    -fx-padding: 12 10 12 10;
+}
+.access-log-root .log-table .column-header .label {
+    -fx-text-fill: #6A7366; -fx-font-size: 11px; -fx-font-weight: bold; -fx-alignment: center-left;
+}
+.access-log-root .log-table .table-row-cell {
+    -fx-background-color: #FAFBF7; -fx-cell-size: 48;
+    -fx-border-color: transparent transparent #E6E8DE transparent; -fx-border-width: 0 0 1 0;
+}
+.access-log-root .log-table .table-row-cell:odd { -fx-background-color: #FAFBF7; }
+.access-log-root .log-table .table-row-cell:hover { -fx-background-color: #F3F5EE; }
+.access-log-root .log-table .table-row-cell:selected { -fx-background-color: #EEF0E6; }
+.access-log-root .log-table .table-row-cell:selected .table-cell { -fx-text-fill: #1E2A22; }
+.access-log-root .log-table .table-cell { -fx-text-fill: #1E2A22; -fx-padding: 0 10; -fx-alignment: center-left; }
+.access-log-root .log-table .placeholder .label { -fx-text-fill: #6A7366; }
+.access-log-root .log-table .scroll-bar:vertical { -fx-pref-width: 7; -fx-background-color: transparent; }
+.access-log-root .log-table .scroll-bar:vertical .thumb { -fx-background-color: #B9C0B0; -fx-background-radius: 999; }
+
+/* Acción en píldora suave con punto */
+.action-chip {
+    -fx-background-color: #EEF0E6; -fx-text-fill: #1E3A2E;
+    -fx-background-radius: 999; -fx-padding: 4 12 4 10;
+    -fx-font-size: 12px; -fx-font-weight: bold; -fx-graphic-text-gap: 7;
+}
+.action-dot { -fx-fill: #3E5A3F; }
+.action-chip.warn { -fx-background-color: #EDEBDD; -fx-text-fill: #6E6A45; }
+.action-chip.warn .action-dot { -fx-fill: #6E6A45; }
+.action-chip.alert { -fx-background-color: #F0E3DC; -fx-text-fill: #8A4B3C; }
+.action-chip.alert .action-dot { -fx-fill: #8A4B3C; }
+
+/* Paginación sobre la tarjeta clara */
+.access-log-root .log-pagination .pagination-control .number-button:selected { -fx-background-color: #1E3A2E; -fx-text-fill: #F4F5EE; }
+.access-log-root .log-pagination .pagination-control .left-arrow,
+.access-log-root .log-pagination .pagination-control .right-arrow { -fx-background-color: #1E3A2E; }

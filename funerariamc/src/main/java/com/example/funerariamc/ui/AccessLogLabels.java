@@ -64,6 +64,43 @@ public final class AccessLogLabels {
             AccessLogService.PLAN_CANCELLED, "Cancelación del plan ",
             AccessLogService.PLAN_HOLDER_CHANGED, "Cambio de titular del plan ");
 
+    /** Acciones del módulo Salas de velación: guardan el nombre de la sala o el número del contrato y la sala. */
+    private static final Map<String, String> WAKE_ROOM_ACTIONS = Map.of(
+            AccessLogService.WAKE_ROOM_REGISTERED, "Registro de la sala de velación ",
+            AccessLogService.WAKE_ROOM_ASSIGNED, "Sala de velación asignada al contrato ",
+            AccessLogService.WAKE_ROOM_CHANGED, "Cambio de sala de velación del contrato ");
+
+    /** Acciones del módulo Contratos y ventas: guardan el número del contrato o de la venta y, a veces, un dato más. */
+    private static final Map<String, String> SALE_ACTIONS = Map.of(
+            AccessLogService.CONTRACT_REGISTERED, "Registro del contrato ",
+            AccessLogService.SALE_REGISTERED, "Registro de la venta N.° ",
+            AccessLogService.SALE_PAYMENT_REGISTERED, "Abono a la venta N.° ",
+            AccessLogService.SALE_VOIDED, "Anulación de la venta N.° ",
+            AccessLogService.PREPARATION_REGISTERED, "Preparación del cuerpo registrada en el contrato ");
+
+    /** Acciones del módulo Inventario: guardan el código del artículo (IN-0012) y, en los movimientos, el tipo y las unidades. */
+    private static final Map<String, String> INVENTORY_ACTIONS = Map.of(
+            AccessLogService.INVENTORY_ITEM_REGISTERED, "Registro del artículo de inventario ",
+            AccessLogService.INVENTORY_ITEM_UPDATED, "Actualización del artículo de inventario ");
+    /** Acciones del módulo Transporte: guardan la placa o el número del contrato y, a veces, las placas o la parada. */
+    private static final Map<String, String> TRANSPORT_ACTIONS = Map.of(
+            AccessLogService.VEHICLE_REGISTERED, "Registro del vehículo ",
+            AccessLogService.VEHICLE_UPDATED, "Actualización del vehículo ",
+            AccessLogService.VEHICLE_MAINTENANCE, "Vehículo enviado a mantenimiento ",
+            AccessLogService.VEHICLE_AVAILABLE, "Vehículo disponible de nuevo ",
+            AccessLogService.TRANSPORT_ASSIGNED, "Traslado asignado al contrato ",
+            AccessLogService.TRANSPORT_STARTED, "Salida del traslado del contrato ",
+            AccessLogService.TRANSPORT_ARRIVED, "Llegada a una parada del traslado del contrato ",
+            AccessLogService.TRANSPORT_COMPLETED, "Traslado completado del contrato ",
+            AccessLogService.TRANSPORT_CANCELLED, "Traslado cancelado del contrato ");
+
+    /** Tipos de venta que se guardan en inglés después del número. */
+    private static final Map<String, String> SALE_KINDS = Map.of(
+            "PLAN", "· contrato con plan",
+            "PENSION", "· contrato por pensión",
+            "PRIVATE", "· particular",
+            "PRODUCT", "· venta de productos");
+
     private static final Map<String, String> CHANNELS = Map.of(
             "EMAIL", "correo",
             "TELEGRAM", "Telegram");
@@ -91,14 +128,68 @@ public final class AccessLogLabels {
             return "Solicitud de recuperación de contraseña por " + CHANNELS.getOrDefault(channel, channel);
         }
         for (Map<String, String> actions : List.of(EMPLOYEE_ACTIONS, CLIENT_ACTIONS, ACCOUNT_ACTIONS, VAULT_ACTIONS,
-                DECEASED_ACTIONS, PLAN_ACTIONS)) {
+                DECEASED_ACTIONS, PLAN_ACTIONS, WAKE_ROOM_ACTIONS)) {
             for (Map.Entry<String, String> entry : actions.entrySet()) {
                 if (action.startsWith(entry.getKey())) {
                     return entry.getValue() + details(action.substring(entry.getKey().length()).trim());
                 }
             }
         }
+        // Inventario: artículos (código IN-0012) y movimientos (código, tipo y unidades).
+        for (Map.Entry<String, String> entry : INVENTORY_ACTIONS.entrySet()) {
+            if (action.startsWith(entry.getKey())) {
+                return entry.getValue() + action.substring(entry.getKey().length()).trim();
+            }
+        }
+        if (action.startsWith(AccessLogService.INVENTORY_MOVEMENT_REGISTERED)) {
+            return movementDetails(action.substring(AccessLogService.INVENTORY_MOVEMENT_REGISTERED.length()).trim());
+        }
+        for (Map.Entry<String, String> entry : SALE_ACTIONS.entrySet()) {
+            if (action.startsWith(entry.getKey())) {
+                return entry.getValue() + saleDetails(action.substring(entry.getKey().length()).trim());
+            }
+        }
+        for (Map.Entry<String, String> entry : TRANSPORT_ACTIONS.entrySet()) {
+            if (action.startsWith(entry.getKey())) {
+                return entry.getValue() + action.substring(entry.getKey().length()).trim();
+            }
+        }
         return action;
+    }
+
+    /** "CT-2026-0001 PLAN" pasa a "CT-2026-0001 · contrato con plan"; el valor del abono va en pesos. */
+    private static String saleDetails(String text) {
+        String[] parts = text.split(" ");
+        StringBuilder result = new StringBuilder(parts[0]);
+        for (int i = 1; i < parts.length; i++) {
+            String part = parts[i];
+            String kind = SALE_KINDS.get(part);
+            if (kind != null) {
+                result.append(' ').append(kind);
+            } else if (part.matches("\\d+(\\.\\d+)?")) {
+                java.math.BigDecimal value = new java.math.BigDecimal(part).setScale(0, java.math.RoundingMode.HALF_UP);
+                result.append(" · $ ").append(java.text.NumberFormat.getIntegerInstance(Locale.forLanguageTag("es-CO"))
+                        .format(value));
+            } else {
+                result.append(' ').append(part);
+            }
+        }
+        return result.toString();
+    }
+
+    /** "IN-0012 EXIT 3" pasa a "Salida de 3 unidades del artículo IN-0012". */
+    private static String movementDetails(String text) {
+        String[] parts = text.split(" ");
+        if (parts.length < 3) {
+            return "Movimiento de inventario " + text;
+        }
+        String kind = switch (parts[1]) {
+            case "ENTRY" -> "Entrada";
+            case "EXIT" -> "Salida";
+            default -> "Movimiento";
+        };
+        String units = "1".equals(parts[2]) ? " unidad" : " unidades";
+        return kind + " de " + parts[2] + units + " del artículo " + parts[0];
     }
 
     /** Pasa a español los valores en inglés que van después del código (tipo de documento, PARTICULAR). */
