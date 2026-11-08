@@ -208,6 +208,8 @@ public class MainController {
                     "Muro de bóvedas por pabellón. Toque una bóveda para ver quién reposa, la familia y el arriendo", FxmlViewLoader.CEMETERY)),
             Map.entry(AppModule.SALAS, new ModuleScreen("Salas de velación",
                     "Ocupación de las salas por día. Toque una sala para ver quién está y el detalle del servicio", FxmlViewLoader.WAKE_ROOMS)),
+            Map.entry(AppModule.TRANSPORTE, new ModuleScreen("Transporte",
+                    "Monitor de la flota: dónde va cada vehículo, su ruta y los traslados del día", FxmlViewLoader.TRANSPORT)),
             Map.entry(AppModule.CONTRATOS, new ModuleScreen("Contratos y ventas",
                     "Filtre por tipo de venta: contrato con plan o pensión, servicio particular o venta de productos", FxmlViewLoader.CONTRACTS)),
             Map.entry(AppModule.INVENTARIO, new ModuleScreen(AppModule.INVENTARIO.getLabel(),
