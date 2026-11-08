@@ -1,5 +1,6 @@
 package com.example.funerariamc.model;
 
+import com.example.funerariamc.model.enums.SaleStatus;
 import com.example.funerariamc.model.enums.SaleType;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -45,4 +46,9 @@ public class Sale {
 
     @Column(name = "total_amount")
     private BigDecimal totalAmount;
+
+    /** Vigente o anulada; una venta anulada no se borra. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 10)
+    private SaleStatus status = SaleStatus.ACTIVE;
 }
