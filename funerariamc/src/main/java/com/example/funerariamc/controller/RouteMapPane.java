@@ -52,7 +52,16 @@ class RouteMapPane extends StackPane {
 
     /** Dibuja las paradas, la ruta y, si va en ruta, el vehículo en la última parada a la que llegó. */
     void show(MapData data, Transfer transfer) {
-        String script = "showRoute(" + JSON.writeValueAsString(JSON.writeValueAsString(payload(data, transfer))) + ")";
+        send("showRoute(" + JSON.writeValueAsString(JSON.writeValueAsString(payload(data, transfer))) + ")");
+    }
+
+    /** Deja el mapa sin traslado, centrado en la ciudad, para que se vea aunque no haya nada en ruta. */
+    void clear() {
+        send("clearRoute()");
+    }
+
+    /** Si la página aún no terminó de cargar, guarda la orden y la ejecuta al terminar. */
+    private void send(String script) {
         if (loaded) {
             run(script);
         } else {
