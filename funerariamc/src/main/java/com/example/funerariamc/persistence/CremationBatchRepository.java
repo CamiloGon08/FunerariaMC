@@ -68,4 +68,24 @@ public interface CremationBatchRepository extends JpaRepository<CremationBatch, 
             where c.completedAt >= :from and c.completedAt < :to
             """)
     FinishedCount countFinished(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    /** Lotes programados en un rango con cuántos difuntos llevan. */
+    interface DayBatch {
+        Long getBatchId();
+        LocalDateTime getScheduledDate();
+        String getFurnaceCode();
+        CremationBatchStatus getStatus();
+        long getCremations();
+    }
+
+    @Query("""
+            select b.id as batchId, b.scheduledDate as scheduledDate, b.furnaceCode as furnaceCode,
+                   b.status as status, count(c.id) as cremations
+            from CremationBatch b
+            left join Cremation c on c.cremationBatch = b
+            where b.scheduledDate >= :from and b.scheduledDate < :to
+            group by b.id, b.scheduledDate, b.furnaceCode, b.status
+            order by b.scheduledDate, b.id
+            """)
+    List<DayBatch> findBatchesBetween(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
 }
