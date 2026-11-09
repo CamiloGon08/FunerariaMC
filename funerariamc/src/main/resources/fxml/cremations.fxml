@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.ToggleButton?>
+<?import javafx.scene.control.ToggleGroup?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Pane?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.shape.SVGPath?>
+
+<!--
+  Módulo Cremaciones con la paleta verde oscura:
+  banda verde con el título y 4 indicadores, búsqueda y filtro por
+  estado, una tarjeta por horno o proveedor con lotes abiertos, la agenda del día (o de la semana)
+  y el panel lateral del lote. La funeraria no tiene horno propio: el "horno" es el código que se
+  escribe al programar el lote. Al final, los cupos prepagados por proveedor y sus compras. Se muestra dentro del contentPane de main.fxml (RefreshableView).
+-->
+<StackPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+           fx:id="root" fx:controller="com.example.funerariamc.controller.CremationController"
+           styleClass="personal-root,cremation-root" stylesheets="@../css/personal.css, @../css/cremations.css">
+
+    <fx:define>
+        <ToggleGroup fx:id="stateGroup"/>
+    </fx:define>
+
+    <VBox spacing="16">
+        <!-- Banda verde: arriba el encabezado del menú (MainController lo pone en #heroHeaderSlot) -->
+        <VBox styleClass="hero-band" spacing="18">
+            <StackPane id="heroHeaderSlot" alignment="TOP_LEFT"/>
+            <HBox spacing="16">
+                <VBox styleClass="hero-kpi,highlight" HBox.hgrow="ALWAYS" prefWidth="0">
+                    <Label text="EN CURSO AHORA" styleClass="hero-kpi-caption"/>
+                    <Label fx:id="inProgressValue" text="—" styleClass="hero-kpi-value"/>
+                    <Label fx:id="inProgressDetail" styleClass="hero-kpi-detail"/>
+                </VBox>
+                <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
+                    <Label text="PROGRAMADAS HOY" styleClass="hero-kpi-caption"/>
+                    <Label fx:id="todayValue" text="—" styleClass="hero-kpi-value"/>
+                    <Label fx:id="todayDetail" styleClass="hero-kpi-detail"/>
+                </VBox>
+                <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
+                    <Label fx:id="monthCaption" text="REALIZADAS EN EL MES" styleClass="hero-kpi-caption"/>
+                    <Label fx:id="monthValue" text="—" styleClass="hero-kpi-value"/>
+                    <Label fx:id="monthDetail" styleClass="hero-kpi-detail"/>
+                </VBox>
+                <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
+                    <Label text="CERTIFICADOS PENDIENTES" styleClass="hero-kpi-caption"/>
+                    <Label fx:id="pendingValue" text="—" styleClass="hero-kpi-value"/>
+                    <Label text="por registrar número" styleClass="hero-kpi-detail"/>
+                </VBox>
+            </HBox>
+        </VBox>
+
+        <!-- Búsqueda, filtro por estado y Programar lote -->
+        <HBox styleClass="filter-card">
+            <HBox styleClass="search-box" HBox.hgrow="ALWAYS" minWidth="150">
+                <SVGPath content="M7 1.5a5.5 5.5 0 1 1 0 11a5.5 5.5 0 0 1 0-11z M11.2 11.2 L15 15" styleClass="search-icon"/>
+                <TextField fx:id="searchField" promptText="Buscar lote, horno o difunto" HBox.hgrow="ALWAYS"/>
+            </HBox>
+            <HBox styleClass="segmented" minWidth="-Infinity">
+                <ToggleButton fx:id="allToggle" text="Todos" toggleGroup="$stateGroup" selected="true" styleClass="segment"/>
+                <ToggleButton fx:id="scheduledToggle" text="Programados" toggleGroup="$stateGroup" styleClass="segment"/>
+                <ToggleButton fx:id="inProgressToggle" text="En curso" toggleGroup="$stateGroup" styleClass="segment"/>
+                <ToggleButton fx:id="finishedToggle" text="Realizados" toggleGroup="$stateGroup" styleClass="segment"/>
+            </HBox>
+            <Button text="+  Programar lote" onAction="#onScheduleBatch" styleClass="primary-button" minWidth="-Infinity"/>
+        </HBox>
+
+        <!-- Hornos y agenda con barra de desplazamiento visible (sin paginación) -->
+        <ScrollPane fx:id="contentScroll" fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="ALWAYS"
+                    styleClass="card-scroll" VBox.vgrow="ALWAYS">
+            <VBox styleClass="card-scroll-content" spacing="18">
+                <GridPane fx:id="furnaceGrid" hgap="18" vgap="18"/>
+                <Label fx:id="furnaceEmpty" styleClass="empty-board" wrapText="true" managed="false" visible="false"/>
+
+                <VBox styleClass="table-card" spacing="12">
+                    <HBox alignment="CENTER_LEFT">
+                        <VBox spacing="2">
+                            <Label fx:id="agendaTitle" text="Cremaciones de hoy" styleClass="card-title"/>
+                            <Label fx:id="agendaSubtitle" styleClass="card-subtitle"/>
+                        </VBox>
+                        <Pane HBox.hgrow="ALWAYS"/>
+                        <Button fx:id="rangeButton" text="Ver semana  →" onAction="#onToggleRange" styleClass="link-action"/>
+                    </HBox>
+                    <HBox styleClass="agenda-header">
+                        <Label text="HORA" styleClass="agenda-head" minWidth="110" prefWidth="110"/>
+                        <Label text="LOTE" styleClass="agenda-head" HBox.hgrow="ALWAYS" prefWidth="0" maxWidth="Infinity"/>
+                        <Label text="DIFUNTOS" styleClass="agenda-head" HBox.hgrow="ALWAYS" prefWidth="0" maxWidth="Infinity"/>
+                        <Label text="AUTORIZACIÓN" styleClass="agenda-head" minWidth="190" prefWidth="190"/>
+                        <Label text="ESTADO" styleClass="agenda-head" minWidth="200" prefWidth="200"/>
+                    </HBox>
+                    <VBox fx:id="agendaRows"/>
+                    <Label fx:id="agendaEmpty" styleClass="empty-board" wrapText="true" managed="false" visible="false"/>
+                </VBox>
+
+                <!-- Cupos prepagados: saldo por proveedor y compras (solicitada, confirmada, recibida) -->
+                <VBox styleClass="table-card" spacing="12">
+                    <HBox alignment="CENTER_LEFT" spacing="10">
+                        <VBox spacing="2" HBox.hgrow="ALWAYS">
+                            <Label text="Cupos prepagados" styleClass="card-title"/>
+                            <Label fx:id="stockSubtitle" styleClass="card-subtitle" wrapText="true"/>
+                        </VBox>
+                        <Button text="Nuevo proveedor" onAction="#onNewProvider" styleClass="outline-button" minWidth="-Infinity"/>
+                        <Button text="+  Solicitar compra" onAction="#onRequestPurchase" styleClass="small-dark-button" minWidth="-Infinity"/>
+                    </HBox>
+                    <Label fx:id="stockAlert" styleClass="note-alert" wrapText="true" maxWidth="Infinity" managed="false" visible="false"/>
+                    <HBox styleClass="agenda-header">
+                        <Label text="PROVEEDOR" styleClass="agenda-head" HBox.hgrow="ALWAYS" prefWidth="0" maxWidth="Infinity"/>
+                        <Label text="DISPONIBLES" styleClass="agenda-head" minWidth="110" prefWidth="110"/>
+                        <Label text="SEPARADAS" styleClass="agenda-head" minWidth="100" prefWidth="100"/>
+                        <Label text="CREMADAS" styleClass="agenda-head" minWidth="100" prefWidth="100"/>
+                        <Label text="EN CAMINO" styleClass="agenda-head" minWidth="100" prefWidth="100"/>
+                        <Label text="ESTADO" styleClass="agenda-head" minWidth="200" prefWidth="200"/>
+                    </HBox>
+                    <VBox fx:id="providerRows"/>
+                    <Label fx:id="providerEmpty" styleClass="empty-board" wrapText="true" managed="false" visible="false"/>
+
+                    <Label text="COMPRAS" styleClass="stock-section"/>
+                    <HBox styleClass="agenda-header">
+                        <Label text="COMPRA" styleClass="agenda-head" minWidth="110" prefWidth="110"/>
+                        <Label text="PROVEEDOR" styleClass="agenda-head" HBox.hgrow="ALWAYS" prefWidth="0" maxWidth="Infinity"/>
+                        <Label text="CANTIDAD" styleClass="agenda-head" minWidth="150" prefWidth="150"/>
+                        <Label text="TOTAL" styleClass="agenda-head" minWidth="130" prefWidth="130"/>
+                        <Label text="ESTADO" styleClass="agenda-head" minWidth="170" prefWidth="170"/>
+                        <Label text="ACCIONES" styleClass="agenda-head" minWidth="190" prefWidth="190"/>
+                    </HBox>
+                    <VBox fx:id="purchaseRows"/>
+                    <Label fx:id="purchaseEmpty" styleClass="empty-board" wrapText="true" managed="false" visible="false"/>
+                </VBox>
+            </VBox>
+        </ScrollPane>
+    </VBox>
+
+    <!-- Panel lateral del lote -->
+    <Region fx:id="veil" styleClass="drawer-veil" visible="false" onMouseClicked="#onCloseDrawer"/>
+    <VBox fx:id="drawer" styleClass="drawer" StackPane.alignment="CENTER_RIGHT"
+          prefWidth="500" maxWidth="500" visible="false">
+        <VBox fx:id="drawerHead" styleClass="drawer-head"/>
+        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="card-scroll" VBox.vgrow="ALWAYS">
+            <VBox fx:id="drawerBody" spacing="12" styleClass="drawer-body"/>
+        </ScrollPane>
+        <HBox fx:id="drawerActions" spacing="10" styleClass="drawer-footer"/>
+    </VBox>
+
+    <!-- Aviso corto al guardar; se desvanece solo -->
+    <Label fx:id="toast" styleClass="toast" StackPane.alignment="BOTTOM_LEFT" wrapText="true" maxWidth="420">
+        <StackPane.margin>
+            <Insets bottom="24" left="24"/>
+        </StackPane.margin>
+    </Label>
+</StackPane>
