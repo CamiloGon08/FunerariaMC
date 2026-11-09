@@ -1,0 +1,320 @@
+/*
+ * Panel de análisis: banda verde con indicadores, pestañas, período, gráficas y tablas de solo lectura.
+ * Se carga junto con personal.css y usa los colores de app.css; todo va bajo .analytics-root.
+ */
+/* ---------- Barra superior ---------- */
+.segmented {
+    -fx-background-color: -color-surface; -fx-background-radius: 12;
+    -fx-padding: 3; -fx-spacing: 2; -fx-alignment: center-left;
+}
+.segment {
+    -fx-background-color: transparent; -fx-text-fill: -color-primary;
+    -fx-background-radius: 10; -fx-padding: 7 14; -fx-font-weight: bold; -fx-font-size: 12.5px;
+    -fx-cursor: hand;
+}
+.segment:hover { -fx-background-color: rgba(250,249,246,0.6); }
+.segment:selected { -fx-background-color: -color-accent; -fx-text-fill: -color-background; }
+.segment-caption { -fx-text-fill: -color-secondary; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 0 4 0 8; }
+
+/* ---------- Aviso corto al guardar ---------- */
+.toast {
+    -fx-background-color: -color-primary; -fx-text-fill: -color-background;
+    -fx-background-radius: 12; -fx-padding: 12 18; -fx-font-size: 13.5px; -fx-font-weight: bold;
+    -fx-effect: dropshadow(gaussian, rgba(24,47,37,0.25), 18, 0, 0, 6);
+}
+
+.drawer-secondary { -fx-background-color: transparent; -fx-text-fill: -color-primary; -fx-border-color: -color-border; }
+.drawer-secondary:hover { -fx-background-color: -color-surface; }
+.drawer-secondary:disabled { -fx-opacity: 0.55; }
+
+/* ---------- Diálogos: formulario "Personal · El Edén" ----------
+   Título musgo, sección en mayúsculas con filete caqui, etiqueta arriba del campo,
+   campos en caja redondeada (borde niebla, foco caqui), deshabilitado en salvia,
+   avisos salvia con ícono y Cancelar (fantasma) a la izquierda de la acción. */
+.form-title {
+    -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif;
+    -fx-font-size: 31px; -fx-text-fill: -color-accent;
+}
+.section-legend { -fx-alignment: center-left; -fx-spacing: 10; }
+.section-title { -fx-text-fill: -color-accent; -fx-font-size: 12px; -fx-font-weight: bold; }
+.section-rule { -fx-background-color: -color-detail; -fx-min-height: 1; -fx-pref-height: 1; -fx-max-height: 1; }
+.form-field { -fx-spacing: 6; }
+.form-field > .field-label { -fx-font-size: 11px; -fx-padding: 0; }
+.form-field > .text-field, .form-field > .date-picker, .form-field > .text-area, .form-combo {
+    -fx-background-color: -color-card; -fx-background-radius: 10;
+    -fx-border-color: -color-border; -fx-border-width: 1; -fx-border-radius: 10;
+    -fx-background-insets: 0; -fx-font-size: 15px;
+}
+.form-field > .text-field { -fx-padding: 9 12; }
+.form-field > .text-field:focused, .form-field > .date-picker:focused, .form-combo:focused,
+.form-field > .date-picker:focus-within, .form-field > .text-area:focused {
+    -fx-border-color: -color-detail; -fx-border-width: 2;
+}
+.form-field > .date-picker > .text-field, .form-field > .date-picker > .text-field:focused,
+.form-combo > .text-field, .form-combo > .text-field:focused {
+    -fx-background-color: transparent; -fx-border-width: 0;
+}
+.form-field > .date-picker > .text-field { -fx-padding: 9 12; }
+.form-field > .date-picker > .arrow-button, .form-combo > .arrow-button { -fx-background-color: transparent; -fx-padding: 0 12 0 8; }
+.form-combo > .arrow-button > .arrow { -fx-background-color: -color-secondary; }
+.form-combo .list-cell { -fx-background-color: transparent; -fx-text-fill: -color-primary; -fx-padding: 9 12; }
+.form-field > .text-area { -fx-padding: 4; }
+.form-field > .text-area .content { -fx-background-color: transparent; -fx-background-radius: 10; }
+.form-field > .text-field:disabled, .form-field > .date-picker:disabled, .form-combo:disabled {
+    -fx-background-color: -color-surface; -fx-opacity: 1;
+}
+.form-combo:disabled .list-cell, .form-field > .text-field:disabled { -fx-text-fill: -color-secondary; }
+.form-body:disabled { -fx-opacity: 1; }
+.note-info, .note-alert { -fx-alignment: top-left; }
+.note-icon { -fx-fill: transparent; -fx-stroke: -color-accent; -fx-stroke-width: 1.4; -fx-stroke-line-cap: round; }
+.note-alert .note-icon { -fx-stroke: -color-error; }
+.form-check-row { -fx-alignment: center-left; -fx-padding: 8 0 0 0; }
+
+/* ---------- Paleta verde oscura, igual que Cementerio e Inventario ---------- */
+.analytics-root {
+    -eden-forest: #1E3A2E;
+    -eden-deep: #0F1F17;
+    -eden-moss: #3E5A3F;
+    -eden-sage: #6B7F67;
+    -eden-linen: #C7CBB8;
+    -eden-card: #FAFBF7;
+    -eden-tint: #EEF0E6;
+    -eden-text: #1E2A22;
+    -eden-muted: #6A7366;
+    -eden-warn: #6E6A45;
+    -eden-warn-bg: #EDEBDD;
+    -eden-alert: #8A4B3C;
+    -eden-alert-bg: #F0E3DC;
+}
+
+/* Banda superior */
+.analytics-root .hero-band {
+    -fx-background-color: linear-gradient(to right, #1E3A2E 0%, #3E5A3F 62%, #6B7F67 100%);
+    -fx-background-radius: 26;
+    -fx-padding: 22 26 24 26;
+    -fx-effect: dropshadow(gaussian, rgba(15,31,23,0.22), 24, 0, 0, 8);
+}
+.analytics-root .hero-kpi {
+    -fx-background-color: rgba(255,255,255,0.07);
+    -fx-border-color: rgba(255,255,255,0.20); -fx-border-width: 1;
+    -fx-background-radius: 16; -fx-border-radius: 16;
+    -fx-padding: 14 18 14 18; -fx-spacing: 2;
+}
+.analytics-root .hero-kpi-caption { -fx-text-fill: rgba(244,245,238,0.88); -fx-font-size: 11px; -fx-font-weight: bold; }
+.analytics-root .hero-kpi-value {
+    -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif;
+    -fx-text-fill: #F4F5EE; -fx-font-size: 38px;
+}
+.analytics-root .hero-kpi-detail { -fx-text-fill: rgba(244,245,238,0.72); -fx-font-size: 12.5px; }
+/* Tarjeta destacada de la banda: fondo lino claro y texto oscuro, como en la captura aprobada */
+.analytics-root .hero-kpi.highlight { -fx-background-color: #ECEEE6; -fx-border-color: #ECEEE6; }
+.analytics-root .hero-kpi.highlight .hero-kpi-caption { -fx-text-fill: -eden-text; }
+.analytics-root .hero-kpi.highlight .hero-kpi-value { -fx-text-fill: -eden-text; }
+.analytics-root .hero-kpi.highlight .hero-kpi-detail { -fx-text-fill: -eden-muted; }
+
+/* Barra de búsqueda y filtros */
+.analytics-root .filter-card {
+    -fx-background-color: -eden-card; -fx-border-color: transparent;
+    -fx-background-radius: 18; -fx-border-radius: 18; -fx-padding: 10 12; -fx-spacing: 10;
+    -fx-alignment: center-left;
+}
+.analytics-root .search-box { -fx-background-color: -eden-tint; -fx-background-radius: 12; }
+.analytics-root .segmented { -fx-background-color: -eden-tint; }
+.analytics-root .segment { -fx-text-fill: -eden-text; }
+.analytics-root .segment:hover { -fx-background-color: rgba(199,203,184,0.45); }
+.analytics-root .segment:selected { -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; }
+.analytics-root .segment-caption { -fx-text-fill: -eden-muted; }
+.analytics-root .chip-combo { -fx-background-color: -eden-card; -fx-border-color: -eden-linen; -fx-background-radius: 12; -fx-border-radius: 12; -fx-padding: 4 8; }
+.analytics-root .primary-button { -fx-background-color: -eden-forest; -fx-background-radius: 12; }
+.analytics-root .primary-button:hover { -fx-background-color: -eden-moss; }
+.analytics-root .primary-button:pressed { -fx-background-color: -eden-deep; }
+
+/* Tarjetas */
+.analytics-root .table-card {
+    -fx-background-color: -eden-card; -fx-border-color: transparent;
+    -fx-background-radius: 22; -fx-border-radius: 22; -fx-padding: 22 24 18 24;
+}
+.analytics-root .card-title {
+    -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif;
+    -fx-font-size: 32px; -fx-text-fill: -eden-text;
+}
+.analytics-root .card-subtitle { -fx-text-fill: -eden-muted; }
+
+/* Estados suaves */
+.analytics-root .state-chip { -fx-background-radius: 999; -fx-padding: 4 11; -fx-font-size: 11.5px; -fx-font-weight: bold; }
+.analytics-root .state-ok { -fx-background-color: -eden-tint; -fx-text-fill: -eden-moss; }
+.analytics-root .state-warn { -fx-background-color: -eden-warn-bg; -fx-text-fill: -eden-warn; }
+.analytics-root .toast { -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; }
+
+/* Vista tabla */
+.analytics-root .table-head {
+    -fx-background-color: -eden-tint; -fx-background-radius: 14; -fx-padding: 12 16; -fx-spacing: 0;
+    -fx-alignment: center-left;
+}
+.analytics-root .head-cell { -fx-text-fill: -eden-muted; -fx-font-size: 11px; -fx-font-weight: bold; }
+.items-list, .items-list > .virtual-flow > .clipped-container > .sheet {
+    -fx-background-color: transparent; -fx-background-insets: 0; -fx-padding: 0; -fx-border-width: 0;
+}
+.items-list .list-cell {
+    -fx-background-color: transparent; -fx-padding: 0; -fx-border-color: transparent transparent #E6E8DE transparent;
+    -fx-border-width: 0 0 1 0;
+}
+.items-list .list-cell:empty { -fx-border-width: 0; }
+.items-list .list-cell:filled:hover { -fx-background-color: rgba(226,230,221,0.45); }
+.items-list .list-cell:filled:selected { -fx-background-color: rgba(226,230,221,0.7); }
+.item-row { -fx-padding: 10 16; -fx-alignment: center-left; -fx-min-height: 64; -fx-cursor: hand; }
+.item-row-name { -fx-text-fill: -eden-text; -fx-font-size: 14px; -fx-font-weight: bold; }
+.item-row-sub { -fx-text-fill: -eden-muted; -fx-font-size: 12.5px; }
+.item-row-text { -fx-text-fill: -eden-text; -fx-font-size: 13.5px; }
+.item-row-thumb { -fx-background-color: #EEEFE8; -fx-background-radius: 10; }
+.analytics-root .table-card {
+    -fx-background-color: -eden-card; -fx-border-color: transparent;
+    -fx-background-radius: 22; -fx-border-radius: 22; -fx-padding: 18 20 14 20;
+}
+
+/* Aviso bajo el título de una tabla */
+.analytics-root .notice {
+    -fx-background-color: -eden-tint; -fx-background-radius: 14; -fx-padding: 10 16; -fx-spacing: 10;
+    -fx-alignment: center-left;
+}
+.analytics-root .notice-text { -fx-text-fill: -eden-text; -fx-font-size: 13px; }
+.analytics-root .notice.warn { -fx-background-color: -eden-warn-bg; }
+.analytics-root .notice.warn .notice-text { -fx-text-fill: -eden-warn; }
+.analytics-root .notice-icon { -fx-fill: transparent; -fx-stroke: -eden-moss; -fx-stroke-width: 1.4; -fx-stroke-line-cap: round; }
+
+/* Selector de período */
+.analytics-root .period-arrow {
+    -fx-background-color: -eden-tint; -fx-text-fill: -eden-text; -fx-background-radius: 10;
+    -fx-font-size: 18px; -fx-padding: 2 12 4 12; -fx-cursor: hand;
+}
+.analytics-root .period-arrow:hover { -fx-background-color: #D5DACB; }
+.analytics-root .period-arrow:disabled { -fx-opacity: 0.4; }
+.analytics-root .period-box {
+    -fx-background-color: -eden-card; -fx-border-color: #DADDD1; -fx-border-radius: 10; -fx-background-radius: 10;
+    -fx-padding: 4 14; -fx-spacing: 0; -fx-min-width: 170; -fx-cursor: hand;
+}
+.analytics-root .period-caption { -fx-text-fill: -eden-muted; -fx-font-size: 9.5px; -fx-font-weight: bold; }
+.analytics-root .period-value { -fx-text-fill: -eden-text; -fx-font-size: 13px; -fx-font-weight: bold; }
+.analytics-root .month-label { -fx-text-fill: -eden-text; -fx-font-size: 14px; -fx-font-weight: bold; -fx-min-width: 140; -fx-alignment: center; }
+.analytics-root .primary-menu {
+    -fx-background-color: -eden-forest; -fx-background-radius: 12; -fx-padding: 6 10;
+}
+.analytics-root .primary-menu > .label { -fx-text-fill: #F4F5EE; -fx-font-weight: bold; }
+.analytics-root .primary-menu > .arrow-button { -fx-padding: 0 0 0 10; }
+.analytics-root .primary-menu > .arrow-button > .arrow { -fx-background-color: #F4F5EE; }
+.analytics-root .primary-menu:hover { -fx-background-color: -eden-moss; }
+
+/* Indicadores: variación frente al período anterior */
+.analytics-root .hero-kpi-detail.up { -fx-text-fill: #CFE3C4; }
+.analytics-root .hero-kpi-detail.down { -fx-text-fill: #F0C9BD; }
+.analytics-root .hero-kpi.highlight .hero-kpi-detail.up { -fx-text-fill: -eden-moss; }
+.analytics-root .hero-kpi.highlight .hero-kpi-detail.down { -fx-text-fill: -eden-alert; }
+
+/* Tarjetas del resumen */
+.analytics-root .card-scroll, .analytics-root .card-scroll > .viewport { -fx-background-color: transparent; -fx-background: transparent; }
+.analytics-root .card-scroll { -fx-padding: 0; -fx-background-insets: 0; }
+.analytics-root .scroll-content { -fx-padding: 0 6 20 0; }
+.analytics-root .chart-card {
+    -fx-background-color: -eden-card; -fx-background-radius: 22; -fx-padding: 18 20 14 20; -fx-spacing: 6;
+    -fx-effect: dropshadow(gaussian, rgba(15,31,23,0.05), 10, 0, 0, 2);
+}
+.analytics-root .chart-title {
+    -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif;
+    -fx-font-size: 26px; -fx-text-fill: -eden-text;
+}
+.analytics-root .chart-subtitle { -fx-text-fill: -eden-muted; -fx-font-size: 12.5px; }
+.analytics-root .legend-dot { -fx-min-width: 10; -fx-min-height: 10; -fx-max-width: 10; -fx-max-height: 10; -fx-background-radius: 3; }
+.analytics-root .legend-text { -fx-text-fill: -eden-text; -fx-font-size: 12.5px; -fx-font-weight: bold; }
+.analytics-root .legend-sub { -fx-text-fill: -eden-muted; -fx-font-size: 11.5px; }
+.analytics-root .donut-hole { -fx-fill: -eden-card; }
+.analytics-root .donut-value {
+    -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif; -fx-font-size: 24px; -fx-text-fill: -eden-text;
+}
+.analytics-root .donut-caption { -fx-text-fill: -eden-muted; -fx-font-size: 11.5px; }
+.analytics-root .commission-line { -fx-spacing: 4; -fx-padding: 8 0; -fx-border-color: transparent transparent #E6E8DE transparent; -fx-border-width: 0 0 1 0; }
+.analytics-root .commission-name { -fx-text-fill: -eden-text; -fx-font-size: 13.5px; -fx-font-weight: bold; }
+.analytics-root .commission-sub { -fx-text-fill: -eden-muted; -fx-font-size: 11.5px; }
+.analytics-root .commission-amount { -fx-text-fill: -eden-text; -fx-font-size: 13.5px; -fx-font-weight: bold; }
+.analytics-root .link-button {
+    -fx-background-color: transparent; -fx-text-fill: -eden-moss; -fx-font-weight: bold; -fx-padding: 0; -fx-cursor: hand;
+}
+.analytics-root .link-button:hover { -fx-underline: true; }
+
+/* Gráficas: ingresos en bosque, egresos en caqui */
+.analytics-root .chart { -fx-padding: 4 0 0 0; }
+.analytics-root .chart-plot-background { -fx-background-color: transparent; }
+.analytics-root .chart-vertical-grid-lines { -fx-stroke: transparent; }
+.analytics-root .chart-horizontal-grid-lines { -fx-stroke: #E6E8DE; -fx-stroke-dash-array: 2 4; }
+.analytics-root .chart-alternative-row-fill { -fx-fill: transparent; }
+.analytics-root .chart-vertical-zero-line, .analytics-root .chart-horizontal-zero-line { -fx-stroke: #C7CBB8; }
+.analytics-root .axis { -fx-tick-label-fill: -eden-muted; -fx-tick-label-font-size: 11px; }
+.analytics-root .axis:bottom, .analytics-root .axis:left { -fx-border-color: transparent; }
+.analytics-root .axis-tick-mark, .analytics-root .axis-minor-tick-mark { -fx-stroke: transparent; }
+.analytics-root .flow-chart .default-color0.chart-series-line { -fx-stroke: #1E3A2E; -fx-stroke-width: 2.4px; }
+.analytics-root .flow-chart .default-color1.chart-series-line { -fx-stroke: #C4AF84; -fx-stroke-width: 2.4px; }
+.analytics-root .flow-chart .default-color0.chart-line-symbol { -fx-background-color: #1E3A2E, #FAFBF7; -fx-background-insets: 0, 2; -fx-background-radius: 6; -fx-padding: 4.5; }
+.analytics-root .flow-chart .default-color1.chart-line-symbol { -fx-background-color: #C4AF84, #FAFBF7; -fx-background-insets: 0, 2; -fx-background-radius: 6; -fx-padding: 4.5; }
+.analytics-root .flow-chart .chart-line-symbol:hover { -fx-scale-x: 1.4; -fx-scale-y: 1.4; }
+.analytics-root .month-chart .chart-bar { -fx-background-color: #6B7F67; -fx-background-radius: 6 6 0 0; }
+.analytics-root .month-chart .chart-bar.current { -fx-background-color: #1E3A2E; }
+.analytics-root .month-chart .chart-bar.negative { -fx-background-color: #8A4B3C; -fx-background-radius: 0 0 6 6; }
+.analytics-root .donut-chart .chart-pie-label, .analytics-root .donut-chart .chart-pie-label-line { -fx-opacity: 0; }
+.analytics-root .donut-chart { -fx-padding: 0; -fx-legend-visible: false; }
+.analytics-root .donut-chart .chart-pie { -fx-border-color: #FAFBF7; -fx-border-width: 2; }
+.tooltip.chart-tip {
+    -fx-background-color: #0F1F17; -fx-text-fill: #F4F5EE; -fx-font-size: 12.5px; -fx-background-radius: 10;
+    -fx-padding: 8 12;
+}
+
+/* Filas de las tablas */
+.analytics-root .chip-income { -fx-background-color: -eden-tint; -fx-text-fill: -eden-moss; }
+.analytics-root .chip-expense { -fx-background-color: -eden-warn-bg; -fx-text-fill: -eden-warn; }
+.analytics-root .chip-voided { -fx-background-color: -eden-alert-bg; -fx-text-fill: -eden-alert; }
+.analytics-root .chip-done { -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; }
+.analytics-root .amount-income { -fx-text-fill: -eden-moss; -fx-font-size: 13.5px; -fx-font-weight: bold; }
+.analytics-root .amount-expense { -fx-text-fill: -eden-alert; -fx-font-size: 13.5px; -fx-font-weight: bold; }
+.analytics-root .row-voided .item-row-name, .analytics-root .row-voided .amount-income,
+.analytics-root .row-voided .amount-expense, .analytics-root .row-voided .item-row-text { -fx-strikethrough: true; -fx-opacity: 0.6; }
+.analytics-root .row-button {
+    -fx-background-color: -eden-tint; -fx-text-fill: -eden-text; -fx-background-radius: 999;
+    -fx-padding: 6 14; -fx-font-size: 12.5px; -fx-cursor: hand;
+}
+.analytics-root .row-button:hover { -fx-background-color: #D5DACB; }
+.analytics-root .row-button.strong { -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; -fx-font-weight: bold; }
+.analytics-root .row-button.strong:hover { -fx-background-color: -eden-moss; }
+.analytics-root .row-button:disabled { -fx-opacity: 0.45; }
+.analytics-root .row-hint { -fx-text-fill: -eden-muted; -fx-font-size: 11.5px; }
+.analytics-root .state-chip { -fx-background-radius: 999; -fx-padding: 4 11; -fx-font-size: 11.5px; -fx-font-weight: bold; }
+.analytics-root .toast { -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; }
+.analytics-root .grid-title {
+    -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif;
+    -fx-font-size: 28px; -fx-text-fill: -eden-text;
+}
+.analytics-root .grid-subtitle { -fx-text-fill: -eden-muted; -fx-font-size: 13px; }
+.analytics-root .empty-board { -fx-text-fill: -eden-muted; -fx-font-size: 14px; -fx-padding: 24 6; }
+.analytics-root .table-card {
+    -fx-background-color: -eden-card; -fx-border-color: transparent;
+    -fx-background-radius: 22; -fx-border-radius: 22; -fx-padding: 18 20 14 20;
+}
+.form-segmented { -fx-background-color: #EEF0E6; }
+
+/* ---------- Panel de análisis ---------- */
+.analytics-root .readonly-chip {
+    -fx-background-color: #F3EEDD; -fx-text-fill: -eden-warn; -fx-background-radius: 999; -fx-padding: 6 12;
+    -fx-font-size: 12px; -fx-font-weight: bold;
+}
+.analytics-root .hero-kpi.dark { -fx-background-color: #0F1F17; -fx-border-color: #0F1F17; }
+.analytics-root .kind-chart .chart-bar { -fx-background-radius: 0; }
+.analytics-root .kind-chart .default-color0.chart-bar { -fx-background-color: #3E5A3F; }
+.analytics-root .kind-chart .default-color1.chart-bar { -fx-background-color: #C4AF84; }
+.analytics-root .kind-chart .default-color2.chart-bar { -fx-background-color: #1E3A2E; }
+.analytics-root .kind-chart .default-color3.chart-bar { -fx-background-color: #9FB09A; }
+.analytics-root .bar-track { -fx-background-color: #E3E6DA; -fx-background-radius: 999; -fx-min-height: 8; -fx-pref-height: 8; -fx-max-height: 8; }
+.analytics-root .bar-fill { -fx-background-color: #3E5A3F; -fx-background-radius: 999; -fx-min-height: 8; -fx-max-height: 8; }
+.analytics-root .bar-overdue { -fx-background-color: #A2443A; -fx-background-radius: 999; -fx-min-height: 8; -fx-max-height: 8; }
+.analytics-root .vault-name { -fx-text-fill: -eden-text; -fx-font-size: 13.5px; -fx-font-weight: bold; }
+.analytics-root .vault-sub { -fx-text-fill: -eden-muted; -fx-font-size: 12px; }
+.analytics-root .heat-cell { -fx-background-radius: 6; -fx-min-height: 30; -fx-pref-height: 30; -fx-alignment: center; }
+.analytics-root .heat-text { -fx-font-size: 11.5px; -fx-font-weight: bold; }
+.analytics-root .heat-head { -fx-text-fill: -eden-muted; -fx-font-size: 11.5px; -fx-alignment: center; }
+.analytics-root .heat-room { -fx-text-fill: -eden-text; -fx-font-size: 13px; -fx-font-weight: bold; }
