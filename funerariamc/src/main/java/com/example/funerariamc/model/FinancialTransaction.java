@@ -37,6 +37,11 @@ public class FinancialTransaction {
     @JoinColumn(name = "employee_id")
     private Employee employee;
 
+    // Cuenta del egreso. 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "finance_account_id")
+    private FinanceAccount financeAccount;
+
     @Column(name = "amount", nullable = false)
     private BigDecimal amount;
 
@@ -51,4 +56,9 @@ public class FinancialTransaction {
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
     private TransactionStatus status = TransactionStatus.ACTIVE;
+
+    /** Código con el que se muestra un movimiento: "MV-0012". */
+    public static String code(Long id) {
+        return id == null ? "" : "MV-%04d".formatted(id);
+    }
 }
