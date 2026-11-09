@@ -45,6 +45,14 @@ public interface InventoryItemRepository extends JpaRepository<InventoryItem, Lo
     @Query("select i from InventoryItem i where i.id = :id")
     Optional<InventoryItem> findForUpdate(@Param("id") Long id);
 
-    /** Todos los artículos para las tarjetas de Inventario, ordenados por nombre. */
+    /** Todos los artículos para las tarjetas de Inventario.*/
     List<InventoryItem> findAllByOrderByNameAscIdAsc(Pageable pageable);
+
+    /** Artículos en el nivel mínimo o por debajo. */
+    @Query("""
+            select i from InventoryItem i
+            where coalesce(i.stockQuantity, 0) <= coalesce(i.minimumStock, 0)
+            order by coalesce(i.stockQuantity, 0) - coalesce(i.minimumStock, 0), i.name
+            """)
+    List<InventoryItem> findAtOrBelowMinimum(Pageable pageable);
 }
