@@ -15,10 +15,9 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.shape.SVGPath?>
 
-
 <StackPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
            fx:id="root" fx:controller="com.example.funerariamc.controller.DeceasedController"
-           styleClass="personal-root"
+           styleClass="personal-root, eden-green"
            stylesheets="@../css/personal.css, @../css/deceased.css">
 
     <fx:define>
@@ -26,6 +25,35 @@
     </fx:define>
 
     <VBox spacing="18">
+        <!-- Banda verde (paleta verde oscura): arriba el encabezado del menú (MainController lo pone en
+             #heroHeaderSlot) y debajo los indicadores en tarjetas translúcidas. -->
+        <VBox styleClass="hero-band">
+            <StackPane id="heroHeaderSlot" alignment="TOP_LEFT"/>
+            <HBox spacing="16">
+                <VBox styleClass="kpi-card" HBox.hgrow="ALWAYS" prefWidth="0">
+                    <Label fx:id="monthCaption" text="INGRESOS DEL MES" styleClass="kpi-caption"/>
+                    <Label fx:id="monthValue" text="—" styleClass="kpi-value"/>
+                    <Label fx:id="monthDetail" styleClass="kpi-detail" wrapText="true"/>
+                </VBox>
+                <VBox styleClass="kpi-card" HBox.hgrow="ALWAYS" prefWidth="0">
+                    <Label text="EN SERVICIO AHORA" styleClass="kpi-caption"/>
+                    <Label fx:id="serviceValue" text="—" styleClass="kpi-value"/>
+                    <Label fx:id="serviceDetail" styleClass="kpi-detail" wrapText="true"/>
+                </VBox>
+                <VBox styleClass="kpi-card" HBox.hgrow="ALWAYS" prefWidth="0">
+                    <Label text="DOCUMENTOS PENDIENTES" styleClass="kpi-caption"/>
+                    <Label fx:id="pendingValue" text="—" styleClass="kpi-value"/>
+                    <Label fx:id="pendingDetail" styleClass="kpi-detail" wrapText="true"/>
+                </VBox>
+                <VBox styleClass="kpi-card" HBox.hgrow="ALWAYS" prefWidth="0">
+                    <Label text="CON PLAN EXEQUIAL" styleClass="kpi-caption"/>
+                    <Label fx:id="planValue" text="—" styleClass="kpi-value"/>
+                    <ProgressBar fx:id="planBar" progress="0" maxWidth="Infinity" styleClass="occupancy-bar"/>
+                    <Label fx:id="planDetail" styleClass="kpi-detail"/>
+                </VBox>
+            </HBox>
+        </VBox>
+
         <!-- Búsqueda, segmentos, tipo de muerte, mes y registrar -->
         <HBox styleClass="filter-card">
             <HBox styleClass="search-box" HBox.hgrow="ALWAYS" minWidth="150">
@@ -47,31 +75,6 @@
         <ScrollPane fx:id="pageScroll" fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="ALWAYS"
                     styleClass="card-scroll" VBox.vgrow="ALWAYS">
             <VBox spacing="18" styleClass="card-scroll-content">
-                <!-- Indicadores -->
-                <HBox spacing="16">
-                    <VBox styleClass="kpi-card" HBox.hgrow="ALWAYS" prefWidth="0">
-                        <Label fx:id="monthCaption" text="INGRESOS DEL MES" styleClass="kpi-caption"/>
-                        <Label fx:id="monthValue" text="—" styleClass="kpi-value"/>
-                        <Label fx:id="monthDetail" styleClass="kpi-detail" wrapText="true"/>
-                    </VBox>
-                    <VBox styleClass="kpi-card" HBox.hgrow="ALWAYS" prefWidth="0">
-                        <Label text="EN SERVICIO AHORA" styleClass="kpi-caption"/>
-                        <Label fx:id="serviceValue" text="—" styleClass="kpi-value"/>
-                        <Label fx:id="serviceDetail" styleClass="kpi-detail" wrapText="true"/>
-                    </VBox>
-                    <VBox styleClass="kpi-card" HBox.hgrow="ALWAYS" prefWidth="0">
-                        <Label text="DOCUMENTOS PENDIENTES" styleClass="kpi-caption"/>
-                        <Label fx:id="pendingValue" text="—" styleClass="kpi-value"/>
-                        <Label fx:id="pendingDetail" styleClass="kpi-detail" wrapText="true"/>
-                    </VBox>
-                    <VBox styleClass="kpi-card" HBox.hgrow="ALWAYS" prefWidth="0">
-                        <Label text="CON PLAN EXEQUIAL" styleClass="kpi-caption"/>
-                        <Label fx:id="planValue" text="—" styleClass="kpi-value"/>
-                        <ProgressBar fx:id="planBar" progress="0" maxWidth="Infinity" styleClass="occupancy-bar"/>
-                        <Label fx:id="planDetail" styleClass="kpi-detail"/>
-                    </VBox>
-                </HBox>
-
                 <!-- En servicio ahora: una tarjeta por difunto con contrato activo -->
                 <HBox alignment="CENTER_LEFT" spacing="12">
                     <Label text="En servicio ahora" styleClass="section-heading-serif"/>
