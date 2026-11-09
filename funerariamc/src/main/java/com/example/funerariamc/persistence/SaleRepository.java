@@ -80,6 +80,44 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
     Optional<SaleRow> findRow(@Param("saleId") Long saleId, @Param("income") TransactionType income,
                               @Param("active") TransactionStatus active);
 
+    /** Ventas de un rango de fechas (hora de la BD) con lo abonado, para el reporte de ventas de Finanzas. */
+    @Query("""
+            select s.id as saleId, s.saleType as saleType, s.status as status, s.saleDate as saleDate,
+                   s.totalAmount as total,
+                   coalesce((select sum(t.amount) from FinancialTransaction t
+                             where t.relatedSale = s and t.transactionType = :income and t.status = :active), 0) as paid,
+                   c.id as contractId, c.contractNumber as contractNumber,
+                   d.name as deceasedName, d.lastname as deceasedLastname,
+                   cl.name as clientName, cl.lastname as clientLastname, cl.clientType as clientType,
+                   p.id as planId, p.planName as planName
+            from Sale s
+            join s.client cl
+            left join s.serviceContract c
+            left join c.deceased d
+            left join c.funeralPlan p
+            where s.saleDate >= :from and s.saleDate < :to
+            order by s.saleDate, s.id
+            """)
+    List<SaleRow> findRowsBetween(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to,
+                                  @Param("income") TransactionType income, @Param("active") TransactionStatus active);
+
+    /** Ventas vigentes y su total por vendedor en un rango, para la comisión del vendedor. */
+    interface SellerTotal {
+        Long getEmployeeId();
+        long getSales();
+        BigDecimal getTotal();
+    }
+
+    @Query("""
+            select s.employee.id as employeeId, count(s) as sales, coalesce(sum(s.totalAmount), 0) as total
+            from Sale s
+            where s.status = :active and s.employee is not null
+              and s.saleDate >= :from and s.saleDate < :to
+            group by s.employee.id
+            """)
+    List<SellerTotal> sumBySeller(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to,
+                                  @Param("active") SaleStatus active);
+
     /** Indicadores de la banda verde en una sola consulta. */
     interface SaleKpis {
         long getRecords();

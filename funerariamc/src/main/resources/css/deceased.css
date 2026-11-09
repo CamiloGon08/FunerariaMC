@@ -137,3 +137,163 @@
     -fx-border-color: -color-surface transparent transparent transparent; -fx-border-width: 1 0 0 0;
 }
 .form-dialog > .button-bar > .container { -fx-padding: 14 28 18 28; }
+
+/* ---------- Paleta verde oscura (nov 2026) ----------
+   Misma dirección visual que Cementerio y bóvedas: banda verde con el título y los indicadores
+   en tarjetas translúcidas, barra de filtros y tarjetas claras sobre el fondo salvia, selección
+   en bosque profundo y estados suaves (aviso oliva, alerta terracota apagada).
+   Todo va bajo .eden-green: solo cambia la pantalla que pone esa clase en su raíz. Los diálogos
+   y formularios de registro no la llevan, así que conservan su estilo aprobado. */
+.eden-green {
+    -eden-forest: #1E3A2E;
+    -eden-deep: #0F1F17;
+    -eden-moss: #3E5A3F;
+    -eden-sage: #6B7F67;
+    -eden-linen: #C7CBB8;
+    -eden-card: #FAFBF7;
+    -eden-tint: #EEF0E6;
+    -eden-line: #E6E8DE;
+    -eden-text: #1E2A22;
+    -eden-muted: #6A7366;
+    -eden-warn: #6E6A45;
+    -eden-warn-bg: #EDEBDD;
+    -eden-alert: #8A4B3C;
+    -eden-alert-bg: #F0E3DC;
+}
+
+/* Banda superior: el menú pone su encabezado en #heroHeaderSlot */
+.eden-green .hero-band {
+    -fx-background-color: linear-gradient(to right, #1E3A2E 0%, #3E5A3F 62%, #6B7F67 100%);
+    -fx-background-radius: 26;
+    -fx-padding: 22 26 24 26;
+    -fx-spacing: 18;
+    -fx-effect: dropshadow(gaussian, rgba(15,31,23,0.22), 24, 0, 0, 8);
+}
+.eden-green .hero-band.compact { -fx-padding: 22 26 22 26; }
+.eden-green .hero-band .kpi-card {
+    -fx-background-color: rgba(255,255,255,0.07);
+    -fx-border-color: rgba(255,255,255,0.20); -fx-border-width: 1;
+    -fx-background-radius: 16; -fx-border-radius: 16;
+    -fx-padding: 14 18 14 18; -fx-spacing: 2;
+    -fx-effect: null;
+}
+.eden-green .hero-band .kpi-caption { -fx-text-fill: rgba(244,245,238,0.88); -fx-font-size: 11px; -fx-font-weight: bold; }
+.eden-green .hero-band .kpi-value {
+    -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif;
+    -fx-text-fill: #F4F5EE; -fx-font-size: 38px; -fx-font-weight: normal;
+}
+.eden-green .hero-band .kpi-value:warning { -fx-text-fill: #E9DDB0; }
+.eden-green .hero-band .kpi-detail { -fx-text-fill: rgba(244,245,238,0.72); -fx-font-size: 12.5px; }
+.eden-green .hero-band .kpi-detail-gold,
+.eden-green .hero-band .kpi-gold { -fx-text-fill: #E9DDB0; }
+.eden-green .hero-band .kpi-alert { -fx-text-fill: #F2C9BC; }
+.eden-green .hero-band .kpi-up { -fx-text-fill: #CFE3C6; }
+.eden-green .hero-band .occupancy-bar { -fx-padding: 6 0 2 0; }
+.eden-green .hero-band .occupancy-bar > .track { -fx-background-color: rgba(255,255,255,0.18); }
+.eden-green .hero-band .occupancy-bar > .bar { -fx-background-color: #E4E7DC; }
+/* Indicador destacado: tarjeta lino clara dentro de la banda */
+.eden-green .hero-band .kpi-card.kpi-dark { -fx-background-color: #EEF0E6; -fx-border-color: #EEF0E6; }
+.eden-green .hero-band .kpi-dark .kpi-caption { -fx-text-fill: -eden-muted; }
+.eden-green .hero-band .kpi-dark .kpi-value { -fx-text-fill: -eden-text; }
+.eden-green .hero-band .kpi-dark .kpi-detail { -fx-text-fill: -eden-muted; }
+.eden-green .hero-band .kpi-dark .kpi-alert { -fx-text-fill: -eden-alert; }
+.eden-green .hero-band .kpi-dark .kpi-up { -fx-text-fill: -eden-moss; }
+
+/* Barra de búsqueda y filtros */
+.eden-green .filter-card {
+    -fx-background-color: -eden-card; -fx-border-color: transparent;
+    -fx-background-radius: 18; -fx-border-radius: 18; -fx-padding: 10 12;
+    -fx-effect: dropshadow(gaussian, rgba(15,31,23,0.05), 12, 0, 0, 2);
+}
+.eden-green .search-box { -fx-background-color: -eden-tint; -fx-background-radius: 12; }
+.eden-green .search-box:focus-within { -fx-background-color: #E6E9DD; }
+.eden-green .chip {
+    -fx-background-color: -eden-tint; -fx-border-color: transparent; -fx-text-fill: -eden-text;
+    -fx-background-radius: 12; -fx-border-radius: 12;
+}
+.eden-green .chip:hover { -fx-background-color: #E3E6DA; }
+.eden-green .chip:selected { -fx-background-color: -eden-forest; -fx-border-color: -eden-forest; -fx-text-fill: #F4F5EE; }
+.eden-green .area-chip { -fx-padding: 8 13; }
+.eden-green .segmented { -fx-background-color: -eden-tint; }
+.eden-green .segment { -fx-text-fill: -eden-text; }
+.eden-green .segment:hover { -fx-background-color: rgba(199,203,184,0.45); }
+.eden-green .segment:selected { -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; }
+.eden-green .chip-combo,
+.eden-green .filter-card .date-picker {
+    -fx-background-color: -eden-card; -fx-border-color: -eden-linen;
+    -fx-background-radius: 12; -fx-border-radius: 12;
+}
+.eden-green .chip-combo { -fx-padding: 4 6; }
+.eden-green .chip-combo .list-cell { -fx-text-fill: -eden-text; }
+.eden-green .primary-button { -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; -fx-background-radius: 12; }
+.eden-green .primary-button:hover { -fx-background-color: -eden-moss; }
+.eden-green .primary-button:pressed { -fx-background-color: -eden-deep; }
+.eden-green .secondary-button {
+    -fx-background-color: -eden-card; -fx-border-color: -eden-linen; -fx-text-fill: -eden-text;
+    -fx-background-radius: 12; -fx-border-radius: 12; -fx-font-weight: bold;
+}
+.eden-green .secondary-button:hover { -fx-background-color: -eden-tint; }
+
+/* Títulos de sección y tarjetas grandes */
+.eden-green .section-heading,
+.eden-green .section-heading-serif { -fx-font-size: 30px; -fx-text-fill: -eden-text; }
+.eden-green .card-subtitle { -fx-text-fill: -eden-muted; }
+.eden-green .table-card {
+    -fx-background-color: -eden-card; -fx-border-color: transparent;
+    -fx-background-radius: 22; -fx-border-radius: 22; -fx-padding: 22 24 18 24;
+}
+.eden-green .card-title { -fx-font-size: 30px; -fx-text-fill: -eden-text; }
+.eden-green .side-title { -fx-text-fill: -eden-text; }
+.eden-green .legend-text { -fx-text-fill: -eden-muted; }
+.eden-green .count-badge { -fx-background-color: -eden-alert-bg; -fx-text-fill: -eden-alert; }
+
+/* Tarjetas de la lista (empleados, clientes y afiliados) */
+.eden-green .employee-card,
+.eden-green .plan-card {
+    -fx-background-color: -eden-card; -fx-border-color: transparent;
+    -fx-background-radius: 22; -fx-border-radius: 22;
+    -fx-effect: dropshadow(gaussian, rgba(15,31,23,0.05), 14, 0, 0, 3);
+}
+.eden-green .employee-card:hover,
+.eden-green .plan-card:hover { -fx-border-color: -eden-sage; }
+.eden-green .client-card:selected { -fx-border-color: -eden-forest; -fx-border-width: 1.5; }
+.eden-green .card-name,
+.eden-green .plan-holder { -fx-text-fill: -eden-text; }
+.eden-green .card-divider { -fx-background-color: -eden-line; }
+.eden-green .avatar, .eden-green .avatar-large { -fx-background-color: -eden-tint; }
+.eden-green .avatar-text { -fx-text-fill: -eden-moss; }
+.eden-green .info-key { -fx-text-fill: -eden-muted; }
+.eden-green .info-value { -fx-text-fill: -eden-text; }
+
+/* Estados en píldora suave */
+.eden-green .pill-neutral { -fx-background-color: -eden-tint; -fx-border-color: transparent; -fx-text-fill: -eden-moss; }
+.eden-green .pill-role { -fx-background-color: -eden-tint; -fx-text-fill: -eden-text; }
+.eden-green .pill-warning { -fx-background-color: -eden-warn-bg; -fx-text-fill: -eden-warn; }
+.eden-green .pill-alert { -fx-background-color: -eden-alert-bg; -fx-text-fill: -eden-alert; }
+.eden-green .pill-dark { -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; }
+.eden-green .status-active { -fx-background-color: -eden-tint; -fx-text-fill: -eden-moss; }
+.eden-green .band-info { -fx-background-color: -eden-tint; -fx-text-fill: -eden-moss; }
+.eden-green .band-warning { -fx-background-color: -eden-warn-bg; -fx-text-fill: -eden-warn; }
+.eden-green .band-alert { -fx-background-color: -eden-alert-bg; -fx-text-fill: -eden-alert; }
+
+/* Botones de tarjeta y panel */
+.eden-green .card-button {
+    -fx-background-color: -eden-card; -fx-border-color: -eden-linen; -fx-text-fill: -eden-text;
+    -fx-background-radius: 12; -fx-border-radius: 12;
+}
+.eden-green .card-button:hover { -fx-background-color: -eden-tint; }
+.eden-green .card-button-primary { -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; -fx-background-radius: 12; }
+.eden-green .card-button-primary:hover { -fx-background-color: -eden-moss; }
+.eden-green .account-row { -fx-background-color: -eden-tint; -fx-background-radius: 12; }
+.eden-green .account-link { -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; }
+.eden-green .account-link:hover { -fx-background-color: -eden-moss; }
+.eden-green .drawer-veil { -fx-background-color: rgba(15,31,23,0.32); }
+.eden-green .drawer { -fx-background-color: -eden-card; }
+.eden-green .drawer-primary { -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; }
+.eden-green .drawer-primary:hover { -fx-background-color: -eden-moss; }
+.eden-green .text-action { -fx-text-fill: -eden-text; }
+.eden-green .text-action:hover { -fx-background-color: -eden-tint; }
+
+/* Barra de desplazamiento fina en lino */
+.eden-green .card-scroll .scroll-bar:vertical { -fx-background-color: transparent; -fx-pref-width: 7; }
+.eden-green .card-scroll .scroll-bar:vertical .thumb { -fx-background-color: #B9C0B0; }

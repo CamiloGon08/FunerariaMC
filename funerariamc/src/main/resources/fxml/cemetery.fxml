@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ProgressBar?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.ToggleButton?>
+<?import javafx.scene.control.ToggleGroup?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Pane?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.shape.SVGPath?>
+
+<!--
+  Módulo Cementerio y bóvedas (RF-BOV-01 a RF-BOV-06), propuesta P-17 / P-17.1:
+  pestañas por cementerio, muro del pabellón por niveles, indicadores, bóvedas que requieren
+  atención, últimas exhumaciones y panel lateral de detalle de la bóveda.
+  Paleta verde oscura (nov 2026): banda verde con el título y los indicadores arriba.
+  Se muestra dentro del contentPane de main.fxml. El menú la guarda abierta (RefreshableView):
+  al volver solo se refrescan los datos en segundo plano.
+-->
+<StackPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+           fx:id="root" fx:controller="com.example.funerariamc.controller.VaultController"
+           styleClass="personal-root,cemetery-root" stylesheets="@../css/personal.css, @../css/cemetery.css">
+
+    <fx:define>
+        <ToggleGroup fx:id="cemeteryGroup"/>
+        <ToggleGroup fx:id="viewGroup"/>
+    </fx:define>
+
+    <VBox spacing="16">
+        <!-- Banda verde (paleta verde oscura): arriba el encabezado del menú (MainController lo pone en
+             #heroHeaderSlot) y debajo los indicadores del pabellón en tarjetas translúcidas. -->
+        <VBox styleClass="hero-band" spacing="18">
+            <StackPane id="heroHeaderSlot" alignment="TOP_LEFT"/>
+            <HBox spacing="16">
+                <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
+                    <Label fx:id="occupancyCaption" text="OCUPACIÓN" styleClass="hero-kpi-caption"/>
+                    <Label fx:id="occupancyValue" text="—" styleClass="hero-kpi-value"/>
+                    <Label fx:id="occupancyDetail" styleClass="hero-kpi-detail"/>
+                    <ProgressBar fx:id="occupancyBar" progress="0" maxWidth="Infinity" styleClass="occupancy-bar"/>
+                </VBox>
+                <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
+                    <Label text="DISPONIBLES" styleClass="hero-kpi-caption"/>
+                    <Label fx:id="availableValue" text="—" styleClass="hero-kpi-value"/>
+                    <Label text="listas para asignar" styleClass="hero-kpi-detail"/>
+                </VBox>
+                <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
+                    <Label text="EN MORA" styleClass="hero-kpi-caption"/>
+                    <Label fx:id="overdueValue" text="—" styleClass="hero-kpi-value"/>
+                    <Label text="arriendo vencido sin renovar" styleClass="hero-kpi-detail"/>
+                </VBox>
+                <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
+                    <Label fx:id="expiringCaption" text="VENCEN EN 30 DÍAS" styleClass="hero-kpi-caption"/>
+                    <Label fx:id="expiringValue" text="—" styleClass="hero-kpi-value"/>
+                    <Label text="avisar a los titulares" styleClass="hero-kpi-detail"/>
+                </VBox>
+            </HBox>
+        </VBox>
+
+        <!-- Búsqueda, cementerio, pabellón, plano o lista y asignar (.filter-card y .search-box en app.css) -->
+        <HBox styleClass="filter-card">
+            <HBox styleClass="search-box" HBox.hgrow="ALWAYS" minWidth="150">
+                <SVGPath content="M7 1.5a5.5 5.5 0 1 1 0 11a5.5 5.5 0 0 1 0-11z M11.2 11.2 L15 15" styleClass="search-icon"/>
+                <TextField fx:id="searchField" promptText="Buscar bóveda o difunto" HBox.hgrow="ALWAYS"/>
+            </HBox>
+            <!-- Una pestaña por cementerio; se agregan desde el controlador -->
+            <HBox fx:id="cemeteryTabs" styleClass="segmented" minWidth="-Infinity"/>
+            <!-- RF-BOV-01: solo lo ve el Administrador Maestro -->
+            <Button fx:id="addCemeteryButton" text="+ Cementerio" onAction="#onAddCemetery" styleClass="ghost-button" minWidth="-Infinity"/>
+            <ComboBox fx:id="pavilionFilter" styleClass="chip-combo" prefWidth="130" minWidth="130"/>
+            <HBox styleClass="segmented,view" minWidth="-Infinity">
+                <ToggleButton fx:id="planToggle" text="Plano" toggleGroup="$viewGroup" selected="true" styleClass="segment"/>
+                <ToggleButton fx:id="listToggle" text="Lista" toggleGroup="$viewGroup" styleClass="segment"/>
+            </HBox>
+            <Button text="+  Asignar bóveda" onAction="#onAssign" styleClass="primary-button" minWidth="-Infinity"/>
+        </HBox>
+
+        <!-- Todo lo de abajo se desplaza con la barra visible (sin paginación) -->
+        <ScrollPane fx:id="pageScroll" fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="ALWAYS"
+                    styleClass="card-scroll" VBox.vgrow="ALWAYS">
+            <VBox spacing="18" styleClass="card-scroll-content">
+                <HBox spacing="16" fillHeight="false">
+                    <!-- Muro del pabellón (plano) o lista de bóvedas -->
+                    <VBox styleClass="table-card" HBox.hgrow="ALWAYS" minWidth="0">
+                        <HBox alignment="TOP_LEFT" spacing="12">
+                            <VBox spacing="2" HBox.hgrow="ALWAYS">
+                                <Label fx:id="wallTitle" text="Pabellón" styleClass="card-title"/>
+                                <Label fx:id="wallSubtitle" styleClass="card-subtitle" wrapText="true"/>
+                            </VBox>
+                            <HBox fx:id="legend" spacing="12" alignment="CENTER_RIGHT" minWidth="-Infinity"/>
+                            <Button fx:id="addVaultsButton" text="+ Agregar bóvedas" onAction="#onAddVaults" styleClass="ghost-button" minWidth="-Infinity"/>
+                        </HBox>
+                        <ScrollPane fx:id="wallScroll" fitToHeight="true" fitToWidth="true" hbarPolicy="AS_NEEDED" vbarPolicy="NEVER"
+                                    styleClass="wall-scroll">
+                            <StackPane fx:id="wallBox" alignment="TOP_LEFT"/>
+                        </ScrollPane>
+                        <StackPane fx:id="listBox" alignment="TOP_LEFT" managed="false" visible="false"/>
+                        <Label fx:id="emptyLabel" styleClass="card-subtitle" wrapText="true" managed="false" visible="false"/>
+                        <!-- Resumen de la bóveda tocada; "Abrir detalle" abre el panel lateral -->
+                        <HBox fx:id="previewBar" styleClass="vault-preview" spacing="20" alignment="CENTER_LEFT"
+                              managed="false" visible="false"/>
+                        <HBox alignment="CENTER_LEFT">
+                            <Label fx:id="selectionLabel" styleClass="cell-strong"/>
+                            <Pane HBox.hgrow="ALWAYS"/>
+                            <Label fx:id="countLabel" styleClass="card-subtitle"/>
+                        </HBox>
+                    </VBox>
+
+                    <!-- Columna derecha -->
+                    <VBox spacing="16" prefWidth="360" minWidth="300" maxWidth="400">
+                        <VBox styleClass="table-card" spacing="10">
+                            <HBox alignment="CENTER_LEFT">
+                                <Label text="Requieren atención" styleClass="side-title"/>
+                                <Pane HBox.hgrow="ALWAYS"/>
+                                <Label fx:id="attentionCount" styleClass="count-badge"/>
+                            </HBox>
+                            <VBox fx:id="attentionBox" spacing="8"/>
+                        </VBox>
+                        <VBox styleClass="table-card" spacing="10">
+                            <Label text="Últimas exhumaciones" styleClass="side-title"/>
+                            <VBox fx:id="exhumationBox" spacing="10"/>
+                        </VBox>
+                    </VBox>
+                </HBox>
+            </VBox>
+        </ScrollPane>
+    </VBox>
+
+    <!-- Panel de detalle de la bóveda (P-17.1): velo que oscurece el muro y panel a la derecha -->
+    <Region fx:id="veil" styleClass="drawer-veil" visible="false" onMouseClicked="#onCloseDrawer"/>
+    <VBox fx:id="drawer" styleClass="drawer" StackPane.alignment="CENTER_RIGHT"
+          prefWidth="460" maxWidth="460" visible="false">
+        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="card-scroll" VBox.vgrow="ALWAYS">
+            <VBox fx:id="drawerBody" spacing="14" styleClass="drawer-body"/>
+        </ScrollPane>
+        <HBox fx:id="drawerActions" spacing="10" styleClass="drawer-footer"/>
+    </VBox>
+
+    <!-- Aviso corto al guardar (asignar, renovar, exhumar); se desvanece solo -->
+    <Label fx:id="toast" styleClass="toast" StackPane.alignment="BOTTOM_LEFT" wrapText="true" maxWidth="420">
+        <StackPane.margin>
+            <Insets bottom="24" left="24"/>
+        </StackPane.margin>
+    </Label>
+</StackPane>

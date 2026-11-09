@@ -18,10 +18,9 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.shape.SVGPath?>
 
-
 <StackPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
            fx:id="root" fx:controller="com.example.funerariamc.controller.FuneralPlanController"
-           styleClass="personal-root"
+           styleClass="personal-root, eden-green"
            stylesheets="@../css/personal.css, @../css/funeral-plans.css">
 
     <fx:define>
@@ -29,6 +28,34 @@
     </fx:define>
 
     <VBox spacing="18">
+        <!-- Banda verde (paleta verde oscura): arriba el encabezado del menú (MainController lo pone en
+             #heroHeaderSlot) y debajo los indicadores en tarjetas translúcidas. -->
+        <VBox styleClass="hero-band">
+            <StackPane id="heroHeaderSlot" alignment="TOP_LEFT"/>
+            <HBox spacing="16">
+                <VBox styleClass="kpi-card,kpi-dark" HBox.hgrow="ALWAYS" prefWidth="0">
+                    <Label fx:id="collectedCaption" text="RECAUDO DEL MES" styleClass="kpi-caption"/>
+                    <Label fx:id="collectedValue" text="—" styleClass="kpi-value"/>
+                    <Label fx:id="collectedDetail" styleClass="kpi-detail" wrapText="true"/>
+                </VBox>
+                <VBox styleClass="kpi-card" HBox.hgrow="ALWAYS" prefWidth="0">
+                    <Label text="PLANES ACTIVOS" styleClass="kpi-caption"/>
+                    <Label fx:id="activeValue" text="—" styleClass="kpi-value"/>
+                    <Label fx:id="activeDetail" styleClass="kpi-detail"/>
+                </VBox>
+                <VBox styleClass="kpi-card" HBox.hgrow="ALWAYS" prefWidth="0">
+                    <Label text="EN MORA" styleClass="kpi-caption"/>
+                    <Label fx:id="overdueValue" text="—" styleClass="kpi-value"/>
+                    <Label fx:id="overdueDetail" styleClass="kpi-detail,kpi-alert" wrapText="true"/>
+                </VBox>
+                <VBox styleClass="kpi-card" HBox.hgrow="ALWAYS" prefWidth="0">
+                    <Label text="EN CARENCIA" styleClass="kpi-caption"/>
+                    <Label fx:id="waitingValue" text="—" styleClass="kpi-value"/>
+                    <Label fx:id="waitingDetail" styleClass="kpi-detail,kpi-gold" wrapText="true"/>
+                </VBox>
+            </HBox>
+        </VBox>
+
         <!-- Búsqueda, estado del plan, tipo, pagos y afiliar -->
         <HBox styleClass="filter-card">
             <HBox styleClass="search-box" HBox.hgrow="ALWAYS" minWidth="150">
@@ -48,30 +75,6 @@
         <ScrollPane fx:id="pageScroll" fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="ALWAYS"
                     styleClass="card-scroll" VBox.vgrow="ALWAYS">
             <VBox spacing="18" styleClass="card-scroll-content">
-                <!-- Indicadores: el recaudo va en la tarjeta oscura -->
-                <HBox spacing="16">
-                    <VBox styleClass="kpi-card,kpi-dark" HBox.hgrow="ALWAYS" prefWidth="0">
-                        <Label fx:id="collectedCaption" text="RECAUDO DEL MES" styleClass="kpi-caption"/>
-                        <Label fx:id="collectedValue" text="—" styleClass="kpi-value"/>
-                        <Label fx:id="collectedDetail" styleClass="kpi-detail" wrapText="true"/>
-                    </VBox>
-                    <VBox styleClass="kpi-card" HBox.hgrow="ALWAYS" prefWidth="0">
-                        <Label text="PLANES ACTIVOS" styleClass="kpi-caption"/>
-                        <Label fx:id="activeValue" text="—" styleClass="kpi-value"/>
-                        <Label fx:id="activeDetail" styleClass="kpi-detail"/>
-                    </VBox>
-                    <VBox styleClass="kpi-card" HBox.hgrow="ALWAYS" prefWidth="0">
-                        <Label text="EN MORA" styleClass="kpi-caption"/>
-                        <Label fx:id="overdueValue" text="—" styleClass="kpi-value"/>
-                        <Label fx:id="overdueDetail" styleClass="kpi-detail,kpi-alert" wrapText="true"/>
-                    </VBox>
-                    <VBox styleClass="kpi-card" HBox.hgrow="ALWAYS" prefWidth="0">
-                        <Label text="EN CARENCIA" styleClass="kpi-caption"/>
-                        <Label fx:id="waitingValue" text="—" styleClass="kpi-value"/>
-                        <Label fx:id="waitingDetail" styleClass="kpi-detail,kpi-gold" wrapText="true"/>
-                    </VBox>
-                </HBox>
-
                 <HBox spacing="16" fillHeight="false">
                     <!-- Recaudo de cuotas: recaudado contra esperado, últimos 6 meses -->
                     <VBox styleClass="table-card" HBox.hgrow="ALWAYS" minWidth="0" spacing="6">

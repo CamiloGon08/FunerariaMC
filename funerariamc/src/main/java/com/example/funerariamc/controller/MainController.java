@@ -222,15 +222,7 @@ public class MainController {
             Map.entry(AppModule.INVENTARIO, new ModuleScreen(AppModule.INVENTARIO.getLabel(),
                     "Cada artículo con su foto para reconocerlo rápido. El sistema alerta cuando llega al nivel mínimo", FxmlViewLoader.INVENTORY)),
             Map.entry(AppModule.CREMACIONES, new ModuleScreen(AppModule.CREMACIONES.getLabel(),
-                    "Estado de los hornos o proveedores, cremaciones del día y lotes programados, con control de la Fiscalía", FxmlViewLoader.CREMATIONS)),
-            Map.entry(AppModule.PARAMETROS, new ModuleScreen(AppModule.PARAMETROS.getLabel(),
-                    "Valores que usan los cálculos, por tema. Solo los cambia el Administrador Maestro", FxmlViewLoader.PARAMETERS)),
-            Map.entry(AppModule.FINANZAS, new ModuleScreen("Resumen financiero",
-                    "Ingresos, egresos y comisiones del período. Los movimientos se anulan, nunca se borran", FxmlViewLoader.FINANCES)),
-            Map.entry(AppModule.RED_ALIADAS, new ModuleScreen(AppModule.RED_ALIADAS.getLabel(),
-                    "Funerarias con convenio, servicios que nos prestan y saldos por pagar", FxmlViewLoader.ALLIED_NETWORK)),
-            Map.entry(AppModule.ANALISIS, new ModuleScreen(AppModule.ANALISIS.getLabel(),
-                    "Solo lectura. Ventas, ocupación y equipo del período", FxmlViewLoader.ANALYTICS)));
+                    "Estado de los hornos o proveedores, cremaciones del día y lotes programados, con control de la Fiscalía", FxmlViewLoader.CREMATIONS)));
 
     /**
      * El permiso se revisa en memoria y la pantalla se muestra al instante; la entrada de la
