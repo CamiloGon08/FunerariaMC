@@ -78,6 +78,27 @@ class AccessLogLabelsTest {
     }
 
     @Test
+    void translatesCremationActions() {
+        assertEquals("Lote de cremación programado L-0033 BAQ-01",
+                AccessLogLabels.of("CREMATION_BATCH_SCHEDULED: L-0033 BAQ-01"));
+        assertEquals("Lote de cremación reprogramado L-0033 BAQ-01 2026-11-07 08:00",
+                AccessLogLabels.of("CREMATION_BATCH_RESCHEDULED: L-0033 BAQ-01 2026-11-07 08:00"));
+        assertEquals("Difunto agregado al lote de cremación L-0033 DF-0042",
+                AccessLogLabels.of("CREMATION_ASSIGNED: L-0033 DF-0042"));
+        assertEquals("Difunto quitado del lote de cremación L-0033 DF-0042",
+                AccessLogLabels.of("CREMATION_REMOVED: L-0033 DF-0042"));
+        assertEquals("Lote de cremación entregado al horno L-0033",
+                AccessLogLabels.of("CREMATION_BATCH_STARTED: L-0033"));
+        assertEquals("Certificado de cremación registrado en el lote L-0033 DF-0042 CC-1001",
+                AccessLogLabels.of("CREMATION_REGISTERED: L-0033 DF-0042 CC-1001"));
+        assertEquals("Compra de cremaciones confirmada CP-0003",
+                AccessLogLabels.of("CREMATION_PURCHASE_CONFIRMED: CP-0003"));
+        assertEquals("Compra de cremaciones solicitada CP-0003 BAQ-CREMA1 x10",
+                AccessLogLabels.of("CREMATION_PURCHASE_REQUESTED: CP-0003 BAQ-CREMA1 x10"));
+        assertEquals("Ingreso a Cremaciones", AccessLogLabels.of("OPEN_MODULE: CREMACIONES"));
+    }
+
+    @Test
     void keepsUnknownActionsAsStored() {
         assertEquals("SOMETHING_NEW", AccessLogLabels.of("SOMETHING_NEW"));
         assertEquals("Ingreso a MODULO_X", AccessLogLabels.of("OPEN_MODULE: MODULO_X"));
