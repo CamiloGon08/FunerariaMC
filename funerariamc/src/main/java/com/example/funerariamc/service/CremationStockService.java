@@ -3,7 +3,6 @@ package com.example.funerariamc.service;
 import com.example.funerariamc.exception.InvalidDataException;
 import com.example.funerariamc.exception.ResourceNotFoundException;
 import com.example.funerariamc.exception.UnauthorizedActionException;
-import com.example.funerariamc.model.AppUser;
 import com.example.funerariamc.model.CremationProvider;
 import com.example.funerariamc.model.CremationPurchase;
 import com.example.funerariamc.model.Employee;
@@ -293,7 +292,7 @@ public class CremationStockService {
     }
 
     private Employee currentEmployee() {
-        return sessionContext.getCurrentUser().map(AppUser::getEmployee).orElse(null);
+        return sessionContext.getCurrentUser().map(user -> user.getEmployee()).orElse(null);
     }
 
     private static long n(Long value) {
@@ -321,6 +320,6 @@ public class CremationStockService {
         if (!allowed) {
             throw new UnauthorizedActionException();
         }
-        return sessionContext.getCurrentUser().map(AppUser::getId).orElseThrow(UnauthorizedActionException::new);
+        return sessionContext.getCurrentUser().map(user -> user.getId()).orElseThrow(UnauthorizedActionException::new);
     }
 }

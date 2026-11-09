@@ -220,11 +220,11 @@ class InventoryServiceTest {
                 row(2L, "Ataúd Cedro", "COFFIN", 4, 2, "3200000"), row(3L, "Urna", "PRODUCT", 9, 2, "350000"));
 
         // Dos inventarios: para la venta (ataúdes y artículos de venta) y de uso de la funeraria (insumos).
-        assertEquals(List.of(2L, 3L), InventoryService.filter(rows, Filter.SALE, null).stream().map(ItemRow::id).toList());
-        assertEquals(List.of(1L), InventoryService.filter(rows, Filter.FUNERAL_USE, null).stream().map(ItemRow::id).toList());
-        assertEquals(List.of(1L), InventoryService.filter(rows, Filter.LOW, "").stream().map(ItemRow::id).toList());
-        assertEquals(List.of(2L), InventoryService.filter(rows, Filter.ALL, "ataud").stream().map(ItemRow::id).toList());
-        assertEquals(List.of(3L), InventoryService.filter(rows, Filter.ALL, "in-0003").stream().map(ItemRow::id).toList());
+        assertEquals(List.of(2L, 3L), InventoryService.filter(rows, Filter.SALE, null).stream().map(row -> row.id()).toList());
+        assertEquals(List.of(1L), InventoryService.filter(rows, Filter.FUNERAL_USE, null).stream().map(row -> row.id()).toList());
+        assertEquals(List.of(1L), InventoryService.filter(rows, Filter.LOW, "").stream().map(row -> row.id()).toList());
+        assertEquals(List.of(2L), InventoryService.filter(rows, Filter.ALL, "ataud").stream().map(row -> row.id()).toList());
+        assertEquals(List.of(3L), InventoryService.filter(rows, Filter.ALL, "in-0003").stream().map(row -> row.id()).toList());
     }
 
     @Test

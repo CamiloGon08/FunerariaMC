@@ -4,7 +4,6 @@ import com.example.funerariamc.exception.CremationNotAuthorizedException;
 import com.example.funerariamc.exception.InvalidDataException;
 import com.example.funerariamc.exception.ResourceNotFoundException;
 import com.example.funerariamc.exception.UnauthorizedActionException;
-import com.example.funerariamc.model.AppUser;
 import com.example.funerariamc.model.Cremation;
 import com.example.funerariamc.model.CremationBatch;
 import com.example.funerariamc.model.CremationProvider;
@@ -94,7 +93,7 @@ public class CremationService {
                         CremationBatchStatus status, List<Item> items) {
 
         public long pendingCertificates() {
-            return items.stream().filter(Item::certificatePending).count();
+            return items.stream().filter(item -> item.certificatePending()).count();
         }
 
         /** Un difunto del lote sin autorización lo deja bloqueado. */
@@ -244,7 +243,7 @@ public class CremationService {
         List<Batch> todays = batches.stream()
                 .filter(b -> b.scheduledAt() != null && b.scheduledAt().toLocalDate().equals(today)).toList();
         int deceasedToday = todays.stream().mapToInt(b -> b.items().size()).sum();
-        long pending = inProgress.stream().mapToLong(Batch::pendingCertificates).sum();
+        long pending = inProgress.stream().mapToLong(batch -> batch.pendingCertificates()).sum();
         long cremations = finished == null || finished.getCremations() == null ? 0 : finished.getCremations();
         long lots = finished == null || finished.getBatches() == null ? 0 : finished.getBatches();
         return new Kpis(inProgress.size(), detail, deceasedToday, todays.size(), cremations, lots,
@@ -266,10 +265,12 @@ public class CremationService {
         List<Furnace> result = new ArrayList<>();
         for (List<Batch> group : byCode.values()) {
             Batch current = group.stream().filter(b -> b.status() == CremationBatchStatus.IN_PROGRESS)
-                    .min(Comparator.comparing(Batch::scheduledAt, Comparator.nullsLast(Comparator.naturalOrder())))
+                    .min(Comparator.comparing((Batch batch) -> batch.scheduledAt(),
+                            Comparator.nullsLast(Comparator.naturalOrder())))
                     .orElse(null);
             Batch next = group.stream().filter(b -> b.status() == CremationBatchStatus.SCHEDULED)
-                    .min(Comparator.comparing(Batch::scheduledAt, Comparator.nullsLast(Comparator.naturalOrder())))
+                    .min(Comparator.comparing((Batch batch) -> batch.scheduledAt(),
+                            Comparator.nullsLast(Comparator.naturalOrder())))
                     .orElse(null);
             result.add(new Furnace(group.get(0).furnaceCode(),
                     current != null ? FurnaceState.IN_USE : FurnaceState.SCHEDULED, current, next));
@@ -476,7 +477,7 @@ public class CremationService {
         cremation.setThanatopractor(thanatopractor);
         cremation.setCremationPurchase(slot);
         Cremation saved = cremationRepository.save(cremation);
-        if (registersPreparation) {
+        if (registersPreparation && contract != null) {
             accessLogService.record(actorId, AccessLogService.PREPARATION_REGISTERED + contract.getContractNumber());
         }
         accessLogService.record(actorId, AccessLogService.CREMATION_ASSIGNED + batchCode(batch.getId()) + " "
@@ -658,6 +659,6 @@ public class CremationService {
         if (!allowed) {
             throw new UnauthorizedActionException();
         }
-        return sessionContext.getCurrentUser().map(AppUser::getId).orElseThrow(UnauthorizedActionException::new);
+        return sessionContext.getCurrentUser().map(user -> user.getId()).orElseThrow(UnauthorizedActionException::new);
     }
 }
