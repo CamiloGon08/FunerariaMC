@@ -32,8 +32,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * RF-ACC-04/05/06: menú principal con los módulos del rol de la sesión.
- * El menú lateral se contrae y expande como en los mockups 06/07 de Figma.
+ * Menú principal con los módulos del rol de la sesión.
+ * El menú lateral se contrae y se expande.
  */
 @Component
 @Scope("prototype")
@@ -213,11 +213,13 @@ public class MainController {
             Map.entry(AppModule.CONTRATOS, new ModuleScreen("Contratos y ventas",
                     "Filtre por tipo de venta: contrato con plan o pensión, servicio particular o venta de productos", FxmlViewLoader.CONTRACTS)),
             Map.entry(AppModule.INVENTARIO, new ModuleScreen(AppModule.INVENTARIO.getLabel(),
-                    "Cada artículo con su foto para reconocerlo rápido. El sistema alerta cuando llega al nivel mínimo", FxmlViewLoader.INVENTORY)));
+                    "Cada artículo con su foto para reconocerlo rápido. El sistema alerta cuando llega al nivel mínimo", FxmlViewLoader.INVENTORY)),
+            Map.entry(AppModule.CREMACIONES, new ModuleScreen(AppModule.CREMACIONES.getLabel(),
+                    "Estado de los hornos o proveedores, cremaciones del día y lotes programados, con control de la Fiscalía", FxmlViewLoader.CREMATIONS)));
 
     /**
      * El permiso se revisa en memoria y la pantalla se muestra al instante; la entrada de la
-     * bitácora se escribe en otro hilo. Si no se puede escribir, el módulo se cierra (HU-11).
+     * bitácora se escribe en otro hilo. Si no se puede escribir, el módulo se cierra.
      */
     private void openModule(AppModule module, Button button) {
         if (!authService.canAccess(module)) {
@@ -268,7 +270,7 @@ public class MainController {
         }
         String message = failure instanceof BusinessException business
                 ? business.getMessage()
-                // HU-11: si la bitácora no se puede escribir, el módulo no queda abierto y se informa el error.
+                // Si la bitácora no se puede escribir, el módulo no queda abierto y se informa el error.
                 : "No se pudo registrar el acceso en la bitácora, por eso el módulo no se abrió. Intente de nuevo.";
         Alert alert = new Alert(failure instanceof BusinessException ? Alert.AlertType.WARNING : Alert.AlertType.ERROR,
                 message);
