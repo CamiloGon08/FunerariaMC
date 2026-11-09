@@ -90,6 +90,20 @@ public class AccessLogService {
     public static final String CREMATION_PURCHASE_RECEIVED = "CREMATION_PURCHASE_RECEIVED: ";
     public static final String CREMATION_PURCHASE_CANCELLED = "CREMATION_PURCHASE_CANCELLED: ";
 
+    public static final String SYSTEM_PARAMETER_CREATED = "SYSTEM_PARAMETER_CREATED: ";
+    public static final String FINANCIAL_TRANSACTION_REGISTERED = "FINANCIAL_TRANSACTION_REGISTERED: ";
+    public static final String FINANCIAL_TRANSACTION_VOIDED = "FINANCIAL_TRANSACTION_VOIDED: ";
+    public static final String COMMISSION_REGISTERED = "COMMISSION_REGISTERED: ";
+    public static final String FINANCIAL_REPORT_EXPORTED = "FINANCIAL_REPORT_EXPORTED: ";
+    public static final String ALLIED_HOME_REGISTERED = "ALLIED_HOME_REGISTERED: ";
+    public static final String ALLIED_HOME_UPDATED = "ALLIED_HOME_UPDATED: ";
+    public static final String ALLIED_HOME_DEACTIVATED = "ALLIED_HOME_DEACTIVATED: ";
+    public static final String ALLIED_HOME_ACTIVATED = "ALLIED_HOME_ACTIVATED: ";
+    public static final String ALLIED_PAYMENT_REGISTERED = "ALLIED_PAYMENT_REGISTERED: ";
+    public static final String ALLIED_PAYMENT_PAID = "ALLIED_PAYMENT_PAID: ";
+    public static final String ALLIED_PAYMENT_VOIDED = "ALLIED_PAYMENT_VOIDED: ";
+    public static final String ANALYTICS_REPORT_EXPORTED = "ANALYTICS_REPORT_EXPORTED: ";
+
     /** Límite técnico de filas por página del contrato de bitácora EP-01. */
     public static final int MAX_PAGE_SIZE = 100;
 
