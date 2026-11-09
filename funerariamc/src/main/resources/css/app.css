@@ -114,11 +114,13 @@
 .secondary-button:hover { -fx-background-color: -color-surface; }
 
 /* ---------- Menú lateral flotante (mockups 06/07) ---------- */
-.shell { -fx-background-color: -color-background; }
+/* Paleta verde oscura (nov 2026): menú en degradado bosque profundo, ítem activo en lino
+   y fondo general salvia claro. El contenido de los módulos sigue en tarjetas claras. */
+.shell { -fx-background-color: #E3E6DA; }
 .sidebar {
-    -fx-background-color: linear-gradient(to bottom, #182F25 0%, #182F25 60%, #29402F 100%);
+    -fx-background-color: linear-gradient(to bottom, #1E3A2E 0%, #15291F 55%, #0F1F17 100%);
     -fx-background-radius: 24;
-    -fx-effect: dropshadow(gaussian, rgba(24,47,37,0.30), 32, 0.1, 0, 14);
+    -fx-effect: dropshadow(gaussian, rgba(15,31,23,0.35), 32, 0.1, 0, 14);
     -fx-padding: 20 0 20 0;
 }
 .sidebar-brand { -fx-padding: 0 14 16 14; }
@@ -131,12 +133,12 @@
 .sidebar-sub { -fx-text-fill: -color-detail; -fx-font-size: 11px; -fx-font-weight: bold; }
 .sidebar.animating { -fx-effect: null; }
 .sidebar-collapse {
-    -fx-background-color: #29402F; -fx-background-radius: 15; -fx-text-fill: -color-background;
+    -fx-background-color: rgba(199,203,184,0.12); -fx-background-radius: 15; -fx-text-fill: -color-background;
     -fx-font-size: 16px; -fx-min-width: 30; -fx-min-height: 30; -fx-max-width: 30; -fx-max-height: 30; -fx-padding: 0; -fx-cursor: hand;
 }
-.sidebar-collapse:hover { -fx-background-color: -color-accent; }
-.sidebar-rule { -fx-background-color: rgba(196,175,132,0.6); -fx-min-height: 1; -fx-max-height: 1; -fx-max-width: 32; }
-.sidebar.expanded .sidebar-rule { -fx-max-width: 240; }
+.sidebar-collapse:hover { -fx-background-color: rgba(199,203,184,0.24); }
+.sidebar-rule { -fx-background-color: rgba(199,203,184,0.22); -fx-min-height: 1; -fx-max-height: 1; -fx-max-width: 32; }
+.sidebar.expanded .sidebar-rule { -fx-max-width: 256; }
 .side-scroll, .side-scroll > .viewport, .side-menu { -fx-background-color: transparent; -fx-background-insets: 0; -fx-border-width: 0; -fx-padding: 0; }
 .side-menu { -fx-padding: 14 0 14 0; }
 /* Con Finanzas desplegado el menú puede pasar del alto de la ventana: barra fina caqui */
@@ -144,12 +146,12 @@
 .side-scroll .scroll-bar:vertical .thumb { -fx-background-color: rgba(196,175,132,0.55); -fx-background-radius: 999; }
 .side-scroll .scroll-bar .increment-button, .side-scroll .scroll-bar .decrement-button { -fx-padding: 0; }
 .side-scroll .scroll-bar .increment-arrow, .side-scroll .scroll-bar .decrement-arrow { -fx-shape: " "; -fx-padding: 0; }
-.sidebar-decor { -fx-opacity: 0.42; } /* intensidad de la foto del lirio detrás de los módulos */
+.sidebar-decor { -fx-opacity: 0.30; } /* intensidad de la foto del lirio detrás de los módulos */
 
 /* Ítems del menú: círculo de 40 px contraído, píldora de 240 px expandido */
 .nav-pill {
-    -fx-background-color: rgba(41,64,47,0.62); /* translúcido para que se vea el lirio de fondo */ -fx-background-radius: 12;
-    -fx-text-fill: -color-background; -fx-font-size: 13.5px;
+    -fx-background-color: transparent; /* sin caja: el lirio de fondo se ve entre los ítems */ -fx-background-radius: 12;
+    -fx-text-fill: #DDE1D3; -fx-font-size: 13.5px;
     -fx-graphic-text-gap: 12; -fx-alignment: center-left; -fx-padding: 0 14 0 14; -fx-cursor: hand;
     -fx-min-height: 38; -fx-pref-height: 38; -fx-max-height: 38;
     -fx-min-width: 36; -fx-pref-width: 240; -fx-max-width: 240;
@@ -160,34 +162,36 @@
     -fx-min-width: 36; -fx-pref-width: 36; -fx-max-width: 36;
     -fx-min-height: 36; -fx-pref-height: 36; -fx-max-height: 36;
 }
-.nav-pill:hover { -fx-background-color: derive(#465E47, 18%); }
+.nav-pill:hover { -fx-background-color: rgba(199,203,184,0.12); }
+/* Ítem activo: píldora lino con texto e ícono en bosque profundo */
 .nav-pill.active {
-    -fx-background-color: -color-accent; -fx-font-weight: bold;
-    -fx-effect: dropshadow(gaussian, rgba(70,94,71,0.45), 12, 0, 0, 4);
+    -fx-background-color: #C7CBB8; -fx-text-fill: #0F1F17; -fx-font-weight: bold;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 12, 0, 0, 4);
 }
+.nav-pill.active .nav-icon { -fx-stroke: #0F1F17; }
 .nav-icon {
-    -fx-fill: transparent; -fx-stroke: -color-background; -fx-stroke-width: 1.6;
+    -fx-fill: transparent; -fx-stroke: #C7CBB8; -fx-stroke-width: 1.6;
     -fx-stroke-line-cap: round; -fx-stroke-line-join: round;
 }
 
 /* Grupo desplegable Finanzas: flecha a la derecha que gira al abrir y subítems con sangría */
 .nav-chevron { -fx-translate-x: -14; -fx-opacity: 0.8; }
-.nav-chevron .nav-icon { -fx-stroke: -color-detail; }
+.nav-chevron .nav-icon { -fx-stroke: #C7CBB8; }
 .sidebar.pills-collapsed .nav-chevron { -fx-opacity: 0; }
-.nav-pill.open { -fx-background-color: rgba(70,94,71,0.78); }
+.nav-pill.open { -fx-background-color: rgba(199,203,184,0.10); }
 .nav-sub-items { -fx-padding: 0 0 2 0; }
 .nav-sub-pill {
-    -fx-background-color: rgba(41,64,47,0.45); -fx-background-radius: 10;
-    -fx-text-fill: derive(-color-background, -6%); -fx-font-size: 12.5px;
+    -fx-background-color: transparent; -fx-background-radius: 10;
+    -fx-text-fill: #CED3C4; -fx-font-size: 12.5px;
     -fx-graphic-text-gap: 10; -fx-alignment: center-left; -fx-padding: 0 12 0 12; -fx-cursor: hand;
     -fx-min-height: 32; -fx-pref-height: 32; -fx-max-height: 32;
     -fx-min-width: 36; -fx-pref-width: 212; -fx-max-width: 212;
     -fx-text-overrun: clip;
 }
-.nav-sub-pill .nav-icon { -fx-stroke: -color-detail; }
-.nav-sub-pill:hover { -fx-background-color: derive(#465E47, 10%); }
-.nav-sub-pill.active { -fx-background-color: -color-accent; -fx-font-weight: bold; -fx-text-fill: -color-background; }
-.nav-sub-pill.active .nav-icon { -fx-stroke: -color-background; }
+.nav-sub-pill .nav-icon { -fx-stroke: #A9B3A3; }
+.nav-sub-pill:hover { -fx-background-color: rgba(199,203,184,0.12); }
+.nav-sub-pill.active { -fx-background-color: #C7CBB8; -fx-font-weight: bold; -fx-text-fill: #0F1F17; }
+.nav-sub-pill.active .nav-icon { -fx-stroke: #0F1F17; }
 
 /* Fila elegida de cualquier tabla: Modena pinta el texto con -fx-selection-bar-text (blanco)
    y sobre la salvia no se leía. Con estas variables el texto sigue en verde bosque. */
@@ -196,14 +200,20 @@
     -fx-selection-bar-non-focused: -color-surface;
     -fx-selection-bar-text: -color-primary;
 }
+/* Perfil: con el menú abierto es una tarjeta con borde suave; contraído solo se ve el avatar */
 .sidebar-profile { -fx-padding: 8 0 0 0; }
+.sidebar.expanded .sidebar-profile {
+    -fx-alignment: center-left; -fx-padding: 12 14;
+    -fx-background-color: rgba(199,203,184,0.06); -fx-background-radius: 16;
+    -fx-border-color: rgba(199,203,184,0.18); -fx-border-radius: 16; -fx-border-width: 1;
+}
 .sidebar-avatar {
-    -fx-background-color: -color-detail; -fx-background-radius: 22; -fx-text-fill: -color-primary;
+    -fx-background-color: #6B7F67; -fx-background-radius: 22; -fx-text-fill: #F4F5EE;
     -fx-font-size: 16px; -fx-font-weight: bold; -fx-padding: 0; -fx-cursor: hand;
     -fx-min-width: 44; -fx-min-height: 44; -fx-max-width: 44; -fx-max-height: 44;
 }
-.user-name { -fx-text-fill: -color-background; -fx-font-weight: bold; }
-.user-role { -fx-text-fill: -color-detail; -fx-font-size: 12px; }
+.user-name { -fx-text-fill: #EEF0E6; -fx-font-weight: bold; }
+.user-role { -fx-text-fill: #A9B3A3; -fx-font-size: 12px; }
 
 /* Tooltip del menú contraído (colores literales: el popup no hereda las variables de .root) */
 .tooltip {
@@ -224,6 +234,17 @@
     -fx-background-radius: 999; -fx-text-fill: -color-primary; -fx-padding: 8 16 8 16; -fx-cursor: hand;
 }
 .pill-button:hover { -fx-background-color: -color-surface; }
+.session-dot { -fx-fill: #6B7F67; }
+
+/* Encabezado dentro de la banda verde de un módulo (MainController.placeHeader) */
+.content-header.on-hero .content-title { -fx-text-fill: #F4F5EE; -fx-font-size: 44px; }
+.content-header.on-hero .content-subtitle { -fx-text-fill: rgba(244,245,238,0.78); }
+.content-header.on-hero .session-badge {
+    -fx-background-color: rgba(255,255,255,0.10); -fx-text-fill: #E4E7DC; -fx-font-weight: normal;
+}
+.content-header.on-hero .session-dot { -fx-fill: #A9C29F; }
+.content-header.on-hero .pill-button { -fx-border-color: rgba(244,245,238,0.55); -fx-text-fill: #F4F5EE; }
+.content-header.on-hero .pill-button:hover { -fx-background-color: rgba(255,255,255,0.12); }
 
 /* ---------- Contenido ---------- */
 .content-title {
