@@ -1,0 +1,257 @@
+/*
+ * Módulo Salas de velación (tablero 19 y panel 19.1 de Figma, con la paleta verde oscura
+ * aprobada en la captura 07_salas). Se carga junto con personal.css (tarjetas, panel lateral,
+ * diálogos) y usa los colores de app.css. Trae su propio formulario "Personal · El Edén" y
+ * los colores verdes bajo .wake-root, así no depende de otro módulo para verse bien.
+ */
+/* ---------- Barra superior ---------- */
+.segmented {
+    -fx-background-color: -color-surface; -fx-background-radius: 12;
+    -fx-padding: 3; -fx-spacing: 2; -fx-alignment: center-left;
+}
+.segment {
+    -fx-background-color: transparent; -fx-text-fill: -color-primary;
+    -fx-background-radius: 10; -fx-padding: 7 14; -fx-font-weight: bold; -fx-font-size: 12.5px;
+    -fx-cursor: hand;
+}
+.segment:hover { -fx-background-color: rgba(250,249,246,0.6); }
+.segment:selected { -fx-background-color: -color-accent; -fx-text-fill: -color-background; }
+.segment-caption { -fx-text-fill: -color-secondary; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 0 4 0 8; }
+
+/* ---------- Aviso corto al guardar ---------- */
+.toast {
+    -fx-background-color: -color-primary; -fx-text-fill: -color-background;
+    -fx-background-radius: 12; -fx-padding: 12 18; -fx-font-size: 13.5px; -fx-font-weight: bold;
+    -fx-effect: dropshadow(gaussian, rgba(24,47,37,0.25), 18, 0, 0, 6);
+}
+
+.drawer-secondary { -fx-background-color: transparent; -fx-text-fill: -color-primary; -fx-border-color: -color-border; }
+.drawer-secondary:hover { -fx-background-color: -color-surface; }
+.drawer-secondary:disabled { -fx-opacity: 0.55; }
+
+/* ---------- Diálogos: formulario "Personal · El Edén" ----------
+   Título musgo, sección en mayúsculas con filete caqui, etiqueta arriba del campo,
+   campos en caja redondeada (borde niebla, foco caqui), deshabilitado en salvia,
+   avisos salvia con ícono y Cancelar (fantasma) a la izquierda de la acción. */
+.form-title {
+    -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif;
+    -fx-font-size: 31px; -fx-text-fill: -color-accent;
+}
+.section-legend { -fx-alignment: center-left; -fx-spacing: 10; }
+.section-title { -fx-text-fill: -color-accent; -fx-font-size: 12px; -fx-font-weight: bold; }
+.section-rule { -fx-background-color: -color-detail; -fx-min-height: 1; -fx-pref-height: 1; -fx-max-height: 1; }
+.form-field { -fx-spacing: 6; }
+.form-field > .field-label { -fx-font-size: 11px; -fx-padding: 0; }
+.form-field > .text-field, .form-field > .date-picker, .form-field > .text-area, .form-combo {
+    -fx-background-color: -color-card; -fx-background-radius: 10;
+    -fx-border-color: -color-border; -fx-border-width: 1; -fx-border-radius: 10;
+    -fx-background-insets: 0; -fx-font-size: 15px;
+}
+.form-field > .text-field { -fx-padding: 9 12; }
+.form-field > .text-field:focused, .form-field > .date-picker:focused, .form-combo:focused,
+.form-field > .date-picker:focus-within, .form-field > .text-area:focused {
+    -fx-border-color: -color-detail; -fx-border-width: 2;
+}
+.form-field > .date-picker > .text-field, .form-field > .date-picker > .text-field:focused,
+.form-combo > .text-field, .form-combo > .text-field:focused {
+    -fx-background-color: transparent; -fx-border-width: 0;
+}
+.form-field > .date-picker > .text-field { -fx-padding: 9 12; }
+.form-field > .date-picker > .arrow-button, .form-combo > .arrow-button { -fx-background-color: transparent; -fx-padding: 0 12 0 8; }
+.form-combo > .arrow-button > .arrow { -fx-background-color: -color-secondary; }
+.form-combo .list-cell { -fx-background-color: transparent; -fx-text-fill: -color-primary; -fx-padding: 9 12; }
+.form-field > .text-area { -fx-padding: 4; }
+.form-field > .text-area .content { -fx-background-color: transparent; -fx-background-radius: 10; }
+.form-field > .text-field:disabled, .form-field > .date-picker:disabled, .form-combo:disabled {
+    -fx-background-color: -color-surface; -fx-opacity: 1;
+}
+.form-combo:disabled .list-cell, .form-field > .text-field:disabled { -fx-text-fill: -color-secondary; }
+.form-body:disabled { -fx-opacity: 1; }
+.note-info, .note-alert { -fx-alignment: top-left; }
+.note-icon { -fx-fill: transparent; -fx-stroke: -color-accent; -fx-stroke-width: 1.4; -fx-stroke-line-cap: round; }
+.note-alert .note-icon { -fx-stroke: -color-error; }
+.form-check-row { -fx-alignment: center-left; -fx-padding: 8 0 0 0; }
+
+/* ---------- Paleta verde oscura (nov 2026), igual que Cementerio ----------
+   Banda verde con el título y los indicadores, tarjetas claras sobre fondo salvia,
+   selección en bosque profundo y estados suaves. Todo va bajo .wake-root para no tocar otros módulos. */
+.wake-root {
+    -eden-forest: #1E3A2E;
+    -eden-deep: #0F1F17;
+    -eden-moss: #3E5A3F;
+    -eden-sage: #6B7F67;
+    -eden-linen: #C7CBB8;
+    -eden-card: #FAFBF7;
+    -eden-tint: #EEF0E6;
+    -eden-text: #1E2A22;
+    -eden-muted: #6A7366;
+    -eden-warn: #6E6A45;
+    -eden-warn-bg: #EDEBDD;
+    -eden-alert: #8A4B3C;
+    -eden-alert-bg: #F0E3DC;
+}
+
+/* Banda superior */
+.wake-root .hero-band {
+    -fx-background-color: linear-gradient(to right, #1E3A2E 0%, #3E5A3F 62%, #6B7F67 100%);
+    -fx-background-radius: 26;
+    -fx-padding: 22 26 24 26;
+    -fx-effect: dropshadow(gaussian, rgba(15,31,23,0.22), 24, 0, 0, 8);
+}
+.wake-root .hero-kpi {
+    -fx-background-color: rgba(255,255,255,0.07);
+    -fx-border-color: rgba(255,255,255,0.20); -fx-border-width: 1;
+    -fx-background-radius: 16; -fx-border-radius: 16;
+    -fx-padding: 14 18 14 18; -fx-spacing: 2;
+}
+.wake-root .hero-kpi-caption { -fx-text-fill: rgba(244,245,238,0.88); -fx-font-size: 11px; -fx-font-weight: bold; }
+.wake-root .hero-kpi-value {
+    -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif;
+    -fx-text-fill: #F4F5EE; -fx-font-size: 38px;
+}
+.wake-root .hero-kpi-detail { -fx-text-fill: rgba(244,245,238,0.72); -fx-font-size: 12.5px; }
+/* Tarjeta destacada de la banda: fondo lino claro y texto oscuro, como en la captura aprobada */
+.wake-root .hero-kpi.highlight { -fx-background-color: #ECEEE6; -fx-border-color: #ECEEE6; }
+.wake-root .hero-kpi.highlight .hero-kpi-caption { -fx-text-fill: -eden-text; }
+.wake-root .hero-kpi.highlight .hero-kpi-value { -fx-text-fill: -eden-text; }
+.wake-root .hero-kpi.highlight .hero-kpi-detail { -fx-text-fill: -eden-muted; }
+
+/* Barra de búsqueda y filtros */
+.wake-root .filter-card {
+    -fx-background-color: -eden-card; -fx-border-color: transparent;
+    -fx-background-radius: 18; -fx-border-radius: 18; -fx-padding: 10 12; -fx-spacing: 10;
+    -fx-alignment: center-left;
+}
+.wake-root .search-box { -fx-background-color: -eden-tint; -fx-background-radius: 12; }
+.wake-root .segmented { -fx-background-color: -eden-tint; }
+.wake-root .segment { -fx-text-fill: -eden-text; }
+.wake-root .segment:hover { -fx-background-color: rgba(199,203,184,0.45); }
+.wake-root .segment:selected { -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; }
+.wake-root .segment-caption { -fx-text-fill: -eden-muted; }
+.wake-root .chip-combo { -fx-background-color: -eden-card; -fx-border-color: -eden-linen; -fx-background-radius: 12; -fx-border-radius: 12; -fx-padding: 4 8; }
+.wake-root .primary-button { -fx-background-color: -eden-forest; -fx-background-radius: 12; }
+.wake-root .primary-button:hover { -fx-background-color: -eden-moss; }
+.wake-root .primary-button:pressed { -fx-background-color: -eden-deep; }
+
+/* Tarjetas */
+.wake-root .table-card {
+    -fx-background-color: -eden-card; -fx-border-color: transparent;
+    -fx-background-radius: 22; -fx-border-radius: 22; -fx-padding: 22 24 18 24;
+}
+.wake-root .card-title {
+    -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif;
+    -fx-font-size: 32px; -fx-text-fill: -eden-text;
+}
+.wake-root .card-subtitle { -fx-text-fill: -eden-muted; }
+
+/* Estados suaves con punto */
+.wake-root .state-chip { -fx-background-radius: 999; -fx-padding: 5 12; -fx-font-size: 12px; -fx-font-weight: bold; }
+.wake-root .state-dark { -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; }
+.wake-root .state-ok { -fx-background-color: -eden-tint; -fx-text-fill: -eden-moss; }
+.wake-root .state-warn { -fx-background-color: -eden-warn-bg; -fx-text-fill: -eden-warn; }
+.wake-root .state-alert { -fx-background-color: -eden-alert-bg; -fx-text-fill: -eden-alert; }
+
+/* Panel lateral y aviso */
+.wake-root .drawer-veil { -fx-background-color: rgba(15,31,23,0.32); }
+.wake-root .drawer { -fx-background-color: #F4F5EF; -fx-background-radius: 22 0 0 22; }
+.wake-root .drawer-primary { -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; }
+.wake-root .drawer-primary:hover { -fx-background-color: -eden-moss; }
+.wake-root .drawer-danger { -fx-background-color: transparent; -fx-text-fill: -eden-alert; -fx-border-color: -eden-alert; }
+.wake-root .drawer-danger:hover { -fx-background-color: -eden-alert-bg; }
+.wake-root .toast { -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; }
+.wake-root .drawer-head {
+    -fx-background-color: linear-gradient(to right, #1E3A2E 0%, #3E5A3F 100%);
+    -fx-background-radius: 22 0 0 0; -fx-padding: 22 24 18 24; -fx-spacing: 8;
+}
+.wake-root .drawer-head-caption { -fx-text-fill: rgba(244,245,238,0.75); -fx-font-size: 11px; -fx-font-weight: bold; }
+.wake-root .drawer-head-name {
+    -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif;
+    -fx-text-fill: #F4F5EE; -fx-font-size: 34px;
+}
+.wake-root .drawer-head-text { -fx-text-fill: rgba(244,245,238,0.85); -fx-font-size: 12.5px; }
+.wake-root .drawer-head-strong { -fx-text-fill: #F4F5EE; -fx-font-size: 12.5px; -fx-font-weight: bold; }
+.wake-root .drawer-close-light {
+    -fx-background-color: transparent; -fx-text-fill: #F4F5EE; -fx-border-color: rgba(244,245,238,0.5);
+    -fx-background-radius: 999; -fx-border-radius: 999; -fx-padding: 4 10; -fx-cursor: hand;
+}
+.wake-root .drawer-close-light:hover { -fx-background-color: rgba(255,255,255,0.12); }
+.wake-root .drawer-section {
+    -fx-background-color: -eden-card; -fx-background-radius: 14; -fx-padding: 14 16; -fx-spacing: 10;
+    -fx-border-color: #E6E8DE; -fx-border-radius: 14;
+}
+.wake-root .drawer-section-title { -fx-text-fill: -color-gold-text; -fx-font-size: 11px; -fx-font-weight: bold; }
+.wake-root .field-caption { -fx-text-fill: -eden-muted; -fx-font-size: 11.5px; }
+.wake-root .field-value { -fx-text-fill: -eden-text; -fx-font-size: 13.5px; -fx-font-weight: bold; }
+.wake-root .person-title {
+    -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif;
+    -fx-font-size: 24px; -fx-text-fill: -eden-text;
+}
+.wake-root .initials {
+    -fx-background-color: -eden-tint; -fx-background-radius: 999; -fx-border-color: -eden-linen; -fx-border-radius: 999;
+    -fx-min-width: 42; -fx-min-height: 42; -fx-max-width: 42; -fx-max-height: 42; -fx-alignment: center;
+    -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif; -fx-font-size: 17px; -fx-text-fill: -eden-moss;
+}
+.wake-root .progress-light > .track { -fx-background-color: rgba(255,255,255,0.20); -fx-background-radius: 999; -fx-background-insets: 0; }
+.wake-root .progress-light > .bar { -fx-background-color: #C4AF84; -fx-background-radius: 999; -fx-background-insets: 0; -fx-padding: 3; }
+.wake-root .progress-dark > .track { -fx-background-color: #E3E6DA; -fx-background-radius: 999; -fx-background-insets: 0; }
+.wake-root .progress-dark > .bar { -fx-background-color: -eden-moss; -fx-background-radius: 999; -fx-background-insets: 0; -fx-padding: 3; }
+
+/* ---------- Tarjetas de las salas (tablero 19) ---------- */
+.room-card {
+    -fx-background-color: -eden-card; -fx-background-radius: 22; -fx-border-radius: 22;
+    -fx-padding: 18 20 16 20; -fx-spacing: 12;
+    -fx-border-color: #E6E8DE; -fx-border-width: 1;
+    -fx-effect: dropshadow(gaussian, rgba(15,31,23,0.06), 12, 0, 0, 3);
+}
+.room-card:hover { -fx-border-color: -eden-sage; }
+.room-card.in-wake { -fx-border-color: #1E3A2E #E6E8DE #E6E8DE #E6E8DE; -fx-border-width: 4 1 1 1; }
+.room-card.reserved { -fx-border-color: #A99A6B #E6E8DE #E6E8DE #E6E8DE; -fx-border-width: 4 1 1 1; }
+.room-caption { -fx-text-fill: -eden-muted; -fx-font-size: 11px; -fx-font-weight: bold; }
+.room-name {
+    -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif;
+    -fx-font-size: 27px; -fx-text-fill: -eden-text;
+}
+.special-tag {
+    -fx-background-color: -eden-warn-bg; -fx-text-fill: -eden-warn; -fx-background-radius: 6;
+    -fx-padding: 2 8; -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif; -fx-font-size: 13px;
+}
+.occupant-box { -fx-background-color: -eden-tint; -fx-background-radius: 12; -fx-padding: 10 14; -fx-spacing: 2; }
+.occupant-caption { -fx-text-fill: -eden-muted; -fx-font-size: 10.5px; -fx-font-weight: bold; }
+.occupant-name { -fx-text-fill: -eden-text; -fx-font-size: 14px; -fx-font-weight: bold; }
+.occupant-detail { -fx-text-fill: -eden-muted; -fx-font-size: 12.5px; }
+.prep-band { -fx-background-color: -eden-warn-bg; -fx-text-fill: -eden-warn; -fx-background-radius: 10; -fx-padding: 8 12; -fx-font-size: 12.5px; }
+.prep-band.done { -fx-background-color: -eden-tint; -fx-text-fill: -eden-moss; }
+.time-text { -fx-text-fill: -eden-text; -fx-font-size: 12.5px; }
+.time-strong { -fx-text-fill: -eden-text; -fx-font-size: 12.5px; -fx-font-weight: bold; }
+.route-text { -fx-text-fill: -eden-muted; -fx-font-size: 12.5px; }
+.free-box {
+    -fx-border-color: #B9C0B0; -fx-border-style: segments(5, 4); -fx-border-radius: 12; -fx-border-width: 1.2;
+    -fx-background-color: transparent; -fx-padding: 16 12; -fx-spacing: 2; -fx-alignment: center;
+}
+.free-title {
+    -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif;
+    -fx-font-size: 21px; -fx-text-fill: -eden-text;
+}
+.free-detail { -fx-text-fill: -eden-muted; -fx-font-size: 12.5px; }
+.capacity-text { -fx-text-fill: -eden-muted; -fx-font-size: 12.5px; }
+.link-action {
+    -fx-background-color: transparent; -fx-text-fill: -eden-text; -fx-font-weight: bold; -fx-font-size: 13px;
+    -fx-padding: 4 6; -fx-cursor: hand; -fx-background-radius: 8;
+}
+.link-action:hover { -fx-background-color: -eden-tint; }
+.small-dark-button {
+    -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; -fx-font-weight: bold; -fx-font-size: 12.5px;
+    -fx-background-radius: 10; -fx-padding: 8 14; -fx-cursor: hand;
+}
+.small-dark-button:hover { -fx-background-color: -eden-moss; }
+
+/* Fecha consultada: flechas, fecha y "Hoy" */
+.day-arrow, .today-button {
+    -fx-background-color: -eden-tint; -fx-text-fill: -eden-text; -fx-background-radius: 999;
+    -fx-font-weight: bold; -fx-cursor: hand; -fx-padding: 8 14;
+}
+.day-arrow:hover, .today-button:hover { -fx-background-color: #E3E6DA; }
+.wake-root .filter-card .date-picker {
+    -fx-background-color: -eden-card; -fx-border-color: -eden-linen; -fx-background-radius: 12; -fx-border-radius: 12;
+}
+.empty-board { -fx-text-fill: -eden-muted; -fx-font-size: 14px; -fx-padding: 24 0; }
