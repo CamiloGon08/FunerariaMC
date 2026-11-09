@@ -42,4 +42,9 @@ public class AlliedPayment {
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
     private AlliedPaymentStatus status = AlliedPaymentStatus.PENDING;
+
+    // Egreso que se registra en Finanzas cuando el pago se marca como pagado
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "financial_transaction_id")
+    private FinancialTransaction financialTransaction;
 }

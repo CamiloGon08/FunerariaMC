@@ -110,6 +110,20 @@ public interface ServiceContractRepository extends JpaRepository<ServiceContract
     List<ServiceContract> searchWithoutRoom(@Param("active") ContractStatus active, @Param("pattern") String pattern,
                                             Pageable pageable);
 
+    /** Contratos no cancelados que coinciden con el texto, para asociarles un pago a una funeraria aliada. */
+    @Query("""
+            select c from ServiceContract c
+            join fetch c.deceased d
+            join fetch c.client cl
+            where c.status <> :cancelled
+              and (lower(c.contractNumber) like :pattern
+                   or lower(concat(coalesce(d.name, ''), ' ', coalesce(d.lastname, ''))) like :pattern
+                   or lower(concat(cl.name, ' ', coalesce(cl.lastname, ''))) like :pattern)
+            order by c.id desc
+            """)
+    List<ServiceContract> searchNotCancelled(@Param("cancelled") ContractStatus cancelled, @Param("pattern") String pattern,
+                                             Pageable pageable);
+
     /** Contrato completo para el panel de la sala y el detalle de la venta. */
     @Query("""
             select c from ServiceContract c
@@ -151,4 +165,20 @@ public interface ServiceContractRepository extends JpaRepository<ServiceContract
             order by p.startDate desc, p.id desc
             """)
     List<FuneralPlan> findPlansOfClient(@Param("clientId") Long clientId);
+
+    /** Preparaciones del cuerpo por tanatólogo en un rango. */
+    interface PreparationCount {
+        Long getThanatopractorId();
+        long getCases();
+    }
+
+    @Query("""
+            select c.thanatopractor.id as thanatopractorId, count(c) as cases
+            from ServiceContract c
+            where c.thanatopractor is not null and c.status <> :cancelled
+              and c.preparationCompletedAt >= :from and c.preparationCompletedAt < :to
+            group by c.thanatopractor.id
+            """)
+    List<PreparationCount> countPreparations(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to,
+                                             @Param("cancelled") ContractStatus cancelled);
 }
