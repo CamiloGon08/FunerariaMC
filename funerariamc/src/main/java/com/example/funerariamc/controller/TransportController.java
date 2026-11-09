@@ -116,7 +116,7 @@ public class TransportController implements RefreshableView {
 
     private final TransportService transportService;
     private final RouteMapService routeMapService;
-    /** Un mapa por espacio (Monitor y Traslados), creado la primera vez que hay algo que dibujar. */
+    /** Un mapa por espacio (Monitor y Traslados), creado la primera vez que se abre la pantalla. */
     private final Map<StackPane, RouteMapPane> maps = new HashMap<>();
     /** Qué traslado (y con qué llegadas) muestra cada espacio, para no rehacer el mapa en cada recarga. */
     private final Map<StackPane, String> mapKeys = new HashMap<>();
@@ -730,23 +730,27 @@ public class TransportController implements RefreshableView {
     // ---------- mapa (Leaflet + OpenStreetMap + OpenRouteService) ----------
 
     /**
-     * Pone de inmediato la línea de paradas y, en segundo plano, busca las coordenadas y la ruta. Si
-     * hay al menos dos paradas ubicadas, cambia la línea por el mapa en el mismo espacio. Si no hay
-     * clave o internet, se queda la línea de paradas.
+     * Sin traslado muestra el mapa vacío centrado en la ciudad y el aviso debajo del título. Con
+     * traslado pone de inmediato la línea de paradas y, en segundo plano, busca las coordenadas y la
+     * ruta. Si hay al menos dos paradas ubicadas, cambia la línea por el mapa en el mismo espacio. Si
+     * no hay clave o internet, se queda la línea de paradas.
      */
     private void showRoute(StackPane slot, Label hint, Transfer t, String emptyText, String prefix) {
         String key = mapKey(t);
-        boolean sameMap = key != null && key.equals(mapKeys.get(slot)) && !slot.getChildren().isEmpty()
-                && slot.getChildren().get(0) instanceof RouteMapPane;
+        boolean sameMap = mapKeys.containsKey(slot) && Objects.equals(key, mapKeys.get(slot))
+                && !slot.getChildren().isEmpty() && slot.getChildren().get(0) instanceof RouteMapPane;
         if (sameMap) {
             return;
         }
         mapKeys.put(slot, key);
-        slot.getChildren().setAll(routeView(t, emptyText));
         if (t == null) {
-            hint.setText("");
+            RouteMapPane map = maps.computeIfAbsent(slot, s -> new RouteMapPane());
+            slot.getChildren().setAll(map);
+            map.clear();
+            hint.setText(emptyText);
             return;
         }
+        slot.getChildren().setAll(routeView(t, emptyText));
         hint.setText(prefix + (routeMapService.isConfigured() ? "buscando el mapa…" : "recorrido por paradas"));
         if (t.stops().size() < 2) {
             hint.setText(prefix + "recorrido por paradas");
