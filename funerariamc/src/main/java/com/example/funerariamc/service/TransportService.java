@@ -3,7 +3,6 @@ package com.example.funerariamc.service;
 import com.example.funerariamc.exception.InvalidDataException;
 import com.example.funerariamc.exception.ResourceNotFoundException;
 import com.example.funerariamc.exception.UnauthorizedActionException;
-import com.example.funerariamc.model.AppUser;
 import com.example.funerariamc.model.Driver;
 import com.example.funerariamc.model.ServiceContract;
 import com.example.funerariamc.model.ServiceTransport;
@@ -114,7 +113,7 @@ public class TransportService {
 
         static DocStatus of(LocalDate expiry, LocalDate today, int warningDays) {
             boolean expired = expiry == null || expiry.isBefore(today);
-            boolean soon = !expired && !expiry.isAfter(today.plusDays(warningDays));
+            boolean soon = expiry != null && !expired && !expiry.isAfter(today.plusDays(warningDays));
             return new DocStatus(expiry, expired, soon);
         }
     }
@@ -161,7 +160,7 @@ public class TransportService {
                            List<Unit> units, List<Stop> stops, String notes) {
 
         public List<Long> transportIds() {
-            return units.stream().map(Unit::transportId).toList();
+            return units.stream().map(unit -> unit.transportId()).toList();
         }
 
         public String origin() {
@@ -184,8 +183,8 @@ public class TransportService {
 
         /** Hora prevista de la última parada; null si no tiene horas previstas. */
         public LocalDateTime plannedEnd() {
-            return stops.stream().map(Stop::plannedAt).filter(Objects::nonNull)
-                    .max(LocalDateTime::compareTo).orElse(null);
+            return stops.stream().map(stop -> stop.plannedAt()).filter(Objects::nonNull)
+                    .max((left, right) -> left.compareTo(right)).orElse(null);
         }
     }
 
@@ -278,7 +277,7 @@ public class TransportService {
         List<DriverRow> drivers = driverRepository.findRowsByStatus(EmployeeStatus.ACTIVE);
         List<TransferRow> rows = transportRepository.findTransfers(today.atStartOfDay(),
                 today.plusDays(DAYS_AHEAD).atStartOfDay(), TransportStatus.CANCELLED, TransportStatus.IN_PROGRESS);
-        Map<Long, List<Stop>> stops = stopsOf(rows.stream().map(TransferRow::getId).toList());
+        Map<Long, List<Stop>> stops = stopsOf(rows.stream().map(row -> row.getId()).toList());
         List<Transfer> transfers = group(rows, stops);
 
         List<VehicleCard> cards = new ArrayList<>();
@@ -519,8 +518,8 @@ public class TransportService {
         LocalDateTime end = until == null || until.isBefore(from) ? from : until;
         List<Vehicle> vehicles = vehicleRepository.findAllByOrderByPlateAsc();
         List<DriverRow> drivers = driverRepository.findRowsByStatus(EmployeeStatus.ACTIVE);
-        List<Long> vehicleIds = vehicles.stream().map(Vehicle::getId).toList();
-        List<Long> driverIds = drivers.stream().map(DriverRow::getId).toList();
+        List<Long> vehicleIds = vehicles.stream().map(vehicle -> vehicle.getId()).toList();
+        List<Long> driverIds = drivers.stream().map(driver -> driver.getId()).toList();
         List<BusyRow> busy = vehicleIds.isEmpty() && driverIds.isEmpty() ? List.of()
                 : transportRepository.findBusy(orNone(vehicleIds), orNone(driverIds), BUSY_STATUSES, end);
         LocalDate day = from.toLocalDate();
@@ -530,7 +529,7 @@ public class TransportService {
         for (Vehicle v : vehicles) {
             String reason = vehicleBlock(v, day);
             if (reason == null) {
-                reason = conflict(busy, BusyRow::getVehicleId, v.getId(), from, end, null);
+                reason = conflict(busy, row -> row.getVehicleId(), v.getId(), from, end, null);
             }
             Candidate candidate = new Candidate(v.getId(), v.getPlate(),
                     v.getCapacity() == null ? null : v.getCapacity() + (v.getVehicleType() == VehicleType.BUS
@@ -541,7 +540,7 @@ public class TransportService {
         for (DriverRow d : drivers) {
             String reason = licenseBlock(d.getLicenseExpiryDate(), day);
             if (reason == null) {
-                reason = conflict(busy, BusyRow::getDriverId, d.getId(), from, end, null);
+                reason = conflict(busy, row -> row.getDriverId(), d.getId(), from, end, null);
             }
             driverOptions.add(new Candidate(d.getId(), fullName(d.getName(), d.getLastname()),
                     d.getLicenseCategory() == null ? null : "Licencia " + d.getLicenseCategory(), reason));
@@ -572,8 +571,8 @@ public class TransportService {
             throw new InvalidDataException("Agregue al menos un vehículo con su conductor.");
         }
         List<TransferData.StopData> stops = validStops(data.stops(), start);
-        LocalDateTime end = stops.stream().map(TransferData.StopData::plannedAt).filter(Objects::nonNull)
-                .max(LocalDateTime::compareTo).orElse(start);
+        LocalDateTime end = stops.stream().map(stop -> stop.plannedAt()).filter(Objects::nonNull)
+                .max((left, right) -> left.compareTo(right)).orElse(start);
 
         ServiceContract contract = contractRepository.findById(data.contractId())
                 .orElseThrow(() -> new ResourceNotFoundException("Contrato", data.contractId()));
@@ -648,12 +647,12 @@ public class TransportService {
         // Ni el vehículo ni el conductor pueden estar en otro traslado en ese horario.
         List<BusyRow> busy = transportRepository.findBusy(vehicleIds, driverIds, BUSY_STATUSES, end);
         for (TransferData.Assignment a : assignments) {
-            String vehicleConflict = conflict(busy, BusyRow::getVehicleId, a.vehicleId(), start, end, null);
+            String vehicleConflict = conflict(busy, row -> row.getVehicleId(), a.vehicleId(), start, end, null);
             if (vehicleConflict != null) {
                 throw new InvalidDataException("No se puede asignar " + vehicles.get(a.vehicleId()).getPlate()
                         + ": " + vehicleConflict + ".");
             }
-            String driverConflict = conflict(busy, BusyRow::getDriverId, a.driverId(), start, end, null);
+            String driverConflict = conflict(busy, row -> row.getDriverId(), a.driverId(), start, end, null);
             if (driverConflict != null) {
                 throw new InvalidDataException("No se puede asignar al conductor seleccionado: "
                         + driverConflict + ".");
@@ -1160,6 +1159,6 @@ public class TransportService {
     }
 
     private Long currentUserId() {
-        return sessionContext.getCurrentUser().map(AppUser::getId).orElseThrow(UnauthorizedActionException::new);
+        return sessionContext.getCurrentUser().map(user -> user.getId()).orElseThrow(UnauthorizedActionException::new);
     }
 }

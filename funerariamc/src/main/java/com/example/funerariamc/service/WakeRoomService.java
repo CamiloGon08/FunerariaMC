@@ -3,9 +3,7 @@ package com.example.funerariamc.service;
 import com.example.funerariamc.exception.InvalidDataException;
 import com.example.funerariamc.exception.ResourceNotFoundException;
 import com.example.funerariamc.exception.UnauthorizedActionException;
-import com.example.funerariamc.model.AppUser;
 import com.example.funerariamc.model.Client;
-import com.example.funerariamc.model.DeathCertificate;
 import com.example.funerariamc.model.Deceased;
 import com.example.funerariamc.model.Employee;
 import com.example.funerariamc.model.Sale;
@@ -184,7 +182,7 @@ public class WakeRoomService {
         LocalDateTime to = day.plusDays(1).atStartOfDay();
         List<WakeRoom> rooms = roomRepository.findAllByOrderByIdAsc();
         List<WakeRow> rows = contractRepository.findWakes(from, to, ContractStatus.CANCELLED);
-        Map<Long, String> destinations = destinations(rows.stream().map(WakeRow::getContractId).toList());
+        Map<Long, String> destinations = destinations(rows.stream().map(row -> row.getContractId()).toList());
 
         Map<Long, List<Wake>> byRoom = new HashMap<>();
         for (WakeRow row : rows) {
@@ -258,10 +256,10 @@ public class WakeRoomService {
         Map<Long, String> roomNames = new HashMap<>();
         rooms.forEach(r -> roomNames.put(r.getId(), r.getName()));
         List<LocalTime> departures = rows.stream()
-                .map(WakeRow::getWakeEndAt)
+                .map(row -> row.getWakeEndAt())
                 .filter(end -> end != null && !end.isBefore(from) && end.isBefore(to))
                 .sorted()
-                .map(LocalDateTime::toLocalTime)
+                .map(end -> end.toLocalTime())
                 .toList();
         String nextText = next == null ? null : next.name() + " · " + HOUR.format(next.wake().start());
         return new Kpis(cards.size(), inWake, reserved, nextText, available, departures.size(), departures);
@@ -314,7 +312,7 @@ public class WakeRoomService {
 
         String certificate = certificateRepository.findByDeceased(deceased.getId()).stream()
                 .filter(doc -> doc.getDocumentType() == DocumentType.MEDICAL_CERTIFICATE)
-                .map(DeathCertificate::getDocumentNumber)
+                .map(doc -> doc.getDocumentNumber())
                 .filter(numberText -> numberText != null && !numberText.isBlank())
                 .findFirst().orElse(null);
         Integer age = deceased.getBirthDate() == null || deceased.getDeathDate() == null ? null
@@ -524,7 +522,8 @@ public class WakeRoomService {
             detailRepository.save(line);
             total = total.add(amount);
         } else if (!special && !surcharges.isEmpty()) {
-            BigDecimal removed = surcharges.stream().map(SaleDetail::getSubtotal).reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal removed = surcharges.stream().map(line -> line.getSubtotal())
+                    .reduce(BigDecimal.ZERO, (left, right) -> left.add(right));
             BigDecimal paid = transactionRepository.sumIncomeBySale(sale.getId(), TransactionType.INCOME,
                     TransactionStatus.ACTIVE);
             if (total.subtract(removed).compareTo(paid) < 0) {
@@ -640,6 +639,6 @@ public class WakeRoomService {
     }
 
     private Long currentUserId() {
-        return sessionContext.getCurrentUser().map(AppUser::getId).orElseThrow(UnauthorizedActionException::new);
+        return sessionContext.getCurrentUser().map(user -> user.getId()).orElseThrow(UnauthorizedActionException::new);
     }
 }

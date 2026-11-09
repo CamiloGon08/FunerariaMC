@@ -280,11 +280,11 @@ class ContractServiceTest {
                 row(2L, SaleKind.PLAN, PaymentState.WITH_BALANCE, "jose rios"),
                 row(3L, SaleKind.PRIVATE, PaymentState.VOIDED, "betty ovalle"));
         assertEquals(List.of(1L), ContractService.filter(rows, SaleType.PRODUCT, null, "")
-                .stream().map(SaleRow::saleId).toList());
+                .stream().map(row -> row.saleId()).toList());
         assertEquals(List.of(2L), ContractService.filter(rows, null, PaymentState.WITH_BALANCE, "")
-                .stream().map(SaleRow::saleId).toList());
+                .stream().map(row -> row.saleId()).toList());
         assertEquals(List.of(3L), ContractService.filter(rows, null, null, "Óvalle")
-                .stream().map(SaleRow::saleId).toList());
+                .stream().map(row -> row.saleId()).toList());
     }
 
     // ---------- ayudas ----------

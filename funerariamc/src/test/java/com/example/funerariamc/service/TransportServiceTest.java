@@ -162,11 +162,11 @@ class TransportServiceTest {
     @Test
     void busyRowConflictNamesTheOtherContract() {
         BusyRow row = busy(2L, 11L, NOW.plusHours(1), NOW.plusHours(3));
-        String text = TransportService.conflict(List.of(row), BusyRow::getVehicleId, 2L,
+        String text = TransportService.conflict(List.of(row), busy -> busy.getVehicleId(), 2L,
                 NOW.plusHours(2), NOW.plusHours(4), null);
         assertNotNull(text);
         assertTrue(text.contains("CT-2026-0099"));
-        assertNull(TransportService.conflict(List.of(row), BusyRow::getVehicleId, 2L,
+        assertNull(TransportService.conflict(List.of(row), busy -> busy.getVehicleId(), 2L,
                 NOW.plusHours(4), NOW.plusHours(5), null));
     }
 
