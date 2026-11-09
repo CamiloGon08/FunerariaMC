@@ -1,0 +1,329 @@
+/*
+ * Módulo Cementerio y bóvedas (propuesta P-17 / P-17.1). Se carga junto con personal.css
+ * (tarjetas, indicadores, panel lateral) y usa los colores de app.css (-color-primary, ...).
+ * Muro: ocupada en salvia, libre con borde punteado, vence pronto en caqui y en mora en terracota.
+ * Trae también el formulario de los diálogos con el estilo de la vista "Personal · El Edén" (19/10),
+ * así la pantalla no depende de otro módulo para verse bien.
+ */
+
+/* ---------- Barra superior ---------- */
+.segmented {
+    -fx-background-color: -color-surface; -fx-background-radius: 12;
+    -fx-padding: 3; -fx-spacing: 2; -fx-alignment: center-left;
+}
+.segment {
+    -fx-background-color: transparent; -fx-text-fill: -color-primary;
+    -fx-background-radius: 10; -fx-padding: 7 14; -fx-font-weight: bold; -fx-font-size: 12.5px;
+    -fx-cursor: hand;
+}
+.segment:hover { -fx-background-color: rgba(250,249,246,0.6); }
+.segment:selected { -fx-background-color: -color-accent; -fx-text-fill: -color-background; }
+.segmented.view .segment:selected { -fx-background-color: -color-card; -fx-text-fill: -color-primary; }
+
+/* ---------- Indicadores ---------- */
+.kpi-alert { -fx-text-fill: -color-error; }
+.kpi-gold { -fx-text-fill: -color-gold-text; }
+.occupancy-bar > .track { -fx-background-color: -color-surface; -fx-background-radius: 999; -fx-background-insets: 0; }
+.occupancy-bar > .bar {
+    -fx-background-color: -color-accent; -fx-background-radius: 999;
+    -fx-background-insets: 0; -fx-padding: 3;
+}
+
+/* ---------- Muro ---------- */
+.wall-scroll, .wall-scroll > .viewport { -fx-background-color: transparent; -fx-background-insets: 0; -fx-padding: 0; }
+.wall-scroll .scroll-bar:horizontal { -fx-background-color: -color-surface; -fx-background-radius: 999; -fx-pref-height: 8; }
+.wall-scroll .scroll-bar:horizontal .thumb { -fx-background-color: -color-border; -fx-background-radius: 999; }
+.wall-scroll .scroll-bar .increment-button, .wall-scroll .scroll-bar .decrement-button { -fx-padding: 0; }
+.wall-scroll .scroll-bar .increment-arrow, .wall-scroll .scroll-bar .decrement-arrow { -fx-shape: " "; -fx-padding: 0; }
+.wall {
+    -fx-background-color: -color-background; -fx-background-radius: 12;
+    -fx-padding: 12 14 14 12; -fx-spacing: 6;
+}
+.wall-axis { -fx-text-fill: -color-secondary; -fx-font-size: 11px; }
+.wall-level { -fx-text-fill: -color-secondary; -fx-font-size: 12px; -fx-font-weight: bold; }
+
+.vault-cell {
+    -fx-background-radius: 8; -fx-border-radius: 8; -fx-border-width: 1;
+    -fx-padding: 5 2; -fx-spacing: 1; -fx-alignment: center; -fx-cursor: hand;
+    -fx-pref-width: 52; -fx-min-width: 52; -fx-pref-height: 50; -fx-min-height: 50;
+}
+.vault-code { -fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: -color-primary; }
+.vault-name { -fx-font-size: 10px; -fx-text-fill: -color-secondary; }
+
+.vault-occupied { -fx-background-color: -color-surface; -fx-border-color: -color-surface; }
+.vault-available {
+    -fx-background-color: -color-card; -fx-border-color: -color-border;
+    -fx-border-style: segments(4, 3);
+}
+.vault-expiring { -fx-background-color: #F1EAD9; -fx-border-color: #F1EAD9; }
+.vault-expiring .vault-code, .vault-expiring .vault-name { -fx-text-fill: -color-gold-text; }
+.vault-overdue { -fx-background-color: -color-error-bg; -fx-border-color: -color-error-bg; }
+.vault-overdue .vault-code, .vault-overdue .vault-name { -fx-text-fill: -color-error; }
+.vault-cell:hover { -fx-border-color: -color-accent; }
+.vault-cell:selected { -fx-border-color: -color-primary; -fx-border-width: 2; -fx-border-style: solid; }
+.vault-cell:dimmed { -fx-opacity: 0.28; }
+
+/* Leyenda: cuadro de color + texto */
+.legend-item { -fx-spacing: 5; -fx-alignment: center-left; }
+.legend-swatch { -fx-min-width: 11; -fx-min-height: 11; -fx-max-width: 11; -fx-max-height: 11; -fx-background-radius: 3; -fx-border-radius: 3; -fx-border-width: 1; }
+.legend-text { -fx-text-fill: -color-secondary; -fx-font-size: 11.5px; }
+
+/* ---------- Lista ---------- */
+.vault-row {
+    -fx-background-color: -color-background; -fx-background-radius: 10;
+    -fx-padding: 9 12; -fx-spacing: 12; -fx-alignment: center-left; -fx-cursor: hand;
+}
+.vault-row:hover { -fx-background-color: -color-surface; }
+.row-code {
+    -fx-min-width: 46; -fx-pref-width: 46; -fx-alignment: center;
+    -fx-background-radius: 8; -fx-padding: 6 0; -fx-font-weight: bold; -fx-font-size: 12px;
+}
+
+/* ---------- Columna derecha ---------- */
+.side-title { -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif; -fx-font-size: 21px; -fx-text-fill: -color-primary; }
+.count-badge {
+    -fx-background-color: -color-error-bg; -fx-text-fill: -color-error;
+    -fx-background-radius: 999; -fx-padding: 2 8; -fx-font-size: 11px; -fx-font-weight: bold;
+}
+.attention-row { -fx-spacing: 10; -fx-alignment: center-left; -fx-padding: 4 0; }
+.attention-code {
+    -fx-min-width: 44; -fx-pref-width: 44; -fx-min-height: 38; -fx-alignment: center;
+    -fx-background-radius: 8; -fx-font-weight: bold; -fx-font-size: 12px;
+}
+.code-overdue { -fx-background-color: -color-error-bg; -fx-text-fill: -color-error; }
+.code-expiring { -fx-background-color: #F1EAD9; -fx-text-fill: -color-gold-text; }
+.code-occupied { -fx-background-color: -color-surface; -fx-text-fill: -color-primary; }
+.code-available { -fx-background-color: -color-card; -fx-text-fill: -color-secondary; -fx-border-color: -color-border; -fx-border-style: segments(4, 3); -fx-border-radius: 8; }
+.attention-name { -fx-text-fill: -color-primary; -fx-font-weight: bold; -fx-font-size: 13px; }
+.attention-detail-overdue { -fx-text-fill: -color-error; -fx-font-size: 12px; }
+.attention-detail-expiring { -fx-text-fill: -color-gold-text; -fx-font-size: 12px; }
+.text-action {
+    -fx-background-color: transparent; -fx-text-fill: -color-primary; -fx-font-weight: bold;
+    -fx-font-size: 12.5px; -fx-padding: 4 6; -fx-cursor: hand; -fx-background-radius: 8;
+}
+.text-action:hover { -fx-background-color: -color-surface; }
+.exhumation-title { -fx-text-fill: -color-primary; -fx-font-weight: bold; -fx-font-size: 13px; }
+.exhumation-detail { -fx-text-fill: -color-secondary; -fx-font-size: 12px; }
+
+/* ---------- Panel de detalle (P-17.1) ---------- */
+.vault-badge {
+    -fx-border-color: -color-primary; -fx-border-width: 2; -fx-border-radius: 10;
+    -fx-background-color: -color-surface; -fx-background-radius: 10;
+    -fx-min-width: 58; -fx-min-height: 58; -fx-max-width: 58; -fx-max-height: 58;
+    -fx-alignment: center; -fx-spacing: 0;
+}
+.vault-badge-code { -fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: -color-primary; }
+.vault-badge-level { -fx-font-size: 10px; -fx-text-fill: -color-secondary; }
+.person-box { -fx-background-color: -color-background; -fx-background-radius: 10; -fx-padding: 14; -fx-spacing: 12; -fx-alignment: center-left; }
+.cross-icon {
+    -fx-background-color: -color-surface; -fx-background-radius: 999;
+    -fx-min-width: 40; -fx-min-height: 40; -fx-max-width: 40; -fx-max-height: 40;
+}
+.cross-icon .cross { -fx-stroke: -color-accent; -fx-stroke-width: 1.6; -fx-fill: transparent; }
+.person-name { -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif; -fx-font-size: 22px; -fx-text-fill: -color-primary; }
+.lease-bar > .track { -fx-background-color: -color-surface; -fx-background-radius: 999; -fx-background-insets: 0; }
+.lease-bar > .bar { -fx-background-color: -color-primary; -fx-background-radius: 999; -fx-background-insets: 0; -fx-padding: 2.5; }
+.lease-bar.overdue > .bar { -fx-background-color: -color-error; }
+
+.timeline-row { -fx-spacing: 12; -fx-alignment: top-left; }
+.timeline-dot { -fx-fill: -color-primary; }
+.timeline-dot.past { -fx-fill: -color-border; }
+.timeline-title { -fx-text-fill: -color-primary; -fx-font-weight: bold; -fx-font-size: 13px; }
+.timeline-title.past { -fx-text-fill: -color-secondary; }
+.timeline-date { -fx-text-fill: -color-secondary; -fx-font-size: 11.5px; }
+
+.drawer-secondary { -fx-background-color: transparent; -fx-text-fill: -color-primary; -fx-border-color: -color-border; }
+.drawer-secondary:hover { -fx-background-color: -color-surface; }
+.drawer-secondary:disabled { -fx-opacity: 0.55; }
+
+/* ---------- Aviso corto al guardar ---------- */
+.toast {
+    -fx-background-color: -color-primary; -fx-text-fill: -color-background;
+    -fx-background-radius: 12; -fx-padding: 12 18; -fx-font-size: 13.5px; -fx-font-weight: bold;
+    -fx-effect: dropshadow(gaussian, rgba(24,47,37,0.25), 18, 0, 0, 6);
+}
+
+/* ---------- Diálogos: formulario "Personal · El Edén" ----------
+   Título musgo, sección en mayúsculas con filete caqui, etiqueta arriba del campo,
+   campos en caja redondeada (borde niebla, foco caqui), deshabilitado en salvia,
+   avisos salvia con ícono y Cancelar (fantasma) a la izquierda de la acción. */
+.form-title {
+    -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif;
+    -fx-font-size: 31px; -fx-text-fill: -color-accent;
+}
+.section-legend { -fx-alignment: center-left; -fx-spacing: 10; }
+.section-title { -fx-text-fill: -color-accent; -fx-font-size: 12px; -fx-font-weight: bold; }
+.section-rule { -fx-background-color: -color-detail; -fx-min-height: 1; -fx-pref-height: 1; -fx-max-height: 1; }
+.form-field { -fx-spacing: 6; }
+.form-field > .field-label { -fx-font-size: 11px; -fx-padding: 0; }
+.form-field > .text-field, .form-field > .date-picker, .form-field > .text-area, .form-combo {
+    -fx-background-color: -color-card; -fx-background-radius: 10;
+    -fx-border-color: -color-border; -fx-border-width: 1; -fx-border-radius: 10;
+    -fx-background-insets: 0; -fx-font-size: 15px;
+}
+.form-field > .text-field { -fx-padding: 9 12; }
+.form-field > .text-field:focused, .form-field > .date-picker:focused, .form-combo:focused,
+.form-field > .date-picker:focus-within, .form-field > .text-area:focused {
+    -fx-border-color: -color-detail; -fx-border-width: 2;
+}
+.form-field > .date-picker > .text-field, .form-field > .date-picker > .text-field:focused,
+.form-combo > .text-field, .form-combo > .text-field:focused {
+    -fx-background-color: transparent; -fx-border-width: 0;
+}
+.form-field > .date-picker > .text-field { -fx-padding: 9 12; }
+.form-field > .date-picker > .arrow-button, .form-combo > .arrow-button { -fx-background-color: transparent; -fx-padding: 0 12 0 8; }
+.form-combo > .arrow-button > .arrow { -fx-background-color: -color-secondary; }
+.form-combo .list-cell { -fx-background-color: transparent; -fx-text-fill: -color-primary; -fx-padding: 9 12; }
+.form-field > .text-area { -fx-padding: 4; }
+.form-field > .text-area .content { -fx-background-color: transparent; -fx-background-radius: 10; }
+.form-field > .text-field:disabled, .form-field > .date-picker:disabled, .form-combo:disabled {
+    -fx-background-color: -color-surface; -fx-opacity: 1;
+}
+.form-combo:disabled .list-cell, .form-field > .text-field:disabled { -fx-text-fill: -color-secondary; }
+.form-body:disabled { -fx-opacity: 1; }
+.note-info, .note-alert { -fx-alignment: top-left; }
+.note-icon { -fx-fill: transparent; -fx-stroke: -color-accent; -fx-stroke-width: 1.4; -fx-stroke-line-cap: round; }
+.note-alert .note-icon { -fx-stroke: -color-error; }
+
+/* ---------- Paleta verde oscura (nov 2026) ----------
+   Banda verde con el título y los indicadores, tarjetas claras sobre fondo salvia,
+   selección en bosque profundo y estados suaves: aviso oliva y alerta terracota apagada.
+   Todo va bajo .cemetery-root para no tocar otros módulos. */
+.cemetery-root {
+    -eden-forest: #1E3A2E;
+    -eden-deep: #0F1F17;
+    -eden-moss: #3E5A3F;
+    -eden-sage: #6B7F67;
+    -eden-linen: #C7CBB8;
+    -eden-card: #FAFBF7;
+    -eden-tint: #EEF0E6;
+    -eden-text: #1E2A22;
+    -eden-muted: #6A7366;
+    -eden-warn: #6E6A45;
+    -eden-warn-bg: #EDEBDD;
+    -eden-alert: #8A4B3C;
+    -eden-alert-bg: #F0E3DC;
+}
+
+/* Banda superior */
+.hero-band {
+    -fx-background-color: linear-gradient(to right, #1E3A2E 0%, #3E5A3F 62%, #6B7F67 100%);
+    -fx-background-radius: 26;
+    -fx-padding: 22 26 24 26;
+    -fx-effect: dropshadow(gaussian, rgba(15,31,23,0.22), 24, 0, 0, 8);
+}
+.hero-kpi {
+    -fx-background-color: rgba(255,255,255,0.07);
+    -fx-border-color: rgba(255,255,255,0.20); -fx-border-width: 1;
+    -fx-background-radius: 16; -fx-border-radius: 16;
+    -fx-padding: 14 18 14 18; -fx-spacing: 2;
+}
+.hero-kpi-caption { -fx-text-fill: rgba(244,245,238,0.88); -fx-font-size: 11px; -fx-font-weight: bold; }
+.hero-kpi-value {
+    -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif;
+    -fx-text-fill: #F4F5EE; -fx-font-size: 38px;
+}
+.hero-kpi-detail { -fx-text-fill: rgba(244,245,238,0.72); -fx-font-size: 12.5px; }
+.hero-kpi .occupancy-bar { -fx-padding: 8 0 0 0; }
+.hero-kpi .occupancy-bar > .track { -fx-background-color: rgba(255,255,255,0.18); }
+.hero-kpi .occupancy-bar > .bar { -fx-background-color: #E4E7DC; }
+
+/* Barra de búsqueda y filtros */
+.cemetery-root .filter-card {
+    -fx-background-color: -eden-card; -fx-border-color: transparent;
+    -fx-background-radius: 18; -fx-border-radius: 18; -fx-padding: 10 12;
+}
+.cemetery-root .search-box { -fx-background-color: -eden-tint; -fx-background-radius: 12; }
+.cemetery-root .segmented { -fx-background-color: -eden-tint; }
+.cemetery-root .segment { -fx-text-fill: -eden-text; }
+.cemetery-root .segment:hover { -fx-background-color: rgba(199,203,184,0.45); }
+.cemetery-root .segment:selected,
+.cemetery-root .segmented.view .segment:selected { -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; }
+.cemetery-root .chip-combo { -fx-background-color: -eden-card; -fx-border-color: -eden-linen; -fx-background-radius: 12; -fx-border-radius: 12; }
+.cemetery-root .primary-button { -fx-background-color: -eden-forest; -fx-background-radius: 12; }
+.cemetery-root .primary-button:hover { -fx-background-color: -eden-moss; }
+.cemetery-root .primary-button:pressed { -fx-background-color: -eden-deep; }
+
+/* Tarjetas del muro y de la columna derecha */
+.cemetery-root .table-card {
+    -fx-background-color: -eden-card; -fx-border-color: transparent;
+    -fx-background-radius: 22; -fx-border-radius: 22; -fx-padding: 22 24 18 24;
+}
+.cemetery-root .card-title {
+    -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif;
+    -fx-font-size: 32px; -fx-text-fill: -eden-text;
+}
+.cemetery-root .side-title { -fx-font-size: 26px; -fx-text-fill: -eden-text; }
+.cemetery-root .card-subtitle, .cemetery-root .legend-text, .cemetery-root .wall-level { -fx-text-fill: -eden-muted; }
+.cemetery-root .count-badge { -fx-background-color: -eden-alert-bg; -fx-text-fill: -eden-alert; }
+
+/* Muro: ocupada en lino claro, libre punteada, vence pronto en oliva suave y en mora en terracota apagada */
+.cemetery-root .wall { -fx-background-color: transparent; -fx-padding: 8 0 10 0; }
+.cemetery-root .vault-cell {
+    -fx-background-radius: 10; -fx-border-radius: 10; -fx-spacing: 3;
+    -fx-pref-width: 76; -fx-min-width: 58; -fx-pref-height: 60; -fx-min-height: 60;
+}
+.cemetery-root .vault-code { -fx-font-size: 13px; }
+.cemetery-root .vault-name { -fx-font-size: 11.5px; }
+.cemetery-root .vault-code { -fx-text-fill: -eden-text; }
+.cemetery-root .vault-name { -fx-text-fill: -eden-muted; }
+.cemetery-root .vault-occupied { -fx-background-color: -eden-tint; -fx-border-color: -eden-tint; }
+.cemetery-root .vault-available { -fx-background-color: -eden-card; -fx-border-color: #B9C0B0; }
+.cemetery-root .vault-expiring { -fx-background-color: -eden-warn-bg; -fx-border-color: -eden-warn-bg; }
+.cemetery-root .vault-expiring .vault-code, .cemetery-root .vault-expiring .vault-name { -fx-text-fill: -eden-warn; }
+.cemetery-root .vault-overdue { -fx-background-color: -eden-alert-bg; -fx-border-color: -eden-alert-bg; }
+.cemetery-root .vault-overdue .vault-code, .cemetery-root .vault-overdue .vault-name { -fx-text-fill: -eden-alert; }
+.cemetery-root .vault-cell:hover { -fx-border-color: -eden-sage; }
+.cemetery-root .vault-cell:selected { -fx-border-color: -eden-forest; -fx-border-width: 2; -fx-border-style: solid; }
+.cemetery-root .vault-row { -fx-background-color: -eden-tint; }
+.cemetery-root .vault-row:hover { -fx-background-color: #E3E6DA; }
+
+/* Requieren atención */
+.cemetery-root .code-overdue { -fx-background-color: -eden-alert-bg; -fx-text-fill: -eden-alert; }
+.cemetery-root .code-expiring { -fx-background-color: -eden-warn-bg; -fx-text-fill: -eden-warn; }
+.cemetery-root .code-occupied { -fx-background-color: -eden-tint; -fx-text-fill: -eden-text; }
+.cemetery-root .attention-row { -fx-padding: 8 0; -fx-border-color: transparent transparent #E6E8DE transparent; -fx-border-width: 0 0 1 0; }
+.cemetery-root .attention-name { -fx-text-fill: -eden-text; -fx-font-size: 14px; }
+.cemetery-root .attention-detail-overdue { -fx-text-fill: -eden-alert; }
+.cemetery-root .attention-detail-expiring { -fx-text-fill: -eden-muted; }
+.cemetery-root .text-action { -fx-text-fill: -eden-text; }
+.cemetery-root .text-action:hover { -fx-background-color: -eden-tint; }
+
+/* Panel de detalle y aviso */
+.cemetery-root .drawer-veil { -fx-background-color: rgba(15,31,23,0.32); }
+.cemetery-root .drawer-primary { -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; }
+.cemetery-root .drawer-primary:hover { -fx-background-color: -eden-moss; }
+.cemetery-root .vault-badge { -fx-border-color: -eden-forest; -fx-background-color: -eden-tint; }
+.cemetery-root .lease-bar > .bar { -fx-background-color: -eden-forest; }
+.cemetery-root .lease-bar.overdue > .bar { -fx-background-color: -eden-alert; }
+.cemetery-root .toast { -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; }
+
+/* Resumen de la bóveda tocada, bajo el muro */
+.vault-preview {
+    -fx-background-color: linear-gradient(to right, #1E3A2E 0%, #3E5A3F 100%);
+    -fx-background-radius: 18; -fx-padding: 16 20 16 26;
+}
+.preview-code {
+    -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif;
+    -fx-font-size: 36px; -fx-text-fill: #F4F5EE;
+}
+.preview-caption { -fx-text-fill: rgba(244,245,238,0.70); -fx-font-size: 10.5px; -fx-font-weight: bold; }
+.preview-value { -fx-text-fill: #F1F2EA; -fx-font-size: 13.5px; }
+.preview-button {
+    -fx-background-color: #C7CBB8; -fx-text-fill: #0F1F17; -fx-font-weight: bold;
+    -fx-background-radius: 12; -fx-padding: 10 18; -fx-cursor: hand;
+}
+.preview-button:hover { -fx-background-color: #D6D9C9; }
+
+/* RF-BOV-01: botones "+ Cementerio" y "+ Agregar bóvedas" (solo Administrador Maestro) */
+.ghost-button {
+    -fx-background-color: -color-card; -fx-text-fill: -color-primary; -fx-font-weight: bold;
+    -fx-border-color: -color-border; -fx-border-width: 1; -fx-border-radius: 12; -fx-background-radius: 12;
+    -fx-padding: 8 14; -fx-cursor: hand;
+}
+.ghost-button:hover { -fx-background-color: -color-surface; }
+.cemetery-root .ghost-button { -fx-background-color: -eden-card; -fx-text-fill: -eden-text; -fx-border-color: -eden-linen; }
+.cemetery-root .ghost-button:hover { -fx-background-color: -eden-tint; }
+.cemetery-root .wall-axis { -fx-text-fill: #9AA294; -fx-font-size: 11px; }
+.cemetery-root .wall-scroll .scroll-bar:horizontal { -fx-pref-height: 10; -fx-background-color: -eden-tint; }
+.cemetery-root .wall-scroll .scroll-bar:horizontal .thumb { -fx-background-color: #9DA897; }

@@ -93,6 +93,19 @@ public final class AccessLogLabels {
             AccessLogService.TRANSPORT_ARRIVED, "Llegada a una parada del traslado del contrato ",
             AccessLogService.TRANSPORT_COMPLETED, "Traslado completado del contrato ",
             AccessLogService.TRANSPORT_CANCELLED, "Traslado cancelado del contrato ");
+    /** Acciones del módulo Cremaciones: guardan el código del lote (L-0033) y, a veces, el del difunto y el certificado. */
+    private static final Map<String, String> CREMATION_ACTIONS = Map.ofEntries(
+            Map.entry(AccessLogService.CREMATION_BATCH_SCHEDULED, "Lote de cremación programado "),
+            Map.entry(AccessLogService.CREMATION_BATCH_RESCHEDULED, "Lote de cremación reprogramado "),
+            Map.entry(AccessLogService.CREMATION_ASSIGNED, "Difunto agregado al lote de cremación "),
+            Map.entry(AccessLogService.CREMATION_REMOVED, "Difunto quitado del lote de cremación "),
+            Map.entry(AccessLogService.CREMATION_BATCH_STARTED, "Lote de cremación entregado al horno "),
+            Map.entry(AccessLogService.CREMATION_REGISTERED, "Certificado de cremación registrado en el lote "),
+            Map.entry(AccessLogService.CREMATION_PROVIDER_SAVED, "Proveedor de cremación guardado "),
+            Map.entry(AccessLogService.CREMATION_PURCHASE_REQUESTED, "Compra de cremaciones solicitada "),
+            Map.entry(AccessLogService.CREMATION_PURCHASE_CONFIRMED, "Compra de cremaciones confirmada "),
+            Map.entry(AccessLogService.CREMATION_PURCHASE_RECEIVED, "Compra de cremaciones recibida "),
+            Map.entry(AccessLogService.CREMATION_PURCHASE_CANCELLED, "Compra de cremaciones anulada "));
 
     /** Tipos de venta que se guardan en inglés después del número. */
     private static final Map<String, String> SALE_KINDS = Map.of(
@@ -128,7 +141,7 @@ public final class AccessLogLabels {
             return "Solicitud de recuperación de contraseña por " + CHANNELS.getOrDefault(channel, channel);
         }
         for (Map<String, String> actions : List.of(EMPLOYEE_ACTIONS, CLIENT_ACTIONS, ACCOUNT_ACTIONS, VAULT_ACTIONS,
-                DECEASED_ACTIONS, PLAN_ACTIONS, WAKE_ROOM_ACTIONS)) {
+                DECEASED_ACTIONS, PLAN_ACTIONS, WAKE_ROOM_ACTIONS, CREMATION_ACTIONS)) {
             for (Map.Entry<String, String> entry : actions.entrySet()) {
                 if (action.startsWith(entry.getKey())) {
                     return entry.getValue() + details(action.substring(entry.getKey().length()).trim());
