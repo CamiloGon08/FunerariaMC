@@ -38,6 +38,11 @@ public class FxmlViewLoader {
     public static final String INVENTORY = "/fxml/inventory.fxml";
     public static final String TRANSPORT = "/fxml/transport.fxml";
     public static final String CREMATIONS = "/fxml/cremations.fxml";
+    public static final String PARAMETERS = "/fxml/parameters.fxml";
+    public static final String FINANCES = "/fxml/finances.fxml";
+    public static final String ALLIED_NETWORK = "/fxml/allied-network.fxml";
+    public static final String HOME = "/fxml/home.fxml";
+    public static final String ANALYTICS = "/fxml/analytics.fxml";
 
     
     private static final String[] FONTS = {
@@ -96,7 +101,7 @@ public class FxmlViewLoader {
         }
     }
 
-    /** Reemplaza la escena de la ventana donde está {@code source}. */
+    /** Reemplaza la escena de la ventana donde está. */
     public void switchScene(Node source, String fxmlPath, String title) {
         Stage stage = (Stage) source.getScene().getWindow();
         stage.setScene(new Scene(load(fxmlPath)));
