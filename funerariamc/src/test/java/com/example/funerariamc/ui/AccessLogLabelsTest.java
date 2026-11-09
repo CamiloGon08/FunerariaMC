@@ -78,6 +78,76 @@ class AccessLogLabelsTest {
     }
 
     @Test
+    void translatesCremationActions() {
+        assertEquals("Lote de cremación programado L-0033 BAQ-01",
+                AccessLogLabels.of("CREMATION_BATCH_SCHEDULED: L-0033 BAQ-01"));
+        assertEquals("Lote de cremación reprogramado L-0033 BAQ-01 2026-11-07 08:00",
+                AccessLogLabels.of("CREMATION_BATCH_RESCHEDULED: L-0033 BAQ-01 2026-11-07 08:00"));
+        assertEquals("Difunto agregado al lote de cremación L-0033 DF-0042",
+                AccessLogLabels.of("CREMATION_ASSIGNED: L-0033 DF-0042"));
+        assertEquals("Difunto quitado del lote de cremación L-0033 DF-0042",
+                AccessLogLabels.of("CREMATION_REMOVED: L-0033 DF-0042"));
+        assertEquals("Lote de cremación entregado al horno L-0033",
+                AccessLogLabels.of("CREMATION_BATCH_STARTED: L-0033"));
+        assertEquals("Certificado de cremación registrado en el lote L-0033 DF-0042 CC-1001",
+                AccessLogLabels.of("CREMATION_REGISTERED: L-0033 DF-0042 CC-1001"));
+        assertEquals("Compra de cremaciones confirmada CP-0003",
+                AccessLogLabels.of("CREMATION_PURCHASE_CONFIRMED: CP-0003"));
+        assertEquals("Compra de cremaciones solicitada CP-0003 BAQ-CREMA1 x10",
+                AccessLogLabels.of("CREMATION_PURCHASE_REQUESTED: CP-0003 BAQ-CREMA1 x10"));
+        assertEquals("Ingreso a Cremaciones", AccessLogLabels.of("OPEN_MODULE: CREMACIONES"));
+    }
+
+    @Test
+    void translatesAlliedNetworkActions() {
+        assertEquals("Registro de la funeraria aliada con NIT 900214556-3",
+                AccessLogLabels.of("ALLIED_HOME_REGISTERED: 900214556-3"));
+        assertEquals("Desactivación del convenio con la funeraria aliada con NIT 900214556-3",
+                AccessLogLabels.of("ALLIED_HOME_DEACTIVATED: 900214556-3"));
+        assertEquals("Pago pendiente registrado a la funeraria aliada con NIT 800991447-1 · contrato CT-2026-0402 · $ 3.200.000",
+                AccessLogLabels.of("ALLIED_PAYMENT_REGISTERED: 800991447-1 CT-2026-0402 3200000.00"));
+        assertEquals("Pago a la funeraria aliada con NIT 800991447-1 · pagado, egreso MV-0045 · $ 3.200.000",
+                AccessLogLabels.of("ALLIED_PAYMENT_PAID: 800991447-1 MV-0045 3200000.00"));
+        assertEquals("Pago anulado a la funeraria aliada con NIT 800991447-1 · $ 3.200.000",
+                AccessLogLabels.of("ALLIED_PAYMENT_VOIDED: 800991447-1 3200000.00"));
+        assertEquals("Ingreso a Red de funerarias aliadas", AccessLogLabels.of("OPEN_MODULE: RED_ALIADAS"));
+    }
+
+    @Test
+    void translatesFinanceActions() {
+        assertEquals("Registro del movimiento MV-0012 · ingreso · $ 150.000",
+                AccessLogLabels.of("FINANCIAL_TRANSACTION_REGISTERED: MV-0012 INCOME 150000.00"));
+        assertEquals("Registro del movimiento MV-0013 · egreso · $ 80.000",
+                AccessLogLabels.of("FINANCIAL_TRANSACTION_REGISTERED: MV-0013 EXPENSE 80000.00"));
+        assertEquals("Anulación del movimiento MV-0012", AccessLogLabels.of("FINANCIAL_TRANSACTION_VOIDED: MV-0012"));
+        assertEquals("Comisión de 2026-10 del empleado con documento 1065000111 · $ 250.000",
+                AccessLogLabels.of("COMMISSION_REGISTERED: 2026-10 1065000111 250000.00"));
+        assertEquals("Exportación del resumen financiero en Excel del 2026-10-01 al 2026-10-31",
+                AccessLogLabels.of("FINANCIAL_REPORT_EXPORTED: EXCEL 2026-10-01 2026-10-31"));
+        assertEquals("Ingreso a Finanzas", AccessLogLabels.of("OPEN_MODULE: FINANZAS"));
+    }
+
+    @Test
+    void translatesAnalyticsExport() {
+        assertEquals("Exportación del panel de análisis del 2026-10-01 al 2026-10-31",
+                AccessLogLabels.of("ANALYTICS_REPORT_EXPORTED: 2026-10-01 2026-10-31"));
+        assertEquals("Ingreso a Panel de análisis", AccessLogLabels.of("OPEN_MODULE: ANALISIS"));
+    }
+
+    @Test
+    void translatesParameterActions() {
+        assertEquals("Cambio del parámetro Período de carencia: de 62 a 45",
+                AccessLogLabels.of("SYSTEM_PARAMETER_UPDATED: PLAN_WAITING_DAYS 62 -> 45"));
+        assertEquals("Cambio del parámetro Tarifa por bus adicional: 80000",
+                AccessLogLabels.of("SYSTEM_PARAMETER_UPDATED: EXTRA_BUS_FEE - -> 80000"));
+        assertEquals("Creación del parámetro TARIFA_PRUEBA: 10",
+                AccessLogLabels.of("SYSTEM_PARAMETER_CREATED: TARIFA_PRUEBA - -> 10"));
+        assertEquals("Cambio del parámetro Período de carencia",
+                AccessLogLabels.of("SYSTEM_PARAMETER_UPDATED: PLAN_WAITING_DAYS"));
+        assertEquals("Ingreso a Parámetros del sistema", AccessLogLabels.of("OPEN_MODULE: PARAMETROS"));
+    }
+
+    @Test
     void keepsUnknownActionsAsStored() {
         assertEquals("SOMETHING_NEW", AccessLogLabels.of("SOMETHING_NEW"));
         assertEquals("Ingreso a MODULO_X", AccessLogLabels.of("OPEN_MODULE: MODULO_X"));
