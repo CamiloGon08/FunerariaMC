@@ -12,6 +12,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.aop.framework.ProxyFactory;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -262,7 +263,7 @@ class SystemParameterServiceTest {
         assertSame(actor, updated.getUpdatedBy());
         assertFalse(updated.getUpdatedAt().isBefore(before));
         assertFalse(updated.getUpdatedAt().isAfter(LocalDateTime.now(AccessLogService.APP_ZONE)));
-        verify(audit).record(5L, AccessLogService.SYSTEM_PARAMETER_UPDATED + PlanParameters.WAITING_DAYS);
+        verify(audit).record(5L, AccessLogService.SYSTEM_PARAMETER_UPDATED + PlanParameters.WAITING_DAYS + " 62 -> 45");
         verify(parameters, never()).save(any());
     }
 
@@ -295,6 +296,137 @@ class SystemParameterServiceTest {
 
         verify(transactions).rollback(status);
         verify(transactions, never()).commit(any());
+    }
+
+    @Test
+    void knownParameterWithoutRowIsCreatedFromTheCatalogOnFirstSave() {
+        when(parameters.findByParamName(SaleParameters.EXTRA_BUS_FEE)).thenReturn(Optional.empty());
+        when(parameters.save(any(SystemParameter.class))).thenAnswer(call -> {
+            SystemParameter saved = call.getArgument(0);
+            saved.setId(30L);
+            return saved;
+        });
+
+        SystemParameter created = service.updateValue(SaleParameters.EXTRA_BUS_FEE, "$ 80.000");
+
+        assertEquals(30L, created.getId());
+        assertEquals("80000", created.getParamValue());
+        assertEquals(ParameterCategory.TRANSPORT, created.getCategory());
+        assertEquals("COP", created.getUnit());
+        assertNotNull(created.getDescription());
+        verify(audit).record(5L, AccessLogService.SYSTEM_PARAMETER_UPDATED + SaleParameters.EXTRA_BUS_FEE + " - -> 80000");
+    }
+
+    @Test
+    void unknownParameterWithoutRowIsNotCreatedByUpdate() {
+        when(parameters.findByParamName("NO_EXISTE")).thenReturn(Optional.empty());
+        assertThrows(InvalidDataException.class, () -> service.updateValue("NO_EXISTE", "5"));
+        verify(parameters, never()).save(any());
+        verifyNoInteractions(audit);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"cuarenta", "4,5", "-3", "12.5.1x", "1.5", "12.34", "1.2.300"})
+    void wholeNumberParametersRejectInvalidValues(String value) {
+        assertThrows(InvalidDataException.class, () -> service.updateValue(PlanParameters.WAITING_DAYS, value));
+        verifyNoInteractions(audit);
+    }
+
+    @Test
+    void amountsAcceptPesosFormatAndRejectNegatives() {
+        assertEquals("1200000", SystemParameterService.checkedValue(ParameterCatalog.Kind.AMOUNT, "$ 1.200.000"));
+        assertEquals("1500.5", SystemParameterService.checkedValue(ParameterCatalog.Kind.AMOUNT, "1500,50"));
+        assertEquals("0", SystemParameterService.checkedValue(ParameterCatalog.Kind.AMOUNT, "0"));
+        assertThrows(InvalidDataException.class,
+                () -> SystemParameterService.checkedValue(ParameterCatalog.Kind.AMOUNT, "-1"));
+        assertThrows(InvalidDataException.class,
+                () -> SystemParameterService.checkedValue(ParameterCatalog.Kind.AMOUNT, "diez"));
+        assertEquals("1200", SystemParameterService.checkedValue(ParameterCatalog.Kind.WHOLE, "1.200"));
+    }
+
+    @ParameterizedTest
+    @CsvSource(value = {"1250.50|1250.5", "0.05|0.05", "80.000,50|80000.5"}, delimiter = '|')
+    void savingAnAmountAgainPreservesItsDecimalValue(String input, String expected) {
+        stored.setParamName(SaleParameters.EXTRA_BUS_FEE);
+        stored.setParamValue("80000");
+        when(parameters.findByParamName(SaleParameters.EXTRA_BUS_FEE)).thenReturn(Optional.of(stored));
+
+        service.updateValue(SaleParameters.EXTRA_BUS_FEE, input);
+        assertEquals(expected, stored.getParamValue());
+        assertEquals(new BigDecimal(expected), service.getBigDecimal(SaleParameters.EXTRA_BUS_FEE));
+
+        service.updateValue(SaleParameters.EXTRA_BUS_FEE, stored.getParamValue());
+        assertEquals(expected, stored.getParamValue());
+        assertEquals(new BigDecimal(expected), service.getBigDecimal(SaleParameters.EXTRA_BUS_FEE));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"1.2.3", "12.3456", "1.234,567"})
+    void malformedAmountsAreRejectedBeforeSaving(String value) {
+        assertThrows(InvalidDataException.class,
+                () -> service.updateValue(SaleParameters.EXTRA_BUS_FEE, value));
+        verify(parameters, never()).save(any());
+        verifyNoInteractions(audit);
+    }
+
+    @Test
+    void auditDetailNeverExceedsTheColumnSize() {
+        String name = "A".repeat(50);
+        String detail = SystemParameterService.changeDetail(name, "x".repeat(50), "y".repeat(50));
+        assertTrue((AccessLogService.SYSTEM_PARAMETER_UPDATED + detail).length() <= 100);
+        assertEquals("PLAN_WAITING_DAYS 62 -> 45", SystemParameterService.changeDetail("PLAN_WAITING_DAYS", "62", "45"));
+    }
+
+    @Test
+    void overviewListsCatalogParametersAsUndefinedAndManualOnesAtTheEnd() {
+        SystemParameter manual = parameter("TARIFA_PRUEBA", "10");
+        manual.setCategory(ParameterCategory.GENERAL);
+        when(parameters.findAllWithEditor()).thenReturn(java.util.List.of(stored, manual));
+
+        var views = service.overview();
+
+        assertEquals(ParameterCatalog.ALL.size() + 1, views.size());
+        var waiting = views.stream().filter(v -> v.name().equals(PlanParameters.WAITING_DAYS)).findFirst().orElseThrow();
+        assertTrue(waiting.defined());
+        assertEquals("62", waiting.value());
+        var bus = views.stream().filter(v -> v.name().equals(SaleParameters.EXTRA_BUS_FEE)).findFirst().orElseThrow();
+        assertFalse(bus.defined());
+        assertTrue(bus.known());
+        var last = views.get(views.size() - 1);
+        assertEquals("TARIFA_PRUEBA", last.name());
+        assertFalse(last.known());
+    }
+
+    @Test
+    void createRejectsDuplicatesAndBadNames() {
+        when(parameters.existsByParamName("PLAN_WAITING_DAYS")).thenReturn(true);
+        assertThrows(InvalidDataException.class, () -> service.create(
+                new ParameterData("plan_waiting_days", "10", null, ParameterCategory.PLAN, null)));
+        assertThrows(InvalidDataException.class, () -> service.create(
+                new ParameterData("con espacio", "10", null, ParameterCategory.PLAN, null)));
+        assertThrows(InvalidDataException.class, () -> service.create(
+                new ParameterData("SIN_CATEGORIA", "10", null, null, null)));
+        verify(parameters, never()).save(any());
+        verifyNoInteractions(audit);
+    }
+
+    @Test
+    void createSavesUppercaseNameAndRecordsIt() {
+        when(parameters.save(any(SystemParameter.class))).thenAnswer(call -> call.getArgument(0));
+        SystemParameter created = service.create(
+                new ParameterData("tarifa_prueba", " 10 ", "Prueba", ParameterCategory.GENERAL, "COP"));
+        assertEquals("TARIFA_PRUEBA", created.getParamName());
+        assertEquals("10", created.getParamValue());
+        assertEquals("COP", created.getUnit());
+        verify(audit).record(5L, AccessLogService.SYSTEM_PARAMETER_CREATED + "TARIFA_PRUEBA - -> 10");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {RoleNames.SECRETARY, RoleNames.SALESPERSON, RoleNames.CEMETERY_ADMIN})
+    void onlyMasterAdminSeesTheParameterScreen(String role) {
+        session.getCurrentUser().orElseThrow().getEmployee().setRole(new Role(2L, role, null));
+        assertThrows(UnauthorizedActionException.class, service::overview);
+        verifyNoInteractions(parameters);
     }
 
     private SystemParameterService transactionalProxy(PlatformTransactionManager transactions) {

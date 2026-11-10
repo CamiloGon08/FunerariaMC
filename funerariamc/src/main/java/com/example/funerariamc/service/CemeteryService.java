@@ -9,7 +9,6 @@ import com.example.funerariamc.model.Client;
 import com.example.funerariamc.model.Deceased;
 import com.example.funerariamc.model.Exhumation;
 import com.example.funerariamc.model.Vault;
-import com.example.funerariamc.model.enums.ClientType;
 import com.example.funerariamc.model.enums.ExhumationDestination;
 import com.example.funerariamc.model.enums.ExhumationReason;
 import com.example.funerariamc.model.enums.NotificationChannel;
@@ -208,7 +207,7 @@ public class CemeteryService {
         if (cemeteries.isEmpty()) {
             return new Screen(cemeteries, null, null);
         }
-        Long chosen = cemeteries.stream().map(Option::id).filter(id -> id.equals(cemeteryId)).findFirst()
+        Long chosen = cemeteries.stream().map(option -> option.id()).filter(id -> id.equals(cemeteryId)).findFirst()
                 .orElse(cemeteries.get(0).id());
         return new Screen(cemeteries, chosen, buildOverview(chosen));
     }
@@ -230,7 +229,7 @@ public class CemeteryService {
             VaultPosition position = VaultPosition.of(row.getCode());
             if (position == null) {
                 // Código sin formato "A-07": se ubica en orden dentro del pabellón General.
-                int number = generalCount.merge(VaultPosition.GENERAL, 1, Integer::sum);
+                int number = generalCount.merge(VaultPosition.GENERAL, 1, (left, right) -> left + right);
                 position = VaultPosition.at(VaultPosition.GENERAL, number);
             }
             WallCell cell = cell(row, position, today);
@@ -243,7 +242,7 @@ public class CemeteryService {
         pavilions.values().forEach(cells -> cells.sort(Comparator.comparingInt(c -> c.position().number())));
         // Primero las que están en mora, luego las que vencen antes.
         attention.sort(Comparator.comparing((Attention a) -> a.state() != VaultState.OVERDUE)
-                .thenComparing(Attention::leaseEnd, Comparator.nullsLast(Comparator.naturalOrder())));
+                .thenComparing(attentionItem -> attentionItem.leaseEnd(), Comparator.nullsLast(Comparator.naturalOrder())));
 
         List<RecentExhumation> exhumations = exhumationRepository
                 .findRecentRows(cemeteryId, PageRequest.of(0, RECENT_EXHUMATIONS)).stream()
@@ -602,7 +601,8 @@ public class CemeteryService {
             events.add(new HistoryEvent(e.getExhumationDate(), "Exhumación de "
                     + fullName(e.getDeceasedName(), e.getDeceasedLastname()) + " · libera la bóveda", false));
         }
-        events.sort(Comparator.comparing(HistoryEvent::date, Comparator.nullsLast(Comparator.reverseOrder())));
+        events.sort(Comparator.comparing((HistoryEvent event) -> event.date(),
+                Comparator.nullsLast(Comparator.reverseOrder())));
         return events;
     }
 
@@ -687,7 +687,7 @@ public class CemeteryService {
 
     private Long currentUserId() {
         return sessionContext.getCurrentUser()
-                .map(AppUser::getId)
+                .map(user -> user.getId())
                 .orElseThrow(UnauthorizedActionException::new);
     }
 }

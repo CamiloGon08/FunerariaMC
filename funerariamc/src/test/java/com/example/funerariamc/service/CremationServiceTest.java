@@ -34,7 +34,6 @@ import com.example.funerariamc.service.CremationService.FurnaceState;
 import com.example.funerariamc.service.CremationService.Kpis;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 
 import java.time.Clock;
 import java.time.LocalDate;

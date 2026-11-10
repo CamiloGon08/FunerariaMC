@@ -6,7 +6,6 @@ import com.example.funerariamc.exception.InsufficientStockException;
 import com.example.funerariamc.exception.InvalidDataException;
 import com.example.funerariamc.exception.ResourceNotFoundException;
 import com.example.funerariamc.exception.UnauthorizedActionException;
-import com.example.funerariamc.model.AppUser;
 import com.example.funerariamc.model.Client;
 import com.example.funerariamc.model.Deceased;
 import com.example.funerariamc.model.Employee;
@@ -194,7 +193,6 @@ public class ContractService {
     private final InventoryItemRepository itemRepository;
     private final StaffOptionRepository staffRepository;
     private final WakeRoomRepository roomRepository;
-    private final WakeRoomService wakeRoomService;
     private final FuneralPlanService planService;
     private final SaleParameters parameters;
     private final AccessLogService accessLogService;
@@ -228,7 +226,6 @@ public class ContractService {
         this.itemRepository = itemRepository;
         this.staffRepository = staffRepository;
         this.roomRepository = roomRepository;
-        this.wakeRoomService = wakeRoomService;
         this.planService = planService;
         this.parameters = parameters;
         this.accessLogService = accessLogService;
@@ -463,7 +460,7 @@ public class ContractService {
             } else {
                 lines.add(new Line(cut(COFFIN_LINE + " · " + coffin.getName()), 1, price, price, coffin.getId()));
             }
-            wanted.merge(coffin.getId(), 1, Integer::sum);
+            wanted.merge(coffin.getId(), 1, (left, right) -> left + right);
         }
 
         if (kind.isService() && data.roomId() != null) {
@@ -494,7 +491,7 @@ public class ContractService {
             BigDecimal price = orZero(item.getUnitPrice());
             lines.add(new Line(cut(item.getName()), product.quantity(), price,
                     price.multiply(BigDecimal.valueOf(product.quantity())), item.getId()));
-            wanted.merge(item.getId(), product.quantity(), Integer::sum);
+            wanted.merge(item.getId(), product.quantity(), (left, right) -> left + right);
         }
 
         // No se agrega una línea sin existencias; se informa lo disponible.
@@ -845,7 +842,7 @@ public class ContractService {
         income.setAmount(amount);
         income.setDescription(description.length() > 150 ? description.substring(0, 150) : description);
         income.setStatus(TransactionStatus.ACTIVE);
-        income.setEmployee(sessionContext.getCurrentUser().map(AppUser::getEmployee).orElse(null));
+        income.setEmployee(sessionContext.getCurrentUser().map(user -> user.getEmployee()).orElse(null));
         transactionRepository.save(income);
     }
 
@@ -876,7 +873,7 @@ public class ContractService {
     }
 
     private static BigDecimal sum(List<Line> lines) {
-        return lines.stream().map(Line::subtotal).reduce(BigDecimal.ZERO, BigDecimal::add);
+        return lines.stream().map(line -> line.subtotal()).reduce(BigDecimal.ZERO, (left, right) -> left.add(right));
     }
 
     private static String cut(String text) {
@@ -934,6 +931,6 @@ public class ContractService {
     }
 
     private Long currentUserId() {
-        return sessionContext.getCurrentUser().map(AppUser::getId).orElseThrow(UnauthorizedActionException::new);
+        return sessionContext.getCurrentUser().map(user -> user.getId()).orElseThrow(UnauthorizedActionException::new);
     }
 }

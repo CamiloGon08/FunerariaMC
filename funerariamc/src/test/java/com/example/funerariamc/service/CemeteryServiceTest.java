@@ -225,10 +225,10 @@ class CemeteryServiceTest {
 
         assertEquals(List.of("A", "B"), List.copyOf(overview.pavilions().keySet()));
         List<CemeteryService.WallCell> a = overview.pavilions().get("A");
-        assertEquals(List.of("A-03", "A-04", "A-11"), a.stream().map(CemeteryService.WallCell::code).toList());
+        assertEquals(List.of("A-03", "A-04", "A-11"), a.stream().map(cell -> cell.code()).toList());
         assertEquals(2, a.get(2).position().level());
         assertEquals(1, a.get(2).position().column());
-        assertEquals(List.of("A-11", "A-04"), overview.attention().stream().map(CemeteryService.Attention::code).toList());
+        assertEquals(List.of("A-11", "A-04"), overview.attention().stream().map(attention -> attention.code()).toList());
         assertEquals("Durán", a.get(1).occupantLastname());
         assertEquals("Martha Cecilia Durán", overview.attention().get(0).holder());
 

@@ -5,7 +5,6 @@ import com.example.funerariamc.exception.InsufficientStockException;
 import com.example.funerariamc.exception.InvalidDataException;
 import com.example.funerariamc.exception.ResourceNotFoundException;
 import com.example.funerariamc.exception.UnauthorizedActionException;
-import com.example.funerariamc.model.AppUser;
 import com.example.funerariamc.model.InventoryItem;
 import com.example.funerariamc.model.InventoryMovement;
 import com.example.funerariamc.model.enums.InventoryCategory;
@@ -233,7 +232,8 @@ public class InventoryService {
                     "Venta N.° %04d".formatted(s.getSaleId()) + (client == null ? "" : " · " + client),
                     null, voided));
         }
-        history.sort(Comparator.comparing(HistoryEntry::date, Comparator.nullsLast(Comparator.reverseOrder())));
+        history.sort(Comparator.comparing((HistoryEntry entry) -> entry.date(),
+                Comparator.nullsLast(Comparator.reverseOrder())));
         return new ItemView(row(item), history.size() > HISTORY_SIZE ? history.subList(0, HISTORY_SIZE) : history);
     }
 
@@ -456,7 +456,7 @@ public class InventoryService {
         movement.setQuantity(quantity);
         movement.setStockAfter(after);
         movement.setReason(reason);
-        movement.setEmployee(sessionContext.getCurrentUser().map(AppUser::getEmployee).orElse(null));
+        movement.setEmployee(sessionContext.getCurrentUser().map(user -> user.getEmployee()).orElse(null));
         movementRepository.save(movement);
     }
 
@@ -515,6 +515,6 @@ public class InventoryService {
     }
 
     private Long currentUserId() {
-        return sessionContext.getCurrentUser().map(AppUser::getId).orElseThrow(UnauthorizedActionException::new);
+        return sessionContext.getCurrentUser().map(user -> user.getId()).orElseThrow(UnauthorizedActionException::new);
     }
 }
