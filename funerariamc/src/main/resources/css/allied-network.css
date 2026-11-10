@@ -1,0 +1,276 @@
+/*
+ * Módulo Red de funerarias aliadas: banda verde con indicadores, buscador con filtros, tarjetas de las
+ * funerarias y panel lateral con el convenio y los pagos. Se carga junto con personal.css (diálogos) y usa
+ * los colores de app.css. Trae su propio formulario "Personal · El Edén" y los colores verdes bajo
+ * .allied-root, así no depende de otro módulo para verse bien.
+ */
+/* ---------- Barra superior ---------- */
+.segmented {
+    -fx-background-color: -color-surface; -fx-background-radius: 12;
+    -fx-padding: 3; -fx-spacing: 2; -fx-alignment: center-left;
+}
+.segment {
+    -fx-background-color: transparent; -fx-text-fill: -color-primary;
+    -fx-background-radius: 10; -fx-padding: 7 14; -fx-font-weight: bold; -fx-font-size: 12.5px;
+    -fx-cursor: hand;
+}
+.segment:hover { -fx-background-color: rgba(250,249,246,0.6); }
+.segment:selected { -fx-background-color: -color-accent; -fx-text-fill: -color-background; }
+.segment-caption { -fx-text-fill: -color-secondary; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 0 4 0 8; }
+
+/* ---------- Aviso corto al guardar ---------- */
+.toast {
+    -fx-background-color: -color-primary; -fx-text-fill: -color-background;
+    -fx-background-radius: 12; -fx-padding: 12 18; -fx-font-size: 13.5px; -fx-font-weight: bold;
+    -fx-effect: dropshadow(gaussian, rgba(24,47,37,0.25), 18, 0, 0, 6);
+}
+
+.drawer-secondary { -fx-background-color: transparent; -fx-text-fill: -color-primary; -fx-border-color: -color-border; }
+.drawer-secondary:hover { -fx-background-color: -color-surface; }
+.drawer-secondary:disabled { -fx-opacity: 0.55; }
+
+/* ---------- Diálogos: formulario "Personal · El Edén" ----------
+   Título musgo, sección en mayúsculas con filete caqui, etiqueta arriba del campo,
+   campos en caja redondeada (borde niebla, foco caqui), deshabilitado en salvia,
+   avisos salvia con ícono y Cancelar (fantasma) a la izquierda de la acción. */
+.form-title {
+    -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif;
+    -fx-font-size: 31px; -fx-text-fill: -color-accent;
+}
+.section-legend { -fx-alignment: center-left; -fx-spacing: 10; }
+.section-title { -fx-text-fill: -color-accent; -fx-font-size: 12px; -fx-font-weight: bold; }
+.section-rule { -fx-background-color: -color-detail; -fx-min-height: 1; -fx-pref-height: 1; -fx-max-height: 1; }
+.form-field { -fx-spacing: 6; }
+.form-field > .field-label { -fx-font-size: 11px; -fx-padding: 0; }
+.form-field > .text-field, .form-field > .date-picker, .form-field > .text-area, .form-combo {
+    -fx-background-color: -color-card; -fx-background-radius: 10;
+    -fx-border-color: -color-border; -fx-border-width: 1; -fx-border-radius: 10;
+    -fx-background-insets: 0; -fx-font-size: 15px;
+}
+.form-field > .text-field { -fx-padding: 9 12; }
+.form-field > .text-field:focused, .form-field > .date-picker:focused, .form-combo:focused,
+.form-field > .date-picker:focus-within, .form-field > .text-area:focused {
+    -fx-border-color: -color-detail; -fx-border-width: 2;
+}
+.form-field > .date-picker > .text-field, .form-field > .date-picker > .text-field:focused,
+.form-combo > .text-field, .form-combo > .text-field:focused {
+    -fx-background-color: transparent; -fx-border-width: 0;
+}
+.form-field > .date-picker > .text-field { -fx-padding: 9 12; }
+.form-field > .date-picker > .arrow-button, .form-combo > .arrow-button { -fx-background-color: transparent; -fx-padding: 0 12 0 8; }
+.form-combo > .arrow-button > .arrow { -fx-background-color: -color-secondary; }
+.form-combo .list-cell { -fx-background-color: transparent; -fx-text-fill: -color-primary; -fx-padding: 9 12; }
+.form-field > .text-area { -fx-padding: 4; }
+.form-field > .text-area .content { -fx-background-color: transparent; -fx-background-radius: 10; }
+.form-field > .text-field:disabled, .form-field > .date-picker:disabled, .form-combo:disabled {
+    -fx-background-color: -color-surface; -fx-opacity: 1;
+}
+.form-combo:disabled .list-cell, .form-field > .text-field:disabled { -fx-text-fill: -color-secondary; }
+.form-body:disabled { -fx-opacity: 1; }
+.note-info, .note-alert { -fx-alignment: top-left; }
+.note-icon { -fx-fill: transparent; -fx-stroke: -color-accent; -fx-stroke-width: 1.4; -fx-stroke-line-cap: round; }
+.note-alert .note-icon { -fx-stroke: -color-error; }
+.form-check-row { -fx-alignment: center-left; -fx-padding: 8 0 0 0; }
+
+/* ---------- Paleta verde oscura, igual que Cementerio e Inventario ----------
+   Banda verde con el título y los indicadores, tarjetas claras sobre fondo salvia,
+   selección en bosque profundo y estados suaves. Todo va bajo .allied-root para no tocar otros módulos. */
+.allied-root {
+    -eden-forest: #1E3A2E;
+    -eden-deep: #0F1F17;
+    -eden-moss: #3E5A3F;
+    -eden-sage: #6B7F67;
+    -eden-linen: #C7CBB8;
+    -eden-card: #FAFBF7;
+    -eden-tint: #EEF0E6;
+    -eden-text: #1E2A22;
+    -eden-muted: #6A7366;
+    -eden-warn: #6E6A45;
+    -eden-warn-bg: #EDEBDD;
+    -eden-alert: #8A4B3C;
+    -eden-alert-bg: #F0E3DC;
+}
+
+/* Banda superior */
+.allied-root .hero-band {
+    -fx-background-color: linear-gradient(to right, #1E3A2E 0%, #3E5A3F 62%, #6B7F67 100%);
+    -fx-background-radius: 26;
+    -fx-padding: 22 26 24 26;
+    -fx-effect: dropshadow(gaussian, rgba(15,31,23,0.22), 24, 0, 0, 8);
+}
+.allied-root .hero-kpi {
+    -fx-background-color: rgba(255,255,255,0.07);
+    -fx-border-color: rgba(255,255,255,0.20); -fx-border-width: 1;
+    -fx-background-radius: 16; -fx-border-radius: 16;
+    -fx-padding: 14 18 14 18; -fx-spacing: 2;
+}
+.allied-root .hero-kpi-caption { -fx-text-fill: rgba(244,245,238,0.88); -fx-font-size: 11px; -fx-font-weight: bold; }
+.allied-root .hero-kpi-value {
+    -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif;
+    -fx-text-fill: #F4F5EE; -fx-font-size: 38px;
+}
+.allied-root .hero-kpi-detail { -fx-text-fill: rgba(244,245,238,0.72); -fx-font-size: 12.5px; }
+/* Tarjeta destacada de la banda: fondo lino claro y texto oscuro, como en la captura aprobada */
+.allied-root .hero-kpi.highlight { -fx-background-color: #ECEEE6; -fx-border-color: #ECEEE6; }
+.allied-root .hero-kpi.highlight .hero-kpi-caption { -fx-text-fill: -eden-text; }
+.allied-root .hero-kpi.highlight .hero-kpi-value { -fx-text-fill: -eden-text; }
+.allied-root .hero-kpi.highlight .hero-kpi-detail { -fx-text-fill: -eden-muted; }
+
+/* Barra de búsqueda y filtros */
+.allied-root .filter-card {
+    -fx-background-color: -eden-card; -fx-border-color: transparent;
+    -fx-background-radius: 18; -fx-border-radius: 18; -fx-padding: 10 12; -fx-spacing: 10;
+    -fx-alignment: center-left;
+}
+.allied-root .search-box { -fx-background-color: -eden-tint; -fx-background-radius: 12; }
+.allied-root .segmented { -fx-background-color: -eden-tint; }
+.allied-root .segment { -fx-text-fill: -eden-text; }
+.allied-root .segment:hover { -fx-background-color: rgba(199,203,184,0.45); }
+.allied-root .segment:selected { -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; }
+.allied-root .segment-caption { -fx-text-fill: -eden-muted; }
+.allied-root .chip-combo { -fx-background-color: -eden-card; -fx-border-color: -eden-linen; -fx-background-radius: 12; -fx-border-radius: 12; -fx-padding: 4 8; }
+.allied-root .primary-button { -fx-background-color: -eden-forest; -fx-background-radius: 12; }
+.allied-root .primary-button:hover { -fx-background-color: -eden-moss; }
+.allied-root .primary-button:pressed { -fx-background-color: -eden-deep; }
+
+/* Tarjetas */
+.allied-root .table-card {
+    -fx-background-color: -eden-card; -fx-border-color: transparent;
+    -fx-background-radius: 22; -fx-border-radius: 22; -fx-padding: 22 24 18 24;
+}
+.allied-root .card-title {
+    -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif;
+    -fx-font-size: 32px; -fx-text-fill: -eden-text;
+}
+.allied-root .card-subtitle { -fx-text-fill: -eden-muted; }
+
+/* Estados suaves */
+.allied-root .state-chip { -fx-background-radius: 999; -fx-padding: 4 11; -fx-font-size: 11.5px; -fx-font-weight: bold; }
+.allied-root .state-ok { -fx-background-color: -eden-tint; -fx-text-fill: -eden-moss; }
+.allied-root .state-warn { -fx-background-color: -eden-warn-bg; -fx-text-fill: -eden-warn; }
+.allied-root .toast { -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; }
+
+
+/* Filas y estados */
+/* Filas de las tablas */
+.allied-root .chip-income { -fx-background-color: -eden-tint; -fx-text-fill: -eden-moss; }
+.allied-root .chip-expense { -fx-background-color: -eden-warn-bg; -fx-text-fill: -eden-warn; }
+.allied-root .chip-voided { -fx-background-color: -eden-alert-bg; -fx-text-fill: -eden-alert; }
+.allied-root .chip-done { -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; }
+.allied-root .amount-income { -fx-text-fill: -eden-moss; -fx-font-size: 13.5px; -fx-font-weight: bold; }
+.allied-root .amount-expense { -fx-text-fill: -eden-alert; -fx-font-size: 13.5px; -fx-font-weight: bold; }
+.allied-root .row-voided .item-row-name, .allied-root .row-voided .amount-income,
+.allied-root .row-voided .amount-expense, .allied-root .row-voided .item-row-text { -fx-strikethrough: true; -fx-opacity: 0.6; }
+.allied-root .row-button {
+    -fx-background-color: -eden-tint; -fx-text-fill: -eden-text; -fx-background-radius: 999;
+    -fx-padding: 6 14; -fx-font-size: 12.5px; -fx-cursor: hand;
+}
+.allied-root .row-button:hover { -fx-background-color: #D5DACB; }
+.allied-root .row-button.strong { -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; -fx-font-weight: bold; }
+.allied-root .row-button.strong:hover { -fx-background-color: -eden-moss; }
+.allied-root .row-button:disabled { -fx-opacity: 0.45; }
+.allied-root .row-hint { -fx-text-fill: -eden-muted; -fx-font-size: 11.5px; }
+.allied-root .state-chip { -fx-background-radius: 999; -fx-padding: 4 11; -fx-font-size: 11.5px; -fx-font-weight: bold; }
+.allied-root .toast { -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; }
+.allied-root .grid-title {
+    -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif;
+    -fx-font-size: 28px; -fx-text-fill: -eden-text;
+}
+.allied-root .grid-subtitle { -fx-text-fill: -eden-muted; -fx-font-size: 13px; }
+.allied-root .empty-board { -fx-text-fill: -eden-muted; -fx-font-size: 14px; -fx-padding: 24 6; }
+.allied-root .table-card {
+    -fx-background-color: -eden-card; -fx-border-color: transparent;
+    -fx-background-radius: 22; -fx-border-radius: 22; -fx-padding: 18 20 14 20;
+}
+.form-segmented { -fx-background-color: #EEF0E6; }
+
+/* ---------- Tarjetas de las funerarias ---------- */
+.allied-root .section-heading {
+    -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif;
+    -fx-font-size: 26px; -fx-text-fill: -eden-text;
+}
+.allied-root .section-count { -fx-text-fill: -eden-muted; -fx-font-size: 12.5px; }
+.allied-root .cards-scroll, .allied-root .cards-scroll > .viewport { -fx-background-color: transparent; -fx-background: transparent; }
+.allied-root .home-card {
+    -fx-background-color: -eden-card; -fx-background-radius: 20; -fx-border-color: #E6E8DE; -fx-border-radius: 20;
+    -fx-padding: 18 18 16 18; -fx-spacing: 12;
+}
+.allied-root .home-card:hover { -fx-border-color: -eden-linen; }
+.allied-root .home-card.selected { -fx-border-color: -eden-forest; -fx-border-width: 1.6; }
+.allied-root .home-card.inactive { -fx-opacity: 0.72; }
+.allied-root .initials {
+    -fx-background-color: -eden-tint; -fx-background-radius: 12; -fx-border-color: #E1E4D8; -fx-border-radius: 12;
+    -fx-min-width: 44; -fx-min-height: 44; -fx-max-width: 44; -fx-max-height: 44; -fx-alignment: center;
+    -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif; -fx-font-size: 18px; -fx-text-fill: -eden-moss;
+}
+.allied-root .home-name {
+    -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif;
+    -fx-font-size: 22px; -fx-text-fill: -eden-text;
+}
+.allied-root .home-city { -fx-text-fill: -eden-muted; -fx-font-size: 12.5px; }
+.allied-root .card-rule { -fx-background-color: #E6E8DE; -fx-min-height: 1; -fx-pref-height: 1; -fx-max-height: 1; }
+.allied-root .info-caption { -fx-text-fill: -eden-muted; -fx-font-size: 12.5px; }
+.allied-root .info-value { -fx-text-fill: -eden-text; -fx-font-size: 12.5px; -fx-font-weight: bold; }
+.allied-root .stat-box { -fx-background-color: -eden-tint; -fx-background-radius: 12; -fx-padding: 10 12; -fx-spacing: 2; }
+.allied-root .stat-caption { -fx-text-fill: -eden-muted; -fx-font-size: 10px; -fx-font-weight: bold; }
+.allied-root .stat-value { -fx-text-fill: -eden-text; -fx-font-size: 17px; -fx-font-weight: bold; }
+.allied-root .stat-value.alert { -fx-text-fill: -eden-alert; }
+.allied-root .card-button {
+    -fx-background-color: transparent; -fx-text-fill: -eden-text; -fx-border-color: #DADDD1; -fx-border-radius: 10;
+    -fx-background-radius: 10; -fx-padding: 8 10; -fx-font-weight: bold; -fx-cursor: hand;
+}
+.allied-root .card-button:hover { -fx-background-color: -eden-tint; }
+.allied-root .card-button.strong { -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; -fx-border-color: -eden-forest; }
+.allied-root .card-button.strong:hover { -fx-background-color: -eden-moss; }
+.allied-root .card-button:disabled { -fx-opacity: 0.45; }
+.allied-root .state-alert { -fx-background-color: -eden-alert-bg; -fx-text-fill: -eden-alert; }
+.allied-root .state-muted { -fx-background-color: #ECEDE7; -fx-text-fill: -eden-muted; }
+.allied-root .state-paid { -fx-background-color: -eden-tint; -fx-text-fill: -eden-moss; }
+.allied-root .kpi-alert { -fx-text-fill: #F2C9BE; }
+.allied-root .hero-kpi.highlight .kpi-alert { -fx-text-fill: -eden-alert; }
+
+/* ---------- Panel lateral de una funeraria ---------- */
+.allied-root .drawer-veil { -fx-background-color: rgba(15,31,23,0.32); }
+.allied-root .drawer {
+    -fx-background-color: #F4F5EF; -fx-background-radius: 22 0 0 22;
+    -fx-effect: dropshadow(gaussian, rgba(15,31,23,0.25), 30, 0, -6, 0);
+}
+.allied-root .drawer-head { -fx-padding: 22 24 12 24; -fx-spacing: 6; }
+.allied-root .drawer-caption { -fx-text-fill: -eden-muted; -fx-font-size: 11px; -fx-font-weight: bold; }
+.allied-root .drawer-name {
+    -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif;
+    -fx-text-fill: -eden-text; -fx-font-size: 32px;
+}
+.allied-root .drawer-sub { -fx-text-fill: -eden-muted; -fx-font-size: 13px; }
+.allied-root .drawer-close {
+    -fx-background-color: -eden-tint; -fx-text-fill: -eden-text; -fx-background-radius: 10;
+    -fx-padding: 4 10; -fx-font-size: 15px; -fx-cursor: hand;
+}
+.allied-root .drawer-close:hover { -fx-background-color: #D5DACB; }
+.allied-root .drawer-scroll, .allied-root .drawer-scroll > .viewport { -fx-background-color: transparent; -fx-background: transparent; }
+.allied-root .drawer-body { -fx-padding: 4 24 16 24; }
+.allied-root .drawer-section-title { -fx-text-fill: -eden-muted; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 6 0 0 0; }
+.allied-root .drawer-box { -fx-background-color: -eden-tint; -fx-background-radius: 14; -fx-padding: 12 14; -fx-spacing: 8; }
+.allied-root .payment-row { -fx-padding: 8 0; -fx-spacing: 10; -fx-alignment: center-left; -fx-border-color: transparent transparent #E3E6DA transparent; }
+.allied-root .payment-amount { -fx-text-fill: -eden-text; -fx-font-size: 14px; -fx-font-weight: bold; }
+.allied-root .payment-amount.voided { -fx-strikethrough: true; -fx-text-fill: -eden-muted; }
+.allied-root .payment-sub { -fx-text-fill: -eden-muted; -fx-font-size: 12px; }
+.allied-root .link-button {
+    -fx-background-color: transparent; -fx-text-fill: -eden-moss; -fx-padding: 2 6; -fx-font-size: 12px;
+    -fx-font-weight: bold; -fx-cursor: hand; -fx-underline: true;
+}
+.allied-root .link-button.danger { -fx-text-fill: -eden-alert; }
+.allied-root .balance-box { -fx-background-color: -eden-tint; -fx-background-radius: 14; -fx-padding: 12 16; -fx-alignment: center-left; }
+.allied-root .balance-value { -fx-text-fill: -eden-text; -fx-font-size: 26px; -fx-font-weight: bold; }
+.allied-root .balance-value.alert { -fx-text-fill: -eden-alert; }
+.allied-root .drawer-footer { -fx-padding: 12 24 22 24; -fx-alignment: center; }
+.allied-root .drawer-button {
+    -fx-background-color: -eden-card; -fx-text-fill: -eden-text; -fx-border-color: #DADDD1; -fx-border-radius: 10;
+    -fx-background-radius: 10; -fx-padding: 10 12; -fx-font-weight: bold; -fx-cursor: hand;
+}
+.allied-root .drawer-button:hover { -fx-background-color: -eden-tint; }
+.allied-root .drawer-button.danger { -fx-text-fill: -eden-alert; -fx-border-color: -eden-alert; }
+.allied-root .drawer-button.danger:hover { -fx-background-color: -eden-alert-bg; }
+.allied-root .drawer-button.strong { -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; -fx-border-color: -eden-forest; }
+.allied-root .drawer-button.strong:hover { -fx-background-color: -eden-moss; }
+.allied-root .drawer-button:disabled { -fx-opacity: 0.45; }
