@@ -107,6 +107,11 @@ public final class AccessLogLabels {
             Map.entry(AccessLogService.CREMATION_PURCHASE_RECEIVED, "Compra de cremaciones recibida "),
             Map.entry(AccessLogService.CREMATION_PURCHASE_CANCELLED, "Compra de cremaciones anulada "));
 
+    /** Parámetros del sistema: guardan el nombre del parámetro, el valor anterior y el nuevo ("PLAN_WAITING_DAYS 62 -> 45"). */
+    private static final Map<String, String> PARAMETER_ACTIONS = Map.of(
+            AccessLogService.SYSTEM_PARAMETER_UPDATED, "Cambio del parámetro ",
+            AccessLogService.SYSTEM_PARAMETER_CREATED, "Creación del parámetro ");
+
     /** Tipos de venta que se guardan en inglés después del número. */
     private static final Map<String, String> SALE_KINDS = Map.of(
             "PLAN", "· contrato con plan",
@@ -162,6 +167,19 @@ public final class AccessLogLabels {
                 return entry.getValue() + saleDetails(action.substring(entry.getKey().length()).trim());
             }
         }
+        for (Map.Entry<String, String> entry : PARAMETER_ACTIONS.entrySet()) {
+            if (action.startsWith(entry.getKey())) {
+                return entry.getValue() + parameterDetails(action.substring(entry.getKey().length()).trim());
+            }
+        }
+        String finance = financeDetails(action);
+        if (finance != null) {
+            return finance;
+        }
+        String allied = alliedDetails(action);
+        if (allied != null) {
+            return allied;
+        }
         for (Map.Entry<String, String> entry : TRANSPORT_ACTIONS.entrySet()) {
             if (action.startsWith(entry.getKey())) {
                 return entry.getValue() + action.substring(entry.getKey().length()).trim();
@@ -188,6 +206,103 @@ public final class AccessLogLabels {
             }
         }
         return result.toString();
+    }
+
+    /**
+     * "PLAN_WAITING_DAYS 62 -> 45" pasa a "Período de carencia: de 62 a 45"; si el valor anterior es "-",
+     * "Precio del ataúd básico del plan: 1200000". Los nombres que no están en el catálogo se dejan igual.
+     */
+    private static String parameterDetails(String text) {
+        int space = text.indexOf(' ');
+        String name = space < 0 ? text : text.substring(0, space);
+        String title = com.example.funerariamc.service.ParameterCatalog.find(name)
+                .map(com.example.funerariamc.service.ParameterCatalog.Definition::title).orElse(name);
+        if (space < 0) {
+            return title;
+        }
+        String[] values = text.substring(space + 1).split(" -> ", 2);
+        if (values.length < 2) {
+            return title + " " + text.substring(space + 1);
+        }
+        return "-".equals(values[0]) ? title + ": " + values[1] : title + ": de " + values[0] + " a " + values[1];
+    }
+
+    /**
+     * Finanzas: "MV-0012 INCOME 150000.00" pasa a "Registro del movimiento MV-0012 · ingreso · $ 150.000";
+     * la comisión guarda mes, documento y valor; la exportación, formato y fechas. Devuelve null si no es de Finanzas.
+     */
+    private static String financeDetails(String action) {
+        if (action.startsWith(AccessLogService.FINANCIAL_TRANSACTION_REGISTERED)) {
+            String[] parts = action.substring(AccessLogService.FINANCIAL_TRANSACTION_REGISTERED.length()).trim().split(" ");
+            StringBuilder text = new StringBuilder("Registro del movimiento ").append(parts[0]);
+            if (parts.length > 1) {
+                text.append(" · ").append("EXPENSE".equals(parts[1]) ? "egreso" : "ingreso");
+            }
+            if (parts.length > 2) {
+                text.append(money(parts[2]));
+            }
+            return text.toString();
+        }
+        if (action.startsWith(AccessLogService.FINANCIAL_TRANSACTION_VOIDED)) {
+            return "Anulación del movimiento " + action.substring(AccessLogService.FINANCIAL_TRANSACTION_VOIDED.length()).trim();
+        }
+        if (action.startsWith(AccessLogService.COMMISSION_REGISTERED)) {
+            String[] parts = action.substring(AccessLogService.COMMISSION_REGISTERED.length()).trim().split(" ");
+            if (parts.length < 3) {
+                return "Comisión registrada " + String.join(" ", parts);
+            }
+            return "Comisión de " + parts[0] + " del empleado con documento " + parts[1] + money(parts[2]);
+        }
+        if (action.startsWith(AccessLogService.FINANCIAL_REPORT_EXPORTED)) {
+            String[] parts = action.substring(AccessLogService.FINANCIAL_REPORT_EXPORTED.length()).trim().split(" ");
+            String format = parts[0].equals("EXCEL") ? "Excel" : parts[0];
+            return parts.length < 3 ? "Exportación del resumen financiero en " + format
+                    : "Exportación del resumen financiero en " + format + " del " + parts[1] + " al " + parts[2];
+        }
+        if (action.startsWith(AccessLogService.ANALYTICS_REPORT_EXPORTED)) {
+            String[] parts = action.substring(AccessLogService.ANALYTICS_REPORT_EXPORTED.length()).trim().split(" ");
+            return parts.length < 2 ? "Exportación del panel de análisis"
+                    : "Exportación del panel de análisis del " + parts[0] + " al " + parts[1];
+        }
+        return null;
+    }
+
+    /** Funerarias aliadas: guardan el NIT y, en los pagos, el contrato o el egreso y el valor. Null si no es de la red. */
+    private static String alliedDetails(String action) {
+        String[][] homes = {
+                {AccessLogService.ALLIED_HOME_REGISTERED, "Registro de la funeraria aliada con NIT "},
+                {AccessLogService.ALLIED_HOME_UPDATED, "Actualización de la funeraria aliada con NIT "},
+                {AccessLogService.ALLIED_HOME_DEACTIVATED, "Desactivación del convenio con la funeraria aliada con NIT "},
+                {AccessLogService.ALLIED_HOME_ACTIVATED, "Activación del convenio con la funeraria aliada con NIT "}};
+        for (String[] home : homes) {
+            if (action.startsWith(home[0])) {
+                return home[1] + action.substring(home[0].length()).trim();
+            }
+        }
+        String[][] payments = {
+                {AccessLogService.ALLIED_PAYMENT_REGISTERED, "Pago pendiente registrado a la funeraria aliada con NIT ", "contrato "},
+                {AccessLogService.ALLIED_PAYMENT_PAID, "Pago a la funeraria aliada con NIT ", "pagado, egreso "},
+                {AccessLogService.ALLIED_PAYMENT_VOIDED, "Pago anulado a la funeraria aliada con NIT ", ""}};
+        for (String[] payment : payments) {
+            if (action.startsWith(payment[0])) {
+                String[] parts = action.substring(payment[0].length()).trim().split(" ");
+                StringBuilder text = new StringBuilder(payment[1]).append(parts[0]);
+                for (int i = 1; i < parts.length; i++) {
+                    text.append(i == parts.length - 1 ? money(parts[i]) : " · " + payment[2] + parts[i]);
+                }
+                return text.toString();
+            }
+        }
+        return null;
+    }
+
+    /** " · $ 150.000" a partir de "150000.00"; si no es un número se deja tal cual. */
+    private static String money(String value) {
+        if (!value.matches("\\d+(\\.\\d+)?")) {
+            return " " + value;
+        }
+        java.math.BigDecimal amount = new java.math.BigDecimal(value).setScale(0, java.math.RoundingMode.HALF_UP);
+        return " · $ " + java.text.NumberFormat.getIntegerInstance(Locale.forLanguageTag("es-CO")).format(amount);
     }
 
     /** "IN-0012 EXIT 3" pasa a "Salida de 3 unidades del artículo IN-0012". */

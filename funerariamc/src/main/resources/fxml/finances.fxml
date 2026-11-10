@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.MenuButton?>
+<?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.ToggleButton?>
+<?import javafx.scene.control.ToggleGroup?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.shape.SVGPath?>
+
+<!--
+  Módulo Finanzas: banda verde con 4 indicadores, pestañas Resumen / Movimientos / Comisiones y
+  selector de período (Semana, Mes, Trimestre, Año o Rango con flechas para moverse).
+  Resumen (solo el Administrador Maestro): gráficas de flujo, ingresos por origen, balance por mes y
+  comisiones, con exportación a PDF o Excel. Se refresca cada 60 s si el período incluye hoy.
+  Se muestra dentro del contentPane de main.fxml. El menú la guarda abierta (RefreshableView).
+-->
+<StackPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+           fx:id="root" fx:controller="com.example.funerariamc.controller.FinancesController"
+           styleClass="personal-root,finances-root" stylesheets="@../css/personal.css, @../css/finances.css">
+
+    <fx:define>
+        <ToggleGroup fx:id="tabGroup"/>
+        <ToggleGroup fx:id="rangeGroup"/>
+        <ToggleGroup fx:id="typeGroup"/>
+    </fx:define>
+
+    <VBox spacing="16">
+        <!-- Banda verde: arriba el encabezado del menú (MainController lo pone en #heroHeaderSlot) -->
+        <VBox styleClass="hero-band" spacing="18">
+            <StackPane id="heroHeaderSlot" alignment="TOP_LEFT"/>
+            <HBox spacing="16">
+                <VBox fx:id="kpi1" styleClass="hero-kpi,highlight" HBox.hgrow="ALWAYS" prefWidth="0">
+                    <Label fx:id="kpi1Caption" styleClass="hero-kpi-caption"/>
+                    <Label fx:id="kpi1Value" text="—" styleClass="hero-kpi-value"/>
+                    <Label fx:id="kpi1Detail" styleClass="hero-kpi-detail"/>
+                </VBox>
+                <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
+                    <Label fx:id="kpi2Caption" styleClass="hero-kpi-caption"/>
+                    <Label fx:id="kpi2Value" text="—" styleClass="hero-kpi-value"/>
+                    <Label fx:id="kpi2Detail" styleClass="hero-kpi-detail"/>
+                </VBox>
+                <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
+                    <Label fx:id="kpi3Caption" styleClass="hero-kpi-caption"/>
+                    <Label fx:id="kpi3Value" text="—" styleClass="hero-kpi-value"/>
+                    <Label fx:id="kpi3Detail" styleClass="hero-kpi-detail"/>
+                </VBox>
+                <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
+                    <Label fx:id="kpi4Caption" styleClass="hero-kpi-caption"/>
+                    <Label fx:id="kpi4Value" text="—" styleClass="hero-kpi-value"/>
+                    <Label fx:id="kpi4Detail" styleClass="hero-kpi-detail"/>
+                </VBox>
+            </HBox>
+        </VBox>
+
+        <!-- Pestañas, período y Exportar -->
+        <HBox styleClass="filter-card">
+            <HBox styleClass="segmented" minWidth="-Infinity">
+                <ToggleButton fx:id="summaryTab" text="Resumen" toggleGroup="$tabGroup" styleClass="segment"/>
+                <ToggleButton fx:id="movementsTab" text="Movimientos" toggleGroup="$tabGroup" styleClass="segment"/>
+                <ToggleButton fx:id="commissionsTab" text="Comisiones" toggleGroup="$tabGroup" styleClass="segment"/>
+            </HBox>
+            <HBox fx:id="rangeBar" styleClass="segmented" minWidth="-Infinity">
+                <ToggleButton fx:id="weekRange" text="Semana" toggleGroup="$rangeGroup" styleClass="segment"/>
+                <ToggleButton fx:id="monthRange" text="Mes" toggleGroup="$rangeGroup" styleClass="segment" selected="true"/>
+                <ToggleButton fx:id="quarterRange" text="Trimestre" toggleGroup="$rangeGroup" styleClass="segment"/>
+                <ToggleButton fx:id="yearRange" text="Año" toggleGroup="$rangeGroup" styleClass="segment"/>
+                <ToggleButton fx:id="customRange" text="Rango" toggleGroup="$rangeGroup" styleClass="segment"/>
+            </HBox>
+            <HBox spacing="6" alignment="CENTER_LEFT" minWidth="-Infinity">
+                <Button fx:id="previousButton" onAction="#onPrevious" styleClass="period-arrow" text="‹"/>
+                <VBox fx:id="periodBox" styleClass="period-box" onMouseClicked="#onPickRange">
+                    <Label text="PERÍODO" styleClass="period-caption"/>
+                    <Label fx:id="periodLabel" styleClass="period-value"/>
+                </VBox>
+                <Button fx:id="nextButton" onAction="#onNext" styleClass="period-arrow" text="›"/>
+            </HBox>
+            <Region HBox.hgrow="ALWAYS"/>
+            <MenuButton fx:id="exportButton" text="Exportar" styleClass="primary-menu" minWidth="-Infinity">
+                <items>
+                    <MenuItem text="Resumen en PDF" onAction="#onExportPdf"/>
+                    <MenuItem text="Resumen en Excel" onAction="#onExportExcel"/>
+                </items>
+            </MenuButton>
+        </HBox>
+
+        <StackPane VBox.vgrow="ALWAYS">
+            <!-- Resumen: gráficas -->
+            <ScrollPane fx:id="summaryPane" fitToWidth="true" hbarPolicy="NEVER" styleClass="card-scroll">
+                <VBox fx:id="summaryContent" spacing="16" styleClass="scroll-content"/>
+            </ScrollPane>
+
+            <!-- Movimientos: buscador, filtro, registrar y tabla -->
+            <VBox fx:id="movementsPane" styleClass="table-card" spacing="12" visible="false">
+                <HBox spacing="10" alignment="CENTER_LEFT">
+                    <VBox spacing="2" HBox.hgrow="ALWAYS" minWidth="160">
+                        <Label text="Movimientos" styleClass="grid-title"/>
+                        <Label fx:id="movementsCount" styleClass="grid-subtitle" wrapText="true" minHeight="-Infinity"/>
+                    </VBox>
+                    <HBox styleClass="search-box" minWidth="220" prefWidth="280">
+                        <SVGPath content="M7 1.5a5.5 5.5 0 1 1 0 11a5.5 5.5 0 0 1 0-11z M11.2 11.2 L15 15" styleClass="search-icon"/>
+                        <TextField fx:id="searchField" promptText="Buscar descripción o código" HBox.hgrow="ALWAYS"/>
+                    </HBox>
+                    <HBox styleClass="segmented" minWidth="-Infinity">
+                        <ToggleButton fx:id="allType" text="Todos" toggleGroup="$typeGroup" selected="true" styleClass="segment"/>
+                        <ToggleButton fx:id="incomeType" text="Ingresos" toggleGroup="$typeGroup" styleClass="segment"/>
+                        <ToggleButton fx:id="expenseType" text="Egresos" toggleGroup="$typeGroup" styleClass="segment"/>
+                        <ToggleButton fx:id="voidedType" text="Anulados" toggleGroup="$typeGroup" styleClass="segment"/>
+                    </HBox>
+                    <Button text="+  Registrar movimiento" onAction="#onNewMovement" styleClass="primary-button" minWidth="-Infinity"/>
+                </HBox>
+                <HBox fx:id="movementsHead" styleClass="table-head"/>
+                <StackPane VBox.vgrow="ALWAYS">
+                    <ListView fx:id="movementsList" styleClass="items-list"/>
+                    <Label fx:id="movementsEmpty" styleClass="empty-board" wrapText="true" StackPane.alignment="TOP_LEFT"
+                           visible="false" mouseTransparent="true"/>
+                </StackPane>
+            </VBox>
+
+            <!-- Comisiones del mes -->
+            <VBox fx:id="commissionsPane" styleClass="table-card" spacing="12" visible="false">
+                <HBox spacing="10" alignment="CENTER_LEFT">
+                    <VBox spacing="2" HBox.hgrow="ALWAYS" minWidth="160">
+                        <Label fx:id="commissionsTitle" text="Comisiones" styleClass="grid-title"/>
+                        <Label fx:id="commissionsCount" styleClass="grid-subtitle" wrapText="true" minHeight="-Infinity"/>
+                    </VBox>
+                    <Button onAction="#onPreviousMonth" styleClass="period-arrow" text="‹"/>
+                    <Label fx:id="commissionMonth" styleClass="month-label"/>
+                    <Button fx:id="nextMonthButton" onAction="#onNextMonth" styleClass="period-arrow" text="›"/>
+                </HBox>
+                <HBox fx:id="commissionNote" styleClass="notice">
+                    <SVGPath content="M8 1a7 7 0 1 1 0 14A7 7 0 0 1 8 1z M8 7v4.5 M8 4.6v.2" styleClass="notice-icon"/>
+                    <Label fx:id="commissionNoteText" styleClass="notice-text" wrapText="true" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+                </HBox>
+                <HBox fx:id="commissionsHead" styleClass="table-head"/>
+                <StackPane VBox.vgrow="ALWAYS">
+                    <ListView fx:id="commissionsList" styleClass="items-list"/>
+                    <Label fx:id="commissionsEmpty" styleClass="empty-board" wrapText="true" StackPane.alignment="TOP_LEFT"
+                           visible="false" mouseTransparent="true"/>
+                </StackPane>
+            </VBox>
+        </StackPane>
+    </VBox>
+
+    <!-- Aviso corto al guardar; se desvanece solo -->
+    <Label fx:id="toast" styleClass="toast" StackPane.alignment="BOTTOM_LEFT" wrapText="true" maxWidth="420">
+        <StackPane.margin>
+            <Insets bottom="24" left="24"/>
+        </StackPane.margin>
+    </Label>
+</StackPane>

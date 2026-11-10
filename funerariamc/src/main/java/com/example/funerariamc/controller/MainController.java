@@ -5,6 +5,7 @@ import com.example.funerariamc.exception.BusinessException;
 import com.example.funerariamc.model.AppUser;
 import com.example.funerariamc.model.Employee;
 import com.example.funerariamc.model.enums.Sex;
+import com.example.funerariamc.service.AccessLogService;
 import com.example.funerariamc.service.AppModule;
 import com.example.funerariamc.service.AuthService;
 import com.example.funerariamc.service.RoleNames;
@@ -27,8 +28,11 @@ import javafx.scene.layout.VBox;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.EnumMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -88,6 +92,9 @@ public class MainController {
     private VBox financeItems;
     /** Pantallas ya abiertas en esta sesión; al cerrar sesión se descartan con este controlador. */
     private final Map<AppModule, FxmlViewLoader.View<Object>> openViews = new EnumMap<>(AppModule.class);
+    private static final DateTimeFormatter HOME_DATE =
+            DateTimeFormatter.ofPattern("EEEE d 'de' MMMM · HH:mm", Locale.forLanguageTag("es-CO"));
+    private FxmlViewLoader.View<Object> homeView;
     /** Módulo que se está viendo, para no cerrar otro si falla la bitácora de uno anterior. */
     private AppModule currentModule;
 
@@ -215,7 +222,15 @@ public class MainController {
             Map.entry(AppModule.INVENTARIO, new ModuleScreen(AppModule.INVENTARIO.getLabel(),
                     "Cada artículo con su foto para reconocerlo rápido. El sistema alerta cuando llega al nivel mínimo", FxmlViewLoader.INVENTORY)),
             Map.entry(AppModule.CREMACIONES, new ModuleScreen(AppModule.CREMACIONES.getLabel(),
-                    "Estado de los hornos o proveedores, cremaciones del día y lotes programados, con control de la Fiscalía", FxmlViewLoader.CREMATIONS)));
+                    "Estado de los hornos o proveedores, cremaciones del día y lotes programados, con control de la Fiscalía", FxmlViewLoader.CREMATIONS)),
+            Map.entry(AppModule.PARAMETROS, new ModuleScreen(AppModule.PARAMETROS.getLabel(),
+                    "Valores que usan los cálculos, por tema. Solo los cambia el Administrador Maestro", FxmlViewLoader.PARAMETERS)),
+            Map.entry(AppModule.FINANZAS, new ModuleScreen("Resumen financiero",
+                    "Ingresos, egresos y comisiones del período. Los movimientos se anulan, nunca se borran", FxmlViewLoader.FINANCES)),
+            Map.entry(AppModule.RED_ALIADAS, new ModuleScreen(AppModule.RED_ALIADAS.getLabel(),
+                    "Funerarias con convenio, servicios que nos prestan y saldos por pagar", FxmlViewLoader.ALLIED_NETWORK)),
+            Map.entry(AppModule.ANALISIS, new ModuleScreen(AppModule.ANALISIS.getLabel(),
+                    "Solo lectura. Ventas, ocupación y equipo del período", FxmlViewLoader.ANALYTICS)));
 
     /**
      * El permiso se revisa en memoria y la pantalla se muestra al instante; la entrada de la
@@ -282,8 +297,29 @@ public class MainController {
     private void onHome() {
         currentModule = null;
         sidebarAnimator.markActive(homePill);
-        showMessage("Hola, " + firstName(sessionContext.getDisplayName()),
-                "Seleccione un módulo en el menú de la izquierda.");
+        String greeting = "Hola, " + firstName(sessionContext.getDisplayName());
+        if (!seesHomeBoard()) {
+            showMessage(greeting, "Seleccione un módulo en el menú de la izquierda.");
+            return;
+        }
+        // El Administrador Maestro y la Secretaría ven el resumen del día; se arma una sola vez y se refresca.
+        if (homeView == null) {
+            homeView = viewLoader.loadView(FxmlViewLoader.HOME);
+        } else if (homeView.controller() instanceof RefreshableView refreshable) {
+            refreshable.refresh();
+        }
+        String today = clean(LocalDateTime.now(AccessLogService.APP_ZONE).format(HOME_DATE));
+        showContent(greeting, today + " · así va la funeraria en este momento", homeView.root());
+    }
+
+    private boolean seesHomeBoard() {
+        return sessionContext.getRoleName()
+                .map(role -> RoleNames.MASTER_ADMIN.equals(role) || RoleNames.SECRETARY.equals(role)).orElse(false);
+    }
+
+    /** "Domingo 8 de noviembre · 10:30": primera letra en mayúscula y sin el punto que agrega Java. */
+    private static String clean(String text) {
+        return text.isEmpty() ? text : Character.toUpperCase(text.charAt(0)) + text.substring(1);
     }
 
     @FXML

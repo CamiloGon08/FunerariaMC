@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+
+<!--
+  Inicio (Administrador Maestro y Secretaría): banda verde con lo que pasa ahora, salas del momento,
+  alertas y servicios y salidas de hoy. Se refresca cada 60 segundos mientras está a la vista.
+  Se muestra dentro del contentPane de main.fxml (RefreshableView).
+-->
+<StackPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+           fx:id="root" fx:controller="com.example.funerariamc.controller.HomeController"
+           styleClass="personal-root,home-root" stylesheets="@../css/personal.css, @../css/home.css">
+
+    <VBox spacing="16">
+        <!-- Banda verde: arriba el encabezado del menú (MainController lo pone en #heroHeaderSlot) -->
+        <VBox styleClass="hero-band" spacing="16">
+            <StackPane id="heroHeaderSlot" alignment="TOP_LEFT"/>
+            <HBox>
+                <Label fx:id="liveLabel" styleClass="live-chip" text="En vivo"/>
+            </HBox>
+            <HBox fx:id="kpiRow" spacing="16"/>
+        </VBox>
+
+        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="card-scroll" VBox.vgrow="ALWAYS">
+            <VBox fx:id="content" spacing="16" styleClass="scroll-content"/>
+        </ScrollPane>
+    </VBox>
+</StackPane>

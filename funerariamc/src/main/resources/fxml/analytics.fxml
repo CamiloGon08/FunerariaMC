@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.ToggleButton?>
+<?import javafx.scene.control.ToggleGroup?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+
+<!--
+  Panel de análisis (solo el Administrador Maestro, solo lectura): banda verde con 5 indicadores,
+  pestañas Ventas y servicios / Ocupación / Equipo, período (7 días, Mes o Año con flechas) y
+  exportación a PDF. Se muestra dentro del contentPane de main.fxml (RefreshableView).
+-->
+<StackPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+           fx:id="root" fx:controller="com.example.funerariamc.controller.AnalyticsController"
+           styleClass="personal-root,analytics-root" stylesheets="@../css/personal.css, @../css/analytics.css">
+
+    <fx:define>
+        <ToggleGroup fx:id="tabGroup"/>
+        <ToggleGroup fx:id="rangeGroup"/>
+    </fx:define>
+
+    <VBox spacing="16">
+        <VBox styleClass="hero-band" spacing="18">
+            <StackPane id="heroHeaderSlot" alignment="TOP_LEFT"/>
+            <HBox fx:id="kpiRow" spacing="16"/>
+        </VBox>
+
+        <HBox styleClass="filter-card">
+            <HBox styleClass="segmented" minWidth="-Infinity">
+                <ToggleButton fx:id="salesTab" text="Ventas y servicios" toggleGroup="$tabGroup" selected="true" styleClass="segment"/>
+                <ToggleButton fx:id="occupancyTab" text="Ocupación" toggleGroup="$tabGroup" styleClass="segment"/>
+                <ToggleButton fx:id="teamTab" text="Equipo" toggleGroup="$tabGroup" styleClass="segment"/>
+            </HBox>
+            <HBox styleClass="segmented" minWidth="-Infinity">
+                <ToggleButton fx:id="weekRange" text="7 días" toggleGroup="$rangeGroup" styleClass="segment"/>
+                <ToggleButton fx:id="monthRange" text="Mes" toggleGroup="$rangeGroup" selected="true" styleClass="segment"/>
+                <ToggleButton fx:id="yearRange" text="Año" toggleGroup="$rangeGroup" styleClass="segment"/>
+            </HBox>
+            <HBox spacing="6" alignment="CENTER_LEFT" minWidth="-Infinity">
+                <Button fx:id="previousButton" onAction="#onPrevious" styleClass="period-arrow" text="‹"/>
+                <VBox styleClass="period-box">
+                    <Label text="PERÍODO" styleClass="period-caption"/>
+                    <Label fx:id="periodLabel" styleClass="period-value"/>
+                </VBox>
+                <Button fx:id="nextButton" onAction="#onNext" styleClass="period-arrow" text="›"/>
+            </HBox>
+            <Label text="Solo lectura" styleClass="readonly-chip" minWidth="-Infinity"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Button fx:id="exportButton" text="Exportar PDF" onAction="#onExport" styleClass="primary-button" minWidth="-Infinity"/>
+        </HBox>
+
+        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="card-scroll" VBox.vgrow="ALWAYS">
+            <VBox fx:id="content" spacing="16" styleClass="scroll-content"/>
+        </ScrollPane>
+    </VBox>
+
+    <Label fx:id="toast" styleClass="toast" StackPane.alignment="BOTTOM_LEFT" wrapText="true" maxWidth="420">
+        <StackPane.margin>
+            <Insets bottom="24" left="24"/>
+        </StackPane.margin>
+    </Label>
+</StackPane>
