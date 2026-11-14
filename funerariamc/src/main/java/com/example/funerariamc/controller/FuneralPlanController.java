@@ -72,6 +72,7 @@ import javafx.scene.layout.VBox;
 import javafx.scene.shape.Arc;
 import javafx.scene.shape.ArcType;
 import javafx.scene.shape.Circle;
+import javafx.scene.shape.SVGPath;
 import javafx.stage.Window;
 import javafx.util.Duration;
 import javafx.util.StringConverter;
@@ -88,12 +89,11 @@ import java.util.Locale;
 import java.util.function.Function;
 
 /**
- * Pantalla Planes exequiales (propuesta P-15 / P-15.1): recaudo del mes, indicadores, gráfica de
+ * Pantalla Planes exequiales: recaudo del mes, indicadores, gráfica de
  * recaudo contra lo esperado, planes por tipo, carencias que terminan pronto y tarjetas de
  * afiliados que se agregan al desplazar (sin paginación). El panel lateral muestra la
  * cuadrícula de cuotas, beneficiarios, pagos y servicios usados, y desde él se registra o anula
- * una cuota, se agrega un beneficiario (RF-PLA-02), se suspende, cancela o cambia el titular
- * (RF-PLA-04). Afiliar plan es RF-PLA-01.
+ * una cuota, se agrega un beneficiario, se suspende, cancela o cambia el titular.
  */
 @Component
 @Scope("prototype")
@@ -549,7 +549,7 @@ public class FuneralPlanController implements RefreshableView {
         return pill("Al día", "status-active");
     }
 
-    // ---------- panel del plan (P-15.1) ----------
+    // ---------- panel del plan ----------
 
     /**
      * Abre el panel al instante: con el plan si ya está guardado, o con el titular de la tarjeta y
@@ -681,7 +681,7 @@ public class FuneralPlanController implements RefreshableView {
         drawerBody.getChildren().setAll(header, pills);
         if (d.holderDeceased()) {
             drawerBody.getChildren().add(band("El titular falleció: asigne un nuevo titular para que el plan siga "
-                    + "vigente (RF-PLA-04).", "band-warning"));
+                    + "vigente.", "band-warning"));
         }
         drawerBody.getChildren().addAll(
                 titled("CUOTAS · ÚLTIMOS 12 MESES", monthGrid(d)),
@@ -703,7 +703,7 @@ public class FuneralPlanController implements RefreshableView {
                         () -> planService.suspend(c.id()));
             }
         });
-        // "Más" abre un menú con las acciones menos frecuentes (RF-PLA-04).
+        // "Más" abre un menú con las acciones menos frecuentes.
         Button more = drawerButton("Más…", "drawer-secondary");
         MenuItem holder = new MenuItem("Cambiar titular");
         holder.setOnAction(e -> openChangeHolderDialog(c));
@@ -782,7 +782,7 @@ public class FuneralPlanController implements RefreshableView {
         }
         if (d.totalSurcharge().signum() > 0) {
             list.getChildren().add(wrapped("Recargos: " + ClientController.pesos(d.totalSurcharge())
-                    + ", se cobran una vez al vender el servicio (RN-09, RN-10).", "card-subtitle"));
+                    + ", se cobran una vez al vender el servicio.", "card-subtitle"));
         }
         return new VBox(8, head, list);
     }
@@ -863,13 +863,18 @@ public class FuneralPlanController implements RefreshableView {
         TextField clientSearch = searchInput("Buscar cliente por nombre o documento");
         ComboBox<Option> clientBox = optionCombo("Seleccione el titular");
         bindSearch(clientSearch, clientBox, planService::searchClients);
+        // Dos planes: el normal cubre los servicios esenciales; el premium da un ataúd y una sala más grandes.
         ComboBox<String> name = new ComboBox<>();
-        name.setEditable(true);
-        name.getItems().setAll(overview == null || overview.planNames().isEmpty()
-                ? List.of("Plan Familiar", "Plan Individual", "Plan Empresarial") : overview.planNames());
-        name.setPromptText("Ej. Plan Familiar");
+        name.getItems().setAll(PlanParameters.PLAN_NAMES);
+        name.setValue(PlanParameters.NORMAL_PLAN);
         name.getStyleClass().add("form-combo");
         name.setMaxWidth(Double.MAX_VALUE);
+        Label typeHint = wrapped("", "dialog-hint");
+        Runnable updateType = () -> typeHint.setText(PlanParameters.isPremium(name.getValue())
+                ? "Permite escoger un ataúd más grande y una sala más grande."
+                : "Cubre los servicios esenciales de la funeraria.");
+        name.valueProperty().addListener((obs, old, value) -> updateType.run());
+        updateType.run();
         TextField fee = new TextField();
         fee.setPromptText("Ej. 52.000");
         DatePicker start = new DatePicker(LocalDate.now(AccessLogService.APP_ZONE));
@@ -877,23 +882,55 @@ public class FuneralPlanController implements RefreshableView {
         Runnable updateHint = () -> hint.setText(start.getValue() == null ? "Ingrese la fecha de inicio."
                 : "Carencia: cubre servicios desde el "
                 + DATE.format(start.getValue().plusDays(overview == null ? 0 : overview.waitingDays()))
-                + " (RN-08).");
+                + ".");
         start.valueProperty().addListener((obs, old, value) -> updateHint.run());
         updateHint.run();
 
         Form form = new Form()
                 .section(null, 2)
                 .wide("CLIENTE TITULAR *", new VBox(6, clientSearch, clientBox))
-                .field("NOMBRE DEL PLAN *", name)
+                .field("TIPO DE PLAN *", new VBox(4, name, typeHint))
                 .field("CUOTA MENSUAL (COP) *", fee)
                 .field("FECHA DE INICIO *", new VBox(4, start, hint));
 
         Long[] savedId = new Long[1];
         Dialog<ButtonType> dialog = formDialog("Afiliar plan", "Los campos con * son obligatorios.", form, 620, false);
         if (runForm(dialog, form, "Afiliar", () -> savedId[0] = planService.register(new PlanData(
-                idOf(clientBox.getValue()), name.getEditor().getText(), money(fee, "La cuota"), start.getValue())).getId())) {
+                idOf(clientBox.getValue()), name.getValue(), money(fee, "La cuota"), start.getValue())).getId())) {
             loadOverview(savedId[0]);
         }
+    }
+
+    /** Afiliados atrasados a los que toca mandarles carta por correo certificado (30, 60 y 90 días). */
+    @FXML
+    private void onLetters() {
+        run(planService::overdueLetters, letters -> {
+            Form form = new Form();
+            if (letters.isEmpty()) {
+                form.body.getChildren().add(wrapped("Ningún afiliado cumple hoy un tramo de atraso para carta.",
+                        "card-subtitle"));
+            }
+            int shownDay = -1;
+            for (FuneralPlanService.OverdueLetter letter : letters) {
+                if (letter.letterDay() != shownDay) {
+                    shownDay = letter.letterDay();
+                    form.body.getChildren().add(legend("Carta de " + shownDay + " días"));
+                }
+                VBox text = new VBox(2,
+                        wrapped(letter.holderName() + " · " + letter.code(), "attention-name"),
+                        wrapped(orDash(letter.address()) + " · Tel. " + orDash(letter.phone()), "card-subtitle"),
+                        wrapped(letter.overdueMonths() + (letter.overdueMonths() == 1 ? " cuota" : " cuotas")
+                                + " sin pagar · " + ClientController.pesos(letter.overdueAmount()) + " · "
+                                + letter.daysLate() + " días de atraso", "attention-detail-overdue"));
+                text.getStyleClass().add("letter-row");
+                form.body.getChildren().add(text);
+            }
+            Dialog<ButtonType> dialog = formDialog("Cartas por atraso",
+                    "Se envían por correo certificado. Cuando el plan ya venció no se manda nada más.",
+                    form, 620, true);
+            dialog.getDialogPane().getButtonTypes().setAll(new ButtonType("Cerrar", ButtonBar.ButtonData.CANCEL_CLOSE));
+            dialog.showAndWait();
+        }, "No se pudo armar la lista de cartas.");
     }
 
     private void openPaymentDialog(PlanDetail d) {
@@ -993,10 +1030,10 @@ public class FuneralPlanController implements RefreshableView {
         }
         List<String> parts = new ArrayList<>();
         if (p.nonDirect().signum() > 0) {
-            parts.add(ClientController.pesos(p.nonDirect()) + " por parentesco no directo (RN-09)");
+            parts.add(ClientController.pesos(p.nonDirect()) + " por parentesco no directo");
         }
         if (p.extra().signum() > 0) {
-            parts.add(ClientController.pesos(p.extra()) + " por superar " + p.limit() + " beneficiarios (RN-10)");
+            parts.add(ClientController.pesos(p.extra()) + " por superar " + p.limit() + " beneficiarios");
         }
         return "Recargo de " + ClientController.pesos(p.total()) + ": " + String.join(" y ", parts)
                 + ". Se cobra una vez al vender el servicio.";
@@ -1139,9 +1176,7 @@ public class FuneralPlanController implements RefreshableView {
 
         Form section(String title, int columns) {
             if (title != null) {
-                Label caption = new Label(title);
-                caption.getStyleClass().add("section-title");
-                body.getChildren().add(caption);
+                body.getChildren().add(legend(title));
             }
             grid = new GridPane();
             grid.setHgap(18);
@@ -1208,10 +1243,32 @@ public class FuneralPlanController implements RefreshableView {
     /** Recuadro salvia de aviso (como en Crear cuenta); se oculta mientras no tenga texto. */
     private static Label note(String text) {
         Label note = wrapped(text, "note-info");
+        note.setGraphic(infoIcon());
+        note.setGraphicTextGap(10);
         note.setMaxWidth(Double.MAX_VALUE);
         note.managedProperty().bind(note.textProperty().isNotEmpty());
         note.visibleProperty().bind(note.managedProperty());
         return note;
+    }
+
+    /** Título de sección en mayúsculas con línea caqui a la derecha (estilo de registro aprobado). */
+    private static HBox legend(String title) {
+        Label caption = new Label(title.toUpperCase(Locale.ROOT));
+        caption.getStyleClass().add("section-title");
+        caption.setMinWidth(Region.USE_PREF_SIZE);
+        Region rule = new Region();
+        rule.getStyleClass().add("section-rule");
+        HBox.setHgrow(rule, Priority.ALWAYS);
+        HBox legend = new HBox(caption, rule);
+        legend.getStyleClass().add("section-legend");
+        return legend;
+    }
+
+    private static Node infoIcon() {
+        SVGPath icon = new SVGPath();
+        icon.setContent("M8 1a7 7 0 1 1 0 14A7 7 0 0 1 8 1z M8 7v4.5 M8 4.6v.2");
+        icon.getStyleClass().add("note-icon");
+        return icon;
     }
 
     private static TextField searchInput(String prompt) {
