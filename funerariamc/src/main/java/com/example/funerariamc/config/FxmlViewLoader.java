@@ -48,7 +48,12 @@ public class FxmlViewLoader {
     private static final String[] FONTS = {
             "/fonts/CormorantGaramond-SemiBold.ttf",
             "/fonts/SourceSans3-Regular.ttf",
-            "/fonts/SourceSans3-SemiBold.ttf"
+            "/fonts/SourceSans3-SemiBold.ttf",
+            "/fonts/Montserrat-Regular.ttf",
+            "/fonts/Montserrat-Medium.ttf",
+            "/fonts/Montserrat-SemiBold.ttf",
+            "/fonts/Montserrat-Bold.ttf",
+            "/fonts/Montserrat-Italic.ttf"
     };
 
     public static final String LOGIN_TITLE = "Funeraria MC — Iniciar sesión";
