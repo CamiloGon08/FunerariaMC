@@ -87,10 +87,10 @@ import java.util.Map;
 import java.util.function.Function;
 
 /**
- * Pantalla Difuntos (propuesta P-13 / P-13.1): indicadores, tarjetas de los servicios en curso con
+ * Pantalla Difuntos: indicadores, tarjetas de los servicios en curso con
  * su etapa, registro de difuntos con la barra visible (sin paginación), documentos pendientes,
  * salidas de hoy y el expediente en el panel lateral. Desde aquí se registra un difunto con su
- * certificado (RF-DIF-01, RF-DIF-02), se sube un documento (RF-DIF-03) y se vincula el plan (HU-56).
+ * certificado, se sube un documento y se vincula el plan.
  */
 @Component
 @Scope("prototype")
@@ -587,7 +587,7 @@ public class DeceasedController implements RefreshableView {
         }
     }
 
-    // ---------- expediente (P-13.1) ----------
+    // ---------- expediente ----------
 
     /**
      * Abre el panel al instante: con el expediente si ya está guardado, o con el nombre de la fila y
@@ -727,7 +727,7 @@ public class DeceasedController implements RefreshableView {
         drawerBody.getChildren().setAll(header, pills);
         if (item.blocksCremation()) {
             drawerBody.getChildren().add(band("Falta la orden de entrega del cuerpo: la cremación no puede hacerse "
-                    + "hasta subirla (RN-03).", "band-alert"));
+                    + "hasta subirla.", "band-alert"));
         }
         drawerBody.getChildren().addAll(
                 titled("RECORRIDO DEL SERVICIO", timeline(d.timeline())),
@@ -822,6 +822,8 @@ public class DeceasedController implements RefreshableView {
         for (DocumentType type : DocumentType.values()) {
             DocumentInfo doc = d.documents().stream().filter(x -> x.type() == type).findFirst().orElse(null);
             boolean needed = required.contains(type);
+            // El registro en la notaría lo tramita la funeraria después; no bloquea, pero se puede subir.
+            boolean notary = type == DocumentType.CIVIL_DEATH_REGISTRY;
             Label check = new Label(doc != null ? "✓" : needed ? "!" : "–");
             check.getStyleClass().addAll("doc-check", doc != null ? "ok" : needed ? "missing" : "na");
             String detail;
@@ -829,7 +831,8 @@ public class DeceasedController implements RefreshableView {
                 detail = "N.º " + orDash(doc.documentNumber()) + " · " + orDash(doc.issuingAuthority())
                         + (doc.issueDate() == null ? "" : " · " + DATE.format(doc.issueDate()));
             } else {
-                detail = needed ? "Pendiente de subir" : "No aplica · muerte natural";
+                detail = notary ? "Por registrar la muerte en la notaría"
+                        : needed ? "Pendiente de subir" : "No aplica · muerte natural";
             }
             VBox text = new VBox(1, wrapped(type.getDisplayName(), "attention-name"),
                     wrapped(detail, doc == null && needed ? "attention-detail-overdue" : "card-subtitle"));
@@ -841,7 +844,7 @@ public class DeceasedController implements RefreshableView {
                 see.getStyleClass().add("text-action");
                 see.setOnAction(e -> openFile(doc.fileUrl()));
                 row.getChildren().add(see);
-            } else if (needed) {
+            } else if (needed || notary) {
                 Button upload = new Button("Subir");
                 upload.getStyleClass().add("text-action");
                 upload.setOnAction(e -> openDocumentDialog(d.item().id(), d.item().fullName(), type));
@@ -898,7 +901,7 @@ public class DeceasedController implements RefreshableView {
         Label typeHint = wrapped("", "dialog-hint");
         typeHint.setPrefWidth(300);
         type.valueProperty().addListener((obs, old, value) -> typeHint.setText(value == DeathType.NON_NATURAL
-                ? "Muerte no natural: después suba el informe forense y la orden de entrega (RN-03)." : ""));
+                ? "Muerte no natural: después suba el informe forense y la orden de entrega." : ""));
 
         TextField clientSearch = searchInput("Buscar cliente por nombre o documento");
         ComboBox<Option> clientBox = optionCombo("Seleccione el responsable");
@@ -924,13 +927,15 @@ public class DeceasedController implements RefreshableView {
                 planBox.setValue(null);
             }
         });
-        // RF-DIF-02: el NN se registra solo con el nombre «NN», sin apellidos ni documento
-        Label nnNote = note("Se registrará con el nombre «NN» y sin número de documento (RF-DIF-02). "
+        // El NN se registra solo con el nombre «NN», sin apellidos ni documento
+        Label nnNote = note("Se registrará con el nombre «NN» y sin número de documento. "
                 + "El cliente responsable es opcional y no se vincula a un plan.");
 
-        // Certificado de defunción (RN-02)
-        TextField authority = new TextField();
-        authority.setPromptText("Clínica, Medicina Legal…");
+        // Certificado de defunción
+        // Lo expide Medicina Legal si la muerte es violenta, o el médico tratante o la clínica si es natural.
+        ComboBox<String> authority = authorityBox(MEDICAL_AUTHORITIES);
+        type.valueProperty().addListener((obs, old, value) -> authority.getEditor().setText(
+                value == DeathType.NON_NATURAL ? FORENSIC_AUTHORITY : DOCTOR_AUTHORITY));
         TextField number = new TextField();
         number.setPromptText("Número del certificado");
         DatePicker issued = new DatePicker(LocalDate.now(AccessLogService.APP_ZONE));
@@ -956,7 +961,7 @@ public class DeceasedController implements RefreshableView {
                 .field("CLIENTE RESPONSABLE *", new VBox(6, clientSearch, clientBox))
                 .captionWhen(unidentified.selectedProperty(), "CLIENTE RESPONSABLE")
                 .field("PLAN EXEQUIAL", new VBox(4, planBox, planHint))
-                .section("Certificado de defunción (RN-02)", 3)
+                .section("Certificado de defunción", 3)
                 .field("ENTIDAD QUE LO EXPIDE *", authority)
                 .field("NÚMERO DEL CERTIFICADO *", number)
                 .field("FECHA DE EXPEDICIÓN *", issued)
@@ -974,7 +979,7 @@ public class DeceasedController implements RefreshableView {
                     type.getValue(), cause.getValue(), idOf(clientBox.getValue()),
                     nn || plan == null ? null : plan.planId());
             DeathDocumentData certificate = new DeathDocumentData(DocumentType.MEDICAL_CERTIFICATE,
-                    authority.getText(), number.getText(), issued.getValue(), file[0], null);
+                    authority.getEditor().getText(), number.getText(), issued.getValue(), file[0], null);
             savedId[0] = deceasedService.register(data, certificate).getId();
         });
         if (saved) {
@@ -1004,7 +1009,7 @@ public class DeceasedController implements RefreshableView {
             } else {
                 PlanSuggestion first = plans.get(0);
                 hint.setText(first.code() + " sigue en carencia: faltan " + count(first.waitingDaysLeft(), "día")
-                        + " (RN-08). El servicio será particular.");
+                        + ". El servicio será particular.");
             }
         }, "No se pudieron buscar los planes.");
     }
@@ -1015,8 +1020,11 @@ public class DeceasedController implements RefreshableView {
         type.setConverter(converter(DocumentType::getDisplayName, ""));
         type.setValue(suggested == null ? DocumentType.FORENSIC_REPORT : suggested);
         type.getStyleClass().add("form-combo");
-        TextField authority = new TextField();
-        authority.setPromptText("Entidad que lo expide");
+        ComboBox<String> authority = authorityBox(authoritiesFor(type.getValue()));
+        type.valueProperty().addListener((obs, old, value) -> {
+            authority.getItems().setAll(authoritiesFor(value));
+            authority.getEditor().setText(authority.getItems().isEmpty() ? "" : authority.getItems().get(0));
+        });
         TextField number = new TextField();
         number.setPromptText("Número del documento");
         DatePicker issued = new DatePicker(LocalDate.now(AccessLogService.APP_ZONE));
@@ -1036,11 +1044,42 @@ public class DeceasedController implements RefreshableView {
         Dialog<ButtonType> dialog = formDialog("Subir documento",
                 fullName + ". Los campos con * son obligatorios.", form, 640, false);
         boolean saved = runForm(dialog, form, "Guardar", () -> certificateService.addDocument(deceasedId,
-                new DeathDocumentData(type.getValue(), authority.getText(), number.getText(), issued.getValue(),
+                new DeathDocumentData(type.getValue(), authority.getEditor().getText(), number.getText(), issued.getValue(),
                         file[0], notes.getText())));
         if (saved) {
             loadOverview(drawerDeceasedId != null ? deceasedId : null);
         }
+    }
+
+    /** Entidades que expiden el certificado de defunción. */
+    private static final String FORENSIC_AUTHORITY = "Medicina Legal";
+    private static final String DOCTOR_AUTHORITY = "Médico tratante o clínica";
+    private static final List<String> MEDICAL_AUTHORITIES = List.of(DOCTOR_AUTHORITY, FORENSIC_AUTHORITY);
+
+    /** Sugerencias de "quién lo expide" según el documento; el campo deja escribir otra entidad. */
+    private static List<String> authoritiesFor(DocumentType type) {
+        if (type == null) {
+            return List.of();
+        }
+        return switch (type) {
+            case MEDICAL_CERTIFICATE -> MEDICAL_AUTHORITIES;
+            case FORENSIC_REPORT -> List.of(FORENSIC_AUTHORITY);
+            case BODY_RELEASE_ORDER -> List.of("Fiscalía", FORENSIC_AUTHORITY);
+            case CIVIL_DEATH_REGISTRY -> List.of("Notaría");
+        };
+    }
+
+    private static ComboBox<String> authorityBox(List<String> suggestions) {
+        ComboBox<String> box = new ComboBox<>();
+        box.setEditable(true);
+        box.getItems().setAll(suggestions);
+        box.setPromptText("Entidad que lo expide");
+        box.setMaxWidth(Double.MAX_VALUE);
+        box.getStyleClass().add("form-combo");
+        if (!suggestions.isEmpty()) {
+            box.getEditor().setText(suggestions.get(0));
+        }
+        return box;
     }
 
     private void openLinkPlanDialog(DeceasedDetail d) {
@@ -1191,9 +1230,7 @@ public class DeceasedController implements RefreshableView {
 
         Form section(String title, int columns) {
             if (title != null) {
-                Label caption = new Label(title);
-                caption.getStyleClass().add("section-title");
-                body.getChildren().add(caption);
+                body.getChildren().add(legend(title));
             }
             grid = new GridPane();
             grid.setHgap(18);
@@ -1275,10 +1312,32 @@ public class DeceasedController implements RefreshableView {
     /** Recuadro salvia de aviso (como en Crear cuenta); se oculta mientras no tenga texto. */
     private static Label note(String text) {
         Label note = wrapped(text, "note-info");
+        note.setGraphic(infoIcon());
+        note.setGraphicTextGap(10);
         note.setMaxWidth(Double.MAX_VALUE);
         note.managedProperty().bind(note.textProperty().isNotEmpty());
         note.visibleProperty().bind(note.managedProperty());
         return note;
+    }
+
+    /** Título de sección en mayúsculas con línea caqui a la derecha (estilo de registro aprobado). */
+    private static HBox legend(String title) {
+        Label caption = new Label(title.toUpperCase(Locale.ROOT));
+        caption.getStyleClass().add("section-title");
+        caption.setMinWidth(Region.USE_PREF_SIZE);
+        Region rule = new Region();
+        rule.getStyleClass().add("section-rule");
+        HBox.setHgrow(rule, Priority.ALWAYS);
+        HBox legend = new HBox(caption, rule);
+        legend.getStyleClass().add("section-legend");
+        return legend;
+    }
+
+    private static Node infoIcon() {
+        SVGPath icon = new SVGPath();
+        icon.setContent("M8 1a7 7 0 1 1 0 14A7 7 0 0 1 8 1z M8 7v4.5 M8 4.6v.2");
+        icon.getStyleClass().add("note-icon");
+        return icon;
     }
 
     private static TextField searchInput(String prompt) {
