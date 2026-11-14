@@ -80,7 +80,7 @@
 }
 
 /* ---------- Columna derecha ---------- */
-.side-title { -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif; -fx-font-size: 21px; -fx-text-fill: -color-primary; }
+.side-title { -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif; -fx-font-size: 18px; -fx-text-fill: -color-primary; }
 .count-badge {
     -fx-background-color: -color-error-bg; -fx-text-fill: -color-error;
     -fx-background-radius: 999; -fx-padding: 2 8; -fx-font-size: 11px; -fx-font-weight: bold;
@@ -120,7 +120,7 @@
     -fx-min-width: 40; -fx-min-height: 40; -fx-max-width: 40; -fx-max-height: 40;
 }
 .cross-icon .cross { -fx-stroke: -color-accent; -fx-stroke-width: 1.6; -fx-fill: transparent; }
-.person-name { -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif; -fx-font-size: 22px; -fx-text-fill: -color-primary; }
+.person-name { -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif; -fx-font-size: 22px; -fx-text-fill: -color-primary; }
 .lease-bar > .track { -fx-background-color: -color-surface; -fx-background-radius: 999; -fx-background-insets: 0; }
 .lease-bar > .bar { -fx-background-color: -color-primary; -fx-background-radius: 999; -fx-background-insets: 0; -fx-padding: 2.5; }
 .lease-bar.overdue > .bar { -fx-background-color: -color-error; }
@@ -148,7 +148,7 @@
    campos en caja redondeada (borde niebla, foco caqui), deshabilitado en salvia,
    avisos salvia con ícono y Cancelar (fantasma) a la izquierda de la acción. */
 .form-title {
-    -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif;
+    -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif;
     -fx-font-size: 31px; -fx-text-fill: -color-accent;
 }
 .section-legend { -fx-alignment: center-left; -fx-spacing: 10; }
@@ -220,8 +220,8 @@
 }
 .hero-kpi-caption { -fx-text-fill: rgba(244,245,238,0.88); -fx-font-size: 11px; -fx-font-weight: bold; }
 .hero-kpi-value {
-    -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif;
-    -fx-text-fill: #F4F5EE; -fx-font-size: 38px;
+    -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif;
+    -fx-text-fill: #F4F5EE; -fx-font-size: 30px;
 }
 .hero-kpi-detail { -fx-text-fill: rgba(244,245,238,0.72); -fx-font-size: 12.5px; }
 .hero-kpi .occupancy-bar { -fx-padding: 8 0 0 0; }
@@ -250,10 +250,10 @@
     -fx-background-radius: 22; -fx-border-radius: 22; -fx-padding: 22 24 18 24;
 }
 .cemetery-root .card-title {
-    -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif;
-    -fx-font-size: 32px; -fx-text-fill: -eden-text;
+    -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif;
+    -fx-font-size: 18px; -fx-text-fill: -eden-text;
 }
-.cemetery-root .side-title { -fx-font-size: 26px; -fx-text-fill: -eden-text; }
+.cemetery-root .side-title { -fx-font-size: 18px; -fx-text-fill: -eden-text; }
 .cemetery-root .card-subtitle, .cemetery-root .legend-text, .cemetery-root .wall-level { -fx-text-fill: -eden-muted; }
 .cemetery-root .count-badge { -fx-background-color: -eden-alert-bg; -fx-text-fill: -eden-alert; }
 
@@ -304,7 +304,7 @@
     -fx-background-radius: 18; -fx-padding: 16 20 16 26;
 }
 .preview-code {
-    -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif;
+    -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif;
     -fx-font-size: 36px; -fx-text-fill: #F4F5EE;
 }
 .preview-caption { -fx-text-fill: rgba(244,245,238,0.70); -fx-font-size: 10.5px; -fx-font-weight: bold; }
