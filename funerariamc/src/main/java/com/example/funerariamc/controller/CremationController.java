@@ -19,6 +19,7 @@ import com.example.funerariamc.service.CremationService.Option;
 import com.example.funerariamc.service.CremationService.Screen;
 import com.example.funerariamc.service.CremationProviderData;
 import com.example.funerariamc.service.CremationPurchaseData;
+import com.example.funerariamc.service.SaleParameters;
 import com.example.funerariamc.service.CremationStockService;
 import com.example.funerariamc.service.CremationStockService.ProviderStock;
 import com.example.funerariamc.service.CremationStockService.Purchase;
@@ -67,6 +68,7 @@ import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -107,6 +109,7 @@ public class CremationController implements RefreshableView {
 
     private final CremationService cremationService;
     private final CremationStockService stockService;
+    private final SaleParameters saleParameters;
 
     @FXML
     private StackPane root;
@@ -185,9 +188,11 @@ public class CremationController implements RefreshableView {
     private SequentialTransition toastMotion;
     private Timeline minuteRefresh;
 
-    public CremationController(CremationService cremationService, CremationStockService stockService) {
+    public CremationController(CremationService cremationService, CremationStockService stockService,
+                               SaleParameters saleParameters) {
         this.cremationService = cremationService;
         this.stockService = stockService;
+        this.saleParameters = saleParameters;
     }
 
     /** Lo que trae cada carga: los lotes y el saldo de cupos (cuatro consultas en total). */
@@ -1084,7 +1089,13 @@ public class CremationController implements RefreshableView {
         TextField quantity = new TextField();
         quantity.setPromptText("Ej.: 10");
         TextField price = new TextField();
-        price.setPromptText("Ej.: 1800000");
+        price.setPromptText("Precio por cremación");
+        // Se sugiere el precio guardado en Parámetros; se puede cambiar si el proveedor cobra otro.
+        async("cremation-price", () -> saleParameters.suggested(SaleParameters.CREMATION_PREPAID_PRICE), value -> {
+            if (value != null && price.getText().isBlank()) {
+                price.setText(value.setScale(0, RoundingMode.HALF_UP).toPlainString());
+            }
+        }, failure -> { });
         Label total = note("");
         Runnable updateTotal = () -> {
             Integer q = integer(quantity.getText());
