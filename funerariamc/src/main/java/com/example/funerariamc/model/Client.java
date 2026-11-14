@@ -1,7 +1,7 @@
 
 package com.example.funerariamc.model;
 
-import com.example.funerariamc.model.enums.ClientType;
+import com.example.funerariamc.utils.enums.ClientType;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;

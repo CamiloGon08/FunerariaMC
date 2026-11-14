@@ -3,7 +3,7 @@ package com.example.funerariamc.persistence;
 import com.example.funerariamc.model.Deceased;
 import com.example.funerariamc.model.FuneralPlan;
 import com.example.funerariamc.model.ServiceContract;
-import com.example.funerariamc.model.enums.ContractStatus;
+import com.example.funerariamc.utils.enums.ContractStatus;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;

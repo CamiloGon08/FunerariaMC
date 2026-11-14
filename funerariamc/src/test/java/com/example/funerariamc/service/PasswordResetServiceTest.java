@@ -4,7 +4,7 @@ import com.example.funerariamc.exception.InvalidResetCodeException;
 import com.example.funerariamc.model.AppUser;
 import com.example.funerariamc.model.Employee;
 import com.example.funerariamc.model.PasswordResetCode;
-import com.example.funerariamc.model.enums.NotificationChannel;
+import com.example.funerariamc.utils.enums.NotificationChannel;
 import com.example.funerariamc.persistence.AppUserRepository;
 import com.example.funerariamc.persistence.PasswordResetCodeRepository;
 import com.example.funerariamc.service.notification.EmailNotificationSender;

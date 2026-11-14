@@ -1,6 +1,6 @@
 package com.example.funerariamc.service;
 
-import com.example.funerariamc.model.enums.Relationship;
+import com.example.funerariamc.utils.enums.Relationship;
 
 /**
  * Datos del diálogo "Agregar beneficiario" (RF-PLA-02). acceptSurcharge indica que el vendedor

@@ -1,7 +1,7 @@
 package com.example.funerariamc.persistence;
 
 import com.example.funerariamc.model.Employee;
-import com.example.funerariamc.model.enums.EmployeeStatus;
+import com.example.funerariamc.utils.enums.EmployeeStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;

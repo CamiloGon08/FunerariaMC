@@ -2,8 +2,8 @@ package com.example.funerariamc.controller;
 
 import com.example.funerariamc.exception.BusinessException;
 import com.example.funerariamc.exception.InvalidDataException;
-import com.example.funerariamc.model.enums.ContractStatus;
-import com.example.funerariamc.model.enums.SaleType;
+import com.example.funerariamc.utils.enums.ContractStatus;
+import com.example.funerariamc.utils.enums.SaleType;
 import com.example.funerariamc.service.AccessLogService;
 import com.example.funerariamc.service.ContractData;
 import com.example.funerariamc.service.ContractService;

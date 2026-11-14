@@ -1,9 +1,9 @@
 package com.example.funerariamc.controller;
 
 import com.example.funerariamc.exception.BusinessException;
-import com.example.funerariamc.model.enums.PlanPaymentStatus;
-import com.example.funerariamc.model.enums.PlanStatus;
-import com.example.funerariamc.model.enums.Relationship;
+import com.example.funerariamc.utils.enums.PlanPaymentStatus;
+import com.example.funerariamc.utils.enums.PlanStatus;
+import com.example.funerariamc.utils.enums.Relationship;
 import com.example.funerariamc.service.AccessLogService;
 import com.example.funerariamc.service.BeneficiaryData;
 import com.example.funerariamc.service.FuneralPlanService;

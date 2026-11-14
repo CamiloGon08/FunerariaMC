@@ -1,6 +1,6 @@
 package com.example.funerariamc.service;
 
-import com.example.funerariamc.model.enums.ClientType;
+import com.example.funerariamc.utils.enums.ClientType;
 
 /**
  * Datos del formulario de Clientes (mockup 12). Para una empresa, name es la

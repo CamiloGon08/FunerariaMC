@@ -1,7 +1,7 @@
 package com.example.funerariamc.persistence;
 
 import com.example.funerariamc.model.CremationPurchase;
-import com.example.funerariamc.model.enums.CremationPurchaseStatus;
+import com.example.funerariamc.utils.enums.CremationPurchaseStatus;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;

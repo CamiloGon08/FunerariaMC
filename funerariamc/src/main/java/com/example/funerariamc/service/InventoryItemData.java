@@ -1,6 +1,6 @@
 package com.example.funerariamc.service;
 
-import com.example.funerariamc.model.enums.InventoryCategory;
+import com.example.funerariamc.utils.enums.InventoryCategory;
 
 import java.math.BigDecimal;
 import java.nio.file.Path;

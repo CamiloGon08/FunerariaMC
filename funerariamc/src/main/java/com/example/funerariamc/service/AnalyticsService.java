@@ -8,11 +8,11 @@ import com.example.funerariamc.model.FinancialTransaction;
 import com.example.funerariamc.model.FuneralSalesperson;
 import com.example.funerariamc.model.Thanatopractor;
 import com.example.funerariamc.model.WakeRoom;
-import com.example.funerariamc.model.enums.ContractStatus;
-import com.example.funerariamc.model.enums.SaleStatus;
-import com.example.funerariamc.model.enums.TransactionStatus;
-import com.example.funerariamc.model.enums.TransactionType;
-import com.example.funerariamc.model.enums.VaultStatus;
+import com.example.funerariamc.utils.enums.ContractStatus;
+import com.example.funerariamc.utils.enums.SaleStatus;
+import com.example.funerariamc.utils.enums.TransactionStatus;
+import com.example.funerariamc.utils.enums.TransactionType;
+import com.example.funerariamc.utils.enums.VaultStatus;
 import com.example.funerariamc.persistence.FinancialTransactionRepository;
 import com.example.funerariamc.persistence.SaleRepository;
 import com.example.funerariamc.persistence.ServiceContractRepository;
@@ -326,7 +326,7 @@ public class AnalyticsService {
         List<SellerLine> lines = new ArrayList<>();
         for (FuneralSalesperson s : staffRepository.findAllSalespeople()) {
             SaleRepository.SellerTotal t = totals.get(s.getId());
-            boolean active = s.getStatus() == com.example.funerariamc.model.enums.EmployeeStatus.ACTIVE;
+            boolean active = s.getStatus() == com.example.funerariamc.utils.enums.EmployeeStatus.ACTIVE;
             if (t == null && !active && !commissions.containsKey(s.getId())) {
                 continue;
             }
@@ -346,7 +346,7 @@ public class AnalyticsService {
         List<ThanatoLine> lines = new ArrayList<>();
         for (Thanatopractor t : staffRepository.findAllThanatopractors()) {
             long n = cases.getOrDefault(t.getId(), 0L);
-            boolean active = t.getStatus() == com.example.funerariamc.model.enums.EmployeeStatus.ACTIVE;
+            boolean active = t.getStatus() == com.example.funerariamc.utils.enums.EmployeeStatus.ACTIVE;
             if (n == 0 && !active && !commissions.containsKey(t.getId())) {
                 continue;
             }

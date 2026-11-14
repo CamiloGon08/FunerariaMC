@@ -1,7 +1,7 @@
 package com.example.funerariamc.persistence;
 
 import com.example.funerariamc.model.DeathCertificate;
-import com.example.funerariamc.model.enums.DocumentType;
+import com.example.funerariamc.utils.enums.DocumentType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;

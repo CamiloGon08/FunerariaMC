@@ -1,6 +1,6 @@
 package com.example.funerariamc.model;
 
-import com.example.funerariamc.model.enums.MovementType;
+import com.example.funerariamc.utils.enums.MovementType;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;

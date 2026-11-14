@@ -1,7 +1,7 @@
 package com.example.funerariamc.model;
 
-import com.example.funerariamc.model.enums.DeathType;
-import com.example.funerariamc.model.enums.ExternalCause;
+import com.example.funerariamc.utils.enums.DeathType;
+import com.example.funerariamc.utils.enums.ExternalCause;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;

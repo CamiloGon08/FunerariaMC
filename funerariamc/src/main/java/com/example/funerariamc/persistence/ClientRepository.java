@@ -1,9 +1,9 @@
 package com.example.funerariamc.persistence;
 
 import com.example.funerariamc.model.Client;
-import com.example.funerariamc.model.enums.ClientType;
-import com.example.funerariamc.model.enums.TransactionStatus;
-import com.example.funerariamc.model.enums.TransactionType;
+import com.example.funerariamc.utils.enums.ClientType;
+import com.example.funerariamc.utils.enums.TransactionStatus;
+import com.example.funerariamc.utils.enums.TransactionType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -58,7 +58,7 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
                    or (:balance = 'WITH' and exists (
                         select s.id from Sale s
                         where s.client = c
-                          and s.status = com.example.funerariamc.model.enums.SaleStatus.ACTIVE
+                          and s.status = com.example.funerariamc.utils.enums.SaleStatus.ACTIVE
                           and coalesce(s.totalAmount, 0) > (select coalesce(sum(t.amount), 0)
                                                             from FinancialTransaction t
                                                             where t.relatedSale = s
@@ -67,7 +67,7 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
                    or (:balance = 'WITHOUT' and not exists (
                         select s.id from Sale s
                         where s.client = c
-                          and s.status = com.example.funerariamc.model.enums.SaleStatus.ACTIVE
+                          and s.status = com.example.funerariamc.utils.enums.SaleStatus.ACTIVE
                           and coalesce(s.totalAmount, 0) > (select coalesce(sum(t.amount), 0)
                                                             from FinancialTransaction t
                                                             where t.relatedSale = s
@@ -84,7 +84,7 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
                    or (:balance = 'WITH' and exists (
                         select s.id from Sale s
                         where s.client = c
-                          and s.status = com.example.funerariamc.model.enums.SaleStatus.ACTIVE
+                          and s.status = com.example.funerariamc.utils.enums.SaleStatus.ACTIVE
                           and coalesce(s.totalAmount, 0) > (select coalesce(sum(t.amount), 0)
                                                             from FinancialTransaction t
                                                             where t.relatedSale = s
@@ -93,7 +93,7 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
                    or (:balance = 'WITHOUT' and not exists (
                         select s.id from Sale s
                         where s.client = c
-                          and s.status = com.example.funerariamc.model.enums.SaleStatus.ACTIVE
+                          and s.status = com.example.funerariamc.utils.enums.SaleStatus.ACTIVE
                           and coalesce(s.totalAmount, 0) > (select coalesce(sum(t.amount), 0)
                                                             from FinancialTransaction t
                                                             where t.relatedSale = s

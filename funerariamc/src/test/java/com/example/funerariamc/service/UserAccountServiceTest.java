@@ -9,7 +9,7 @@ import com.example.funerariamc.model.Employee;
 import com.example.funerariamc.model.Manager;
 import com.example.funerariamc.model.Receptionist;
 import com.example.funerariamc.model.Role;
-import com.example.funerariamc.model.enums.EmployeePosition;
+import com.example.funerariamc.utils.enums.EmployeePosition;
 import com.example.funerariamc.persistence.AppUserRepository;
 import com.example.funerariamc.persistence.EmployeeRepository;
 import com.example.funerariamc.persistence.RoleRepository;

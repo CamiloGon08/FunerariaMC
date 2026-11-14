@@ -1,8 +1,8 @@
 package com.example.funerariamc.controller;
 
 import com.example.funerariamc.service.RouteMapService.MapData;
-import com.example.funerariamc.model.enums.TransportStatus;
-import com.example.funerariamc.model.enums.VehicleType;
+import com.example.funerariamc.utils.enums.TransportStatus;
+import com.example.funerariamc.utils.enums.VehicleType;
 import com.example.funerariamc.service.TransportService.Stop;
 import com.example.funerariamc.service.TransportService.Transfer;
 import com.example.funerariamc.service.TransportService.Unit;

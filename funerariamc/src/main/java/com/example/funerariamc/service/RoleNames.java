@@ -1,6 +1,6 @@
 package com.example.funerariamc.service;
 
-import com.example.funerariamc.model.enums.Sex;
+import com.example.funerariamc.utils.enums.Sex;
 
 import java.util.Map;
 

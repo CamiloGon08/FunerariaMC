@@ -1,6 +1,6 @@
 package com.example.funerariamc.model;
 
-import com.example.funerariamc.model.enums.PlanPaymentStatus;
+import com.example.funerariamc.utils.enums.PlanPaymentStatus;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;

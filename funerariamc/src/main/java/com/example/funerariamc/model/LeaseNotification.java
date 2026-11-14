@@ -1,9 +1,9 @@
 
 package com.example.funerariamc.model;
 
-import com.example.funerariamc.model.enums.NotificationType;
-import com.example.funerariamc.model.enums.NotificationChannel;
-import com.example.funerariamc.model.enums.NotificationStatus;
+import com.example.funerariamc.utils.enums.NotificationType;
+import com.example.funerariamc.utils.enums.NotificationChannel;
+import com.example.funerariamc.utils.enums.NotificationStatus;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;

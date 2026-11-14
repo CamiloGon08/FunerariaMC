@@ -1,7 +1,7 @@
 package com.example.funerariamc.model;
 
-import com.example.funerariamc.model.enums.VehicleStatus;
-import com.example.funerariamc.model.enums.VehicleType;
+import com.example.funerariamc.utils.enums.VehicleStatus;
+import com.example.funerariamc.utils.enums.VehicleType;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;

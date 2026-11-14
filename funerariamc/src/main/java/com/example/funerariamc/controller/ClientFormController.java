@@ -3,7 +3,7 @@ package com.example.funerariamc.controller;
 import com.example.funerariamc.exception.BusinessException;
 import com.example.funerariamc.exception.ExistingClientException;
 import com.example.funerariamc.model.Client;
-import com.example.funerariamc.model.enums.ClientType;
+import com.example.funerariamc.utils.enums.ClientType;
 import com.example.funerariamc.service.AccessLogService;
 import com.example.funerariamc.service.ClientData;
 import com.example.funerariamc.service.ClientService;
