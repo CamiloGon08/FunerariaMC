@@ -86,10 +86,10 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
- * Pantalla Cementerio y bóvedas (propuesta P-17 / P-17.1): una pestaña por cementerio, el muro
+ * Pantalla Cementerio y bóvedas: una pestaña por cementerio, el muro
  * del pabellón por niveles (o la lista), indicadores, bóvedas que requieren atención, últimas
- * exhumaciones y el panel lateral con el detalle de la bóveda (RF-BOV-06). Desde el panel se
- * asigna (RF-BOV-02), se renueva el arriendo o se registra la exhumación (RF-BOV-05).
+ * exhumaciones y el panel lateral con el detalle de la bóveda. Desde el panel se
+ * asigna, se renueva el arriendo o se registra la exhumación.
  *
  * Rendimiento (regla del proyecto): ninguna consulta corre en el hilo de JavaFX.
  * - La primera carga trae pestañas y muro juntos; el menú guarda la pantalla y al volver solo refresca.
@@ -256,7 +256,7 @@ public class VaultController implements RefreshableView {
         searchDelay.setOnFinished(e -> applySearch());
         searchField.textProperty().addListener((obs, old, text) -> searchDelay.playFromStart());
 
-        // RF-BOV-01: registrar cementerios y bóvedas es solo del Administrador Maestro.
+        // Registrar cementerios y bóvedas es solo del Administrador Maestro.
         boolean canRegister = cemeteryService.canRegister();
         show(addCemeteryButton, canRegister);
         show(addVaultsButton, canRegister);
@@ -745,13 +745,13 @@ public class VaultController implements RefreshableView {
         for (RecentExhumation item : items) {
             Label title = wrapped(item.code() + " · " + item.deceasedName() + " · " + DESTINATIONS.get(item.destination()),
                     "exhumation-title");
-            Label detail = new Label(DATE.format(item.date()) + " · liberó la bóveda (RN-30)");
+            Label detail = new Label(DATE.format(item.date()) + " · liberó la bóveda");
             detail.getStyleClass().add("exhumation-detail");
             exhumationBox.getChildren().add(new VBox(2, title, detail));
         }
     }
 
-    // ---------- panel lateral (P-17.1) ----------
+    // ---------- panel lateral ----------
 
     /**
      * Abre el panel de inmediato: con el detalle si ya está en la caché, o con un aviso de carga
@@ -854,7 +854,7 @@ public class VaultController implements RefreshableView {
 
         drawerBody.getChildren().setAll(header, pills(d, today));
         if (d.isAvailable()) {
-            drawerBody.getChildren().add(band("Bóveda libre: se puede asignar a un titular y un difunto (RF-BOV-02).",
+            drawerBody.getChildren().add(band("Bóveda libre: se puede asignar a un titular y un difunto.",
                     "band-info"));
         } else {
             drawerBody.getChildren().addAll(
@@ -863,7 +863,7 @@ public class VaultController implements RefreshableView {
                     titled("ARRIENDO", leaseBox(d, today)));
             if (!d.canExhume() && d.exhumationAllowedFrom() != null) {
                 drawerBody.getChildren().add(band("La exhumación procede desde el "
-                        + DATE.format(d.exhumationAllowedFrom()) + ", al cumplir 4 años de arriendo (RN-06).", "band-info"));
+                        + DATE.format(d.exhumationAllowedFrom()) + ", al cumplir 4 años de arriendo.", "band-info"));
             }
             drawerBody.getChildren().add(titled("AVISOS DE ARRIENDO", noticesBox(d.notices())));
         }
@@ -1037,7 +1037,7 @@ public class VaultController implements RefreshableView {
                 .findFirst();
     }
 
-    /** RF-BOV-02: bóveda libre, titular, difunto sin bóveda e inicio; el vencimiento se calcula a 4 años. */
+    /** Bóveda libre, titular, difunto sin bóveda e inicio; el vencimiento se calcula a 4 años. */
     private void openAssignDialog(Long vaultId) {
         List<WallCell> available = overview == null ? List.of() : overview.pavilions().values().stream()
                 .flatMap(List::stream)
@@ -1075,7 +1075,7 @@ public class VaultController implements RefreshableView {
                 .section("Bóveda y arriendo", 3)
                 .field("BÓVEDA *", vaultBox)
                 .field("INICIO DEL ARRIENDO *", start)
-                .field("VENCE (RN-06)", end)
+                .field("VENCE", end)
                 .section("Titular del arriendo · familia vinculada", 2)
                 .field("BUSCAR TITULAR", clientSearch)
                 .field("TITULAR *", clientBox)
@@ -1083,7 +1083,7 @@ public class VaultController implements RefreshableView {
                 .field("BUSCAR DIFUNTO", deceasedSearch)
                 .field("DIFUNTO *", deceasedBox)
                 .note(deceasedHint)
-                .note(note("El arriendo dura " + CemeteryService.LEASE_YEARS + " años desde el inicio (RN-06). "
+                .note(note("El arriendo dura " + CemeteryService.LEASE_YEARS + " años desde el inicio. "
                         + "Solo se listan difuntos que no están en otra bóveda, ni exhumados ni cremados."));
 
         Dialog<ButtonType> dialog = formDialog("Asignar bóveda",
@@ -1100,7 +1100,7 @@ public class VaultController implements RefreshableView {
         });
     }
 
-    // ---------- RF-BOV-01: registrar cementerios y bóvedas (Administrador Maestro) ----------
+    // ---------- Registrar cementerios y bóvedas (Administrador Maestro) ----------
 
     @FXML
     private void onAddCemetery() {
@@ -1261,8 +1261,8 @@ public class VaultController implements RefreshableView {
         LocalDate base = d.leaseEnd() == null ? LocalDate.now(AccessLogService.APP_ZONE) : d.leaseEnd();
         String text = "El arriendo de la bóveda " + d.code()
                 + (d.leaseEnd() == null ? " no tiene fecha de vencimiento." : " vence el " + DATE.format(d.leaseEnd()) + ".")
-                + " Al renovarlo por " + CemeteryService.LEASE_YEARS + " años vencerá el "
-                + DATE.format(CemeteryService.leaseEnd(base)) + ".";
+                + " Se renueva por " + CemeteryService.RENEWAL_YEARS + " año al valor de este año: vencerá el "
+                + DATE.format(CemeteryService.renewalEnd(base)) + " y el pago queda como ingreso en Finanzas.";
         ButtonType renew = new ButtonType("Renovar arriendo", ButtonBar.ButtonData.OK_DONE);
         ButtonType cancel = new ButtonType("Cancelar", ButtonBar.ButtonData.CANCEL_CLOSE);
         Alert alert = new Alert(Alert.AlertType.NONE, text, cancel, renew);
@@ -1286,7 +1286,7 @@ public class VaultController implements RefreshableView {
         });
     }
 
-    /** RF-BOV-05: fecha, motivo, destino y autorización; al guardar la bóveda queda libre (RN-30). */
+    /** Fecha, motivo, destino y autorización; al guardar la bóveda queda libre. */
     private void openExhumationDialog(VaultDetail d) {
         TextField vault = readOnly(d.code() + (d.position() == null ? "" : " · nivel " + d.position().level()));
         TextField who = readOnly(orDash(d.deceasedName()));
@@ -1304,7 +1304,7 @@ public class VaultController implements RefreshableView {
         destination.setPromptText("Seleccione el destino");
         destination.getStyleClass().add("form-combo");
 
-        Label warning = alertNote("Un cuerpo no reclamado va a fosa común u osario (RN-07). "
+        Label warning = alertNote("Un cuerpo no reclamado va a fosa común u osario. "
                 + "Confirme el destino antes de guardar.");
         warning.managedProperty().bind(warning.visibleProperty());
         Runnable updateWarning = () -> warning.setVisible(
@@ -1350,8 +1350,8 @@ public class VaultController implements RefreshableView {
                 .section("Soporte", 1)
                 .field("AUTORIZACIÓN *", fileRow)
                 .field("OBSERVACIONES", notes)
-                .note(note("Al guardar, la bóveda " + d.code() + " queda libre para un nuevo arriendo (RN-30). "
-                        + "El archivo se guarda en la carpeta de documentos y queda su enlace (RN-25)."));
+                .note(note("Al guardar, la bóveda " + d.code() + " queda libre para un nuevo arriendo. "
+                        + "El archivo se guarda en la carpeta de documentos y queda su enlace."));
 
         Dialog<ButtonType> dialog = formDialog("Registrar exhumación",
                 "Los campos con * son obligatorios.", form, 760);
@@ -1365,13 +1365,13 @@ public class VaultController implements RefreshableView {
                 });
     }
 
-    /** RN-07: confirma un destino distinto de fosa común u osario para un cuerpo no reclamado. */
+    /** Confirma un destino distinto de fosa común u osario para un cuerpo no reclamado. */
     private boolean confirmUnclaimedDestination(ExhumationDestination destination) {
         ButtonType keep = new ButtonType("Guardar así", ButtonBar.ButtonData.OK_DONE);
         ButtonType cancel = new ButtonType("Cancelar", ButtonBar.ButtonData.CANCEL_CLOSE);
         Alert alert = new Alert(Alert.AlertType.NONE,
                 "El motivo es «cuerpo no reclamado» y el destino es " + DESTINATIONS.get(destination)
-                        + ". Lo usual es la fosa común o el osario (RN-07).",
+                        + ". Lo usual es la fosa común o el osario.",
                 cancel, keep);
         alert.setTitle("Destino de los restos");
         alert.setHeaderText("¿Confirma el destino de los restos?");
@@ -1590,7 +1590,7 @@ public class VaultController implements RefreshableView {
         return note;
     }
 
-    /** Aviso en terracota (RN-07), también con ícono. */
+    /** Aviso en terracota, también con ícono. */
     private static Label alertNote(String text) {
         Label note = wrapped(text, "note-alert");
         note.setGraphic(infoIcon());
