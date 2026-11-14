@@ -33,57 +33,58 @@
         <ToggleGroup fx:id="viewGroup"/>
     </fx:define>
 
-    <VBox spacing="16">
-        <!-- Banda verde (paleta verde oscura): arriba el encabezado del menú (MainController lo pone en
-             #heroHeaderSlot) y debajo los indicadores del pabellón en tarjetas translúcidas. -->
-        <VBox styleClass="hero-band" spacing="18">
-            <StackPane id="heroHeaderSlot" alignment="TOP_LEFT"/>
-            <HBox spacing="16">
-                <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
-                    <Label fx:id="occupancyCaption" text="OCUPACIÓN" styleClass="hero-kpi-caption"/>
-                    <Label fx:id="occupancyValue" text="—" styleClass="hero-kpi-value"/>
-                    <Label fx:id="occupancyDetail" styleClass="hero-kpi-detail"/>
-                    <ProgressBar fx:id="occupancyBar" progress="0" maxWidth="Infinity" styleClass="occupancy-bar"/>
-                </VBox>
-                <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
-                    <Label text="DISPONIBLES" styleClass="hero-kpi-caption"/>
-                    <Label fx:id="availableValue" text="—" styleClass="hero-kpi-value"/>
-                    <Label text="listas para asignar" styleClass="hero-kpi-detail"/>
-                </VBox>
-                <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
-                    <Label text="EN MORA" styleClass="hero-kpi-caption"/>
-                    <Label fx:id="overdueValue" text="—" styleClass="hero-kpi-value"/>
-                    <Label text="arriendo vencido sin renovar" styleClass="hero-kpi-detail"/>
-                </VBox>
-                <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
-                    <Label fx:id="expiringCaption" text="VENCEN EN 30 DÍAS" styleClass="hero-kpi-caption"/>
-                    <Label fx:id="expiringValue" text="—" styleClass="hero-kpi-value"/>
-                    <Label text="avisar a los titulares" styleClass="hero-kpi-detail"/>
-                </VBox>
-            </HBox>
-        </VBox>
+    <!-- Toda la pantalla se desplaza junta: banda verde, filtros y contenido -->
+    <ScrollPane fx:id="pageScroll" fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED"
+                styleClass="card-scroll,page-scroll">
+        <VBox spacing="16" styleClass="page-content">
+            <!-- Banda verde (paleta verde oscura): arriba el encabezado del menú (MainController lo pone en
+                 #heroHeaderSlot) y debajo los indicadores del pabellón en tarjetas translúcidas. -->
+            <VBox styleClass="hero-band" spacing="18">
+                <StackPane id="heroHeaderSlot" alignment="TOP_LEFT"/>
+                <HBox spacing="16">
+                    <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
+                        <Label fx:id="occupancyCaption" text="OCUPACIÓN" styleClass="hero-kpi-caption"/>
+                        <Label fx:id="occupancyValue" text="—" styleClass="hero-kpi-value"/>
+                        <Label fx:id="occupancyDetail" styleClass="hero-kpi-detail"/>
+                        <ProgressBar fx:id="occupancyBar" progress="0" maxWidth="Infinity" styleClass="occupancy-bar"/>
+                    </VBox>
+                    <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
+                        <Label text="DISPONIBLES" styleClass="hero-kpi-caption"/>
+                        <Label fx:id="availableValue" text="—" styleClass="hero-kpi-value"/>
+                        <Label text="listas para asignar" styleClass="hero-kpi-detail"/>
+                    </VBox>
+                    <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
+                        <Label text="EN MORA" styleClass="hero-kpi-caption"/>
+                        <Label fx:id="overdueValue" text="—" styleClass="hero-kpi-value"/>
+                        <Label text="arriendo vencido sin renovar" styleClass="hero-kpi-detail"/>
+                    </VBox>
+                    <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
+                        <Label fx:id="expiringCaption" text="VENCEN EN 30 DÍAS" styleClass="hero-kpi-caption"/>
+                        <Label fx:id="expiringValue" text="—" styleClass="hero-kpi-value"/>
+                        <Label text="avisar a los titulares" styleClass="hero-kpi-detail"/>
+                    </VBox>
+                </HBox>
+            </VBox>
 
-        <!-- Búsqueda, cementerio, pabellón, plano o lista y asignar (.filter-card y .search-box en app.css) -->
-        <HBox styleClass="filter-card">
-            <HBox styleClass="search-box" HBox.hgrow="ALWAYS" minWidth="150">
-                <SVGPath content="M7 1.5a5.5 5.5 0 1 1 0 11a5.5 5.5 0 0 1 0-11z M11.2 11.2 L15 15" styleClass="search-icon"/>
-                <TextField fx:id="searchField" promptText="Buscar bóveda o difunto" HBox.hgrow="ALWAYS"/>
+            <!-- Búsqueda, cementerio, pabellón, plano o lista y asignar (.filter-card y .search-box en app.css) -->
+            <HBox styleClass="filter-card">
+                <HBox styleClass="search-box" HBox.hgrow="ALWAYS" minWidth="150">
+                    <SVGPath content="M7 1.5a5.5 5.5 0 1 1 0 11a5.5 5.5 0 0 1 0-11z M11.2 11.2 L15 15" styleClass="search-icon"/>
+                    <TextField fx:id="searchField" promptText="Buscar bóveda o difunto" HBox.hgrow="ALWAYS"/>
+                </HBox>
+                <!-- Una pestaña por cementerio; se agregan desde el controlador -->
+                <HBox fx:id="cemeteryTabs" styleClass="segmented" minWidth="-Infinity"/>
+                <!-- RF-BOV-01: solo lo ve el Administrador Maestro -->
+                <Button fx:id="addCemeteryButton" text="+ Cementerio" onAction="#onAddCemetery" styleClass="ghost-button" minWidth="-Infinity"/>
+                <ComboBox fx:id="pavilionFilter" styleClass="chip-combo" prefWidth="130" minWidth="130"/>
+                <HBox styleClass="segmented,view" minWidth="-Infinity">
+                    <ToggleButton fx:id="planToggle" text="Plano" toggleGroup="$viewGroup" selected="true" styleClass="segment"/>
+                    <ToggleButton fx:id="listToggle" text="Lista" toggleGroup="$viewGroup" styleClass="segment"/>
+                </HBox>
+                <Button text="+  Asignar bóveda" onAction="#onAssign" styleClass="primary-button" minWidth="-Infinity"/>
             </HBox>
-            <!-- Una pestaña por cementerio; se agregan desde el controlador -->
-            <HBox fx:id="cemeteryTabs" styleClass="segmented" minWidth="-Infinity"/>
-            <!-- RF-BOV-01: solo lo ve el Administrador Maestro -->
-            <Button fx:id="addCemeteryButton" text="+ Cementerio" onAction="#onAddCemetery" styleClass="ghost-button" minWidth="-Infinity"/>
-            <ComboBox fx:id="pavilionFilter" styleClass="chip-combo" prefWidth="130" minWidth="130"/>
-            <HBox styleClass="segmented,view" minWidth="-Infinity">
-                <ToggleButton fx:id="planToggle" text="Plano" toggleGroup="$viewGroup" selected="true" styleClass="segment"/>
-                <ToggleButton fx:id="listToggle" text="Lista" toggleGroup="$viewGroup" styleClass="segment"/>
-            </HBox>
-            <Button text="+  Asignar bóveda" onAction="#onAssign" styleClass="primary-button" minWidth="-Infinity"/>
-        </HBox>
 
-        <!-- Todo lo de abajo se desplaza con la barra visible (sin paginación) -->
-        <ScrollPane fx:id="pageScroll" fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="ALWAYS"
-                    styleClass="card-scroll" VBox.vgrow="ALWAYS">
+            <!-- Todo lo de abajo se desplaza con la barra visible (sin paginación) -->
             <VBox spacing="18" styleClass="card-scroll-content">
                 <HBox spacing="16" fillHeight="false">
                     <!-- Muro del pabellón (plano) o lista de bóvedas -->
@@ -129,8 +130,8 @@
                     </VBox>
                 </HBox>
             </VBox>
-        </ScrollPane>
-    </VBox>
+        </VBox>
+    </ScrollPane>
 
     <!-- Panel de detalle de la bóveda (P-17.1): velo que oscurece el muro y panel a la derecha -->
     <Region fx:id="veil" styleClass="drawer-veil" visible="false" onMouseClicked="#onCloseDrawer"/>
