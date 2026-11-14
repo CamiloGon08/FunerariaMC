@@ -30,52 +30,53 @@
         <ToggleGroup fx:id="stateGroup"/>
     </fx:define>
 
-    <VBox spacing="16">
-        <!-- Banda verde: arriba el encabezado del menú (MainController lo pone en #heroHeaderSlot) -->
-        <VBox styleClass="hero-band" spacing="18">
-            <StackPane id="heroHeaderSlot" alignment="TOP_LEFT"/>
-            <HBox spacing="16">
-                <VBox styleClass="hero-kpi,highlight" HBox.hgrow="ALWAYS" prefWidth="0">
-                    <Label text="EN CURSO AHORA" styleClass="hero-kpi-caption"/>
-                    <Label fx:id="inProgressValue" text="—" styleClass="hero-kpi-value"/>
-                    <Label fx:id="inProgressDetail" styleClass="hero-kpi-detail"/>
-                </VBox>
-                <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
-                    <Label text="PROGRAMADAS HOY" styleClass="hero-kpi-caption"/>
-                    <Label fx:id="todayValue" text="—" styleClass="hero-kpi-value"/>
-                    <Label fx:id="todayDetail" styleClass="hero-kpi-detail"/>
-                </VBox>
-                <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
-                    <Label fx:id="monthCaption" text="REALIZADAS EN EL MES" styleClass="hero-kpi-caption"/>
-                    <Label fx:id="monthValue" text="—" styleClass="hero-kpi-value"/>
-                    <Label fx:id="monthDetail" styleClass="hero-kpi-detail"/>
-                </VBox>
-                <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
-                    <Label text="CERTIFICADOS PENDIENTES" styleClass="hero-kpi-caption"/>
-                    <Label fx:id="pendingValue" text="—" styleClass="hero-kpi-value"/>
-                    <Label text="por registrar número" styleClass="hero-kpi-detail"/>
-                </VBox>
-            </HBox>
-        </VBox>
+    <!-- Toda la pantalla se desplaza junta: banda verde, filtros y contenido -->
+    <ScrollPane fx:id="contentScroll" fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED"
+                styleClass="card-scroll,page-scroll">
+        <VBox spacing="16" styleClass="page-content">
+            <!-- Banda verde: arriba el encabezado del menú (MainController lo pone en #heroHeaderSlot) -->
+            <VBox styleClass="hero-band" spacing="18">
+                <StackPane id="heroHeaderSlot" alignment="TOP_LEFT"/>
+                <HBox spacing="16">
+                    <VBox styleClass="hero-kpi,highlight" HBox.hgrow="ALWAYS" prefWidth="0">
+                        <Label text="EN CURSO AHORA" styleClass="hero-kpi-caption"/>
+                        <Label fx:id="inProgressValue" text="—" styleClass="hero-kpi-value"/>
+                        <Label fx:id="inProgressDetail" styleClass="hero-kpi-detail"/>
+                    </VBox>
+                    <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
+                        <Label text="PROGRAMADAS HOY" styleClass="hero-kpi-caption"/>
+                        <Label fx:id="todayValue" text="—" styleClass="hero-kpi-value"/>
+                        <Label fx:id="todayDetail" styleClass="hero-kpi-detail"/>
+                    </VBox>
+                    <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
+                        <Label fx:id="monthCaption" text="REALIZADAS EN EL MES" styleClass="hero-kpi-caption"/>
+                        <Label fx:id="monthValue" text="—" styleClass="hero-kpi-value"/>
+                        <Label fx:id="monthDetail" styleClass="hero-kpi-detail"/>
+                    </VBox>
+                    <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
+                        <Label text="CERTIFICADOS PENDIENTES" styleClass="hero-kpi-caption"/>
+                        <Label fx:id="pendingValue" text="—" styleClass="hero-kpi-value"/>
+                        <Label text="por registrar número" styleClass="hero-kpi-detail"/>
+                    </VBox>
+                </HBox>
+            </VBox>
 
-        <!-- Búsqueda, filtro por estado y Programar lote -->
-        <HBox styleClass="filter-card">
-            <HBox styleClass="search-box" HBox.hgrow="ALWAYS" minWidth="150">
-                <SVGPath content="M7 1.5a5.5 5.5 0 1 1 0 11a5.5 5.5 0 0 1 0-11z M11.2 11.2 L15 15" styleClass="search-icon"/>
-                <TextField fx:id="searchField" promptText="Buscar lote, horno o difunto" HBox.hgrow="ALWAYS"/>
+            <!-- Búsqueda, filtro por estado y Programar lote -->
+            <HBox styleClass="filter-card">
+                <HBox styleClass="search-box" HBox.hgrow="ALWAYS" minWidth="150">
+                    <SVGPath content="M7 1.5a5.5 5.5 0 1 1 0 11a5.5 5.5 0 0 1 0-11z M11.2 11.2 L15 15" styleClass="search-icon"/>
+                    <TextField fx:id="searchField" promptText="Buscar lote, horno o difunto" HBox.hgrow="ALWAYS"/>
+                </HBox>
+                <HBox styleClass="segmented" minWidth="-Infinity">
+                    <ToggleButton fx:id="allToggle" text="Todos" toggleGroup="$stateGroup" selected="true" styleClass="segment"/>
+                    <ToggleButton fx:id="scheduledToggle" text="Programados" toggleGroup="$stateGroup" styleClass="segment"/>
+                    <ToggleButton fx:id="inProgressToggle" text="En curso" toggleGroup="$stateGroup" styleClass="segment"/>
+                    <ToggleButton fx:id="finishedToggle" text="Realizados" toggleGroup="$stateGroup" styleClass="segment"/>
+                </HBox>
+                <Button text="+  Programar lote" onAction="#onScheduleBatch" styleClass="primary-button" minWidth="-Infinity"/>
             </HBox>
-            <HBox styleClass="segmented" minWidth="-Infinity">
-                <ToggleButton fx:id="allToggle" text="Todos" toggleGroup="$stateGroup" selected="true" styleClass="segment"/>
-                <ToggleButton fx:id="scheduledToggle" text="Programados" toggleGroup="$stateGroup" styleClass="segment"/>
-                <ToggleButton fx:id="inProgressToggle" text="En curso" toggleGroup="$stateGroup" styleClass="segment"/>
-                <ToggleButton fx:id="finishedToggle" text="Realizados" toggleGroup="$stateGroup" styleClass="segment"/>
-            </HBox>
-            <Button text="+  Programar lote" onAction="#onScheduleBatch" styleClass="primary-button" minWidth="-Infinity"/>
-        </HBox>
 
-        <!-- Hornos y agenda con barra de desplazamiento visible (sin paginación) -->
-        <ScrollPane fx:id="contentScroll" fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="ALWAYS"
-                    styleClass="card-scroll" VBox.vgrow="ALWAYS">
+            <!-- Hornos y agenda con barra de desplazamiento visible (sin paginación) -->
             <VBox styleClass="card-scroll-content" spacing="18">
                 <GridPane fx:id="furnaceGrid" hgap="18" vgap="18"/>
                 <Label fx:id="furnaceEmpty" styleClass="empty-board" wrapText="true" managed="false" visible="false"/>
@@ -135,8 +136,8 @@
                     <Label fx:id="purchaseEmpty" styleClass="empty-board" wrapText="true" managed="false" visible="false"/>
                 </VBox>
             </VBox>
-        </ScrollPane>
-    </VBox>
+        </VBox>
+    </ScrollPane>
 
     <!-- Panel lateral del lote -->
     <Region fx:id="veil" styleClass="drawer-veil" visible="false" onMouseClicked="#onCloseDrawer"/>
