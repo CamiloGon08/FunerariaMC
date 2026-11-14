@@ -1,6 +1,6 @@
 package com.example.funerariamc.model;
 
-import com.example.funerariamc.model.enums.DocumentType;
+import com.example.funerariamc.utils.enums.DocumentType;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;

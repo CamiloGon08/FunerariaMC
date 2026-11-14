@@ -8,7 +8,7 @@ import com.example.funerariamc.model.AppUser;
 import com.example.funerariamc.model.Client;
 import com.example.funerariamc.model.Manager;
 import com.example.funerariamc.model.Role;
-import com.example.funerariamc.model.enums.ClientType;
+import com.example.funerariamc.utils.enums.ClientType;
 import com.example.funerariamc.persistence.ClientRepository;
 import com.example.funerariamc.persistence.PersonRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -217,8 +217,8 @@ class ClientServiceTest {
         service.search("", ClientType.NATURAL, ClientService.BalanceFilter.WITH_BALANCE, 0, 12);
 
         verify(clients).searchByBalance(eq("%"), eq(List.of(ClientType.NATURAL)), eq("WITH"),
-                eq(com.example.funerariamc.model.enums.TransactionType.INCOME),
-                eq(com.example.funerariamc.model.enums.TransactionStatus.ACTIVE), eq(PageRequest.of(0, 12)));
+                eq(com.example.funerariamc.utils.enums.TransactionType.INCOME),
+                eq(com.example.funerariamc.utils.enums.TransactionStatus.ACTIVE), eq(PageRequest.of(0, 12)));
     }
 
     @Test
@@ -238,8 +238,8 @@ class ClientServiceTest {
         service.search(" 1.065.832 ", null, ClientService.BalanceFilter.UP_TO_DATE, -3, 500);
 
         verify(clients).searchByBalance(eq("%1065832%"), eq(List.of(ClientType.values())), eq("WITHOUT"),
-                eq(com.example.funerariamc.model.enums.TransactionType.INCOME),
-                eq(com.example.funerariamc.model.enums.TransactionStatus.ACTIVE),
+                eq(com.example.funerariamc.utils.enums.TransactionType.INCOME),
+                eq(com.example.funerariamc.utils.enums.TransactionStatus.ACTIVE),
                 eq(PageRequest.of(0, ClientService.MAX_PAGE_SIZE)));
     }
 

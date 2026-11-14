@@ -1,7 +1,7 @@
 package com.example.funerariamc.service;
 
-import com.example.funerariamc.model.enums.EmployeePosition;
-import com.example.funerariamc.model.enums.Sex;
+import com.example.funerariamc.utils.enums.EmployeePosition;
+import com.example.funerariamc.utils.enums.Sex;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;

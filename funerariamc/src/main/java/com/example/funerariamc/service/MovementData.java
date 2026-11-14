@@ -1,6 +1,6 @@
 package com.example.funerariamc.service;
 
-import com.example.funerariamc.model.enums.TransactionType;
+import com.example.funerariamc.utils.enums.TransactionType;
 
 import java.math.BigDecimal;
 

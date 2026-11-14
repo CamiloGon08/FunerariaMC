@@ -1,7 +1,7 @@
 package com.example.funerariamc.model;
 
-import com.example.funerariamc.model.enums.EmployeeStatus;
-import com.example.funerariamc.model.enums.Sex;
+import com.example.funerariamc.utils.enums.EmployeeStatus;
+import com.example.funerariamc.utils.enums.Sex;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;

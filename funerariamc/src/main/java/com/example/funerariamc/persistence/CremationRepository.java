@@ -1,10 +1,10 @@
 package com.example.funerariamc.persistence;
 
 import com.example.funerariamc.model.Cremation;
-import com.example.funerariamc.model.enums.ContractStatus;
-import com.example.funerariamc.model.enums.DeathType;
-import com.example.funerariamc.model.enums.DocumentType;
-import com.example.funerariamc.model.enums.ExhumationDestination;
+import com.example.funerariamc.utils.enums.ContractStatus;
+import com.example.funerariamc.utils.enums.DeathType;
+import com.example.funerariamc.utils.enums.DocumentType;
+import com.example.funerariamc.utils.enums.ExhumationDestination;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;

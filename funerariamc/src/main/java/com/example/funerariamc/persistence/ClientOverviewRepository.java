@@ -2,10 +2,10 @@ package com.example.funerariamc.persistence;
 
 import com.example.funerariamc.model.Beneficiary;
 import com.example.funerariamc.model.Client;
-import com.example.funerariamc.model.enums.PlanStatus;
-import com.example.funerariamc.model.enums.SaleType;
-import com.example.funerariamc.model.enums.TransactionStatus;
-import com.example.funerariamc.model.enums.TransactionType;
+import com.example.funerariamc.utils.enums.PlanStatus;
+import com.example.funerariamc.utils.enums.SaleType;
+import com.example.funerariamc.utils.enums.TransactionStatus;
+import com.example.funerariamc.utils.enums.TransactionType;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
@@ -24,6 +24,7 @@ public interface ClientOverviewRepository extends Repository<Client, Long> {
         Long getPlanId();
         String getPlanName();
         LocalDate getStartDate();
+        LocalDate getWaitingRestartDate();
         PlanStatus getStatus();
         long getBeneficiaries();
     }
@@ -63,7 +64,7 @@ public interface ClientOverviewRepository extends Repository<Client, Long> {
 
      @Query("""
             select p.client.id as clientId, p.id as planId, p.planName as planName,
-                   p.startDate as startDate, p.status as status,
+                   p.startDate as startDate, p.waitingRestartDate as waitingRestartDate, p.status as status,
                    (select count(b) from Beneficiary b where b.funeralPlan = p) as beneficiaries
             from FuneralPlan p
             where p.client.id in :clientIds
@@ -79,7 +80,7 @@ public interface ClientOverviewRepository extends Repository<Client, Long> {
                    sc.contractNumber as contractNumber
             from Sale s left join s.serviceContract sc
             where s.client.id in :clientIds
-              and s.status = com.example.funerariamc.model.enums.SaleStatus.ACTIVE
+              and s.status = com.example.funerariamc.utils.enums.SaleStatus.ACTIVE
             order by s.saleDate desc, s.id desc
             """)
     List<SaleRow> findSales(@Param("clientIds") Collection<Long> clientIds,

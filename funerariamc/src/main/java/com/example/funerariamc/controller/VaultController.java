@@ -1,11 +1,11 @@
 package com.example.funerariamc.controller;
 
 import com.example.funerariamc.exception.BusinessException;
-import com.example.funerariamc.model.enums.ExhumationDestination;
-import com.example.funerariamc.model.enums.ExhumationReason;
-import com.example.funerariamc.model.enums.NotificationChannel;
-import com.example.funerariamc.model.enums.NotificationStatus;
-import com.example.funerariamc.model.enums.NotificationType;
+import com.example.funerariamc.utils.enums.ExhumationDestination;
+import com.example.funerariamc.utils.enums.ExhumationReason;
+import com.example.funerariamc.utils.enums.NotificationChannel;
+import com.example.funerariamc.utils.enums.NotificationStatus;
+import com.example.funerariamc.utils.enums.NotificationType;
 import com.example.funerariamc.service.AccessLogService;
 import com.example.funerariamc.service.AssignVaultData;
 import com.example.funerariamc.service.CemeteryService;

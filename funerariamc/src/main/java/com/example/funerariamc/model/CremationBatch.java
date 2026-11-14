@@ -7,7 +7,7 @@ import lombok.AllArgsConstructor;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
-import com.example.funerariamc.model.enums.CremationBatchStatus;
+import com.example.funerariamc.utils.enums.CremationBatchStatus;
 
 /**
  * Stores a scheduled cremation batch.

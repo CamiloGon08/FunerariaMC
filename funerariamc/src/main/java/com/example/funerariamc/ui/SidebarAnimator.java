@@ -26,13 +26,13 @@ import java.util.List;
 
 /**
  * Menú lateral flotante que se contrae (solo íconos) y se expande (íconos y
- * nombres), con las animaciones del mockup "06/07 MASTER_ADMIN" de Figma:
+ * nombres), con estas animaciones:
  * cambio de ancho en 220 ms, rebote al presionar y aumento al pasar el mouse.
  */
 public final class SidebarAnimator {
 
     static final double COLLAPSED_WIDTH = 80;
-    static final double EXPANDED_WIDTH = 288;
+    static final double EXPANDED_WIDTH = 244;
 
     private static final Duration WIDTH_DURATION = Duration.millis(220);
     private static final Duration SCALE_DURATION = Duration.millis(140);
@@ -85,6 +85,14 @@ public final class SidebarAnimator {
      */
     public void freezeDuringAnimation(Pane content) {
         this.frozenContent = content;
+    }
+
+    /** Deja el menú abierto de una vez, sin animación (así se ve al entrar, como en el diseño). */
+    public void showExpanded() {
+        expanded = true;
+        setWidth(EXPANDED_WIDTH);
+        setPillsExpanded(true);
+        applyContentState(true);
     }
 
     public boolean isExpanded() {

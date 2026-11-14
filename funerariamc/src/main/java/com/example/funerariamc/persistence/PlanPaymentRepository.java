@@ -1,7 +1,7 @@
 package com.example.funerariamc.persistence;
 
 import com.example.funerariamc.model.PlanPayment;
-import com.example.funerariamc.model.enums.PlanPaymentStatus;
+import com.example.funerariamc.utils.enums.PlanPaymentStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;

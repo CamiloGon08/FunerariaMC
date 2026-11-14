@@ -4,7 +4,7 @@ import com.example.funerariamc.exception.InvalidDataException;
 import com.example.funerariamc.exception.UnauthorizedActionException;
 import com.example.funerariamc.model.AppUser;
 import com.example.funerariamc.model.SystemParameter;
-import com.example.funerariamc.model.enums.ParameterCategory;
+import com.example.funerariamc.utils.enums.ParameterCategory;
 import com.example.funerariamc.persistence.SystemParameterRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;

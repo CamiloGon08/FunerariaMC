@@ -2,7 +2,7 @@ package com.example.funerariamc.controller;
 
 import com.example.funerariamc.exception.BusinessException;
 import com.example.funerariamc.model.Employee;
-import com.example.funerariamc.model.enums.EmployeePosition;
+import com.example.funerariamc.utils.enums.EmployeePosition;
 import com.example.funerariamc.service.RoleNames;
 import com.example.funerariamc.service.UserAccountService;
 import com.example.funerariamc.service.UserAccountService.AccountCredentials;

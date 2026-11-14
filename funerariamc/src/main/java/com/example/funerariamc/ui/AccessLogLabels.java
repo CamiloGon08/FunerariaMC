@@ -1,6 +1,6 @@
 package com.example.funerariamc.ui;
 
-import com.example.funerariamc.model.enums.DocumentType;
+import com.example.funerariamc.utils.enums.DocumentType;
 import com.example.funerariamc.service.AccessLogService;
 import com.example.funerariamc.service.AppModule;
 

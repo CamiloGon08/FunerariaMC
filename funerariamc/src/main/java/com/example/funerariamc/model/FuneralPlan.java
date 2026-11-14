@@ -1,7 +1,7 @@
 
 package com.example.funerariamc.model;
 
-import com.example.funerariamc.model.enums.PlanStatus;
+import com.example.funerariamc.utils.enums.PlanStatus;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -37,6 +37,10 @@ public class FuneralPlan {
 
     @Column(name = "start_date")
     private LocalDate startDate;
+
+    // Si el afiliado debía más de 3 cuotas y se puso al día, la carencia vuelve a contar desde esta fecha.
+    @Column(name = "waiting_restart_date")
+    private LocalDate waitingRestartDate;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status")

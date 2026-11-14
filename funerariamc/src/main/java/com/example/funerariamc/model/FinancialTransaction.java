@@ -1,7 +1,7 @@
 package com.example.funerariamc.model;
 
-import com.example.funerariamc.model.enums.TransactionStatus;
-import com.example.funerariamc.model.enums.TransactionType;
+import com.example.funerariamc.utils.enums.TransactionStatus;
+import com.example.funerariamc.utils.enums.TransactionType;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;

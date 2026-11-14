@@ -1,8 +1,8 @@
 package com.example.funerariamc.persistence;
 
 import com.example.funerariamc.model.FinancialTransaction;
-import com.example.funerariamc.model.enums.TransactionStatus;
-import com.example.funerariamc.model.enums.TransactionType;
+import com.example.funerariamc.utils.enums.TransactionStatus;
+import com.example.funerariamc.utils.enums.TransactionType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -24,7 +24,7 @@ public interface FinancialTransactionRepository extends JpaRepository<FinancialT
     List<FinancialTransaction> findIncomeBySale(@Param("saleId") Long saleId,
                                                 @Param("income") TransactionType income);
 
-    /** Suma de los abonos vigentes de una venta; el saldo es el total menos esta suma. */
+    /** Suma de los abonos vigentes de una venta. */
     @Query("""
             select coalesce(sum(t.amount), 0) from FinancialTransaction t
             where t.relatedSale.id = :saleId and t.transactionType = :income and t.status = :active
@@ -99,6 +99,17 @@ public interface FinancialTransactionRepository extends JpaRepository<FinancialT
                                                @Param("expense") TransactionType expense,
                                                @Param("active") TransactionStatus active);
 
+    /** Movimientos vigentes de un tipo cuya descripción empieza igual (por ejemplo, las cuotas de la red). */
+    @Query("""
+            select t from FinancialTransaction t
+            left join fetch t.employee
+            where t.transactionType = :type and t.status = :active and t.description like :prefix
+            order by t.transactionDate desc, t.id desc
+            """)
+    List<FinancialTransaction> findActiveByPrefix(@Param("prefix") String prefix,
+                                                  @Param("type") TransactionType type,
+                                                  @Param("active") TransactionStatus active);
+
     boolean existsByEmployeeIdAndTransactionTypeAndStatusAndDescriptionStartingWith(
             Long employeeId, TransactionType type, TransactionStatus status, String prefix);
 
@@ -116,3 +127,4 @@ public interface FinancialTransactionRepository extends JpaRepository<FinancialT
     @Query("select count(p) > 0 from CremationPurchase p where p.financialTransaction.id = :id")
     boolean isCremationPurchase(@Param("id") Long id);
 }
+

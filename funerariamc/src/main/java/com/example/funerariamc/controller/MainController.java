@@ -4,7 +4,7 @@ import com.example.funerariamc.config.FxmlViewLoader;
 import com.example.funerariamc.exception.BusinessException;
 import com.example.funerariamc.model.AppUser;
 import com.example.funerariamc.model.Employee;
-import com.example.funerariamc.model.enums.Sex;
+import com.example.funerariamc.utils.enums.Sex;
 import com.example.funerariamc.service.AccessLogService;
 import com.example.funerariamc.service.AppModule;
 import com.example.funerariamc.service.AuthService;

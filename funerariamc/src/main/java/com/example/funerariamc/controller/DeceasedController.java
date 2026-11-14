@@ -1,9 +1,9 @@
 package com.example.funerariamc.controller;
 
 import com.example.funerariamc.exception.BusinessException;
-import com.example.funerariamc.model.enums.DeathType;
-import com.example.funerariamc.model.enums.DocumentType;
-import com.example.funerariamc.model.enums.ExternalCause;
+import com.example.funerariamc.utils.enums.DeathType;
+import com.example.funerariamc.utils.enums.DocumentType;
+import com.example.funerariamc.utils.enums.ExternalCause;
 import com.example.funerariamc.service.AccessLogService;
 import com.example.funerariamc.service.DeathCertificateService;
 import com.example.funerariamc.service.DeathDocumentData;
