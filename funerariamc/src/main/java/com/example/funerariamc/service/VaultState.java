@@ -1,7 +1,7 @@
 package com.example.funerariamc.service;
 
 import com.example.funerariamc.model.Vault;
-import com.example.funerariamc.model.enums.VaultStatus;
+import com.example.funerariamc.utils.enums.VaultStatus;
 
 import java.time.LocalDate;
 

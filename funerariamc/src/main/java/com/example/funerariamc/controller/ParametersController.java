@@ -1,7 +1,7 @@
 package com.example.funerariamc.controller;
 
 import com.example.funerariamc.exception.BusinessException;
-import com.example.funerariamc.model.enums.ParameterCategory;
+import com.example.funerariamc.utils.enums.ParameterCategory;
 import com.example.funerariamc.service.ParameterCatalog;
 import com.example.funerariamc.service.ParameterData;
 import com.example.funerariamc.service.SystemParameterService;

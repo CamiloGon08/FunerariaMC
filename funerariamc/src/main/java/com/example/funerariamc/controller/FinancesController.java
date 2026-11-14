@@ -2,7 +2,7 @@ package com.example.funerariamc.controller;
 
 import com.example.funerariamc.exception.BusinessException;
 import com.example.funerariamc.exception.InvalidDataException;
-import com.example.funerariamc.model.enums.TransactionType;
+import com.example.funerariamc.utils.enums.TransactionType;
 import com.example.funerariamc.service.CommissionService;
 import com.example.funerariamc.service.CommissionService.CommissionRow;
 import com.example.funerariamc.service.FinancePeriod;

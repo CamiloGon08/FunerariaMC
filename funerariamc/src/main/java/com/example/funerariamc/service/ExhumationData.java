@@ -1,7 +1,7 @@
 package com.example.funerariamc.service;
 
-import com.example.funerariamc.model.enums.ExhumationDestination;
-import com.example.funerariamc.model.enums.ExhumationReason;
+import com.example.funerariamc.utils.enums.ExhumationDestination;
+import com.example.funerariamc.utils.enums.ExhumationReason;
 
 import java.nio.file.Path;
 import java.time.LocalDate;

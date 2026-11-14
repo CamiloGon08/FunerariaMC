@@ -1,6 +1,6 @@
 package com.example.funerariamc.service;
 
-import com.example.funerariamc.model.enums.VehicleType;
+import com.example.funerariamc.utils.enums.VehicleType;
 
 import java.nio.file.Path;
 import java.time.LocalDate;

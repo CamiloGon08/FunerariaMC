@@ -2,10 +2,10 @@ package com.example.funerariamc.controller;
 
 import com.example.funerariamc.exception.BusinessException;
 import com.example.funerariamc.exception.InvalidDataException;
-import com.example.funerariamc.model.enums.StopType;
-import com.example.funerariamc.model.enums.TransportStatus;
-import com.example.funerariamc.model.enums.VehicleStatus;
-import com.example.funerariamc.model.enums.VehicleType;
+import com.example.funerariamc.utils.enums.StopType;
+import com.example.funerariamc.utils.enums.TransportStatus;
+import com.example.funerariamc.utils.enums.VehicleStatus;
+import com.example.funerariamc.utils.enums.VehicleType;
 import com.example.funerariamc.service.AccessLogService;
 import com.example.funerariamc.service.RouteMapService;
 import com.example.funerariamc.service.TransferData;

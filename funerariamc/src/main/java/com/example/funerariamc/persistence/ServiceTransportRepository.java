@@ -1,11 +1,11 @@
 package com.example.funerariamc.persistence;
 
 import com.example.funerariamc.model.ServiceTransport;
-import com.example.funerariamc.model.enums.ContractStatus;
-import com.example.funerariamc.model.enums.SaleStatus;
-import com.example.funerariamc.model.enums.StopType;
-import com.example.funerariamc.model.enums.TransportStatus;
-import com.example.funerariamc.model.enums.VehicleType;
+import com.example.funerariamc.utils.enums.ContractStatus;
+import com.example.funerariamc.utils.enums.SaleStatus;
+import com.example.funerariamc.utils.enums.StopType;
+import com.example.funerariamc.utils.enums.TransportStatus;
+import com.example.funerariamc.utils.enums.VehicleType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;

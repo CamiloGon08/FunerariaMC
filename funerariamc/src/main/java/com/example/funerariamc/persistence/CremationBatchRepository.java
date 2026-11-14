@@ -1,9 +1,9 @@
 package com.example.funerariamc.persistence;
 
 import com.example.funerariamc.model.CremationBatch;
-import com.example.funerariamc.model.enums.CremationBatchStatus;
-import com.example.funerariamc.model.enums.DeathType;
-import com.example.funerariamc.model.enums.DocumentType;
+import com.example.funerariamc.utils.enums.CremationBatchStatus;
+import com.example.funerariamc.utils.enums.DeathType;
+import com.example.funerariamc.utils.enums.DocumentType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;

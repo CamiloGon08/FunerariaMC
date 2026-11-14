@@ -1,7 +1,7 @@
 package com.example.funerariamc.persistence;
 
 import com.example.funerariamc.model.CremationProvider;
-import com.example.funerariamc.model.enums.CremationPurchaseStatus;
+import com.example.funerariamc.utils.enums.CremationPurchaseStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;

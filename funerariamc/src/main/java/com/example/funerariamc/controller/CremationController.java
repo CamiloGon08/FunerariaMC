@@ -1,9 +1,9 @@
 package com.example.funerariamc.controller;
 
 import com.example.funerariamc.exception.BusinessException;
-import com.example.funerariamc.model.enums.CremationBatchStatus;
-import com.example.funerariamc.model.enums.CremationPurchaseStatus;
-import com.example.funerariamc.model.enums.DeathType;
+import com.example.funerariamc.utils.enums.CremationBatchStatus;
+import com.example.funerariamc.utils.enums.CremationPurchaseStatus;
+import com.example.funerariamc.utils.enums.DeathType;
 import com.example.funerariamc.service.AccessLogService;
 import com.example.funerariamc.service.AssignCremationData;
 import com.example.funerariamc.service.CremationBatchData;

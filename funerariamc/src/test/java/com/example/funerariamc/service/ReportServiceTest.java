@@ -1,7 +1,7 @@
 package com.example.funerariamc.service;
 
-import com.example.funerariamc.model.enums.TransactionStatus;
-import com.example.funerariamc.model.enums.TransactionType;
+import com.example.funerariamc.utils.enums.TransactionStatus;
+import com.example.funerariamc.utils.enums.TransactionType;
 import com.example.funerariamc.service.FinancialTransactionService.MovementRow;
 import com.example.funerariamc.service.FinancialTransactionService.Origin;
 import com.example.funerariamc.service.ReportService.Format;

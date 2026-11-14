@@ -1,6 +1,6 @@
 package com.example.funerariamc.service;
 
-import com.example.funerariamc.model.enums.StopType;
+import com.example.funerariamc.utils.enums.StopType;
 
 import java.time.LocalDateTime;
 import java.util.List;

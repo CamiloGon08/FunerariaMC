@@ -2,7 +2,7 @@ package com.example.funerariamc.controller;
 
 import com.example.funerariamc.exception.BusinessException;
 import com.example.funerariamc.exception.InvalidDataException;
-import com.example.funerariamc.model.enums.AlliedPaymentStatus;
+import com.example.funerariamc.utils.enums.AlliedPaymentStatus;
 import com.example.funerariamc.service.AlliedHomeData;
 import com.example.funerariamc.service.AlliedNetworkService;
 import com.example.funerariamc.service.AlliedNetworkService.ContractOption;

@@ -1,6 +1,6 @@
 package com.example.funerariamc.service;
 
-import com.example.funerariamc.model.enums.ParameterCategory;
+import com.example.funerariamc.utils.enums.ParameterCategory;
 
 import java.util.List;
 import java.util.Optional;

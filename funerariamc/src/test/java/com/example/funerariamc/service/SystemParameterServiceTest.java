@@ -6,7 +6,7 @@ import com.example.funerariamc.model.AppUser;
 import com.example.funerariamc.model.Manager;
 import com.example.funerariamc.model.Role;
 import com.example.funerariamc.model.SystemParameter;
-import com.example.funerariamc.model.enums.ParameterCategory;
+import com.example.funerariamc.utils.enums.ParameterCategory;
 import com.example.funerariamc.persistence.SystemParameterRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
