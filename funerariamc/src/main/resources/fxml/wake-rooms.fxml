@@ -29,59 +29,60 @@
         <ToggleGroup fx:id="stateGroup"/>
     </fx:define>
 
-    <VBox spacing="16">
-        <!-- Banda verde: arriba el encabezado del menú (MainController lo pone en #heroHeaderSlot) -->
-        <VBox styleClass="hero-band" spacing="18">
-            <StackPane id="heroHeaderSlot" alignment="TOP_LEFT"/>
-            <HBox spacing="16">
-                <VBox styleClass="hero-kpi,highlight" HBox.hgrow="ALWAYS" prefWidth="0">
-                    <Label fx:id="occupiedCaption" text="OCUPADAS AHORA" styleClass="hero-kpi-caption"/>
-                    <Label fx:id="occupiedValue" text="—" styleClass="hero-kpi-value"/>
-                    <Label fx:id="occupiedDetail" styleClass="hero-kpi-detail"/>
-                </VBox>
-                <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
-                    <Label fx:id="reservedCaption" text="RESERVADAS HOY" styleClass="hero-kpi-caption"/>
-                    <Label fx:id="reservedValue" text="—" styleClass="hero-kpi-value"/>
-                    <Label fx:id="reservedDetail" styleClass="hero-kpi-detail"/>
-                </VBox>
-                <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
-                    <Label text="DISPONIBLES" styleClass="hero-kpi-caption"/>
-                    <Label fx:id="availableValue" text="—" styleClass="hero-kpi-value"/>
-                    <Label text="listas para asignar" styleClass="hero-kpi-detail"/>
-                </VBox>
-                <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
-                    <Label fx:id="departuresCaption" text="SALIDAS HOY" styleClass="hero-kpi-caption"/>
-                    <Label fx:id="departuresValue" text="—" styleClass="hero-kpi-value"/>
-                    <Label fx:id="departuresDetail" styleClass="hero-kpi-detail"/>
-                </VBox>
-            </HBox>
-        </VBox>
+    <!-- Toda la pantalla se desplaza junta: banda verde, filtros y contenido -->
+    <ScrollPane fx:id="cardScroll" fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED"
+                styleClass="card-scroll,page-scroll">
+        <VBox spacing="16" styleClass="page-content">
+            <!-- Banda verde: arriba el encabezado del menú (MainController lo pone en #heroHeaderSlot) -->
+            <VBox styleClass="hero-band" spacing="18">
+                <StackPane id="heroHeaderSlot" alignment="TOP_LEFT"/>
+                <HBox spacing="16">
+                    <VBox styleClass="hero-kpi,highlight" HBox.hgrow="ALWAYS" prefWidth="0">
+                        <Label fx:id="occupiedCaption" text="OCUPADAS AHORA" styleClass="hero-kpi-caption"/>
+                        <Label fx:id="occupiedValue" text="—" styleClass="hero-kpi-value"/>
+                        <Label fx:id="occupiedDetail" styleClass="hero-kpi-detail"/>
+                    </VBox>
+                    <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
+                        <Label fx:id="reservedCaption" text="RESERVADAS HOY" styleClass="hero-kpi-caption"/>
+                        <Label fx:id="reservedValue" text="—" styleClass="hero-kpi-value"/>
+                        <Label fx:id="reservedDetail" styleClass="hero-kpi-detail"/>
+                    </VBox>
+                    <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
+                        <Label text="DISPONIBLES" styleClass="hero-kpi-caption"/>
+                        <Label fx:id="availableValue" text="—" styleClass="hero-kpi-value"/>
+                        <Label text="listas para asignar" styleClass="hero-kpi-detail"/>
+                    </VBox>
+                    <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
+                        <Label fx:id="departuresCaption" text="SALIDAS HOY" styleClass="hero-kpi-caption"/>
+                        <Label fx:id="departuresValue" text="—" styleClass="hero-kpi-value"/>
+                        <Label fx:id="departuresDetail" styleClass="hero-kpi-detail"/>
+                    </VBox>
+                </HBox>
+            </VBox>
 
-        <!-- Fecha consultada, filtro por estado y Nueva sala -->
-        <HBox styleClass="filter-card">
-            <Button text="‹" onAction="#onPreviousDay" styleClass="day-arrow" minWidth="-Infinity"/>
-            <DatePicker fx:id="datePicker" prefWidth="260" minWidth="200" editable="false"/>
-            <Button text="›" onAction="#onNextDay" styleClass="day-arrow" minWidth="-Infinity"/>
-            <Button text="Hoy" onAction="#onToday" styleClass="today-button" minWidth="-Infinity"/>
-            <HBox styleClass="segmented" minWidth="-Infinity">
-                <ToggleButton fx:id="allToggle" text="Todas" toggleGroup="$stateGroup" selected="true" styleClass="segment"/>
-                <ToggleButton fx:id="inWakeToggle" text="Ocupadas" toggleGroup="$stateGroup" styleClass="segment"/>
-                <ToggleButton fx:id="reservedToggle" text="Reservadas" toggleGroup="$stateGroup" styleClass="segment"/>
-                <ToggleButton fx:id="availableToggle" text="Disponibles" toggleGroup="$stateGroup" styleClass="segment"/>
+            <!-- Fecha consultada, filtro por estado y Nueva sala -->
+            <HBox styleClass="filter-card">
+                <Button text="‹" onAction="#onPreviousDay" styleClass="day-arrow" minWidth="-Infinity"/>
+                <DatePicker fx:id="datePicker" prefWidth="260" minWidth="200" editable="false"/>
+                <Button text="›" onAction="#onNextDay" styleClass="day-arrow" minWidth="-Infinity"/>
+                <Button text="Hoy" onAction="#onToday" styleClass="today-button" minWidth="-Infinity"/>
+                <HBox styleClass="segmented" minWidth="-Infinity">
+                    <ToggleButton fx:id="allToggle" text="Todas" toggleGroup="$stateGroup" selected="true" styleClass="segment"/>
+                    <ToggleButton fx:id="inWakeToggle" text="Ocupadas" toggleGroup="$stateGroup" styleClass="segment"/>
+                    <ToggleButton fx:id="reservedToggle" text="Reservadas" toggleGroup="$stateGroup" styleClass="segment"/>
+                    <ToggleButton fx:id="availableToggle" text="Disponibles" toggleGroup="$stateGroup" styleClass="segment"/>
+                </HBox>
+                <Pane HBox.hgrow="ALWAYS"/>
+                <Button fx:id="newRoomButton" text="+  Nueva sala" onAction="#onNewRoom" styleClass="primary-button" minWidth="-Infinity"/>
             </HBox>
-            <Pane HBox.hgrow="ALWAYS"/>
-            <Button fx:id="newRoomButton" text="+  Nueva sala" onAction="#onNewRoom" styleClass="primary-button" minWidth="-Infinity"/>
-        </HBox>
 
-        <!-- Tarjetas de las salas con barra de desplazamiento visible (sin paginación) -->
-        <ScrollPane fx:id="cardScroll" fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="ALWAYS"
-                    styleClass="card-scroll" VBox.vgrow="ALWAYS">
+            <!-- Tarjetas de las salas con barra de desplazamiento visible (sin paginación) -->
             <VBox styleClass="card-scroll-content" spacing="10">
                 <GridPane fx:id="cardGrid" hgap="18" vgap="18"/>
                 <Label fx:id="emptyLabel" styleClass="empty-board" wrapText="true" managed="false" visible="false"/>
             </VBox>
-        </ScrollPane>
-    </VBox>
+        </VBox>
+    </ScrollPane>
 
     <!-- Panel de detalle de la velación (19.1) -->
     <Region fx:id="veil" styleClass="drawer-veil" visible="false" onMouseClicked="#onCloseDrawer"/>
