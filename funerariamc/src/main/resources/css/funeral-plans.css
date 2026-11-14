@@ -15,7 +15,7 @@
 .legend-item { -fx-spacing: 5; -fx-alignment: center-left; }
 .legend-swatch { -fx-min-width: 11; -fx-min-height: 11; -fx-max-width: 11; -fx-max-height: 11; -fx-background-radius: 3; -fx-border-radius: 3; -fx-border-width: 1; }
 .legend-text { -fx-text-fill: -color-secondary; -fx-font-size: 11.5px; }
-.side-title { -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif; -fx-font-size: 21px; -fx-text-fill: -color-primary; }
+.side-title { -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif; -fx-font-size: 18px; -fx-text-fill: -color-primary; }
 .attention-row { -fx-spacing: 10; -fx-alignment: center-left; -fx-padding: 4 0; }
 .attention-code { -fx-min-width: 44; -fx-pref-width: 44; -fx-min-height: 38; -fx-alignment: center; -fx-background-radius: 8; -fx-font-weight: bold; -fx-font-size: 12px; }
 .code-expiring { -fx-background-color: #F1EAD9; -fx-text-fill: -color-gold-text; }
@@ -31,7 +31,7 @@
 .dialog-hint { -fx-text-fill: -color-secondary; -fx-font-size: 12px; }
 
 
-.section-heading-serif { -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif; -fx-font-size: 24px; -fx-text-fill: -color-primary; }
+.section-heading-serif { -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif; -fx-font-size: 18px; -fx-text-fill: -color-primary; }
 
 /* ---------- Indicador oscuro (recaudo del mes) ---------- */
 .kpi-dark { -fx-background-color: -color-primary; }
@@ -69,7 +69,7 @@
 .swatch-2 { -fx-background-color: -color-primary; }
 .swatch-3 { -fx-background-color: -color-olive; }
 .swatch-4 { -fx-background-color: -color-border; }
-.donut-value { -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif; -fx-font-size: 26px; -fx-text-fill: -color-primary; }
+.donut-value { -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif; -fx-font-size: 26px; -fx-text-fill: -color-primary; }
 .donut-caption { -fx-text-fill: -color-secondary; -fx-font-size: 10.5px; }
 .type-name { -fx-text-fill: -color-primary; -fx-font-size: 12.5px; }
 .type-count { -fx-text-fill: -color-primary; -fx-font-size: 12.5px; -fx-font-weight: bold; }
@@ -85,7 +85,7 @@
 }
 .plan-card:hover { -fx-border-color: -color-accent; }
 .plan-card.inactive { -fx-opacity: 0.75; }
-.plan-holder { -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif; -fx-font-size: 22px; -fx-text-fill: -color-primary; }
+.plan-holder { -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif; -fx-font-size: 22px; -fx-text-fill: -color-primary; }
 .plan-meta { -fx-text-fill: -color-secondary; -fx-font-size: 11.5px; }
 .plan-name { -fx-text-fill: -color-primary; -fx-font-size: 15px; -fx-font-weight: bold; }
 .plan-fee { -fx-text-fill: -color-secondary; -fx-font-size: 12px; }
@@ -175,8 +175,8 @@
 }
 .eden-green .hero-band .kpi-caption { -fx-text-fill: rgba(244,245,238,0.88); -fx-font-size: 11px; -fx-font-weight: bold; }
 .eden-green .hero-band .kpi-value {
-    -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif;
-    -fx-text-fill: #F4F5EE; -fx-font-size: 38px; -fx-font-weight: normal;
+    -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif;
+    -fx-text-fill: #F4F5EE; -fx-font-size: 30px; -fx-font-weight: normal;
 }
 .eden-green .hero-band .kpi-value:warning { -fx-text-fill: #E9DDB0; }
 .eden-green .hero-band .kpi-detail { -fx-text-fill: rgba(244,245,238,0.72); -fx-font-size: 12.5px; }
@@ -188,12 +188,6 @@
 .eden-green .hero-band .occupancy-bar > .track { -fx-background-color: rgba(255,255,255,0.18); }
 .eden-green .hero-band .occupancy-bar > .bar { -fx-background-color: #E4E7DC; }
 /* Indicador destacado: tarjeta lino clara dentro de la banda */
-.eden-green .hero-band .kpi-card.kpi-dark { -fx-background-color: #EEF0E6; -fx-border-color: #EEF0E6; }
-.eden-green .hero-band .kpi-dark .kpi-caption { -fx-text-fill: -eden-muted; }
-.eden-green .hero-band .kpi-dark .kpi-value { -fx-text-fill: -eden-text; }
-.eden-green .hero-band .kpi-dark .kpi-detail { -fx-text-fill: -eden-muted; }
-.eden-green .hero-band .kpi-dark .kpi-alert { -fx-text-fill: -eden-alert; }
-.eden-green .hero-band .kpi-dark .kpi-up { -fx-text-fill: -eden-moss; }
 
 /* Barra de búsqueda y filtros */
 .eden-green .filter-card {
@@ -232,13 +226,13 @@
 
 /* Títulos de sección y tarjetas grandes */
 .eden-green .section-heading,
-.eden-green .section-heading-serif { -fx-font-size: 30px; -fx-text-fill: -eden-text; }
+.eden-green .section-heading-serif { -fx-font-size: 18px; -fx-text-fill: -eden-text; }
 .eden-green .card-subtitle { -fx-text-fill: -eden-muted; }
 .eden-green .table-card {
     -fx-background-color: -eden-card; -fx-border-color: transparent;
     -fx-background-radius: 22; -fx-border-radius: 22; -fx-padding: 22 24 18 24;
 }
-.eden-green .card-title { -fx-font-size: 30px; -fx-text-fill: -eden-text; }
+.eden-green .card-title { -fx-font-size: 18px; -fx-text-fill: -eden-text; }
 .eden-green .side-title { -fx-text-fill: -eden-text; }
 .eden-green .legend-text { -fx-text-fill: -eden-muted; }
 .eden-green .count-badge { -fx-background-color: -eden-alert-bg; -fx-text-fill: -eden-alert; }

@@ -69,6 +69,7 @@
                 <ToggleButton fx:id="balanceState" text="Con saldo" toggleGroup="$stateGroup" styleClass="segment"/>
                 <ToggleButton fx:id="inactiveState" text="Inactivas" toggleGroup="$stateGroup" styleClass="segment"/>
             </HBox>
+            <Button text="Cuota del Remanso" onAction="#onNetworkFee" styleClass="secondary-button" minWidth="-Infinity"/>
             <Button text="+  Nueva funeraria aliada" onAction="#onNewHome" styleClass="primary-button" minWidth="-Infinity"/>
         </HBox>
 

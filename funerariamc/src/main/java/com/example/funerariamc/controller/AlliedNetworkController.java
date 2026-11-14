@@ -3,15 +3,18 @@ package com.example.funerariamc.controller;
 import com.example.funerariamc.exception.BusinessException;
 import com.example.funerariamc.exception.InvalidDataException;
 import com.example.funerariamc.utils.enums.AlliedPaymentStatus;
+import com.example.funerariamc.utils.enums.PaymentMethod;
 import com.example.funerariamc.service.AlliedHomeData;
 import com.example.funerariamc.service.AlliedNetworkService;
 import com.example.funerariamc.service.AlliedNetworkService.ContractOption;
+import com.example.funerariamc.service.AlliedNetworkService.FeeFrequency;
 import com.example.funerariamc.service.AlliedNetworkService.HomeCard;
 import com.example.funerariamc.service.AlliedNetworkService.HomeDetail;
 import com.example.funerariamc.service.AlliedNetworkService.HomeState;
 import com.example.funerariamc.service.AlliedNetworkService.Overview;
 import com.example.funerariamc.service.AlliedNetworkService.PaymentRow;
 import com.example.funerariamc.service.AlliedPaymentData;
+import com.example.funerariamc.service.SaleParameters;
 import com.example.funerariamc.ui.RefreshableView;
 import javafx.animation.FadeTransition;
 import javafx.animation.ParallelTransition;
@@ -59,6 +62,8 @@ import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.text.NumberFormat;
 import java.time.LocalDate;
+import java.time.YearMonth;
+import java.time.format.TextStyle;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -82,6 +87,7 @@ public class AlliedNetworkController implements RefreshableView {
     private static final DateTimeFormatter SHORT_DAY = DateTimeFormatter.ofPattern("d MMM", ES);
     private static final DateTimeFormatter LONG_DAY = DateTimeFormatter.ofPattern("d MMM yyyy", ES);
     private static final String ALL_CITIES = "Todas";
+    private final SaleParameters saleParameters;
     private static final double DRAWER_WIDTH = 460;
     private static final double CARD_GAP = 16;
 
@@ -120,8 +126,9 @@ public class AlliedNetworkController implements RefreshableView {
     private SequentialTransition toastMotion;
     private final PauseTransition searchDelay = new PauseTransition(Duration.millis(200));
 
-    public AlliedNetworkController(AlliedNetworkService service) {
+    public AlliedNetworkController(AlliedNetworkService service, SaleParameters saleParameters) {
         this.service = service;
+        this.saleParameters = saleParameters;
     }
 
     @Override
@@ -197,7 +204,7 @@ public class AlliedNetworkController implements RefreshableView {
                 : inactive == 0 ? "todas con convenio activo" : inactive + (inactive == 1 ? " inactiva" : " inactivas"));
         servicesValue.setText(String.valueOf(o.servicesThisMonth()));
         long diff = o.servicesThisMonth() - o.servicesLastMonth();
-        String last = o.month().minusMonths(1).getMonth().getDisplayName(java.time.format.TextStyle.FULL, ES)
+        String last = o.month().minusMonths(1).getMonth().getDisplayName(TextStyle.FULL, ES)
                 .toLowerCase(Locale.ROOT);
         servicesDetail.setText(diff == 0 ? "igual que " + last : (diff > 0 ? "+" : "") + diff + " frente a " + last);
         pendingValue.setText(shortPesos(o.pending()));
@@ -578,13 +585,16 @@ public class AlliedNetworkController implements RefreshableView {
         city.setPromptText("Ej.: Santa Marta");
         TextField email = new TextField(h == null || h.email() == null ? "" : h.email());
         email.setPromptText("Ej.: contacto@funeraria.co");
+        TextField address = new TextField(h == null || h.address() == null ? "" : h.address());
+        address.setPromptText("Ej.: Calle 15 # 8-40");
         DatePicker since = new DatePicker(h == null ? null : h.agreementStart());
         since.setPromptText("dd/mm/aaaa");
         since.setConverter(dateConverter());
         form.section("Funeraria", 3)
                 .field("NOMBRE *", name)
                 .field("NIT *", nit)
-                .field("CIUDAD", city);
+                .field("CIUDAD", city)
+                .field("DIRECCIÓN", address);
         form.section("Contacto y convenio", 3)
                 .field("TELÉFONO DE CONTACTO *", phone)
                 .field("CORREO", email)
@@ -595,7 +605,7 @@ public class AlliedNetworkController implements RefreshableView {
                 "Los campos con * son obligatorios.", form, 760);
         runForm(dialog, form, h == null ? "Registrar" : "Guardar cambios", () -> {
             AlliedHomeData data = new AlliedHomeData(name.getText(), nit.getText(), phone.getText(), city.getText(),
-                    email.getText(), since.getValue());
+                    email.getText(), since.getValue(), address.getText());
             if (h == null) {
                 return service.registerHome(data);
             }
@@ -669,19 +679,124 @@ public class AlliedNetworkController implements RefreshableView {
         });
     }
 
+    /** A la aliada se le paga por transferencia o consignando en su cuenta corriente. */
     private void markPaid(HomeCard h, PaymentRow p) {
-        if (!confirm("¿Marcar como pagado el pago de " + pesos(p.amount()) + " a " + h.name() + "?",
-                "Se registra un egreso en Finanzas con la fecha y hora de ahora. Si después hay un error, anule el"
-                        + " pago aquí y el egreso también se anula.", "Marcar pagado")) {
-            return;
-        }
-        async("allied-paid", () -> {
-            service.markPaid(p.id());
+        Form form = new Form();
+        ComboBox<PaymentMethod> method = methodCombo();
+        form.section("Pago", 2)
+                .field("FUNERARIA ALIADA", lockedField(h.name() + " · " + pesos(p.amount())))
+                .field("MEDIO DE PAGO *", method);
+        form.note(note("Se registra un egreso en Finanzas con la fecha y hora de ahora. Si después hay un error,"
+                + " anule el pago aquí y el egreso también se anula."));
+        Dialog<ButtonType> dialog = formDialog("Marcar como pagado", "Los campos con * son obligatorios.", form, 620);
+        runForm(dialog, form, "Marcar pagado", () -> {
+            if (method.getValue() == null) {
+                throw new InvalidDataException("Elija si se pagó por transferencia o por consignación.");
+            }
+            service.markPaid(p.id(), method.getValue());
             return Boolean.TRUE;
         }, ok -> {
             showToast("Pago marcado como pagado y egreso registrado en Finanzas.");
             load();
-        }, failure -> showError(message(failure, "No se pudo marcar el pago.")));
+        });
+    }
+
+    private static ComboBox<PaymentMethod> methodCombo() {
+        ComboBox<PaymentMethod> method = new ComboBox<>();
+        method.getStyleClass().add("form-combo");
+        method.getItems().setAll(PaymentMethod.values());
+        method.setValue(PaymentMethod.TRANSFER);
+        method.setConverter(new StringConverter<>() {
+            @Override
+            public String toString(PaymentMethod m) {
+                return m == null ? "" : m.getDisplayName();
+            }
+
+            @Override
+            public PaymentMethod fromString(String text) {
+                return null;
+            }
+        });
+        return method;
+    }
+
+    /**
+     * Cuota de la red de funerarias (Remanso): se escoge pagarla mensual, semestral o anual y cada
+     * pago queda como egreso en Finanzas. Muestra también los pagos anteriores.
+     */
+    @FXML
+    private void onNetworkFee() {
+        Form form = new Form();
+        ComboBox<FeeFrequency> frequency = new ComboBox<>();
+        frequency.getStyleClass().add("form-combo");
+        frequency.getItems().setAll(FeeFrequency.values());
+        frequency.setValue(FeeFrequency.ANNUAL);
+        frequency.setConverter(new StringConverter<>() {
+            @Override
+            public String toString(FeeFrequency f) {
+                return f == null ? "" : f.getLabel();
+            }
+
+            @Override
+            public FeeFrequency fromString(String text) {
+                return null;
+            }
+        });
+        ComboBox<YearMonth> from = new ComboBox<>();
+        from.getStyleClass().add("form-combo");
+        YearMonth now = YearMonth.from(service.today());
+        for (YearMonth m = now.minusMonths(12); !m.isAfter(now.plusMonths(12)); m = m.plusMonths(1)) {
+            from.getItems().add(m);
+        }
+        from.setValue(now);
+        from.setConverter(new StringConverter<>() {
+            @Override
+            public String toString(YearMonth m) {
+                return m == null ? "" : m.getMonth().getDisplayName(TextStyle.FULL, ES) + " " + m.getYear();
+            }
+
+            @Override
+            public YearMonth fromString(String text) {
+                return null;
+            }
+        });
+        TextField amount = new TextField();
+        amount.setPromptText("$ 0");
+        async("network-fee-amount", () -> saleParameters.suggested(SaleParameters.NETWORK_FEE_AMOUNT), value -> {
+            if (value != null && amount.getText().isBlank()) {
+                amount.setText(NumberFormat.getIntegerInstance(ES).format(value));
+            }
+        }, failure -> { });
+        ComboBox<PaymentMethod> method = methodCombo();
+        VBox history = new VBox(6);
+        history.getChildren().add(label("Cargando pagos anteriores…", "card-subtitle"));
+        async("network-fees", service::networkFees, fees -> {
+            history.getChildren().clear();
+            if (fees.isEmpty()) {
+                history.getChildren().add(label("Todavía no hay pagos de la cuota registrados.", "card-subtitle"));
+            }
+            for (AlliedNetworkService.NetworkFee fee : fees.stream().limit(6).toList()) {
+                history.getChildren().add(label(fee.period() + " · " + pesos(fee.amount()) + " · "
+                        + DAY.format(fee.paidAt().toLocalDate()) + " · " + fee.movementCode(), "card-subtitle"));
+            }
+        }, failure -> history.getChildren().setAll(label("No se pudieron cargar los pagos anteriores.", "card-subtitle")));
+        form.section("Cuota de la red", 2)
+                .field("PERIODICIDAD *", frequency)
+                .field("DESDE *", from)
+                .field("VALOR *", amount)
+                .field("MEDIO DE PAGO *", method);
+        form.note(note("El valor sugerido sale de Parámetros del sistema y se puede cambiar. Un mismo período no se"
+                + " paga dos veces; si hubo un error, anule el egreso en Finanzas › Movimientos."));
+        form.section("Pagos anteriores", 1);
+        form.note(history);
+        Dialog<ButtonType> dialog = formDialog("Pagar cuota del Remanso", "Los campos con * son obligatorios.", form, 700);
+        runForm(dialog, form, "Registrar pago", () -> {
+            BigDecimal value = parseAmount(amount.getText(), "El valor");
+            return service.payNetworkFee(frequency.getValue(), from.getValue(), value, method.getValue());
+        }, id -> {
+            showToast("Cuota de la red registrada como egreso en Finanzas.");
+            load();
+        });
     }
 
     private void voidPayment(HomeCard h, PaymentRow p) {
