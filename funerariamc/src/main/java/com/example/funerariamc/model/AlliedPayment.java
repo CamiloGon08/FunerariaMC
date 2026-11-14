@@ -1,6 +1,7 @@
 package com.example.funerariamc.model;
 
 import com.example.funerariamc.model.enums.AlliedPaymentStatus;
+import com.example.funerariamc.model.enums.PaymentMethod;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -38,6 +39,11 @@ public class AlliedPayment {
 
     @Column(name = "payment_date")
     private LocalDate paymentDate;
+
+    // Transferencia o consignación; null en pagos registrados antes de pedir el medio.
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_method", length = 10)
+    private PaymentMethod paymentMethod;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status")

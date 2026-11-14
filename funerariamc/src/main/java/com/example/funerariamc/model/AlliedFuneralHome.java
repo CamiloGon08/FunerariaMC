@@ -37,6 +37,9 @@ public class AlliedFuneralHome {
     @Column(name = "email", length = 50)
     private String email;
 
+    @Column(name = "address", length = 100)
+    private String address;
+
     // Una funeraria aliada se desactiva, no se borra
     @Column(name = "active", nullable = false)
     private Boolean active = true;
