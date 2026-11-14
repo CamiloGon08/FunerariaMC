@@ -24,6 +24,7 @@ public interface ClientOverviewRepository extends Repository<Client, Long> {
         Long getPlanId();
         String getPlanName();
         LocalDate getStartDate();
+        LocalDate getWaitingRestartDate();
         PlanStatus getStatus();
         long getBeneficiaries();
     }
@@ -63,7 +64,7 @@ public interface ClientOverviewRepository extends Repository<Client, Long> {
 
      @Query("""
             select p.client.id as clientId, p.id as planId, p.planName as planName,
-                   p.startDate as startDate, p.status as status,
+                   p.startDate as startDate, p.waitingRestartDate as waitingRestartDate, p.status as status,
                    (select count(b) from Beneficiary b where b.funeralPlan = p) as beneficiaries
             from FuneralPlan p
             where p.client.id in :clientIds
