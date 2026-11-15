@@ -59,10 +59,10 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Pantalla de Personal (propuesta P-08 / P-08.1): tarjetas por empleado con su cuenta de acceso,
+ * Pantalla de Personal: tarjetas por empleado con su cuenta de acceso,
  * filtros por área y estado, indicadores y un panel lateral de detalle.
- * Desde aquí el Administrador Maestro crea la cuenta y restablece la contraseña (HU-06, HU-07).
- * Un empleado nunca se elimina (RN-19).
+ * Desde aquí el Administrador Maestro crea la cuenta y restablece la contraseña.
+ * Un empleado nunca se elimina.
  */
 @Component
 @Scope("prototype")
@@ -408,10 +408,10 @@ public class EmployeeController implements RefreshableView {
         return row;
     }
 
-    /** Avisos de la tarjeta: licencia (RN-26) y contraseña temporal pendiente. */
+    /** Avisos de la tarjeta: licencia y contraseña temporal pendiente. */
     private Optional<Label> warning(Employee e) {
         if (employeeService.hasExpiredLicense(e)) {
-            return Optional.of(band("Licencia vencida: no se asigna a servicios (RN-26)", "band-alert"));
+            return Optional.of(band("Licencia vencida: no se asigna a servicios", "band-alert"));
         }
         if (employeeService.hasLicenseExpiringSoon(e) && e instanceof Driver driver) {
             return Optional.of(band("Licencia vence el " + DATE.format(driver.getLicenseExpiryDate()), "band-warning"));
@@ -549,7 +549,7 @@ public class EmployeeController implements RefreshableView {
         return Optional.empty();
     }
 
-    /** HU-06 / HU-07: la cuenta se crea y se restablece aquí mismo, sin otro módulo. */
+    /** La cuenta se crea y se restablece aquí mismo, sin otro módulo. */
     private VBox accountSection(Employee e, EmployeePosition position, AccountSummary account) {
         Label title = new Label("CUENTA DE ACCESO");
         title.getStyleClass().add("kpi-caption");
@@ -557,7 +557,7 @@ public class EmployeeController implements RefreshableView {
         box.getStyleClass().add("info-box");
         if (!position.canHaveUserAccount()) {
             GridPane grid = infoGrid();
-            infoRow(grid, 0, "Cuenta", "No aplica: este cargo no ingresa al sistema (RN-23)");
+            infoRow(grid, 0, "Cuenta", "No aplica: este cargo no ingresa al sistema");
             box.getChildren().add(grid);
         } else if (account == null) {
             box.getChildren().add(wrapped(e.isActive()
@@ -610,7 +610,7 @@ public class EmployeeController implements RefreshableView {
         }
     }
 
-    /** HU-04: pide confirmación y explica que no se borra. */
+    /** Pide confirmación y explica que no se borra. */
     private void onDeactivate(Employee employee) {
         boolean hasAccount = accounts.containsKey(employee.getId());
         String consequence = hasAccount
@@ -624,7 +624,7 @@ public class EmployeeController implements RefreshableView {
         alert.setHeaderText("¿Desactivar a " + fullName(employee) + "?");
         alert.setContentText(EmployeePosition.displayNameOf(employee) + ", " + documentLabel(employee)
                 + ", pasará a INACTIVO. " + consequence
-                + "\n\nNo se borra: conserva su historial y puede activarse de nuevo (RN-19).");
+                + "\n\nNo se borra: conserva su historial y puede activarse de nuevo.");
         styleDialog(alert);
         alert.getDialogPane().lookupButton(deactivate).getStyleClass().add("danger-button");
         alert.showAndWait().filter(deactivate::equals).ifPresent(answer -> {
