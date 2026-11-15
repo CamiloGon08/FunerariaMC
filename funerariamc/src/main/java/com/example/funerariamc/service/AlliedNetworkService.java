@@ -10,6 +10,7 @@ import com.example.funerariamc.model.Deceased;
 import com.example.funerariamc.model.FinancialTransaction;
 import com.example.funerariamc.model.ServiceContract;
 import com.example.funerariamc.utils.enums.AlliedPaymentStatus;
+import com.example.funerariamc.utils.enums.PaymentMethod;
 import com.example.funerariamc.utils.enums.ContractStatus;
 import com.example.funerariamc.utils.enums.TransactionStatus;
 import com.example.funerariamc.utils.enums.TransactionType;
@@ -32,6 +33,7 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
+import java.time.format.TextStyle;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -54,6 +56,9 @@ public class AlliedNetworkService {
     static final int MAX_EMAIL = 50;
     /** Prefijo de la descripción del egreso: "Pago a funeraria aliada · ...". */
     public static final String EXPENSE_PREFIX = "Pago a funeraria aliada · ";
+    /** Así empieza la descripción del egreso de la cuota de la red de funerarias (Remanso). */
+    public static final String NETWORK_FEE_PREFIX = "Cuota de la red Remanso · ";
+    static final int MAX_ADDRESS = 100;
 
     /** Cómo va la cuenta con una funeraria. */
     public enum HomeState {
@@ -74,7 +79,7 @@ public class AlliedNetworkService {
 
     /** Una tarjeta del tablero. pending = saldo por pagar (pagos pendientes). */
     public record HomeCard(Long id, String name, String nit, String phone, String city, String email,
-                           LocalDate agreementStart, boolean active, long servicesThisMonth, BigDecimal pending,
+                           String address, LocalDate agreementStart, boolean active, long servicesThisMonth, BigDecimal pending,
                            long pendingCount, LocalDate oldestPending) {
 
         public HomeState state() {
@@ -98,7 +103,30 @@ public class AlliedNetworkService {
 
     /** Un pago en el panel de la funeraria. paidAt = fecha del egreso en hora de Colombia. */
     public record PaymentRow(Long id, String contractNumber, String deceasedName, LocalDate serviceDate,
-                             BigDecimal amount, AlliedPaymentStatus status, String movementCode, LocalDateTime paidAt) {
+                             BigDecimal amount, AlliedPaymentStatus status, String movementCode, LocalDateTime paidAt,
+                             PaymentMethod method) {
+    }
+
+    /** Periodicidad con que se paga la cuota del Remanso; la funeraria la escoge. */
+    public enum FeeFrequency {
+        MONTHLY("Mensual"),
+        SEMIANNUAL("Semestral"),
+        ANNUAL("Anual");
+
+        private final String label;
+
+        FeeFrequency(String label) {
+            this.label = label;
+        }
+
+        public String getLabel() {
+            return label;
+        }
+    }
+
+    /** Un pago de la cuota de la red: período cubierto, valor, medio, fecha y código del egreso. */
+    public record NetworkFee(Long transactionId, String movementCode, String period, BigDecimal amount,
+                             LocalDateTime paidAt, String paidBy) {
     }
 
     /** Panel de una funeraria: datos, pagos y servicios del año. */
@@ -204,7 +232,7 @@ public class AlliedNetworkService {
 
     static HomeCard card(AlliedFuneralHome home, AlliedPaymentRepository.HomeTotals totals) {
         return new HomeCard(home.getId(), home.getName(), home.getNit(), home.getContactPhone(), home.getCity(),
-                home.getEmail(), home.getAgreementStartDate(), !Boolean.FALSE.equals(home.getActive()),
+                home.getEmail(), home.getAddress(), home.getAgreementStartDate(), !Boolean.FALSE.equals(home.getActive()),
                 totals == null ? 0 : totals.getServices(),
                 totals == null || totals.getPending() == null ? BigDecimal.ZERO : totals.getPending(),
                 totals == null ? 0 : totals.getPendingCount(), totals == null ? null : totals.getOldestPending());
@@ -217,7 +245,8 @@ public class AlliedNetworkService {
                 contract == null ? null : fullName(contract.getDeceased()), p.getPaymentDate(), p.getAmount(),
                 p.getStatus() == null ? AlliedPaymentStatus.PENDING : p.getStatus(),
                 expense == null ? null : FinancialTransaction.code(expense.getId()),
-                expense == null ? null : AccessLogService.toAppTime(expense.getTransactionDate()));
+                expense == null ? null : AccessLogService.toAppTime(expense.getTransactionDate()),
+                p.getPaymentMethod());
     }
 
     // ---------- funerarias ----------
@@ -308,6 +337,11 @@ public class AlliedNetworkService {
         home.setContactPhone(phone);
         home.setCity(city.isEmpty() ? null : city);
         home.setEmail(email.isEmpty() ? null : email);
+        String address = trim(data.address());
+        if (address.length() > MAX_ADDRESS) {
+            throw new InvalidDataException("La dirección admite máximo " + MAX_ADDRESS + " caracteres.");
+        }
+        home.setAddress(address.isEmpty() ? null : address);
         home.setAgreementStartDate(data.agreementStart());
     }
 
@@ -351,9 +385,18 @@ public class AlliedNetworkService {
         return saved.getId();
     }
 
-    /** Marca el pago como pagado y registra el egreso en Finanzas con la fecha y hora de ahora. */
+    /** Marca el pago como pagado sin indicar el medio. */
     @Transactional
     public void markPaid(Long paymentId) {
+        markPaid(paymentId, null);
+    }
+
+    /**
+     * Marca el pago como pagado con el medio usado (transferencia o consignación) y registra el egreso
+     * en Finanzas con la fecha y hora de ahora.
+     */
+    @Transactional
+    public void markPaid(Long paymentId, PaymentMethod method) {
         AppUser actor = requireMaster();
         AlliedPayment payment = findPayment(paymentId);
         if (payment.getStatus() != AlliedPaymentStatus.PENDING) {
@@ -367,14 +410,83 @@ public class AlliedNetworkService {
         expense.setEmployee(actor.getEmployee());
         String contract = payment.getRelatedServiceContract() == null ? ""
                 : " · contrato " + payment.getRelatedServiceContract().getContractNumber();
-        String description = EXPENSE_PREFIX + payment.getAlliedFuneralHome().getName() + contract;
+        String description = EXPENSE_PREFIX + payment.getAlliedFuneralHome().getName() + contract
+                + (method == null ? "" : " · " + method.getDisplayName());
         expense.setDescription(description.length() > 150 ? description.substring(0, 150) : description);
         FinancialTransaction saved = transactionRepository.save(expense);
         payment.setFinancialTransaction(saved);
+        payment.setPaymentMethod(method);
         payment.setStatus(AlliedPaymentStatus.PAID);
         paymentRepository.save(payment);
         accessLogService.record(actor.getId(), AccessLogService.ALLIED_PAYMENT_PAID + payment.getAlliedFuneralHome().getNit()
                 + " " + FinancialTransaction.code(saved.getId()) + " " + payment.getAmount().toPlainString());
+    }
+
+    // ---------- cuota de la red (Remanso) ----------
+
+    /** Pagos vigentes de la cuota de la red, del más reciente al más antiguo. */
+    @Transactional(readOnly = true)
+    public List<NetworkFee> networkFees() {
+        requireMaster();
+        return transactionRepository.findActiveByPrefix(NETWORK_FEE_PREFIX + "%", TransactionType.EXPENSE,
+                        TransactionStatus.ACTIVE).stream()
+                .map(t -> new NetworkFee(t.getId(), FinancialTransaction.code(t.getId()),
+                        t.getDescription().substring(NETWORK_FEE_PREFIX.length()), t.getAmount(),
+                        AccessLogService.toAppTime(t.getTransactionDate()),
+                        t.getEmployee() == null ? null : t.getEmployee().getName() + " " + t.getEmployee().getLastname()))
+                .toList();
+    }
+
+    /**
+     * Registra el pago de la cuota de la red como un egreso. La funeraria escoge pagarla mensual,
+     * semestral o anual; un mismo período no se paga dos veces mientras su egreso esté vigente.
+     *
+     * @param from primer mes que cubre el pago (para semestral, enero o julio; para anual, cualquier mes del año)
+     */
+    @Transactional
+    public Long payNetworkFee(FeeFrequency frequency, YearMonth from, BigDecimal amount, PaymentMethod method) {
+        AppUser actor = requireMaster();
+        if (frequency == null) {
+            throw new InvalidDataException("Elija si la cuota es mensual, semestral o anual.");
+        }
+        if (from == null) {
+            throw new InvalidDataException("Elija el período que se paga.");
+        }
+        if (amount == null || amount.signum() <= 0) {
+            throw new InvalidDataException("Escriba el valor de la cuota.");
+        }
+        if (amount.scale() > 2) {
+            throw new InvalidDataException("El valor admite máximo dos decimales.");
+        }
+        if (method == null) {
+            throw new InvalidDataException("Elija si se pagó por transferencia o por consignación.");
+        }
+        String period = feePeriod(frequency, from);
+        if (!transactionRepository.findActiveByPrefix(NETWORK_FEE_PREFIX + period + " ·%", TransactionType.EXPENSE,
+                TransactionStatus.ACTIVE).isEmpty()) {
+            throw new InvalidDataException("La cuota " + period.toLowerCase(Locale.ROOT)
+                    + " ya está pagada. Si hubo un error, anule ese egreso en Movimientos.");
+        }
+        FinancialTransaction expense = new FinancialTransaction();
+        expense.setTransactionType(TransactionType.EXPENSE);
+        expense.setAmount(amount.setScale(2, RoundingMode.HALF_UP));
+        expense.setStatus(TransactionStatus.ACTIVE);
+        expense.setEmployee(actor.getEmployee());
+        expense.setDescription(NETWORK_FEE_PREFIX + period + " · " + method.getDisplayName());
+        FinancialTransaction saved = transactionRepository.save(expense);
+        accessLogService.record(actor.getId(), AccessLogService.NETWORK_FEE_PAID + period + " "
+                + saved.getAmount().toPlainString());
+        return saved.getId();
+    }
+
+    /** "Mensual noviembre 2026", "Semestral 2.º semestre 2026" o "Anual 2026". */
+    static String feePeriod(FeeFrequency frequency, YearMonth from) {
+        return switch (frequency) {
+            case MONTHLY -> "Mensual " + from.getMonth().getDisplayName(TextStyle.FULL,
+                    Locale.forLanguageTag("es-CO")) + " " + from.getYear();
+            case SEMIANNUAL -> "Semestral " + (from.getMonthValue() <= 6 ? "1.er" : "2.º") + " semestre " + from.getYear();
+            case ANNUAL -> "Anual " + from.getYear();
+        };
     }
 
     /** Anula el pago. Si ya estaba pagado, también se anula su egreso en Finanzas. */
