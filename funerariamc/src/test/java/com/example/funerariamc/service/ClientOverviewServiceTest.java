@@ -36,7 +36,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-/** Tarjetas y panel de Clientes (propuesta P-11 / P-11.1): plan, contratos, saldo y carencia (RN-08). */
+/** Tarjetas y panel de Clientes: plan, contratos, saldo y carencia. */
 class ClientOverviewServiceTest {
 
     private final ClientOverviewRepository overview = mock(ClientOverviewRepository.class);
@@ -91,6 +91,29 @@ class ClientOverviewServiceTest {
         assertEquals(LocalDate.of(2026, 11, 2), plan.waitingEnds());
         assertFalse(plan.isCovered(LocalDate.of(2026, 11, 1)));
         assertTrue(plan.isCovered(LocalDate.of(2026, 11, 2)));
+    }
+
+    @Test
+    void clientSummaryUsesTheRestartDateForCoverageAndItsExactBoundary() {
+        LocalDate start = LocalDate.of(2026, 1, 1);
+        LocalDate restart = LocalDate.of(2026, 10, 1);
+        when(overview.findPlans(List.of(1L))).thenReturn(List.of(
+                plan(1L, 412L, "Plan Normal", start, PlanStatus.ACTIVE, 4, restart)));
+
+        ClientOverviewService.PlanInfo info = service.summaries(List.of(1L)).get(1L).plan();
+
+        assertEquals(restart.plusDays(62), info.waitingEnds());
+        assertFalse(info.isCovered(restart.plusDays(61)));
+        assertTrue(info.isCovered(restart.plusDays(62)));
+    }
+
+    @Test
+    void anOldRestartDateCannotMakeCoverageBeginBeforeTheActualAffiliation() {
+        LocalDate start = LocalDate.of(2026, 10, 1);
+        when(overview.findPlans(List.of(1L))).thenReturn(List.of(
+                plan(1L, 412L, "Plan Normal", start, PlanStatus.ACTIVE, 4, start.minusMonths(1))));
+
+        assertEquals(start.plusDays(62), service.summaries(List.of(1L)).get(1L).plan().waitingEnds());
     }
 
     @Test
@@ -255,11 +278,17 @@ class ClientOverviewServiceTest {
 
     private static PlanRow plan(Long clientId, Long planId, String name, LocalDate start, PlanStatus status,
                                 long beneficiaries) {
+        return plan(clientId, planId, name, start, status, beneficiaries, null);
+    }
+
+    private static PlanRow plan(Long clientId, Long planId, String name, LocalDate start, PlanStatus status,
+                                long beneficiaries, LocalDate restart) {
         return new PlanRow() {
             public Long getClientId() { return clientId; }
             public Long getPlanId() { return planId; }
             public String getPlanName() { return name; }
             public LocalDate getStartDate() { return start; }
+            public LocalDate getWaitingRestartDate() { return restart; }
             public PlanStatus getStatus() { return status; }
             public long getBeneficiaries() { return beneficiaries; }
         };
