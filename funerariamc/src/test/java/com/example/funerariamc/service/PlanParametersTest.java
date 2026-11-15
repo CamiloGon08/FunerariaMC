@@ -6,6 +6,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -88,5 +89,38 @@ class PlanParametersTest {
         InvalidDataException missing = new InvalidDataException("Falta un parámetro");
         when(configuration.getLong("PLAN_MAX_START_MONTHS_AHEAD")).thenThrow(missing);
         assertSame(missing, assertThrows(InvalidDataException.class, parameters::maxStartMonthsAhead));
+    }
+
+    @Test
+    void arrearsSettingsUseTheirAgreedKeysAndLetterStagesAreSortedAndDistinct() {
+        when(configuration.getLong("PLAN_ARREARS_RESET_MONTHS")).thenReturn(2L);
+        when(configuration.getString("PLAN_OVERDUE_LETTER_DAYS")).thenReturn("90, 30;60 30");
+
+        assertEquals(2, parameters.arrearsResetMonths());
+        assertEquals(List.of(30, 60, 90), parameters.overdueLetterDays());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", " ", "0,30,60", "30,-60,90", "30,x,90", "30,2147483648"})
+    void invalidLetterStagesAreRejectedRatherThanSilentlyDropped(String value) {
+        when(configuration.getString(PlanParameters.OVERDUE_LETTER_DAYS)).thenReturn(value);
+
+        assertThrows(InvalidDataException.class, parameters::overdueLetterDays);
+    }
+
+    @Test
+    void missingLetterConfigurationDoesNotUseThirtySixtyNinetyAsFallback() {
+        InvalidDataException missing = new InvalidDataException("Falta un parámetro");
+        when(configuration.getString(PlanParameters.OVERDUE_LETTER_DAYS)).thenThrow(missing);
+
+        assertSame(missing, assertThrows(InvalidDataException.class, parameters::overdueLetterDays));
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = {-1, 2147483648L})
+    void invalidArrearsThresholdCannotOverflowOrDisableTheRule(long value) {
+        when(configuration.getLong(PlanParameters.ARREARS_RESET_MONTHS)).thenReturn(value);
+
+        assertThrows(InvalidDataException.class, parameters::arrearsResetMonths);
     }
 }
