@@ -32,8 +32,8 @@
 .chip-combo .arrow { -fx-background-color: -color-secondary; }
 
 .card-title {
-    -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif;
-    -fx-font-size: 26px; -fx-text-fill: -color-primary;
+    -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif;
+    -fx-font-size: 18px; -fx-text-fill: -color-primary;
 }
 .card-subtitle { -fx-text-fill: -color-secondary; -fx-font-size: 13px; }
 
@@ -87,7 +87,7 @@
 .personal-dialog { -fx-background-color: -color-card; -fx-padding: 6 8; }
 .personal-dialog > .header-panel { -fx-background-color: -color-card; -fx-padding: 14 16 4 16; }
 .personal-dialog > .header-panel > .label {
-    -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif;
+    -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif;
     -fx-font-size: 22px; -fx-text-fill: -color-primary;
 }
 .personal-dialog > .content.label { -fx-text-fill: -color-secondary; -fx-padding: 6 16 10 16; -fx-wrap-text: true; }
@@ -111,21 +111,47 @@
     -fx-border-color: transparent transparent -color-detail transparent; -fx-border-width: 0 0 1 0;
 }
 .form-title {
-    -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif;
-    -fx-font-size: 30px; -fx-text-fill: -color-primary;
+    -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif;
+    -fx-font-size: 30px; -fx-text-fill: -color-accent;
 }
 .form-scroll, .form-scroll > .viewport { -fx-background-color: transparent; -fx-background-insets: 0; -fx-padding: 0; }
 .form-body { -fx-padding: 18 28 18 28; -fx-background-color: -color-card; }
-.section-title { -fx-text-fill: -color-accent; -fx-font-size: 15px; -fx-font-weight: bold; }
-.form-field { -fx-spacing: 2; }
-.form-root .text-field { -fx-background-color: -color-card, -color-card; }
-.form-root .date-picker, .form-combo {
-    -fx-background-color: transparent;
-    -fx-border-color: transparent transparent -color-secondary transparent; -fx-border-width: 0 0 1 0;
+/* Estilo de registro aprobado por el líder (vista interactiva "Personal · El Edén"): título de sección
+   en mayúsculas con línea caqui, etiqueta arriba, campos en caja redondeada, deshabilitado en salvia
+   y avisos salvia con ícono. Todos los formularios de registro lo heredan de aquí. */
+.section-legend { -fx-alignment: center-left; -fx-spacing: 10; }
+.section-title { -fx-text-fill: -color-accent; -fx-font-size: 12px; -fx-font-weight: bold; }
+.section-rule { -fx-background-color: -color-detail; -fx-min-height: 1; -fx-pref-height: 1; -fx-max-height: 1; }
+.form-field { -fx-spacing: 6; }
+.form-field > .field-label { -fx-font-size: 11px; -fx-padding: 0; }
+.form-field > .text-field, .form-field > .date-picker, .form-field > .text-area, .form-combo {
+    -fx-background-color: -color-card; -fx-background-radius: 10;
+    -fx-border-color: -color-border; -fx-border-width: 1; -fx-border-radius: 10;
+    -fx-background-insets: 0; -fx-font-size: 15px;
 }
-.form-root .date-picker .text-field { -fx-border-width: 0; }
-.form-combo .list-cell { -fx-background-color: transparent; -fx-text-fill: -color-primary; -fx-padding: 8 2; }
-.form-combo:disabled { -fx-opacity: 0.65; }
+.form-field > .text-field { -fx-padding: 9 12; }
+.form-field > .text-field:focused, .form-field > .date-picker:focused, .form-combo:focused,
+.form-field > .date-picker:focus-within, .form-field > .text-area:focused {
+    -fx-border-color: -color-detail; -fx-border-width: 2;
+}
+.form-field > .date-picker > .text-field, .form-field > .date-picker > .text-field:focused,
+.form-combo > .text-field, .form-combo > .text-field:focused {
+    -fx-background-color: transparent; -fx-border-width: 0;
+}
+.form-field > .date-picker > .text-field { -fx-padding: 9 12; }
+.form-field > .date-picker > .arrow-button, .form-combo > .arrow-button { -fx-background-color: transparent; -fx-padding: 0 12 0 8; }
+.form-combo > .arrow-button > .arrow { -fx-background-color: -color-secondary; }
+.form-combo .list-cell { -fx-background-color: transparent; -fx-text-fill: -color-primary; -fx-padding: 9 12; }
+.form-field > .text-area { -fx-padding: 4; }
+.form-field > .text-area .content { -fx-background-color: transparent; -fx-background-radius: 10; }
+.form-field > .text-field:disabled, .form-field > .date-picker:disabled, .form-combo:disabled {
+    -fx-background-color: -color-surface; -fx-opacity: 1;
+}
+.form-combo:disabled .list-cell, .form-field > .text-field:disabled { -fx-text-fill: -color-secondary; }
+.form-body:disabled { -fx-opacity: 1; }
+.note-info, .note-alert { -fx-alignment: top-left; }
+.note-icon { -fx-fill: transparent; -fx-stroke: -color-accent; -fx-stroke-width: 1.4; -fx-stroke-line-cap: round; }
+.note-alert .note-icon { -fx-stroke: -color-error; }
 .file-box { -fx-alignment: center-left; -fx-padding: 6 0 0 0; }
 .file-name { -fx-text-fill: -color-secondary; }
 
@@ -150,7 +176,7 @@
 .kpi-value { -fx-text-fill: -color-primary; -fx-font-size: 28px; -fx-font-weight: bold; }
 .kpi-value:warning { -fx-text-fill: -color-gold-text; }
 .kpi-detail { -fx-text-fill: -color-secondary; -fx-font-size: 12px; }
-.section-heading { -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif; -fx-font-size: 26px; -fx-text-fill: -color-primary; }
+.section-heading { -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif; -fx-font-size: 18px; -fx-text-fill: -color-primary; }
 
 /* Barra de desplazamiento visible en vez de paginación */
 .card-scroll, .card-scroll > .viewport { -fx-background-color: transparent; -fx-background-insets: 0; -fx-padding: 0; }
@@ -168,13 +194,13 @@
 }
 .employee-card:hover { -fx-border-color: -color-accent; }
 .employee-card:inactive { -fx-opacity: 0.7; }
-.card-name { -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif; -fx-font-size: 21px; -fx-text-fill: -color-primary; }
+.card-name { -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif; -fx-font-size: 21px; -fx-text-fill: -color-primary; }
 .card-divider { -fx-background-color: -color-surface; -fx-pref-height: 1; -fx-min-height: 1; -fx-max-height: 1; }
 
 .avatar, .avatar-large { -fx-background-color: -color-surface; -fx-background-radius: 999; }
 .avatar { -fx-pref-width: 48; -fx-pref-height: 48; }
 .avatar-large { -fx-pref-width: 56; -fx-pref-height: 56; }
-.avatar-text { -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif; -fx-font-size: 20px; -fx-text-fill: -color-accent; }
+.avatar-text { -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif; -fx-font-size: 20px; -fx-text-fill: -color-accent; }
 
 .pill { -fx-background-radius: 999; -fx-border-radius: 999; -fx-padding: 3 10; -fx-font-size: 11px; -fx-font-weight: bold; }
 .pill-neutral { -fx-background-color: transparent; -fx-border-color: -color-surface; -fx-text-fill: -color-accent; }
@@ -219,7 +245,7 @@
     -fx-effect: dropshadow(gaussian, rgba(24,47,37,0.18), 24, 0, -4, 0);
 }
 .drawer-body { -fx-padding: 22 22 16 22; }
-.drawer-name { -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif; -fx-font-size: 28px; -fx-text-fill: -color-primary; }
+.drawer-name { -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif; -fx-font-size: 28px; -fx-text-fill: -color-primary; }
 .drawer-close {
     -fx-background-color: -color-surface; -fx-text-fill: -color-primary;
     -fx-background-radius: 8; -fx-padding: 4 9; -fx-cursor: hand;
@@ -291,8 +317,8 @@
 }
 .eden-green .hero-band .kpi-caption { -fx-text-fill: rgba(244,245,238,0.88); -fx-font-size: 11px; -fx-font-weight: bold; }
 .eden-green .hero-band .kpi-value {
-    -fx-font-family: "Cormorant Garamond SemiBold", "Georgia", serif;
-    -fx-text-fill: #F4F5EE; -fx-font-size: 38px; -fx-font-weight: normal;
+    -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif;
+    -fx-text-fill: #F4F5EE; -fx-font-size: 30px; -fx-font-weight: normal;
 }
 .eden-green .hero-band .kpi-value:warning { -fx-text-fill: #E9DDB0; }
 .eden-green .hero-band .kpi-detail { -fx-text-fill: rgba(244,245,238,0.72); -fx-font-size: 12.5px; }
@@ -304,12 +330,6 @@
 .eden-green .hero-band .occupancy-bar > .track { -fx-background-color: rgba(255,255,255,0.18); }
 .eden-green .hero-band .occupancy-bar > .bar { -fx-background-color: #E4E7DC; }
 /* Indicador destacado: tarjeta lino clara dentro de la banda */
-.eden-green .hero-band .kpi-card.kpi-dark { -fx-background-color: #EEF0E6; -fx-border-color: #EEF0E6; }
-.eden-green .hero-band .kpi-dark .kpi-caption { -fx-text-fill: -eden-muted; }
-.eden-green .hero-band .kpi-dark .kpi-value { -fx-text-fill: -eden-text; }
-.eden-green .hero-band .kpi-dark .kpi-detail { -fx-text-fill: -eden-muted; }
-.eden-green .hero-band .kpi-dark .kpi-alert { -fx-text-fill: -eden-alert; }
-.eden-green .hero-band .kpi-dark .kpi-up { -fx-text-fill: -eden-moss; }
 
 /* Barra de búsqueda y filtros */
 .eden-green .filter-card {
@@ -348,13 +368,13 @@
 
 /* Títulos de sección y tarjetas grandes */
 .eden-green .section-heading,
-.eden-green .section-heading-serif { -fx-font-size: 30px; -fx-text-fill: -eden-text; }
+.eden-green .section-heading-serif { -fx-font-size: 18px; -fx-text-fill: -eden-text; }
 .eden-green .card-subtitle { -fx-text-fill: -eden-muted; }
 .eden-green .table-card {
     -fx-background-color: -eden-card; -fx-border-color: transparent;
     -fx-background-radius: 22; -fx-border-radius: 22; -fx-padding: 22 24 18 24;
 }
-.eden-green .card-title { -fx-font-size: 30px; -fx-text-fill: -eden-text; }
+.eden-green .card-title { -fx-font-size: 18px; -fx-text-fill: -eden-text; }
 .eden-green .side-title { -fx-text-fill: -eden-text; }
 .eden-green .legend-text { -fx-text-fill: -eden-muted; }
 .eden-green .count-badge { -fx-background-color: -eden-alert-bg; -fx-text-fill: -eden-alert; }
