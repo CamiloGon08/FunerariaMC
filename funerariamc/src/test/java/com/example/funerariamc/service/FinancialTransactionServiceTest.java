@@ -219,6 +219,48 @@ class FinancialTransactionServiceTest {
         assertThrows(UnauthorizedActionException.class, () -> service.voidMovement(1L));
     }
 
+    @Test
+    void classifiesNetworkFeesAndVaultRenewalsByTheirTypeAndPrefix() {
+        var owners = new FinancialTransactionService.Owners(Set.of(), Set.of(), Set.of());
+        FinancialTransaction network = movement(30L, TransactionType.EXPENSE, null);
+        network.setDescription(AlliedNetworkService.NETWORK_FEE_PREFIX + "2026 · Transferencia");
+        FinancialTransaction renewal = movement(31L, TransactionType.INCOME, null);
+        renewal.setDescription(CemeteryService.RENEWAL_PREFIX + "A-001 · 1 año");
+
+        assertEquals(FinancialTransactionService.Origin.NETWORK_FEE,
+                FinancialTransactionService.classify(network, owners));
+        assertEquals(FinancialTransactionService.Origin.VAULT_RENEWAL,
+                FinancialTransactionService.classify(renewal, owners));
+    }
+
+    @Test
+    void matchingDescriptionWithoutMatchingTransactionTypeStaysManual() {
+        var owners = new FinancialTransactionService.Owners(Set.of(), Set.of(), Set.of());
+        FinancialTransaction network = movement(30L, TransactionType.INCOME, null);
+        network.setDescription(AlliedNetworkService.NETWORK_FEE_PREFIX + "2026");
+        FinancialTransaction renewal = movement(31L, TransactionType.EXPENSE, null);
+        renewal.setDescription(CemeteryService.RENEWAL_PREFIX + "A-001");
+
+        assertEquals(FinancialTransactionService.Origin.MANUAL,
+                FinancialTransactionService.classify(network, owners));
+        assertEquals(FinancialTransactionService.Origin.MANUAL,
+                FinancialTransactionService.classify(renewal, owners));
+    }
+
+    @Test
+    void linkedPaymentOwnershipTakesPrecedenceOverDescriptionPrefixes() {
+        var owners = new FinancialTransactionService.Owners(Set.of(30L), Set.of(), Set.of(31L));
+        FinancialTransaction plan = movement(30L, TransactionType.INCOME, null);
+        plan.setDescription(CemeteryService.RENEWAL_PREFIX + "A-001");
+        FinancialTransaction allied = movement(31L, TransactionType.EXPENSE, null);
+        allied.setDescription(AlliedNetworkService.NETWORK_FEE_PREFIX + "2026");
+
+        assertEquals(FinancialTransactionService.Origin.PLAN_INSTALLMENT,
+                FinancialTransactionService.classify(plan, owners));
+        assertEquals(FinancialTransactionService.Origin.ALLIED_PAYMENT,
+                FinancialTransactionService.classify(allied, owners));
+    }
+
     private static FinancialTransaction movement(Long id, TransactionType type, Sale sale) {
         FinancialTransaction t = new FinancialTransaction();
         t.setId(id);
