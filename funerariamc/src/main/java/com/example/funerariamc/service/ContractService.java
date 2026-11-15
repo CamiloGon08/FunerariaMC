@@ -80,6 +80,14 @@ public class ContractService {
     static final String COFFIN_LINE = "Ataúd";
     static final String BUS_LINE = "Buses adicionales";
     static final String BENEFICIARY_LINE = "Recargo por beneficiarios";
+    static final String HOME_WAKE_LINE = "Velación en casa · se entrega la cafetería";
+    static final String INTERCITY_LINE = "Traslado desde otra ciudad";
+    static final String LEASE_LINE = "Arriendo de bóveda";
+    static final String LEASE_COVERED_LINE = "Arriendo de bóveda · cubierto por el plan";
+    static final String DOUBLE_LOT_LINE = "Lote doble de contado";
+    static final String OSSUARY_LINE = "Osario";
+    static final String CONSTRUCTION_LINE = "Construcción de puesto del lote";
+    static final String PREPARATION_LINE = "Adecuación del lote (abrir, excavar, descensor)";
 
     /** Tipo de venta del formulario: el contrato puede ser con plan o por pensión. */
     public enum SaleKind {
@@ -447,6 +455,10 @@ public class ContractService {
             lines.add(new Line(BASE_LINE, 1, checkUnit(base), base, null));
         }
 
+        // El plan premium cubre un ataúd más grande y una sala especial sin recargo.
+        FuneralPlanService.PlanDetail planDetail = kind == SaleKind.PLAN ? planService.detail(data.planId()) : null;
+        boolean premium = planDetail != null && planDetail.card() != null
+                && PlanParameters.isPremium(planDetail.card().planName());
         Map<Long, Integer> wanted = new LinkedHashMap<>();
         if (kind.isService() && data.coffinItemId() != null) {
             InventoryItem coffin = itemRepository.findById(data.coffinItemId())
@@ -454,7 +466,8 @@ public class ContractService {
             BigDecimal price = orZero(coffin.getUnitPrice());
             if (kind == SaleKind.PLAN) {
                 // Con plan solo se cobra la diferencia con el ataúd básico; si es el básico, no hay excedente.
-                BigDecimal excess = price.subtract(parameters.basicCoffinPrice()).max(BigDecimal.ZERO);
+                BigDecimal covered = premium ? parameters.premiumCoffinPrice() : parameters.basicCoffinPrice();
+                BigDecimal excess = price.subtract(covered).max(BigDecimal.ZERO);
                 lines.add(new Line(cut(COFFIN_EXCESS_LINE + " · " + coffin.getName()), 1, excess, excess,
                         coffin.getId()));
             } else {
@@ -466,7 +479,7 @@ public class ContractService {
         if (kind.isService() && data.roomId() != null) {
             WakeRoom room = roomRepository.findById(data.roomId())
                     .orElseThrow(() -> new ResourceNotFoundException("Sala", data.roomId()));
-            if (Boolean.TRUE.equals(room.getSurchargeApplies())) {
+            if (Boolean.TRUE.equals(room.getSurchargeApplies()) && !premium) {
                 BigDecimal surcharge = parameters.wakeRoomSurcharge();
                 lines.add(new Line(WakeRoomService.surchargeText(room), 1, surcharge, surcharge, null));
             }
@@ -478,8 +491,22 @@ public class ContractService {
             lines.add(new Line(BUS_LINE, data.extraBuses(), fee, value, null));
         }
 
+        if (kind.isService() && data.homeWake()) {
+            // Velar en la casa no da descuento: se entrega la cafetería (café, azúcar y vasos).
+            lines.add(new Line(HOME_WAKE_LINE, 1, BigDecimal.ZERO, BigDecimal.ZERO, null));
+        }
+
+        if (kind.isService() && data.intercityKm() > 0) {
+            BigDecimal perKm = checkUnit(parameters.intercityPricePerKm());
+            BigDecimal value = perKm.multiply(BigDecimal.valueOf(data.intercityKm()));
+            lines.add(new Line(INTERCITY_LINE + " (" + data.intercityKm() + " km)", data.intercityKm(), perKm,
+                    value, null));
+        }
+
+        lines.addAll(cemeteryLines(data));
+
         if (kind == SaleKind.PLAN) {
-            BigDecimal surcharge = planService.detail(data.planId()).totalSurcharge();
+            BigDecimal surcharge = planDetail.totalSurcharge();
             if (surcharge != null && surcharge.signum() > 0) {
                 lines.add(new Line(BENEFICIARY_LINE, 1, checkUnit(surcharge), surcharge, null));
             }
@@ -507,6 +534,49 @@ public class ContractService {
         }
         if (sum(lines).compareTo(MAX_TOTAL) > 0) {
             throw new InvalidDataException("El total de la venta es demasiado alto.");
+        }
+        return lines;
+    }
+
+    /**
+     * Cargos del cementerio: el arriendo de bóveda son 4 años al valor del año (con plan lo cubre el plan),
+     * el lote doble y el osario se venden de contado, cada puesto construido se cobra aparte y la
+     * adecuación se cobra cada vez que se usa un puesto del lote.
+     */
+    private List<Line> cemeteryLines(ContractData data) {
+        List<Line> lines = new ArrayList<>();
+        ContractData.CemeteryCharge charge = data.cemetery() == null ? ContractData.CemeteryCharge.NONE : data.cemetery();
+        switch (charge) {
+            case VAULT_LEASE -> {
+                if (data.kind() == SaleKind.PLAN) {
+                    lines.add(new Line(LEASE_COVERED_LINE, 1, BigDecimal.ZERO, BigDecimal.ZERO, null));
+                } else {
+                    BigDecimal year = checkUnit(parameters.vaultLeasePerYear());
+                    int years = CemeteryService.LEASE_YEARS;
+                    lines.add(new Line(LEASE_LINE + " (" + years + " años)", years, year,
+                            year.multiply(BigDecimal.valueOf(years)), null));
+                }
+            }
+            case DOUBLE_LOT -> {
+                BigDecimal price = parameters.doubleLotPrice();
+                lines.add(new Line(DOUBLE_LOT_LINE, 1, checkUnit(price), price, null));
+            }
+            case OSSUARY -> {
+                BigDecimal price = parameters.ossuaryPrice();
+                lines.add(new Line(OSSUARY_LINE, 1, checkUnit(price), price, null));
+            }
+            case NONE -> {
+                // Nada del cementerio.
+            }
+        }
+        if (data.lotConstructions() > 0) {
+            BigDecimal price = checkUnit(parameters.lotConstructionPrice());
+            lines.add(new Line(CONSTRUCTION_LINE, data.lotConstructions(), price,
+                    price.multiply(BigDecimal.valueOf(data.lotConstructions())), null));
+        }
+        if (data.lotPreparation()) {
+            BigDecimal fee = parameters.lotPreparationFee();
+            lines.add(new Line(PREPARATION_LINE, 1, checkUnit(fee), fee, null));
         }
         return lines;
     }
@@ -544,6 +614,15 @@ public class ContractService {
         }
         if (initial.compareTo(total) > 0) {
             throw new InstallmentExceedsBalanceException(total);
+        }
+        BigDecimal cashDue = lines.stream()
+                .filter(line -> line.itemId() == null
+                        && (DOUBLE_LOT_LINE.equals(line.description()) || OSSUARY_LINE.equals(line.description())))
+                .map(line -> line.subtotal())
+                .reduce(BigDecimal.ZERO, (left, right) -> left.add(right));
+        if (initial.compareTo(cashDue) < 0) {
+            throw new InvalidDataException("El lote doble y el osario se pagan de contado. El abono inicial debe "
+                    + "cubrir al menos esos conceptos: " + cashDue.toPlainString() + ".");
         }
 
         Employee salesperson = data.salespersonId() == null ? null : findSalesperson(data.salespersonId());
@@ -808,6 +887,18 @@ public class ContractService {
         if (data.extraBuses() < 0) {
             throw new InvalidDataException("La cantidad de buses adicionales no puede ser negativa.");
         }
+        if (data.intercityKm() < 0) {
+            throw new InvalidDataException("Los kilómetros del traslado no pueden ser negativos.");
+        }
+        if (data.lotConstructions() < 0) {
+            throw new InvalidDataException("La cantidad de puestos a construir no puede ser negativa.");
+        }
+        if (data.homeWake() && data.roomId() != null) {
+            throw new InvalidDataException("Si la velación es en la casa no se asigna sala.");
+        }
+        if (data.cemetery() == ContractData.CemeteryCharge.VAULT_LEASE && !kind.isService()) {
+            throw new InvalidDataException("El arriendo de bóveda va con un servicio funerario.");
+        }
         if (kind.isService() && data.roomId() != null) {
             WakeRoomService.validateRange(data.wakeStart(), data.wakeEnd());
         }
@@ -821,7 +912,8 @@ public class ContractService {
                 }
             }
         }
-        if (kind == SaleKind.PRODUCT && (data.products() == null || data.products().isEmpty())) {
+        if (kind == SaleKind.PRODUCT && (data.products() == null || data.products().isEmpty())
+                && !data.hasCemeteryCharges()) {
             throw new InvalidDataException("Agregue al menos un producto a la venta.");
         }
     }

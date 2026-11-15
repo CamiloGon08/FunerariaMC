@@ -28,7 +28,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
- * Cuentas de acceso del personal (HU-06, HU-07; RN-21, RN-23).
+ * Cuentas de acceso del personal.
  * El Administrador Maestro crea la cuenta desde Personal con una contraseña
  * temporal; el empleado la cambia obligatoriamente en su primer ingreso.
  */
@@ -86,7 +86,7 @@ public class UserAccountService {
 
     /**
      * Roles que puede tener cada cargo. El primero es el sugerido.
-     * Los cargos sin acceso al sistema no tienen ninguno (RN-23).
+     * Los cargos sin acceso al sistema no tienen ninguno.
      */
     public static List<String> rolesFor(EmployeePosition position) {
         if (position == null) {
@@ -158,7 +158,7 @@ public class UserAccountService {
         findRole(roleName);
     }
 
-    /** HU-06: crea la cuenta con contraseña temporal y le asigna el rol al empleado. */
+    /** Crea la cuenta con contraseña temporal y le asigna el rol al empleado. */
     @Transactional
     public AccountCredentials createAccount(Long employeeId, String username, String roleName) {
         requireMasterAdmin();
@@ -183,7 +183,7 @@ public class UserAccountService {
         user.setIsEnabled(true);
         user.setMustChangePassword(true);
         appUserRepository.save(user);
-        // HU-07: el rol va en employee.role_id.
+        // El rol va en employee.role_id.
         employee.setRole(role);
 
         accessLogService.record(actorId, AccessLogService.USER_ACCOUNT_CREATED + cleanUsername);
@@ -253,7 +253,7 @@ public class UserAccountService {
     private void checkPositionAndRole(EmployeePosition position, String roleName) {
         List<String> allowed = rolesFor(position);
         if (allowed.isEmpty()) {
-            throw new InvalidDataException("Este cargo no tiene acceso al sistema (RN-23).");
+            throw new InvalidDataException("Este cargo no tiene acceso al sistema.");
         }
         if (roleName == null || !allowed.contains(roleName)) {
             throw new InvalidDataException("Seleccione un rol válido para el cargo " + position.getDisplayName() + ".");

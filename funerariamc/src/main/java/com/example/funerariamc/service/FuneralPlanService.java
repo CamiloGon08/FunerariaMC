@@ -47,13 +47,15 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.TreeMap;
 
 /**
- * Planes exequiales (propuesta P-15 / P-15.1): tarjetas de afiliados con su estado de pago y
+ * Planes exequiales: tarjetas de afiliados con su estado de pago y
  * carencia, indicadores, recaudo de cuotas, detalle del plan con beneficiarios y cuotas,
- * afiliación (RF-PLA-01), beneficiarios con tope y recargo (RF-PLA-02), carencia (RF-PLA-03),
- * baja o cambio de titular (RF-PLA-04) y registro o anulación de cuotas (tabla plan_payment).
- * Lo usan Vendedor, Secretaría y Administrador Maestro (RN-21, RN-22).
+ * afiliación, beneficiarios con tope y recargo, carencia,
+ * baja o cambio de titular y registro o anulación de cuotas (tabla plan_payment).
+ * Lo usan Vendedor, Secretaría y Administrador Maestro.
  */
 @Service
 public class FuneralPlanService {
@@ -107,7 +109,7 @@ public class FuneralPlanService {
     }
 
     /**
-     * Tarjeta de un plan. waitingDaysLeft es 0 si ya cumplió la carencia (RN-08);
+     * Tarjeta de un plan. waitingDaysLeft es 0 si ya cumplió la carencia;
      * overdueMonths son las cuotas vencidas sin pagar.
      */
     public record PlanCard(Long id, String code, Long clientId, String holderName, String holderDocument,
@@ -160,11 +162,20 @@ public class FuneralPlanService {
                            int waitingDays) {
     }
 
+    /**
+     * Afiliado atrasado al que le toca carta: letterDay es el tramo de atraso (30, 60 o 90 días)
+     * y daysLate los días desde la primera cuota sin pagar.
+     */
+    public record OverdueLetter(Long planId, String code, String holderName, String holderDocument, String phone,
+                                String address, long overdueMonths, BigDecimal overdueAmount, long daysLate,
+                                int letterDay) {
+    }
+
     /** Filtro de la barra superior: estado del plan, pagos, tipo de plan (null = todos) y texto. */
     public record PlanFilter(PlanStatus status, PaymentFilter payments, String planName, String text) {
     }
 
-    /** Beneficiario del panel. surcharge es el recargo que se cobra en la venta del servicio (RF-CIV-06). */
+    /** Beneficiario del panel. surcharge es el recargo que se cobra en la venta del servicio. */
     public record BeneficiaryInfo(Long id, String fullName, String documentNumber, Relationship relationship,
                                   String relationshipLabel, BigDecimal surcharge, String surchargeReason,
                                   Long deceasedId, LocalDate deathDate) {
@@ -186,14 +197,14 @@ public class FuneralPlanService {
                               String wakeRoom) {
     }
 
-    /** Panel del plan (P-15.1). nextDue es el primer mes sin pagar desde el inicio. */
+    /** Panel del plan. nextDue es el primer mes sin pagar desde el inicio. */
     public record PlanDetail(PlanCard card, String holderPhone, String holderEmail, int beneficiaryLimit,
                              List<BeneficiaryInfo> beneficiaries, BigDecimal totalSurcharge,
                              List<MonthCell> grid, List<PaymentInfo> payments, YearMonth nextDue,
                              List<UsedService> usedServices, boolean holderDeceased) {
     }
 
-    /** Lo que se le muestra al vendedor antes de guardar un beneficiario (RF-PLA-02, 3a). */
+    /** Lo que se le muestra al vendedor antes de guardar un beneficiario. */
     public record SurchargePreview(long position, int limit, boolean corporate, boolean direct,
                                    BigDecimal nonDirect, BigDecimal extra) {
 
@@ -304,6 +315,78 @@ public class FuneralPlanService {
                 .toList();
 
         return new Overview(kpis, collection, types(active), waitingSoon, planNames(cards), cards, waitingDays);
+    }
+
+    /**
+     * Candidatos a carta por correo certificado según los tramos configurados de atraso.
+     * No envía cartas ni registra entregas; excluye los planes suspendidos o cancelados.
+     */
+    @Transactional(readOnly = true)
+    public List<OverdueLetter> overdueLetters() {
+        requireAccess();
+        LocalDate today = today();
+        LocalDateTime now = LocalDateTime.now(clock);
+        List<Integer> letterDays = parameters.overdueLetterDays();
+        List<PlanCard> late = overview().cards().stream()
+                .filter(card -> card.isActive() && dueMonths(card.startDate(), today) > 0).toList();
+        if (late.isEmpty()) {
+            return List.of();
+        }
+        Set<Long> planIds = new java.util.HashSet<>(late.stream().map(card -> card.id()).toList());
+        Map<Long, List<PlanPayment>> histories = new HashMap<>();
+        PlanPayment probe = new PlanPayment();
+        probe.setStatus(PlanPaymentStatus.PAID);
+        // Una consulta compartida para obtener los períodos reales, incluso si se pagaron fuera de orden.
+        for (PlanPayment payment : paymentRepository.findAll(Example.of(probe))) {
+            FuneralPlan plan = payment.getFuneralPlan();
+            if (plan != null && planIds.contains(plan.getId())) {
+                histories.computeIfAbsent(plan.getId(), ignored -> new ArrayList<>()).add(payment);
+            }
+        }
+        Map<Long, Client> clients = new HashMap<>();
+        clientRepository.findAllById(late.stream().map(PlanCard::clientId).distinct().toList())
+                .forEach(client -> clients.put(client.getId(), client));
+        List<OverdueLetter> letters = new ArrayList<>();
+        for (PlanCard card : late) {
+            Map<YearMonth, LocalDateTime> paid = paidPeriods(card.startDate(),
+                    histories.getOrDefault(card.id(), List.of()), now);
+            long overdue = Math.max(0, dueMonths(card.startDate(), today) - paid.size());
+            if (overdue == 0) {
+                continue;
+            }
+            long daysLate = daysLate(card.startDate(), paid.keySet(), today);
+            int letterDay = 0;
+            for (int day : letterDays) {
+                if (daysLate >= day) {
+                    letterDay = day;
+                }
+            }
+            if (letterDay == 0) {
+                continue;
+            }
+            Client client = clients.get(card.clientId());
+            letters.add(new OverdueLetter(card.id(), card.code(), card.holderName(), card.holderDocument(),
+                    client == null ? null : client.getPhone(), client == null ? null : client.getAddress(),
+                    overdue, card.monthlyFee().multiply(BigDecimal.valueOf(overdue)), daysLate, letterDay));
+        }
+        letters.sort(Comparator.comparingLong(OverdueLetter::daysLate).reversed());
+        return letters;
+    }
+
+    /** Días desde la primera cuota vencida que no aparece entre los períodos efectivamente pagados. */
+    static long daysLate(LocalDate startDate, Set<YearMonth> paidPeriods, LocalDate today) {
+        if (startDate == null) {
+            return 0;
+        }
+        long due = dueMonths(startDate, today);
+        YearMonth first = YearMonth.from(startDate);
+        for (long i = 0; i < due; i++) {
+            YearMonth month = first.plusMonths(i);
+            if (!paidPeriods.contains(month)) {
+                return Math.max(0, ChronoUnit.DAYS.between(dueDate(startDate, month), today));
+            }
+        }
+        return 0;
     }
 
     /** Aplica el filtro de la barra superior sin volver a consultar la base. */
@@ -419,7 +502,7 @@ public class FuneralPlanService {
                 .toList();
     }
 
-    /** Recargo que tendría el siguiente beneficiario del plan con ese parentesco (RF-PLA-02, 3a). */
+    /** Recargo que tendría el siguiente beneficiario del plan con ese parentesco. */
     @Transactional(readOnly = true)
     public SurchargePreview previewSurcharge(Long planId, Relationship relationship) {
         requireAccess();
@@ -437,7 +520,7 @@ public class FuneralPlanService {
 
     // ---------- operaciones ----------
 
-    /** RF-PLA-01: afilia un plan ACTIVO; la fecha de inicio es la de afiliación para la carencia (RN-08). */
+    /** Afilia un plan ACTIVO; la fecha de inicio es la de afiliación para la carencia. */
     @Transactional
     public FuneralPlan register(PlanData data) {
         requireAccess();
@@ -446,11 +529,11 @@ public class FuneralPlanService {
             throw new InvalidDataException("Seleccione el cliente titular del plan.");
         }
         String name = data.planName() == null ? "" : data.planName().trim();
+        // La funeraria maneja dos planes: el normal (servicios esenciales) y el premium (ataúd y sala más grandes).
+        String chosen = name;
+        name = PlanParameters.PLAN_NAMES.stream().filter(n -> n.equalsIgnoreCase(chosen)).findFirst().orElse("");
         if (name.isEmpty()) {
-            throw new InvalidDataException("Ingrese el nombre del plan.");
-        }
-        if (name.length() > 80) {
-            throw new InvalidDataException("El nombre del plan admite máximo 80 caracteres.");
+            throw new InvalidDataException("Elija el tipo de plan: " + String.join(" o ", PlanParameters.PLAN_NAMES) + ".");
         }
         validateAmount(data.monthlyFee(), "La cuota mensual");
         if (data.startDate() == null) {
@@ -477,8 +560,8 @@ public class FuneralPlanService {
     }
 
     /**
-     * RF-PLA-02: agrega un beneficiario a un plan ACTIVO. Si corresponde recargo (parentesco no
-     * directo, RN-09, o por encima del tope, RN-10) el vendedor debe haberlo aceptado antes.
+     * Agrega un beneficiario a un plan ACTIVO. Si corresponde recargo (parentesco no
+     * directo o por encima del tope) el vendedor debe haberlo aceptado antes.
      */
     @Transactional
     public Beneficiary addBeneficiary(BeneficiaryData data) {
@@ -513,7 +596,7 @@ public class FuneralPlanService {
             if (surcharge.extra().signum() > 0) {
                 throw new BeneficiaryLimitExceededException(surcharge.limit());
             }
-            throw new InvalidDataException("Este beneficiario tiene recargo por parentesco no directo (RN-09). "
+            throw new InvalidDataException("Este beneficiario tiene recargo por parentesco no directo. "
                     + "Confírmelo antes de guardar.");
         }
 
@@ -554,8 +637,9 @@ public class FuneralPlanService {
         if (start != null && data.period().isBefore(start)) {
             throw new InvalidDataException("El plan empezó en " + monthName(start) + ": no se cobran meses anteriores.");
         }
+        LocalDate today = today();
         int maxMonthsAhead = parameters.maxMonthsAhead();
-        if (data.period().isAfter(YearMonth.from(today()).plusMonths(maxMonthsAhead))) {
+        if (data.period().isAfter(YearMonth.from(today).plusMonths(maxMonthsAhead))) {
             throw new InvalidDataException("Solo se pueden adelantar hasta " + maxMonthsAhead + " cuotas.");
         }
         LocalDate periodMonth = data.period().atDay(1);
@@ -563,6 +647,12 @@ public class FuneralPlanService {
             throw new InvalidDataException("La cuota de " + monthName(data.period()) + " ya está pagada.");
         }
         LocalDateTime now = LocalDateTime.now(clock);
+        int resetMonths = parameters.arrearsResetMonths();
+        List<PlanPayment> history = paymentRepository.findHistory(plan.getId());
+        Map<YearMonth, LocalDateTime> paidBefore = paidPeriods(plan.getStartDate(), history, now);
+        long overdueBefore = overdueMonths(plan, today, paidBefore);
+        boolean crossedResetThreshold = overdueBefore > 0
+                && arrearsEpisodeExceeded(plan.getStartDate(), paidBefore, now, resetMonths);
 
         FinancialTransaction income = new FinancialTransaction();
         income.setTransactionType(TransactionType.INCOME);
@@ -583,7 +673,19 @@ public class FuneralPlanService {
         payment.setFinancialTransaction(savedIncome);
         payment.setRegisteredByEmployee(actor.getEmployee());
         PlanPayment saved = paymentRepository.save(payment);
+        List<PlanPayment> updatedHistory = new ArrayList<>(history);
+        updatedHistory.add(payment);
+        boolean restart = crossedResetThreshold
+                && overdueMonths(plan, today, paidPeriods(plan.getStartDate(), updatedHistory, now)) == 0;
+        // Se conserva el máximo atraso del episodio, aunque las cuotas se salden en varios pagos.
+        if (restart) {
+            plan.setWaitingRestartDate(today);
+            planRepository.save(plan);
+        }
         accessLogService.record(actor.getId(), AccessLogService.PLAN_PAYMENT_REGISTERED + code(plan.getId()) + " " + data.period());
+        if (restart) {
+            accessLogService.record(actor.getId(), AccessLogService.PLAN_WAITING_RESTARTED + code(plan.getId()));
+        }
         return saved;
     }
 
@@ -629,7 +731,7 @@ public class FuneralPlanService {
         accessLogService.record(actorId, AccessLogService.PLAN_REACTIVATED + code(planId));
     }
 
-    /** RF-PLA-04: da de baja el plan (CANCELLED) conservando su historial. */
+    /** Da de baja el plan (CANCELLED) conservando su historial. */
     @Transactional
     public void cancel(Long planId) {
         requireAccess();
@@ -643,7 +745,7 @@ public class FuneralPlanService {
         accessLogService.record(actorId, AccessLogService.PLAN_CANCELLED + code(planId));
     }
 
-    /** RF-PLA-04: pasa el plan a otro titular registrado, con sus beneficiarios y sus cuotas. */
+    /** Pasa el plan a otro titular registrado, con sus beneficiarios y sus cuotas. */
     @Transactional
     public void changeHolder(Long planId, Long newClientId) {
         requireAccess();
@@ -670,7 +772,7 @@ public class FuneralPlanService {
     }
 
     /**
-     * RN-08: impide usar beneficios de un plan inactivo o que no ha cumplido la carencia.
+     * Impide usar beneficios de un plan inactivo o que no ha cumplido la carencia.
      * Debe llamarse desde el servicio que registre el contrato antes de guardar sus cambios.
      */
     @Transactional(readOnly = true)
@@ -683,10 +785,17 @@ public class FuneralPlanService {
         if (plan.getStartDate() == null) {
             throw new InvalidDataException("El plan necesita una fecha de inicio para validar su carencia.");
         }
-        LocalDate ends = waitingEnds(plan.getStartDate(), parameters.waitingDays());
+        LocalDate ends = waitingEnds(waitingBase(plan.getStartDate(), plan.getWaitingRestartDate()),
+                parameters.waitingDays());
         long remaining = ChronoUnit.DAYS.between(today(), ends);
         if (remaining > 0) {
             throw new WaitingPeriodException(remaining);
+        }
+        // El contrato exige estar al día: con cuotas atrasadas se niega el servicio.
+        long overdue = overdueMonths(plan, today());
+        if (overdue > 0) {
+            throw new InvalidDataException("El plan " + code(plan.getId()) + " debe " + overdue
+                    + (overdue == 1 ? " cuota" : " cuotas") + ": debe estar al día para usar sus beneficios.");
         }
     }
 
@@ -697,7 +806,89 @@ public class FuneralPlanService {
         return "PL-%04d".formatted(planId);
     }
 
-    /** RN-08: día en que termina la carencia. */
+    /** Desde dónde cuenta la carencia: la afiliación o, si se reinició por atraso, esa fecha. */
+    public static LocalDate waitingBase(LocalDate startDate, LocalDate restartDate) {
+        if (restartDate == null) {
+            return startDate;
+        }
+        return startDate == null || restartDate.isAfter(startDate) ? restartDate : startDate;
+    }
+
+    /** Cuotas vencidas sin pagar de un plan activo (consulta sus cuotas pagadas). */
+    long overdueMonths(FuneralPlan plan, LocalDate today) {
+        if (plan.getStatus() != PlanStatus.ACTIVE || plan.getStartDate() == null) {
+            return 0;
+        }
+        LocalDateTime asOf = today.equals(today()) ? LocalDateTime.now(clock) : today.atTime(23, 59, 59, 999_999_999);
+        return overdueMonths(plan, today, paidPeriods(plan.getStartDate(),
+                paymentRepository.findHistory(plan.getId()), asOf));
+    }
+
+    private static long overdueMonths(FuneralPlan plan, LocalDate today,
+                                      Map<YearMonth, LocalDateTime> paid) {
+        // Un plan suspendido también conserva su deuda y puede ponerse al día antes de reactivarse.
+        if (plan.getStartDate() == null) {
+            return 0;
+        }
+        return Math.max(0, dueMonths(plan.getStartDate(), today) - paid.size());
+    }
+
+    /** Períodos vencidos pagados: una cuota anulada, futura o duplicada no reduce la mora. */
+    private static Map<YearMonth, LocalDateTime> paidPeriods(LocalDate startDate, List<PlanPayment> history,
+                                                           LocalDateTime asOf) {
+        Map<YearMonth, LocalDateTime> paid = new HashMap<>();
+        if (startDate == null) {
+            return paid;
+        }
+        YearMonth first = YearMonth.from(startDate);
+        for (PlanPayment payment : history) {
+            if (payment.getStatus() != PlanPaymentStatus.PAID || payment.getPeriodMonth() == null) {
+                continue;
+            }
+            YearMonth month = YearMonth.from(payment.getPeriodMonth());
+            LocalDateTime due = dueDate(startDate, month).atStartOfDay();
+            LocalDateTime paidAt = payment.getPaidAt();
+            if (month.isBefore(first) || due.isAfter(asOf) || (paidAt != null && paidAt.isAfter(asOf))) {
+                continue;
+            }
+            // Datos antiguos sin fecha no permiten demostrar un atraso anterior: se toman como puntuales.
+            LocalDateTime settledAt = paidAt == null || paidAt.isBefore(due) ? due : paidAt;
+            paid.merge(month, settledAt, (previous, current) -> previous.isBefore(current) ? previous : current);
+        }
+        return paid;
+    }
+
+    /**
+     * Reconstruye el episodio abierto con vencimientos y fechas de los pagos aún vigentes.
+     * PlanPayment no conserva la fecha de anulación: si se anula una cuota antigua, no es posible
+     * distinguir cuándo reapareció esa deuda dentro de los episodios históricos.
+     */
+    private static boolean arrearsEpisodeExceeded(LocalDate startDate, Map<YearMonth, LocalDateTime> paid,
+                                                  LocalDateTime asOf, int threshold) {
+        if (startDate == null) {
+            return false;
+        }
+        Map<LocalDateTime, Long> changes = new TreeMap<>();
+        YearMonth first = YearMonth.from(startDate);
+        long due = dueMonths(startDate, asOf.toLocalDate());
+        for (long i = 0; i < due; i++) {
+            YearMonth month = first.plusMonths(i);
+            changes.merge(dueDate(startDate, month).atStartOfDay(), 1L, (total, amount) -> total + amount);
+            LocalDateTime settledAt = paid.get(month);
+            if (settledAt != null) {
+                changes.merge(settledAt, -1L, (total, amount) -> total + amount);
+            }
+        }
+        long outstanding = 0;
+        long episodePeak = 0;
+        for (long change : changes.values()) {
+            outstanding += change;
+            episodePeak = outstanding == 0 ? 0 : Math.max(episodePeak, outstanding);
+        }
+        return outstanding > 0 && episodePeak > threshold;
+    }
+
+    /** Día en que termina la carencia. */
     public static LocalDate waitingEnds(LocalDate startDate, int waitingDays) {
         return startDate == null ? null : startDate.plusDays(waitingDays);
     }
@@ -719,7 +910,7 @@ public class FuneralPlanService {
     }
 
     /**
-     * RN-09 y RN-10: el beneficiario número {@code position} paga recargo si su parentesco no es
+     * El beneficiario número {@code position} paga recargo si su parentesco no es
      * directo, y otro si supera el tope. Un plan empresarial no tiene tope (afilia a sus empleados).
      */
     SurchargePreview surcharge(long position, int limit, boolean corporate, Relationship relationship) {
@@ -736,7 +927,7 @@ public class FuneralPlanService {
 
     private PlanCard card(PlanCardRow row, List<String> initials, int waitingDays, LocalDate today,
                           long currentMonthPayments) {
-        LocalDate ends = waitingEnds(row.getStartDate(), waitingDays);
+        LocalDate ends = waitingEnds(waitingBase(row.getStartDate(), row.getWaitingRestartDate()), waitingDays);
         long daysLeft = ends == null || !today.isBefore(ends) ? 0 : ChronoUnit.DAYS.between(today, ends);
         long due = dueMonths(row.getStartDate(), today);
         boolean beforeCurrentDue = row.getStartDate() != null
@@ -984,6 +1175,10 @@ public class FuneralPlanService {
 
         public LocalDate getStartDate() {
             return plan.getStartDate();
+        }
+
+        public LocalDate getWaitingRestartDate() {
+            return plan.getWaitingRestartDate();
         }
 
         public PlanStatus getStatus() {
