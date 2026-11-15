@@ -514,7 +514,10 @@ public class WakeRoomService {
         Sale sale = sales.get(0);
         List<SaleDetail> surcharges = detailRepository.findBySale(sale.getId()).stream()
                 .filter(WakeRoomService::isSurchargeLine).toList();
-        boolean special = Boolean.TRUE.equals(room.getSurchargeApplies());
+        // Con plan premium la sala más grande no tiene recargo.
+        boolean premium = contract.getFuneralPlan() != null
+                && PlanParameters.isPremium(contract.getFuneralPlan().getPlanName());
+        boolean special = Boolean.TRUE.equals(room.getSurchargeApplies()) && !premium;
         BigDecimal total = sale.getTotalAmount() == null ? BigDecimal.ZERO : sale.getTotalAmount();
         if (special && surcharges.isEmpty()) {
             BigDecimal amount = parameters.wakeRoomSurcharge();
