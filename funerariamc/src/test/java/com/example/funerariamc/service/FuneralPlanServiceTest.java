@@ -33,6 +33,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.data.domain.Example;
@@ -45,12 +46,13 @@ import java.time.YearMonth;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-/** Criterios de aceptación de RF-PLA-01 a RF-PLA-04 y del registro de cuotas (plan_payment). */
+/** Criterios de aceptación de los planes (afiliar, beneficiarios, cambios) y del registro de cuotas (plan_payment). */
 class FuneralPlanServiceTest {
 
     private static final LocalDate TODAY = LocalDate.of(2026, 10, 25);
@@ -90,18 +92,30 @@ class FuneralPlanServiceTest {
         when(transactions.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
-    // ---------- afiliación (RF-PLA-01) ----------
+    // ---------- afiliación ----------
 
     @Test
     void registerCreatesAnActivePlanAndLogsItsCode() {
         when(clients.findById(40L)).thenReturn(Optional.of(client(40L, "49786112", ClientType.NATURAL)));
         when(plans.findByClientIdAndStatus(40L, PlanStatus.ACTIVE)).thenReturn(List.of());
 
-        FuneralPlan saved = service.register(new PlanData(40L, " Plan Familiar ", new BigDecimal("52000"), TODAY));
+        FuneralPlan saved = service.register(new PlanData(40L, " Plan Normal ", new BigDecimal("52000"), TODAY));
 
         assertEquals(PlanStatus.ACTIVE, saved.getStatus());
-        assertEquals("Plan Familiar", saved.getPlanName());
+        assertEquals("Plan Normal", saved.getPlanName());
         verify(accessLog).record(5L, "PLAN_REGISTERED: PL-0412");
+    }
+
+    @Test
+    void registerCanonicalizesPremiumAndRejectsAnUnknownPlanType() {
+        when(clients.findById(40L)).thenReturn(Optional.of(client(40L, "49786112", ClientType.NATURAL)));
+
+        FuneralPlan premium = service.register(new PlanData(40L, "  plan PREMIUM  ", new BigDecimal("52000"), TODAY));
+
+        assertEquals("Plan Premium", premium.getPlanName());
+        assertThrows(InvalidDataException.class, () -> service.register(
+                new PlanData(40L, "Plan inventado", new BigDecimal("52000"), TODAY)));
+        verify(plans, times(1)).save(any());
     }
 
     @Test
@@ -111,16 +125,16 @@ class FuneralPlanServiceTest {
         when(plans.findByClientIdAndStatus(40L, PlanStatus.ACTIVE)).thenReturn(List.of(plan(300L, holder, TODAY)));
 
         assertThrows(InvalidDataException.class,
-                () -> service.register(new PlanData(40L, "Plan Familiar", new BigDecimal("52000"), TODAY)));
+                () -> service.register(new PlanData(40L, "Plan Normal", new BigDecimal("52000"), TODAY)));
         verify(plans, never()).save(any());
     }
 
     @Test
     void registerValidatesFeeAndStartDate() {
         assertThrows(InvalidDataException.class,
-                () -> service.register(new PlanData(40L, "Plan", BigDecimal.ZERO, TODAY)));
+                () -> service.register(new PlanData(40L, "Plan Normal", BigDecimal.ZERO, TODAY)));
         assertThrows(InvalidDataException.class,
-                () -> service.register(new PlanData(40L, "Plan", new BigDecimal("52000"), TODAY.plusMonths(2))));
+                () -> service.register(new PlanData(40L, "Plan Normal", new BigDecimal("52000"), TODAY.plusMonths(2))));
     }
 
     @Test
@@ -129,7 +143,7 @@ class FuneralPlanServiceTest {
         assertThrows(UnauthorizedActionException.class, service::overview);
     }
 
-    // ---------- beneficiarios (RF-PLA-02, RN-09, RN-10) ----------
+    // ---------- beneficiarios ----------
 
     @Test
     void directRelativeWithinTheLimitHasNoSurcharge() {
@@ -192,6 +206,95 @@ class FuneralPlanServiceTest {
         assertEquals(PlanPaymentStatus.PAID, saved.getStatus());
         assertSame(income.getValue(), saved.getFinancialTransaction());
         verify(accessLog).record(5L, "PLAN_PAYMENT_REGISTERED: PL-0412 2026-10");
+    }
+
+    @Test
+    void settlingThreeOverdueMonthsRestartsWaitingOnlyWhenTheLastQuotaIsPaid() {
+        FuneralPlan plan = plan(412L, client(40L, "49786112", ClientType.NATURAL), TODAY.minusMonths(2));
+        List<PlanPayment> history = new java.util.ArrayList<>();
+        when(plans.findDetailById(412L)).thenReturn(Optional.of(plan));
+        when(parameters.arrearsResetMonths()).thenReturn(2);
+        when(payments.findHistory(412L)).thenAnswer(invocation -> new java.util.ArrayList<>(history));
+        when(payments.save(any())).thenAnswer(invocation -> {
+            PlanPayment saved = invocation.getArgument(0);
+            history.add(saved);
+            return saved;
+        });
+
+        service.registerPayment(new PlanPaymentData(412L, YearMonth.from(TODAY).minusMonths(2), new BigDecimal("52000")));
+        assertNull(plan.getWaitingRestartDate());
+        service.registerPayment(new PlanPaymentData(412L, YearMonth.from(TODAY).minusMonths(1), new BigDecimal("52000")));
+        assertNull(plan.getWaitingRestartDate());
+        service.registerPayment(new PlanPaymentData(412L, YearMonth.from(TODAY), new BigDecimal("52000")));
+        assertEquals(TODAY, plan.getWaitingRestartDate());
+        // Un anticipo posterior no abre otro episodio ni repite el reinicio.
+        service.registerPayment(new PlanPaymentData(412L, YearMonth.from(TODAY).plusMonths(1), new BigDecimal("52000")));
+
+        verify(plans, times(1)).save(plan);
+        verify(accessLog, times(1)).record(5L, AccessLogService.PLAN_WAITING_RESTARTED + "PL-0412");
+    }
+
+    @Test
+    void aClosedOldArrearsEpisodeDoesNotRestartWaitingForOneRecentOverdueQuota() {
+        FuneralPlan plan = plan(412L, client(40L, "49786112", ClientType.NATURAL), TODAY.minusMonths(4));
+        when(plans.findDetailById(412L)).thenReturn(Optional.of(plan));
+        when(parameters.arrearsResetMonths()).thenReturn(2);
+        LocalDateTime oldSettlement = TODAY.minusMonths(1).atTime(10, 0);
+        List<PlanPayment> history = new java.util.ArrayList<>();
+        for (int i = 4; i >= 1; i--) {
+            history.add(paidPayment(plan, YearMonth.from(TODAY).minusMonths(i), oldSettlement));
+        }
+        when(payments.findHistory(412L)).thenReturn(history);
+
+        service.registerPayment(new PlanPaymentData(412L, YearMonth.from(TODAY), new BigDecimal("52000")));
+
+        assertNull(plan.getWaitingRestartDate());
+        verify(plans, never()).save(any());
+        verify(accessLog, never()).record(5L, AccessLogService.PLAN_WAITING_RESTARTED + "PL-0412");
+    }
+
+    @Test
+    void settlingASuspendedPlanRestartsWaitingAndReactivationDoesNotBypassIt() {
+        FuneralPlan plan = plan(412L, client(40L, "49786112", ClientType.NATURAL), TODAY.minusMonths(2));
+        plan.setStatus(PlanStatus.SUSPENDED);
+        List<PlanPayment> history = new java.util.ArrayList<>();
+        when(plans.findDetailById(412L)).thenReturn(Optional.of(plan));
+        when(parameters.arrearsResetMonths()).thenReturn(2);
+        when(payments.findHistory(412L)).thenAnswer(invocation -> new java.util.ArrayList<>(history));
+        when(payments.save(any())).thenAnswer(invocation -> {
+            PlanPayment saved = invocation.getArgument(0);
+            history.add(saved);
+            return saved;
+        });
+
+        for (int i = 2; i >= 0; i--) {
+            service.registerPayment(new PlanPaymentData(412L, YearMonth.from(TODAY).minusMonths(i),
+                    new BigDecimal("52000")));
+        }
+        assertEquals(TODAY, plan.getWaitingRestartDate());
+        assertEquals(PlanStatus.SUSPENDED, plan.getStatus());
+        assertThrows(InvalidDataException.class, () -> service.validateBenefitsAvailable(412L));
+        service.reactivate(412L);
+
+        WaitingPeriodException error = assertThrows(WaitingPeriodException.class,
+                () -> service.validateBenefitsAvailable(412L));
+        assertEquals(62, error.getDaysRemaining());
+        verify(accessLog, times(1)).record(5L, AccessLogService.PLAN_WAITING_RESTARTED + "PL-0412");
+    }
+
+    @Test
+    void missingArrearsParameterFailsBeforeSavingOrAuditingAPayment() {
+        when(plans.findDetailById(412L)).thenReturn(Optional.of(
+                plan(412L, client(40L, "49786112", ClientType.NATURAL), TODAY.minusMonths(3))));
+        InvalidDataException missing = new InvalidDataException("Falta un parámetro");
+        when(parameters.arrearsResetMonths()).thenThrow(missing);
+
+        assertSame(missing, assertThrows(InvalidDataException.class, () -> service.registerPayment(
+                new PlanPaymentData(412L, YearMonth.from(TODAY), new BigDecimal("52000")))));
+
+        verify(payments, never()).save(any());
+        verify(plans, never()).save(any());
+        verifyNoInteractions(transactions, accessLog);
     }
 
     @Test
@@ -258,9 +361,128 @@ class FuneralPlanServiceTest {
     @ParameterizedTest
     @ValueSource(ints = {62, 90})
     void waitingPeriodAllowsBenefitsOnOrAfterTheConfiguredBoundary(int elapsed) {
-        when(plans.findDetailById(412L)).thenReturn(Optional.of(
-                plan(412L, client(40L, "49786112", ClientType.NATURAL), TODAY.minusDays(elapsed))));
+        FuneralPlan plan = plan(412L, client(40L, "49786112", ClientType.NATURAL), TODAY.minusDays(elapsed));
+        when(plans.findDetailById(412L)).thenReturn(Optional.of(plan));
+        when(payments.findHistory(412L)).thenReturn(paidUpToToday(plan));
         assertDoesNotThrow(() -> service.validateBenefitsAvailable(412L));
+    }
+
+    @Test
+    void overdueQuotasBlockTheBenefitsAfterTheWaitingPeriod() {
+        FuneralPlan plan = plan(412L, client(40L, "49786112", ClientType.NATURAL), TODAY.minusDays(90));
+        when(plans.findDetailById(412L)).thenReturn(Optional.of(plan));
+        when(payments.findHistory(412L)).thenReturn(List.of());
+        InvalidDataException error = assertThrows(InvalidDataException.class,
+                () -> service.validateBenefitsAvailable(412L));
+        assertTrue(error.getMessage().contains("al día"));
+    }
+
+    @Test
+    void aRestartedWaitingPeriodCountsFromTheRestartDate() {
+        FuneralPlan plan = plan(412L, client(40L, "49786112", ClientType.NATURAL), TODAY.minusYears(1));
+        plan.setWaitingRestartDate(TODAY.minusDays(10));
+        when(plans.findDetailById(412L)).thenReturn(Optional.of(plan));
+        WaitingPeriodException error = assertThrows(WaitingPeriodException.class,
+                () -> service.validateBenefitsAvailable(412L));
+        assertEquals(52, error.getDaysRemaining());
+    }
+
+    @Test
+    void daysLateCountFromTheOldestUnpaidDueDate() {
+        // Plan del 10 de enero con 2 cuotas sin pagar al 12 de marzo: la más vieja venció el 10 de febrero.
+        assertEquals(30, FuneralPlanService.daysLate(LocalDate.of(2026, 1, 10), Set.of(YearMonth.of(2026, 1)),
+                LocalDate.of(2026, 3, 12)));
+        assertEquals(0, FuneralPlanService.daysLate(LocalDate.of(2026, 1, 10),
+                Set.of(YearMonth.of(2026, 1), YearMonth.of(2026, 2), YearMonth.of(2026, 3)),
+                LocalDate.of(2026, 3, 12)));
+    }
+
+    @Test
+    void overdueLettersUseTheActualFirstUnpaidPeriodWhenQuotasWerePaidOutOfOrder() {
+        LocalDate start = LocalDate.of(2026, 8, 10);
+        FuneralPlan plan = plan(412L, client(40L, "49786112", ClientType.NATURAL), start);
+        PlanCardRow row = letterCard(start);
+        when(row.getPaidMonths()).thenReturn(1L);
+        when(plans.findCards(PlanPaymentStatus.PAID, TODAY.withDayOfMonth(1))).thenReturn(List.of(row));
+        when(parameters.overdueLetterDays()).thenReturn(List.of(30, 60, 90));
+        when(payments.findAll(org.mockito.ArgumentMatchers.<Example<PlanPayment>>any())).thenReturn(
+                List.of(paidPayment(plan, YearMonth.from(TODAY), TODAY.atTime(9, 0))));
+
+        FuneralPlanService.OverdueLetter letter = service.overdueLetters().getFirst();
+
+        assertEquals(76, letter.daysLate());
+        assertEquals(60, letter.letterDay());
+        assertEquals(2, letter.overdueMonths());
+        assertEquals(new BigDecimal("104000"), letter.overdueAmount());
+        verify(payments, times(1)).findAll(org.mockito.ArgumentMatchers.<Example<PlanPayment>>any());
+        verify(payments, never()).findHistory(anyLong());
+    }
+
+    @ParameterizedTest
+    @CsvSource({"29,0", "30,30", "59,30", "60,60", "89,60", "90,90"})
+    void overdueLettersChangeOnlyAtTheConfiguredDayBoundary(int daysLate, int expectedStage) {
+        PlanCardRow row = letterCard(TODAY.minusDays(daysLate));
+        when(plans.findCards(PlanPaymentStatus.PAID, TODAY.withDayOfMonth(1))).thenReturn(List.of(row));
+        when(parameters.overdueLetterDays()).thenReturn(List.of(30, 60, 90));
+
+        List<FuneralPlanService.OverdueLetter> letters = service.overdueLetters();
+
+        if (expectedStage == 0) {
+            assertTrue(letters.isEmpty());
+        } else {
+            assertEquals(1, letters.size());
+            assertEquals(expectedStage, letters.getFirst().letterDay());
+            assertEquals(daysLate, letters.getFirst().daysLate());
+        }
+    }
+
+    @Test
+    void voidedOrFutureDatedPaymentsDoNotClearOverdueQuotasOrAllowBenefits() {
+        FuneralPlan plan = plan(412L, client(40L, "49786112", ClientType.NATURAL), TODAY.minusMonths(3));
+        when(plans.findDetailById(412L)).thenReturn(Optional.of(plan));
+        List<PlanPayment> history = paidUpToToday(plan);
+        history.getFirst().setStatus(PlanPaymentStatus.VOIDED);
+        history.get(1).setPaidAt(TODAY.plusDays(1).atTime(9, 0));
+        when(payments.findHistory(412L)).thenReturn(history);
+
+        InvalidDataException error = assertThrows(InvalidDataException.class,
+                () -> service.validateBenefitsAvailable(412L));
+
+        assertTrue(error.getMessage().contains("debe 2 cuotas"));
+    }
+
+    private static PlanCardRow letterCard(LocalDate start) {
+        PlanCardRow row = mock(PlanCardRow.class);
+        when(row.getPlanId()).thenReturn(412L);
+        when(row.getClientId()).thenReturn(40L);
+        when(row.getHolderName()).thenReturn("Martha");
+        when(row.getHolderType()).thenReturn(ClientType.NATURAL);
+        when(row.getMonthlyFee()).thenReturn(new BigDecimal("52000"));
+        when(row.getStartDate()).thenReturn(start);
+        when(row.getStatus()).thenReturn(PlanStatus.ACTIVE);
+        return row;
+    }
+
+    private static PlanPayment paidPayment(FuneralPlan plan, YearMonth month, LocalDateTime paidAt) {
+        PlanPayment payment = new PlanPayment();
+        payment.setFuneralPlan(plan);
+        payment.setStatus(PlanPaymentStatus.PAID);
+        payment.setPeriodMonth(month.atDay(1));
+        payment.setPaidAt(paidAt);
+        return payment;
+    }
+
+    /** Cuotas pagadas de todos los meses ya vencidos del plan. */
+    private static List<PlanPayment> paidUpToToday(FuneralPlan plan) {
+        List<PlanPayment> paid = new java.util.ArrayList<>();
+        long due = FuneralPlanService.dueMonths(plan.getStartDate(), TODAY);
+        for (long i = 0; i < due; i++) {
+            PlanPayment payment = new PlanPayment();
+            payment.setStatus(PlanPaymentStatus.PAID);
+            payment.setPeriodMonth(java.time.YearMonth.from(plan.getStartDate()).plusMonths(i).atDay(1));
+            paid.add(payment);
+        }
+        return paid;
     }
 
     @Test
@@ -308,7 +530,7 @@ class FuneralPlanServiceTest {
     void everyOperationRejectsAnUnauthorizedRoleBeforeReadingRepositories() {
         loginAs(RoleNames.CEMETERY_ADMIN);
         List<Executable> operations = List.of(
-                () -> service.overview(), () -> service.detail(412L),
+                () -> service.overview(), () -> service.overdueLetters(), () -> service.detail(412L),
                 () -> service.searchClients("Martha"),
                 () -> service.previewSurcharge(412L, Relationship.CHILD),
                 () -> service.register(null), () -> service.addBeneficiary(null),
@@ -515,7 +737,7 @@ class FuneralPlanServiceTest {
         when(plans.findByClientIdAndStatus(40L, PlanStatus.ACTIVE))
                 .thenReturn(List.of(plan(300L, holder, TODAY)));
         InvalidDataException error = assertThrows(InvalidDataException.class, () -> service.register(
-                new PlanData(40L, "Plan", new BigDecimal("52000"), TODAY)));
+                new PlanData(40L, "Plan Normal", new BigDecimal("52000"), TODAY)));
         assertFalse(error.getMessage().contains(holder.getName()));
         assertFalse(error.getMessage().contains(holder.getDocumentNumber()));
     }
@@ -579,7 +801,7 @@ class FuneralPlanServiceTest {
         InvalidDataException failure = new InvalidDataException("No se pudo registrar la acción");
         doThrow(failure).when(accessLog).record(anyLong(), anyString());
         assertSame(failure, assertThrows(InvalidDataException.class, () -> service.register(
-                new PlanData(40L, "Plan", new BigDecimal("52000"), TODAY))));
+                new PlanData(40L, "Plan Normal", new BigDecimal("52000"), TODAY))));
     }
 
     @ParameterizedTest
@@ -716,10 +938,10 @@ class FuneralPlanServiceTest {
         LocalDate lastAllowed = TODAY.plusMonths(monthsAhead);
 
         FuneralPlan saved = service.register(
-                new PlanData(40L, "Plan Familiar", new BigDecimal("52000"), lastAllowed));
+                new PlanData(40L, "Plan Normal", new BigDecimal("52000"), lastAllowed));
         assertEquals(lastAllowed, saved.getStartDate());
         InvalidDataException error = assertThrows(InvalidDataException.class, () -> service.register(
-                new PlanData(40L, "Plan Familiar", new BigDecimal("52000"), lastAllowed.plusDays(1))));
+                new PlanData(40L, "Plan Normal", new BigDecimal("52000"), lastAllowed.plusDays(1))));
         assertEquals("La fecha de inicio no puede ser más de " + monthsAhead + " mes(es) posterior a hoy.",
                 error.getMessage());
         verify(plans, times(1)).save(any());
@@ -731,7 +953,7 @@ class FuneralPlanServiceTest {
         InvalidDataException missing = new InvalidDataException("Falta un parámetro");
         when(parameters.maxStartMonthsAhead()).thenThrow(missing);
         assertSame(missing, assertThrows(InvalidDataException.class, () -> service.register(
-                new PlanData(40L, "Plan Familiar", new BigDecimal("52000"), TODAY))));
+                new PlanData(40L, "Plan Normal", new BigDecimal("52000"), TODAY))));
         verifyNoInteractions(clients, plans, beneficiaries, payments, transactions, accessLog);
     }
 
@@ -761,7 +983,7 @@ class FuneralPlanServiceTest {
         FuneralPlan plan = new FuneralPlan();
         plan.setId(id);
         plan.setClient(holder);
-        plan.setPlanName("Plan Familiar");
+        plan.setPlanName("Plan Normal");
         plan.setMonthlyFee(new BigDecimal("52000"));
         plan.setStartDate(start);
         plan.setStatus(PlanStatus.ACTIVE);

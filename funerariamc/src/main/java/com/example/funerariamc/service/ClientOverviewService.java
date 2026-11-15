@@ -29,7 +29,7 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Resumen de cada titular para la pantalla de Clientes (propuesta P-11 / P-11.1): plan exequial,
+ * Resumen de cada titular para la pantalla de Clientes: plan exequial,
  * contratos, saldo pendiente, beneficiarios y difuntos atendidos. Solo lectura: no registra
  * ventas ni abonos (eso es del módulo Contratos y ventas).
  * Saldo de una venta = total − abonos activos; un abono anulado (VOIDED) no cuenta.
@@ -58,7 +58,7 @@ public class ClientOverviewService {
             return status == PlanStatus.ACTIVE;
         }
 
-        /** Carencia cumplida a la fecha (RN-08). Sin fecha de inicio no se puede asegurar. */
+        /** Carencia cumplida a la fecha. Sin fecha de inicio no se puede asegurar. */
         public boolean isCovered(LocalDate today) {
             return waitingEnds != null && !today.isBefore(waitingEnds);
         }
@@ -84,7 +84,7 @@ public class ClientOverviewService {
                                String wakeRoom, LocalDateTime wakeStartAt, LocalDate contractDate) {
     }
 
-    /** Panel lateral del cliente (P-11.1). */
+    /** Panel lateral del cliente. */
     public record ClientDetail(Client client, ClientSummary summary, List<BeneficiaryInfo> beneficiaries,
                                List<SaleInfo> sales, List<DeceasedInfo> deceased) {
     }
@@ -181,7 +181,8 @@ public class ClientOverviewService {
     // ---------- utilidades ----------
 
     private static PlanInfo plan(PlanRow row, int waitingDays) {
-        LocalDate ends = row.getStartDate() == null ? null : row.getStartDate().plusDays(waitingDays);
+        LocalDate base = FuneralPlanService.waitingBase(row.getStartDate(), row.getWaitingRestartDate());
+        LocalDate ends = base == null ? null : base.plusDays(waitingDays);
         String name = row.getPlanName() == null || row.getPlanName().isBlank() ? "Plan exequial" : row.getPlanName();
         return new PlanInfo(row.getPlanId(), "PL-%04d".formatted(row.getPlanId()), name, row.getStatus(),
                 row.getStartDate(), ends, row.getBeneficiaries());
@@ -216,7 +217,7 @@ public class ClientOverviewService {
         return lastname == null || lastname.isBlank() ? name : name + " " + lastname;
     }
 
-    /** Mismo permiso que ClientService: Vendedor, Secretaría y Administrador Maestro (RN-21, RN-22). */
+    /** Mismo permiso que ClientService: Vendedor, Secretaría y Administrador Maestro. */
     private void requireAccess() {
         boolean allowed = sessionContext.getRoleName()
                 .map(AppModule.CLIENTES::isAllowedFor)
