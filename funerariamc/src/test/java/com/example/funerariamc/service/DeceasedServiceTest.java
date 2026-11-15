@@ -210,6 +210,43 @@ class DeceasedServiceTest {
 
     // ---------- utilidades ----------
 
+    @Test
+    void restartedWaitingPeriodBlocksCoverageUntilItEnds() {
+        FuneralPlan plan = plan(412L, "12435778", TODAY.minusYears(1));
+        plan.setWaitingRestartDate(TODAY.minusDays(30));
+        when(plans.findDetailById(412L)).thenReturn(Optional.of(plan));
+
+        WaitingPeriodException error = assertThrows(WaitingPeriodException.class,
+                () -> service.register(data("12435778", DeathType.NATURAL, null, 412L), certificate));
+
+        assertEquals(32L, error.getDaysRemaining());
+        verify(deceased, never()).save(any());
+        verifyNoInteractions(certificateService);
+    }
+
+    @Test
+    void completedRestartedWaitingPeriodAllowsCoverage() {
+        FuneralPlan plan = plan(412L, "12435778", TODAY.minusYears(1));
+        plan.setWaitingRestartDate(TODAY.minusDays(62));
+        when(plans.findDetailById(412L)).thenReturn(Optional.of(plan));
+
+        Deceased saved = service.register(data("12435778", DeathType.NATURAL, null, 412L), certificate);
+
+        assertSame(plan, saved.getFuneralPlan());
+    }
+
+    @Test
+    void restartBeforeAffiliationDoesNotShortenTheOriginalWaitingPeriod() {
+        FuneralPlan plan = plan(412L, "12435778", TODAY.minusDays(30));
+        plan.setWaitingRestartDate(TODAY.minusYears(1));
+        when(plans.findDetailById(412L)).thenReturn(Optional.of(plan));
+
+        WaitingPeriodException error = assertThrows(WaitingPeriodException.class,
+                () -> service.register(data("12435778", DeathType.NATURAL, null, 412L), certificate));
+
+        assertEquals(32L, error.getDaysRemaining());
+    }
+
     private static DeceasedData data(String document, DeathType type, ExternalCause cause, Long planId) {
         return new DeceasedData(false, "Luis Eduardo", "Pinto", document, LocalDate.of(1948, 2, 14), TODAY,
                 type, cause, 40L, planId);

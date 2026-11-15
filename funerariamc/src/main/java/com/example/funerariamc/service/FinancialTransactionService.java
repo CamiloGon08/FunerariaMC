@@ -45,6 +45,8 @@ public class FinancialTransactionService {
         CREMATION_PURCHASE("Compra de cremaciones", "Cremaciones"),
         ALLIED_PAYMENT("Pago a funeraria aliada", "Red de funerarias aliadas"),
         COMMISSION("Comisión", null),
+        NETWORK_FEE("Cuota de la red", null),
+        VAULT_RENEWAL("Renovación de arriendo", null),
         MANUAL("Registro manual", null);
 
         private final String label;
@@ -165,6 +167,14 @@ public class FinancialTransactionService {
         if (t.getTransactionType() == TransactionType.EXPENSE && t.getDescription() != null
                 && t.getDescription().startsWith(COMMISSION_PREFIX)) {
             return Origin.COMMISSION;
+        }
+        if (t.getTransactionType() == TransactionType.EXPENSE && t.getDescription() != null
+                && t.getDescription().startsWith(AlliedNetworkService.NETWORK_FEE_PREFIX)) {
+            return Origin.NETWORK_FEE;
+        }
+        if (t.getTransactionType() == TransactionType.INCOME && t.getDescription() != null
+                && t.getDescription().startsWith(CemeteryService.RENEWAL_PREFIX)) {
+            return Origin.VAULT_RENEWAL;
         }
         return Origin.MANUAL;
     }

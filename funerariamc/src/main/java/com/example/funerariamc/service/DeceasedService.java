@@ -675,7 +675,8 @@ public class DeceasedService {
     }
 
     private LocalDate waitingEnds(FuneralPlan plan) {
-        return plan.getStartDate() == null ? null : plan.getStartDate().plusDays(parameters.waitingDays());
+        LocalDate base = FuneralPlanService.waitingBase(plan.getStartDate(), plan.getWaitingRestartDate());
+        return base == null ? null : base.plusDays(parameters.waitingDays());
     }
 
     /** RN-01: la causa externa solo aplica a una muerte no natural, y ahí es obligatoria. */
