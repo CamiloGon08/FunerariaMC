@@ -7,23 +7,28 @@ import com.example.funerariamc.model.Cemetery;
 import com.example.funerariamc.model.Client;
 import com.example.funerariamc.model.Deceased;
 import com.example.funerariamc.model.Exhumation;
+import com.example.funerariamc.model.FinancialTransaction;
 import com.example.funerariamc.model.Manager;
 import com.example.funerariamc.model.Role;
 import com.example.funerariamc.model.Vault;
 import com.example.funerariamc.utils.enums.ExhumationDestination;
 import com.example.funerariamc.utils.enums.ExhumationReason;
+import com.example.funerariamc.utils.enums.TransactionStatus;
+import com.example.funerariamc.utils.enums.TransactionType;
 import com.example.funerariamc.utils.enums.VaultStatus;
 import com.example.funerariamc.exception.FileUploadException;
 import com.example.funerariamc.persistence.CemeteryRepository;
 import com.example.funerariamc.persistence.ClientRepository;
 import com.example.funerariamc.persistence.DeceasedRepository;
 import com.example.funerariamc.persistence.ExhumationRepository;
+import com.example.funerariamc.persistence.FinancialTransactionRepository;
 import com.example.funerariamc.persistence.LeaseNotificationRepository;
 import com.example.funerariamc.persistence.VaultRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
+import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.time.LocalDate;
@@ -38,7 +43,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 /**
- * Criterios de aceptación de RF-BOV-01, RF-BOV-02, RF-BOV-05 y RF-BOV-06 (HU-55): registrar, asignar, renovar y exhumar.
+ * Criterios de aceptación: registrar, asignar, renovar y exhumar.
  * También revisa que la pantalla cargue con pocas consultas (proyecciones y una sola carga inicial).
  */
 class CemeteryServiceTest {
@@ -55,9 +60,11 @@ class CemeteryServiceTest {
     private final DeceasedRepository deceased = mock(DeceasedRepository.class);
     private final FileStorageService files = mock(FileStorageService.class);
     private final AccessLogService accessLog = mock(AccessLogService.class);
+    private final FinancialTransactionRepository transactions = mock(FinancialTransactionRepository.class);
+    private final SaleParameters saleParameters = mock(SaleParameters.class);
     private final SessionContext session = new SessionContext();
     private final CemeteryService service = new CemeteryService(cemeteries, vaults, exhumations, notices,
-            clients, deceased, files, accessLog, session,
+            clients, deceased, files, accessLog, session, transactions, saleParameters,
             Clock.fixed(TODAY.atStartOfDay(ZoneId.of("America/Bogota")).toInstant(), ZoneId.of("America/Bogota")));
 
     @BeforeEach
@@ -68,11 +75,11 @@ class CemeteryServiceTest {
         when(files.store(any(), eq(CemeteryService.AUTHORIZATION_FOLDER))).thenReturn(STORED_URL);
     }
 
-    // ---------- asignar (RF-BOV-02) ----------
+    // ---------- asignar ----------
 
     @Test
     void assignComputesLeaseEndFourYearsLaterAndOccupiesTheVault() {
-        // Prueba de Jira (RF-BOV-02): asignar el 01/01/2026; PASA si vence el 01/01/2030.
+        // Prueba de Jira: asignar el 01/01/2026; PASA si vence el 01/01/2030.
         Vault vault = vault(7L, "A-07", VaultStatus.AVAILABLE);
         when(vaults.findDetailById(7L)).thenReturn(Optional.of(vault));
         when(clients.findById(40L)).thenReturn(Optional.of(client("Martha Cecilia", "Durán")));
@@ -118,16 +125,94 @@ class CemeteryServiceTest {
     // ---------- renovar ----------
 
     @Test
-    void renewAddsFourYearsToTheCurrentEndAndClearsTheOverdueStatus() {
+    void renewAddsOneYearToTheCurrentEndChargesTheYearAndClearsTheOverdueStatus() {
         Vault vault = occupied(11L, "A-11", LocalDate.of(2022, 10, 12));
         vault.setStatus(VaultStatus.OVERDUE);
         when(vaults.findDetailById(11L)).thenReturn(Optional.of(vault));
+        when(saleParameters.vaultLeasePerYear()).thenReturn(new BigDecimal("1000000"));
 
         LocalDate newEnd = service.renewLease(11L);
 
-        assertEquals(LocalDate.of(2030, 10, 12), newEnd);
+        assertEquals(LocalDate.of(2027, 10, 12), newEnd);
         assertEquals(VaultStatus.OCCUPIED, vault.getStatus());
+        ArgumentCaptor<FinancialTransaction> income = ArgumentCaptor.forClass(FinancialTransaction.class);
+        verify(transactions).save(income.capture());
+        assertEquals(TransactionType.INCOME, income.getValue().getTransactionType());
+        assertEquals(new BigDecimal("1000000"), income.getValue().getAmount());
+        assertEquals(TransactionStatus.ACTIVE, income.getValue().getStatus());
+        assertSame(session.getCurrentUser().orElseThrow().getEmployee(), income.getValue().getEmployee());
+        assertTrue(income.getValue().getDescription().startsWith(CemeteryService.RENEWAL_PREFIX + "A-11"));
         verify(accessLog).record(5L, "VAULT_LEASE_RENEWED: A-11");
+    }
+
+    @Test
+    void renewingOneYearKeepsTheVaultOverdueWhenTheNewEndIsStillPast() {
+        Vault vault = occupied(11L, "A-11", LocalDate.of(2019, 10, 12));
+        vault.setStatus(VaultStatus.OVERDUE);
+        when(vaults.findDetailById(11L)).thenReturn(Optional.of(vault));
+        when(saleParameters.vaultLeasePerYear()).thenReturn(new BigDecimal("1000000"));
+
+        assertEquals(LocalDate.of(2024, 10, 12), service.renewLease(11L));
+
+        assertEquals(VaultStatus.OVERDUE, vault.getStatus());
+        verify(transactions).save(any(FinancialTransaction.class));
+    }
+
+    @Test
+    void aRenewalEndingTodayIsOccupiedRatherThanOverdue() {
+        Vault vault = occupied(11L, "A-11", TODAY.minusYears(5));
+        vault.setStatus(VaultStatus.OVERDUE);
+        when(vaults.findDetailById(11L)).thenReturn(Optional.of(vault));
+        when(saleParameters.vaultLeasePerYear()).thenReturn(new BigDecimal("1000000"));
+
+        assertEquals(TODAY, service.renewLease(11L));
+
+        assertEquals(VaultStatus.OCCUPIED, vault.getStatus());
+    }
+
+    @Test
+    void missingYearlyPriceDoesNotRenewOrRegisterIncome() {
+        Vault vault = occupied(11L, "A-11", LocalDate.of(2022, 10, 12));
+        LocalDate oldEnd = vault.getLeaseEndDate();
+        when(vaults.findDetailById(11L)).thenReturn(Optional.of(vault));
+        InvalidDataException missing = new InvalidDataException("Falta el parámetro de arriendo.");
+        when(saleParameters.vaultLeasePerYear()).thenThrow(missing);
+
+        assertSame(missing, assertThrows(InvalidDataException.class, () -> service.renewLease(11L)));
+
+        assertEquals(oldEnd, vault.getLeaseEndDate());
+        verify(vaults, never()).save(any());
+        verify(transactions, never()).save(any());
+        verify(accessLog, never()).record(anyLong(), anyString());
+    }
+
+    @Test
+    void zeroYearlyPriceUsesTheConfiguredValueWithoutInventingAnotherAmount() {
+        Vault vault = occupied(11L, "A-11", LocalDate.of(2022, 10, 12));
+        when(vaults.findDetailById(11L)).thenReturn(Optional.of(vault));
+        SystemParameterService parameters = mock(SystemParameterService.class);
+        when(parameters.getBigDecimal(SaleParameters.VAULT_LEASE_PRICE_PER_YEAR)).thenReturn(BigDecimal.ZERO);
+
+        serviceWithParameters(parameters).renewLease(11L);
+
+        ArgumentCaptor<FinancialTransaction> income = ArgumentCaptor.forClass(FinancialTransaction.class);
+        verify(transactions).save(income.capture());
+        assertEquals(BigDecimal.ZERO, income.getValue().getAmount());
+    }
+
+    @Test
+    void negativeYearlyPriceDoesNotChangeTheLeaseOrCreateIncome() {
+        Vault vault = occupied(11L, "A-11", LocalDate.of(2022, 10, 12));
+        LocalDate oldEnd = vault.getLeaseEndDate();
+        when(vaults.findDetailById(11L)).thenReturn(Optional.of(vault));
+        SystemParameterService parameters = mock(SystemParameterService.class);
+        when(parameters.getBigDecimal(SaleParameters.VAULT_LEASE_PRICE_PER_YEAR)).thenReturn(new BigDecimal("-1"));
+
+        assertThrows(InvalidDataException.class, () -> serviceWithParameters(parameters).renewLease(11L));
+
+        assertEquals(oldEnd, vault.getLeaseEndDate());
+        verify(vaults, never()).save(any());
+        verify(transactions, never()).save(any());
     }
 
     @Test
@@ -137,11 +222,11 @@ class CemeteryServiceTest {
         assertThrows(InvalidDataException.class, () -> service.renewLease(3L));
     }
 
-    // ---------- exhumar (RF-BOV-05) ----------
+    // ---------- exhumar ----------
 
     @Test
     void exhumationBeforeFourYearsIsRejectedWithTheDateItIsAllowed() {
-        // Prueba de Jira (RF-BOV-05): exhumar de una bóveda arrendada hace 2 años; PASA si se rechaza.
+        // Prueba de Jira: exhumar de una bóveda arrendada hace 2 años; PASA si se rechaza.
         Vault vault = occupied(7L, "A-07", LocalDate.of(2024, 10, 4));
         when(vaults.findDetailById(7L)).thenReturn(Optional.of(vault));
 
@@ -163,10 +248,10 @@ class CemeteryServiceTest {
 
         assertSame(buried, saved.getDeceased());
         assertEquals(99L, saved.getRegisteredByEmployee().getId());
-        // RN-25: se guarda la URL del archivo copiado por FileStorageService
+        // Se guarda la URL del archivo copiado por FileStorageService
         assertEquals(STORED_URL, saved.getAuthorizationFileUrl());
         verify(files).store(AUTHORIZATION, CemeteryService.AUTHORIZATION_FOLDER);
-        // RN-30: la bóveda queda libre
+        // La bóveda queda libre
         assertEquals(VaultStatus.AVAILABLE, vault.getStatus());
         assertNull(vault.getDeceased());
         assertNull(vault.getClient());
@@ -203,14 +288,13 @@ class CemeteryServiceTest {
 
     @Test
     void unclaimedBodyOutsideCommonGraveOrOssuaryNeedsAWarning() {
-        // RN-07
         assertTrue(CemeteryService.needsUnclaimedWarning(ExhumationReason.UNCLAIMED, ExhumationDestination.FAMILY));
         assertTrue(CemeteryService.needsUnclaimedWarning(ExhumationReason.UNCLAIMED, ExhumationDestination.CREMATION));
         assertFalse(CemeteryService.needsUnclaimedWarning(ExhumationReason.UNCLAIMED, ExhumationDestination.COMMON_GRAVE));
         assertFalse(CemeteryService.needsUnclaimedWarning(ExhumationReason.FAMILY_REQUEST, ExhumationDestination.FAMILY));
     }
 
-    // ---------- muro y detalle (RF-BOV-06) ----------
+    // ---------- muro y detalle ----------
 
     @Test
     void overviewGroupsByPavilionAndListsOverdueFirst() {
@@ -242,7 +326,7 @@ class CemeteryServiceTest {
 
     @Test
     void detailShowsPreviousExhumationInTheHistory() {
-        // Prueba de Jira (HU-55): una bóveda con exhumación anterior la muestra en su historial.
+        // Prueba de Jira: una bóveda con exhumación anterior la muestra en su historial.
         when(vaults.findDetailRow(7L)).thenReturn(Optional.of(occupiedRow(7L, "A-07", LocalDate.of(2026, 10, 4))));
         when(exhumations.findHistoryRows(7L)).thenReturn(List.of(
                 new ExhumationRowStub(7L, "A-07", "Pedro", "Baute", LocalDate.of(2025, 3, 15), ExhumationDestination.OSSUARY)));
@@ -255,7 +339,7 @@ class CemeteryServiceTest {
         assertEquals("Rafael Antonio Durán", detail.deceasedName());
         assertEquals(VaultState.OCCUPIED, detail.state());
         assertEquals(LocalDate.of(2030, 10, 4), detail.exhumationAllowedFrom());
-        assertFalse(detail.canExhume(), "RN-06: no procede antes de 4 años");
+        assertFalse(detail.canExhume(), "no procede antes de 4 años");
         assertEquals(3, detail.history().size());
         assertEquals("Exhumación de Pedro Baute · libera la bóveda", detail.history().get(2).text());
         assertFalse(detail.history().get(2).current());
@@ -342,6 +426,12 @@ class CemeteryServiceTest {
 
     // ---------- datos de prueba ----------
 
+    private CemeteryService serviceWithParameters(SystemParameterService parameters) {
+        return new CemeteryService(cemeteries, vaults, exhumations, notices, clients, deceased,
+                files, accessLog, session, transactions, new SaleParameters(parameters),
+                Clock.fixed(TODAY.atStartOfDay(AccessLogService.APP_ZONE).toInstant(), AccessLogService.APP_ZONE));
+    }
+
     private static ExhumationData exhumation(Long vaultId, ExhumationReason reason, ExhumationDestination destination) {
         return new ExhumationData(vaultId, TODAY, reason, destination, AUTHORIZATION, " ");
     }
@@ -410,11 +500,11 @@ class CemeteryServiceTest {
                 LocalDate.of(2026, 9, 30), 40L, "CC", "49786112", "3004567890", null, "SC-0587");
     }
 
-    // ---------- registrar cementerios y bóvedas (RF-BOV-01) ----------
+    // ---------- registrar cementerios y bóvedas ----------
 
     @Test
     void onlyMasterAdminRegistersCemeteries() {
-        // El Administrador del Cementerio (sesión por defecto) no puede (RF-BOV-01, actor ACT-01).
+        // El Administrador del Cementerio (sesión por defecto) no puede.
         assertFalse(service.canRegister());
         assertThrows(UnauthorizedActionException.class, () -> service.registerCemetery("Central", null));
         verify(cemeteries, never()).save(any());
@@ -441,7 +531,7 @@ class CemeteryServiceTest {
     @Test
     @SuppressWarnings("unchecked")
     void addPavilionCreatesAvailableVaultsWithLevelCodesAndSkipsRepeated() {
-        // RF-BOV-01: cada bóveda nace DISPONIBLE; 2a: un código repetido no se registra.
+        // Cada bóveda nace DISPONIBLE; 2a: un código repetido no se registra.
         loginAs(RoleNames.MASTER_ADMIN);
         Cemetery cemetery = new Cemetery(1L, "Jardines", null);
         when(cemeteries.findById(1L)).thenReturn(Optional.of(cemetery));
@@ -461,7 +551,7 @@ class CemeteryServiceTest {
 
     @Test
     void addVaultRejectsACodeThatAlreadyExistsOrTakesAnOccupiedSpot() {
-        // Prueba de Jira (RF-BOV-01): dos bóvedas con el mismo código; PASA si la segunda se rechaza.
+        // Prueba de Jira: dos bóvedas con el mismo código; PASA si la segunda se rechaza.
         loginAs(RoleNames.MASTER_ADMIN);
         when(cemeteries.findById(1L)).thenReturn(Optional.of(new Cemetery(1L, "Jardines", null)));
         when(vaults.findCodesByCemeteryId(1L)).thenReturn(List.of("A2-15", "A-11"));

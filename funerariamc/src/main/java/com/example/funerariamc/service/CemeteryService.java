@@ -8,17 +8,21 @@ import com.example.funerariamc.model.Cemetery;
 import com.example.funerariamc.model.Client;
 import com.example.funerariamc.model.Deceased;
 import com.example.funerariamc.model.Exhumation;
+import com.example.funerariamc.model.FinancialTransaction;
 import com.example.funerariamc.model.Vault;
 import com.example.funerariamc.utils.enums.ExhumationDestination;
 import com.example.funerariamc.utils.enums.ExhumationReason;
 import com.example.funerariamc.utils.enums.NotificationChannel;
 import com.example.funerariamc.utils.enums.NotificationStatus;
 import com.example.funerariamc.utils.enums.NotificationType;
+import com.example.funerariamc.utils.enums.TransactionStatus;
+import com.example.funerariamc.utils.enums.TransactionType;
 import com.example.funerariamc.utils.enums.VaultStatus;
 import com.example.funerariamc.persistence.CemeteryRepository;
 import com.example.funerariamc.persistence.ClientRepository;
 import com.example.funerariamc.persistence.DeceasedRepository;
 import com.example.funerariamc.persistence.ExhumationRepository;
+import com.example.funerariamc.persistence.FinancialTransactionRepository;
 import com.example.funerariamc.persistence.LeaseNotificationRepository;
 import com.example.funerariamc.persistence.VaultRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -44,10 +49,10 @@ import java.util.Set;
 import java.util.TreeMap;
 
 /**
- * Módulo Cementerio y bóvedas (propuesta P-17 / P-17.1): muro de bóvedas por pabellón,
- * indicadores, bóvedas que requieren atención, panel de detalle (RF-BOV-06), asignación
- * (RF-BOV-02), renovación del arriendo y exhumación (RF-BOV-05).
- * Lo usan el Administrador del Cementerio y el Administrador Maestro (RN-21, RN-22).
+ * Módulo Cementerio y bóvedas: muro de bóvedas por pabellón,
+ * indicadores, bóvedas que requieren atención, panel de detalle, asignación,
+ * renovación del arriendo y exhumación.
+ * Lo usan el Administrador del Cementerio y el Administrador Maestro.
  * Devuelve records ya armados dentro de la transacción, así la pantalla no toca relaciones LAZY.
  * Rendimiento: el muro y el panel se leen con proyecciones (solo las columnas que se pintan),
  * la primera carga junta pestañas y muro en una sola transacción y el panel usa tres consultas.
@@ -55,13 +60,17 @@ import java.util.TreeMap;
 @Service
 public class CemeteryService {
 
-    /** RN-06: el arriendo dura 4 años y solo después procede la exhumación. */
+    /** El arriendo dura 4 años y solo después procede la exhumación. */
     public static final int LEASE_YEARS = 4;
+    /** Después de los 4 años el arriendo se renueva por año, al valor que tenga el año en ese momento. */
+    public static final int RENEWAL_YEARS = 1;
+    /** Así empieza la descripción del ingreso de una renovación de arriendo. */
+    public static final String RENEWAL_PREFIX = "Renovación arriendo bóveda ";
     /** Filas de las listas cortas: requieren atención, exhumaciones y búsquedas del diálogo. */
     public static final int SHORT_LIST = 20;
     /** Exhumaciones que se muestran en la columna derecha. */
     public static final int RECENT_EXHUMATIONS = 3;
-    /** Carpeta de FileStorageService donde quedan las autorizaciones de exhumación (RN-25). */
+    /** Carpeta de FileStorageService donde quedan las autorizaciones de exhumación. */
     public static final String AUTHORIZATION_FOLDER = "exhumaciones";
 
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
@@ -72,6 +81,8 @@ public class CemeteryService {
     private final VaultRepository vaultRepository;
     private final ExhumationRepository exhumationRepository;
     private final LeaseNotificationRepository leaseNotificationRepository;
+    private final FinancialTransactionRepository transactionRepository;
+    private final SaleParameters saleParameters;
     private final ClientRepository clientRepository;
     private final DeceasedRepository deceasedRepository;
     private final FileStorageService fileStorageService;
@@ -150,7 +161,7 @@ public class CemeteryService {
     public record VaultBatch(int created, List<String> skipped) {
     }
 
-    /** Panel de detalle de una bóveda (RF-BOV-06). Los campos del difunto y del titular van en null si está libre. */
+    /** Panel de detalle de una bóveda. Los campos del difunto y del titular van en null si está libre. */
     public record VaultDetail(Long id, String code, VaultPosition position, String cemeteryName,
                               VaultState state, String deceasedName, LocalDate deceasedBirth,
                               LocalDate deceasedDeath, Long clientId, String clientName, String clientDocument,
@@ -168,10 +179,11 @@ public class CemeteryService {
                            ExhumationRepository exhumationRepository,
                            LeaseNotificationRepository leaseNotificationRepository, ClientRepository clientRepository,
                            DeceasedRepository deceasedRepository, FileStorageService fileStorageService,
-                           AccessLogService accessLogService, SessionContext sessionContext) {
+                           AccessLogService accessLogService, SessionContext sessionContext,
+                           FinancialTransactionRepository transactionRepository, SaleParameters saleParameters) {
         this(cemeteryRepository, vaultRepository, exhumationRepository, leaseNotificationRepository,
                 clientRepository, deceasedRepository, fileStorageService, accessLogService, sessionContext,
-                Clock.system(AccessLogService.APP_ZONE));
+                transactionRepository, saleParameters, Clock.system(AccessLogService.APP_ZONE));
     }
 
     /** Las pruebas fijan la fecha de hoy con un Clock. */
@@ -179,7 +191,10 @@ public class CemeteryService {
                     ExhumationRepository exhumationRepository, LeaseNotificationRepository leaseNotificationRepository,
                     ClientRepository clientRepository, DeceasedRepository deceasedRepository,
                     FileStorageService fileStorageService, AccessLogService accessLogService,
-                    SessionContext sessionContext, Clock clock) {
+                    SessionContext sessionContext, FinancialTransactionRepository transactionRepository,
+                    SaleParameters saleParameters, Clock clock) {
+        this.transactionRepository = transactionRepository;
+        this.saleParameters = saleParameters;
         this.cemeteryRepository = cemeteryRepository;
         this.vaultRepository = vaultRepository;
         this.exhumationRepository = exhumationRepository;
@@ -255,7 +270,7 @@ public class CemeteryService {
     }
 
     /**
-     * Panel de detalle (RF-BOV-06) con tres consultas en la misma transacción: la bóveda con su
+     * Panel de detalle con tres consultas en la misma transacción: la bóveda con su
      * difunto, titular y contrato; los avisos de arriendo; y las exhumaciones anteriores.
      */
     @Transactional(readOnly = true)
@@ -315,8 +330,8 @@ public class CemeteryService {
     // ---------- operaciones ----------
 
     /**
-     * RF-BOV-02: asigna una bóveda DISPONIBLE a un titular y un difunto. El arriendo vence
-     * 4 años después del inicio (RN-06) y la bóveda queda OCUPADA.
+     * Asigna una bóveda DISPONIBLE a un titular y un difunto. El arriendo vence
+     * 4 años después del inicio y la bóveda queda OCUPADA.
      */
     @Transactional
     public Long assign(AssignVaultData data) {
@@ -358,14 +373,14 @@ public class CemeteryService {
         return vault.getId();
     }
 
-    // ---------- RF-BOV-01: registrar cementerios y bóvedas ----------
+    // ---------- Registrar cementerios y bóvedas ----------
 
-    /** Solo el Administrador Maestro registra cementerios y bóvedas (RF-BOV-01, actor ACT-01). */
+    /** Solo el Administrador Maestro registra cementerios y bóvedas. */
     public boolean canRegister() {
         return sessionContext.getRoleName().map(RoleNames.MASTER_ADMIN::equals).orElse(false);
     }
 
-    /** RF-BOV-01 paso 1: registra un cementerio propio con su nombre y dirección. Devuelve su id. */
+    /** Registra un cementerio propio con su nombre y dirección. Devuelve su id. */
     @Transactional
     public Long registerCemetery(String name, String address) {
         requireRegister();
@@ -379,7 +394,7 @@ public class CemeteryService {
     }
 
     /**
-     * RF-BOV-01 pasos 2 y 3: crea las bóvedas de un pabellón, todas DISPONIBLES, con códigos
+     * Crea las bóvedas de un pabellón, todas DISPONIBLES, con códigos
      * "A1-01" ... (pabellón, nivel y columna). No hay límite de columnas por nivel.
      * 2a: un código repetido en el mismo cementerio no se registra; se informa en {@code skipped}.
      * Tampoco se crea una bóveda donde otra (por ejemplo del formato "A-07") ya ocupa ese nivel y columna.
@@ -406,7 +421,7 @@ public class CemeteryService {
         return createVaults(cemeteryId, codes);
     }
 
-    /** RF-BOV-01 paso 2: registra una sola bóveda con el código que escribe el administrador. */
+    /** Registra una sola bóveda con el código que escribe el administrador. */
     @Transactional
     public VaultBatch addVault(Long cemeteryId, String code) {
         requireRegister();
@@ -446,7 +461,7 @@ public class CemeteryService {
             Vault vault = new Vault();
             vault.setCemetery(cemetery);
             vault.setCode(code);
-            vault.setStatus(VaultStatus.AVAILABLE); // RF-BOV-01 paso 3
+            vault.setStatus(VaultStatus.AVAILABLE);
             created.add(vault);
         }
         vaultRepository.saveAll(created);
@@ -474,8 +489,9 @@ public class CemeteryService {
     }
 
     /**
-     * Renueva el arriendo por otros 4 años contados desde el vencimiento actual
-     * (si ya venció, el tiempo en mora no se regala). La bóveda vuelve a OCUPADA.
+     * Renueva el arriendo por un año contado desde el vencimiento actual (si ya venció, el tiempo en
+     * mora no se regala) y registra el ingreso con el valor del año. Conserva la mora si la
+     * nueva fecha todavía está vencida; de lo contrario, la bóveda vuelve a OCUPADA.
      * Devuelve la nueva fecha de vencimiento.
      */
     @Transactional
@@ -487,17 +503,27 @@ public class CemeteryService {
             throw new InvalidDataException("La bóveda " + vault.getCode() + " está libre: no tiene arriendo que renovar.");
         }
         LocalDate base = vault.getLeaseEndDate() == null ? today() : vault.getLeaseEndDate();
-        LocalDate newEnd = leaseEnd(base);
+        LocalDate newEnd = renewalEnd(base);
+        BigDecimal price = saleParameters.vaultLeasePerYear();
         vault.setLeaseEndDate(newEnd);
-        vault.setStatus(VaultStatus.OCCUPIED);
+        vault.setStatus(newEnd.isBefore(today()) ? VaultStatus.OVERDUE : VaultStatus.OCCUPIED);
         vaultRepository.save(vault);
+        FinancialTransaction income = new FinancialTransaction();
+        income.setTransactionType(TransactionType.INCOME);
+        income.setAmount(price);
+        income.setStatus(TransactionStatus.ACTIVE);
+        income.setEmployee(sessionContext.getCurrentUser().map(user -> user.getEmployee()).orElse(null));
+        String holder = vault.getClient() == null ? "" : " · " + ClientService.displayName(vault.getClient());
+        String description = RENEWAL_PREFIX + vault.getCode() + " · " + RENEWAL_YEARS + " año" + holder;
+        income.setDescription(description.length() > 150 ? description.substring(0, 150) : description);
+        transactionRepository.save(income);
         accessLogService.record(actorId, AccessLogService.VAULT_LEASE_RENEWED + vault.getCode());
         return newEnd;
     }
 
     /**
-     * RF-BOV-05: registra la exhumación con el empleado de la sesión, retira al difunto y
-     * deja la bóveda DISPONIBLE (RN-30). Solo procede cumplidos 4 años de arriendo (RN-06).
+     * Registra la exhumación con el empleado de la sesión, retira al difunto y
+     * deja la bóveda DISPONIBLE. Solo procede cumplidos 4 años de arriendo.
      */
     @Transactional
     public Exhumation exhume(ExhumationData data) {
@@ -528,10 +554,10 @@ public class CemeteryService {
         LocalDate allowedFrom = exhumationAllowedFrom(vault);
         if (allowedFrom != null && data.exhumationDate().isBefore(allowedFrom)) {
             throw new InvalidDataException("La exhumación procede desde el " + DATE.format(allowedFrom)
-                    + ", cuando se cumplen los " + LEASE_YEARS + " años de arriendo (RN-06).");
+                    + ", cuando se cumplen los " + LEASE_YEARS + " años de arriendo.");
         }
 
-        // RN-25: el archivo se copia con FileStorageService y en la BD queda solo su URL.
+        // El archivo se copia con FileStorageService y en la BD queda solo su URL.
         // Se copia al final, cuando todo lo demás ya se validó; si la BD no guarda, se borra.
         String url = fileStorageService.store(data.authorizationFile(), AUTHORIZATION_FOLDER);
         deleteFileOnRollback(url);
@@ -547,7 +573,7 @@ public class CemeteryService {
         exhumation.setRegisteredByEmployee(actor.getEmployee());
         Exhumation saved = exhumationRepository.save(exhumation);
 
-        // RN-30: la bóveda queda libre para un nuevo arriendo.
+        // La bóveda queda libre para un nuevo arriendo.
         vault.setDeceased(null);
         vault.setClient(null);
         vault.setLeaseStartDate(null);
@@ -560,12 +586,17 @@ public class CemeteryService {
 
     // ---------- reglas ----------
 
-    /** RN-06: fin del arriendo, 4 años después del inicio. */
+    /** Fin del arriendo, 4 años después del inicio. */
     public static LocalDate leaseEnd(LocalDate start) {
         return start.plusYears(LEASE_YEARS);
     }
 
-    /** RN-07: un cuerpo no reclamado va a fosa común u osario; otro destino se advierte antes de guardar. */
+    /** Nuevo vencimiento al renovar: un año más desde el vencimiento actual. */
+    public static LocalDate renewalEnd(LocalDate currentEnd) {
+        return currentEnd.plusYears(RENEWAL_YEARS);
+    }
+
+    /** Un cuerpo no reclamado va a fosa común u osario; otro destino se advierte antes de guardar. */
     public static boolean needsUnclaimedWarning(ExhumationReason reason, ExhumationDestination destination) {
         return reason == ExhumationReason.UNCLAIMED && destination != null
                 && !UNCLAIMED_DESTINATIONS.contains(destination);
@@ -606,7 +637,7 @@ public class CemeteryService {
         return events;
     }
 
-    /** RN-06: la exhumación procede 4 años después del inicio del arriendo. */
+    /** La exhumación procede 4 años después del inicio del arriendo. */
     private static LocalDate exhumationAllowedFrom(Vault vault) {
         return vault.getDeceased() == null || vault.getLeaseStartDate() == null
                 ? null
@@ -643,7 +674,7 @@ public class CemeteryService {
         return type == null || type.isBlank() ? number : type + " " + number;
     }
 
-    /** Nombre y apellido; el NN tiene el apellido vacío (RF-DIF-02). */
+    /** Nombre y apellido; el NN tiene el apellido vacío. */
     private static String fullName(String name, String lastname) {
         return ((name == null ? "" : name) + " " + (lastname == null ? "" : lastname)).trim();
     }
