@@ -53,8 +53,8 @@ import java.util.function.Function;
  * documentos y asignación del transporte del servicio con
  * las reglas de licencia vigente, SOAT y técnico-mecánica vigentes sin mantenimiento, coche fúnebre
  * y bus incluidos, y sin cruces de horario.
- * Lo usan la Secretaría y el Administrador Maestro; registrar y editar vehículos es
- * solo del Administrador Maestro.
+ * Lo usan la Secretaría y el Administrador Maestro; los dos registran y editan vehículos
+ * (la asistente lleva el registro de los coches y sus documentos).
  * La pantalla completa se arma en una transacción de solo lectura con cuatro consultas.
  */
 @Service
@@ -193,7 +193,7 @@ public class TransportService {
                        int maintenance, String maintenanceDetail, int expiredDocs, String expiredDetail) {
     }
 
-    /** Toda la pantalla. canManageVehicles: el usuario es Administrador Maestro. */
+    /** Toda la pantalla. canManageVehicles: el usuario es Administrador Maestro o Secretaría. */
     public record Screen(LocalDate today, LocalDateTime loadedAt, Kpis kpis, List<VehicleCard> vehicles,
                          List<DriverCard> drivers, List<Transfer> transfers, boolean canManageVehicles) {
     }
@@ -288,7 +288,7 @@ public class TransportService {
         for (DriverRow driver : drivers) {
             driverCards.add(driverCard(driver, transfers, now, warningDays));
         }
-        return new Screen(today, now, kpis(cards), cards, driverCards, transfers, isMasterAdmin());
+        return new Screen(today, now, kpis(cards), cards, driverCards, transfers, canManageVehicles());
     }
 
     /** Agrupa las filas por contrato y hora de salida: un traslado con todos sus vehículos. */
@@ -958,7 +958,7 @@ public class TransportService {
      */
     @Transactional
     public Saved registerVehicle(VehicleData data) {
-        Long actorId = requireMasterAdmin();
+        Long actorId = requireVehicleManager();
         String plate = validVehicle(data);
         if (vehicleRepository.existsByPlateIgnoreCase(plate)) {
             throw new InvalidDataException("Ya existe un vehículo con la placa " + plate + ".");
@@ -978,7 +978,7 @@ public class TransportService {
     /** Editar placa, capacidad y documentos. Los archivos que no se cambian se conservan. */
     @Transactional
     public Saved updateVehicle(Long vehicleId, VehicleData data) {
-        Long actorId = requireMasterAdmin();
+        Long actorId = requireVehicleManager();
         Vehicle vehicle = vehicleRepository.findById(vehicleId)
                 .orElseThrow(() -> new ResourceNotFoundException("Vehículo", vehicleId));
         String plate = validVehicle(data);
@@ -994,7 +994,7 @@ public class TransportService {
     /** Pone el vehículo en mantenimiento o lo devuelve a disponible. */
     @Transactional
     public void setMaintenance(Long vehicleId, boolean maintenance) {
-        Long actorId = requireMasterAdmin();
+        Long actorId = requireVehicleManager();
         Vehicle vehicle = vehicleRepository.findById(vehicleId)
                 .orElseThrow(() -> new ResourceNotFoundException("Vehículo", vehicleId));
         if (vehicle.getStatus() == VehicleStatus.IN_SERVICE) {
@@ -1140,8 +1140,11 @@ public class TransportService {
         return LocalDate.now(clock);
     }
 
-    private boolean isMasterAdmin() {
-        return sessionContext.getRoleName().map(RoleNames.MASTER_ADMIN::equals).orElse(false);
+    /** Los vehículos los registra la asistente (Secretaría), además del Administrador Maestro. */
+    private boolean canManageVehicles() {
+        return sessionContext.getRoleName()
+                .map(role -> RoleNames.MASTER_ADMIN.equals(role) || RoleNames.SECRETARY.equals(role))
+                .orElse(false);
     }
 
     private void requireAccess() {
@@ -1151,8 +1154,8 @@ public class TransportService {
         }
     }
 
-    private Long requireMasterAdmin() {
-        if (!isMasterAdmin()) {
+    private Long requireVehicleManager() {
+        if (!canManageVehicles()) {
             throw new UnauthorizedActionException();
         }
         return currentUserId();
