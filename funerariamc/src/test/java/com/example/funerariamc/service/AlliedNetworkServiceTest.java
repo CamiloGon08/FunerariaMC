@@ -12,6 +12,7 @@ import com.example.funerariamc.model.FinancialTransaction;
 import com.example.funerariamc.model.ServiceContract;
 import com.example.funerariamc.utils.enums.AlliedPaymentStatus;
 import com.example.funerariamc.utils.enums.ContractStatus;
+import com.example.funerariamc.utils.enums.PaymentMethod;
 import com.example.funerariamc.utils.enums.TransactionStatus;
 import com.example.funerariamc.utils.enums.TransactionType;
 import com.example.funerariamc.persistence.AlliedFuneralHomeRepository;
@@ -20,12 +21,16 @@ import com.example.funerariamc.persistence.FinancialTransactionRepository;
 import com.example.funerariamc.persistence.ServiceContractRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.util.List;
 import java.util.Optional;
 
@@ -103,6 +108,7 @@ class AlliedNetworkServiceTest {
         verify(homes).save(saved.capture());
         assertEquals("Funeraria La Esperanza", saved.getValue().getName());
         assertEquals("3005550142", saved.getValue().getContactPhone());
+        assertNull(saved.getValue().getAddress());
         assertTrue(saved.getValue().getActive());
         verify(homes).existsNit("9002145563", null);
         verify(audit).record(5L, "ALLIED_HOME_REGISTERED: 900.214.556-3");
@@ -121,6 +127,36 @@ class AlliedNetworkServiceTest {
         service.updateHome(3L, data("800991447-1"));
         verify(homes).existsNit("8009914471", 3L);
         verify(audit).record(5L, "ALLIED_HOME_UPDATED: 800991447-1");
+    }
+
+    @Test
+    void optionalAddressIsTrimmedAndThePreviousConstructorStillWorks() {
+        AlliedHomeData previous = data("800991447-1");
+        assertNull(previous.address());
+        AlliedHomeData withAddress = new AlliedHomeData(previous.name(), previous.nit(), previous.phone(),
+                previous.city(), previous.email(), previous.agreementStart(), "  Carrera 12 # 8-20  ");
+
+        service.updateHome(3L, withAddress);
+
+        assertEquals("Carrera 12 # 8-20", home.getAddress());
+        assertEquals("Carrera 12 # 8-20", AlliedNetworkService.card(home, null).address());
+        service.updateHome(3L, previous);
+        assertNull(home.getAddress());
+    }
+
+    @Test
+    void addressAcceptsItsLimitAndRejectsAnExtraCharacter() {
+        AlliedHomeData previous = data("800991447-1");
+        AlliedHomeData atLimit = new AlliedHomeData(previous.name(), previous.nit(), previous.phone(),
+                previous.city(), previous.email(), previous.agreementStart(), "A".repeat(100));
+        service.updateHome(3L, atLimit);
+        assertEquals("A".repeat(100), home.getAddress());
+        clearInvocations(homes);
+
+        AlliedHomeData tooLong = new AlliedHomeData(previous.name(), previous.nit(), previous.phone(),
+                previous.city(), previous.email(), previous.agreementStart(), "A".repeat(101));
+        assertThrows(InvalidDataException.class, () -> service.updateHome(3L, tooLong));
+        verify(homes, never()).save(any());
     }
 
     @Test
@@ -180,9 +216,117 @@ class AlliedNetworkServiceTest {
         assertSame(master, expense.getValue().getEmployee());
         assertEquals(AlliedPaymentStatus.PAID, payment.getStatus());
         assertSame(expense.getValue(), payment.getFinancialTransaction());
+        assertNull(payment.getPaymentMethod());
         verify(audit).record(5L, "ALLIED_PAYMENT_PAID: 800991447-1 MV-0045 3200000.00");
 
         assertThrows(InvalidDataException.class, () -> service.markPaid(20L));
+    }
+
+    @Test
+    void markingPaidWithAMethodPersistsItAndIncludesItInTheExpense() {
+        AlliedPayment payment = payment(AlliedPaymentStatus.PENDING);
+        when(payments.findDetailById(20L)).thenReturn(Optional.of(payment));
+
+        service.markPaid(20L, PaymentMethod.TRANSFER);
+
+        assertEquals(PaymentMethod.TRANSFER, payment.getPaymentMethod());
+        assertEquals(PaymentMethod.TRANSFER, AlliedNetworkService.row(payment).method());
+        assertTrue(payment.getFinancialTransaction().getDescription().endsWith(" · Transferencia"));
+        assertEquals(AlliedPaymentStatus.PAID, payment.getStatus());
+        verify(payments).save(payment);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "MONTHLY,2026-11,Mensual noviembre 2026",
+            "SEMIANNUAL,2026-01,Semestral 1.er semestre 2026",
+            "SEMIANNUAL,2026-07,Semestral 2.º semestre 2026",
+            "ANNUAL,2026-11,Anual 2026"
+    })
+    void networkFeeRegistersTheSelectedPeriodAndMethod(AlliedNetworkService.FeeFrequency frequency,
+                                                       String from, String period) {
+        assertEquals(45L, service.payNetworkFee(frequency, YearMonth.parse(from),
+                new BigDecimal("150000.50"), PaymentMethod.DEPOSIT));
+
+        ArgumentCaptor<FinancialTransaction> expense = ArgumentCaptor.forClass(FinancialTransaction.class);
+        verify(transactions).save(expense.capture());
+        assertEquals(TransactionType.EXPENSE, expense.getValue().getTransactionType());
+        assertEquals(TransactionStatus.ACTIVE, expense.getValue().getStatus());
+        assertEquals(new BigDecimal("150000.50"), expense.getValue().getAmount());
+        assertSame(master, expense.getValue().getEmployee());
+        assertEquals(AlliedNetworkService.NETWORK_FEE_PREFIX + period + " · Consignación",
+                expense.getValue().getDescription());
+        verify(transactions).findActiveByPrefix(AlliedNetworkService.NETWORK_FEE_PREFIX + period + " ·%",
+                TransactionType.EXPENSE, TransactionStatus.ACTIVE);
+        verify(audit).record(5L, AccessLogService.NETWORK_FEE_PAID + period + " 150000.50");
+    }
+
+    @Test
+    void anActiveNetworkFeeCannotBePaidAgainForTheSamePeriod() {
+        FinancialTransaction previous = new FinancialTransaction();
+        previous.setStatus(TransactionStatus.ACTIVE);
+        when(transactions.findActiveByPrefix(AlliedNetworkService.NETWORK_FEE_PREFIX + "Anual 2026 ·%",
+                TransactionType.EXPENSE, TransactionStatus.ACTIVE)).thenReturn(List.of(previous));
+
+        assertThrows(InvalidDataException.class, () -> service.payNetworkFee(AlliedNetworkService.FeeFrequency.ANNUAL,
+                YearMonth.of(2026, 11), BigDecimal.TEN, PaymentMethod.TRANSFER));
+
+        verify(transactions, never()).save(any());
+        verify(audit, never()).record(anyLong(), anyString());
+    }
+
+    @Test
+    void voidedNetworkFeesDoNotBlockPayingThePeriodAgain() {
+        when(transactions.findActiveByPrefix(AlliedNetworkService.NETWORK_FEE_PREFIX + "Anual 2026 ·%",
+                TransactionType.EXPENSE, TransactionStatus.ACTIVE)).thenReturn(List.of());
+
+        assertEquals(45L, service.payNetworkFee(AlliedNetworkService.FeeFrequency.ANNUAL,
+                YearMonth.of(2026, 11), BigDecimal.TEN, PaymentMethod.TRANSFER));
+
+        verify(transactions).findActiveByPrefix(AlliedNetworkService.NETWORK_FEE_PREFIX + "Anual 2026 ·%",
+                TransactionType.EXPENSE, TransactionStatus.ACTIVE);
+        verify(transactions).save(any(FinancialTransaction.class));
+    }
+
+    @Test
+    void invalidNetworkFeeDataCreatesNoExpense() {
+        YearMonth month = YearMonth.of(2026, 11);
+        AlliedNetworkService.FeeFrequency frequency = AlliedNetworkService.FeeFrequency.MONTHLY;
+        assertThrows(InvalidDataException.class, () -> service.payNetworkFee(null, month,
+                BigDecimal.TEN, PaymentMethod.TRANSFER));
+        assertThrows(InvalidDataException.class, () -> service.payNetworkFee(frequency, null,
+                BigDecimal.TEN, PaymentMethod.TRANSFER));
+        assertThrows(InvalidDataException.class, () -> service.payNetworkFee(frequency, month,
+                null, PaymentMethod.TRANSFER));
+        assertThrows(InvalidDataException.class, () -> service.payNetworkFee(frequency, month,
+                BigDecimal.ZERO, PaymentMethod.TRANSFER));
+        assertThrows(InvalidDataException.class, () -> service.payNetworkFee(frequency, month,
+                new BigDecimal("-1"), PaymentMethod.TRANSFER));
+        assertThrows(InvalidDataException.class, () -> service.payNetworkFee(frequency, month,
+                new BigDecimal("10.001"), PaymentMethod.TRANSFER));
+        assertThrows(InvalidDataException.class, () -> service.payNetworkFee(frequency, month,
+                BigDecimal.TEN, null));
+        verify(transactions, never()).save(any());
+        verify(audit, never()).record(anyLong(), anyString());
+    }
+
+    @Test
+    void networkFeeHistoryUsesTheRecordedAmountAndColombianTime() {
+        FinancialTransaction fee = new FinancialTransaction();
+        fee.setId(80L);
+        fee.setDescription(AlliedNetworkService.NETWORK_FEE_PREFIX + "Mensual noviembre 2026 · Transferencia");
+        fee.setAmount(new BigDecimal("150000.00"));
+        fee.setTransactionDate(LocalDateTime.of(2026, 11, 8, 15, 0));
+        when(transactions.findActiveByPrefix(AlliedNetworkService.NETWORK_FEE_PREFIX + "%",
+                TransactionType.EXPENSE, TransactionStatus.ACTIVE)).thenReturn(List.of(fee));
+
+        AlliedNetworkService.NetworkFee row = service.networkFees().getFirst();
+
+        assertEquals("MV-0080", row.movementCode());
+        assertEquals("Mensual noviembre 2026 · Transferencia", row.period());
+        assertEquals(new BigDecimal("150000.00"), row.amount());
+        assertEquals(LocalDateTime.of(2026, 11, 8, 10, 0), row.paidAt());
+        assertNull(row.paidBy());
     }
 
     @Test
@@ -253,6 +397,9 @@ class AlliedNetworkServiceTest {
         session.start(user);
         assertThrows(UnauthorizedActionException.class, service::overview);
         assertThrows(UnauthorizedActionException.class, () -> service.markPaid(20L));
+        assertThrows(UnauthorizedActionException.class, service::networkFees);
+        assertThrows(UnauthorizedActionException.class, () -> service.payNetworkFee(AlliedNetworkService.FeeFrequency.MONTHLY,
+                YearMonth.of(2026, 11), BigDecimal.TEN, PaymentMethod.TRANSFER));
         verify(audit, never()).record(anyLong(), anyString());
     }
 
