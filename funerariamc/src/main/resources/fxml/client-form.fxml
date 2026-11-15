@@ -5,17 +5,19 @@
 <?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.TextField?>
+<?import javafx.scene.shape.SVGPath?>
 <?import javafx.scene.layout.ColumnConstraints?>
 <?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Pane?>
+<?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.VBox?>
 
-<!-- Formulario de Clientes (mockup 12): nuevo cliente (HU-01), ver y editar.
+<!-- Formulario de Clientes: nuevo cliente, ver y editar.
      Se abre en una ventana modal desde clients.fxml. -->
 <VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.example.funerariamc.controller.ClientFormController"
-      styleClass="form-root, client-form" prefWidth="700"
+      styleClass="form-root, client-form" prefWidth="860"
       stylesheets="@../css/app.css, @../css/personal.css, @../css/clients.css">
 
     <VBox styleClass="form-header" spacing="2">
@@ -25,27 +27,28 @@
     </VBox>
 
     <VBox spacing="14" styleClass="form-body">
-        <GridPane fx:id="formGrid" hgap="18" vgap="12">
+        <!-- Tres columnas y secciones con título en mayúsculas y línea caqui, como el formulario de Personal -->
+        <GridPane fx:id="formGrid" hgap="16" vgap="12">
             <columnConstraints>
-                <ColumnConstraints percentWidth="50"/>
-                <ColumnConstraints percentWidth="50"/>
+                <ColumnConstraints percentWidth="33.33"/>
+                <ColumnConstraints percentWidth="33.33"/>
+                <ColumnConstraints percentWidth="33.34"/>
             </columnConstraints>
-            <VBox styleClass="form-field" GridPane.columnIndex="0" GridPane.rowIndex="0">
+            <HBox styleClass="section-legend" GridPane.columnIndex="0" GridPane.rowIndex="0" GridPane.columnSpan="3">
+                <Label styleClass="section-title" text="IDENTIFICACIÓN"/>
+                <Region styleClass="section-rule" HBox.hgrow="ALWAYS"/>
+            </HBox>
+            <VBox styleClass="form-field" GridPane.columnIndex="0" GridPane.rowIndex="1">
                 <Label styleClass="field-label" text="TIPO DE CLIENTE *"/>
                 <ComboBox fx:id="clientTypeCombo" maxWidth="Infinity" styleClass="form-combo"/>
             </VBox>
-            <VBox styleClass="form-field" GridPane.columnIndex="1" GridPane.rowIndex="0">
+            <VBox styleClass="form-field" GridPane.columnIndex="1" GridPane.rowIndex="1">
                 <Label styleClass="field-label" text="TIPO DE DOCUMENTO *"/>
                 <ComboBox fx:id="documentTypeCombo" maxWidth="Infinity" styleClass="form-combo"/>
             </VBox>
-            <VBox styleClass="form-field" GridPane.columnIndex="0" GridPane.rowIndex="1">
+            <VBox styleClass="form-field" GridPane.columnIndex="2" GridPane.rowIndex="1">
                 <Label styleClass="field-label" text="NÚMERO DE DOCUMENTO *"/>
                 <TextField fx:id="documentField" promptText="1.065.832.417"/>
-            </VBox>
-            <VBox styleClass="form-field" GridPane.columnIndex="1" GridPane.rowIndex="1">
-                <Label styleClass="field-label" text="FECHA DE REGISTRO"/>
-                <TextField fx:id="registrationField" editable="false" focusTraversable="false"
-                           styleClass="read-only-field"/>
             </VBox>
             <VBox fx:id="nameBox" styleClass="form-field" GridPane.columnIndex="0" GridPane.rowIndex="2">
                 <Label fx:id="nameLabel" styleClass="field-label" text="NOMBRES *"/>
@@ -55,24 +58,36 @@
                 <Label styleClass="field-label" text="APELLIDOS *"/>
                 <TextField fx:id="lastnameField"/>
             </VBox>
-            <VBox styleClass="form-field" GridPane.columnIndex="0" GridPane.rowIndex="3">
+            <VBox styleClass="form-field" GridPane.columnIndex="2" GridPane.rowIndex="2">
+                <Label styleClass="field-label" text="FECHA DE REGISTRO"/>
+                <TextField fx:id="registrationField" editable="false" focusTraversable="false"
+                           styleClass="read-only-field"/>
+            </VBox>
+            <HBox styleClass="section-legend" GridPane.columnIndex="0" GridPane.rowIndex="3" GridPane.columnSpan="3">
+                <Label styleClass="section-title" text="CONTACTO"/>
+                <Region styleClass="section-rule" HBox.hgrow="ALWAYS"/>
+            </HBox>
+            <VBox styleClass="form-field" GridPane.columnIndex="0" GridPane.rowIndex="4">
                 <Label styleClass="field-label" text="TELÉFONO *"/>
                 <TextField fx:id="phoneField" promptText="301 556 2087"/>
             </VBox>
-            <VBox styleClass="form-field" GridPane.columnIndex="1" GridPane.rowIndex="3">
+            <VBox styleClass="form-field" GridPane.columnIndex="1" GridPane.rowIndex="4">
                 <Label styleClass="field-label" text="CORREO"/>
                 <TextField fx:id="emailField"/>
             </VBox>
-            <VBox styleClass="form-field" GridPane.columnIndex="0" GridPane.rowIndex="4"
-                  GridPane.columnSpan="2">
+            <VBox styleClass="form-field" GridPane.columnIndex="2" GridPane.rowIndex="4">
                 <Label styleClass="field-label" text="DIRECCIÓN *"/>
                 <TextField fx:id="addressField" promptText="Cra. 9 # 16-42, Centro, Valledupar"/>
             </VBox>
         </GridPane>
 
-        <Label fx:id="typeNote" styleClass="note-info" wrapText="true"/>
+        <Label fx:id="typeNote" styleClass="note-info" wrapText="true" graphicTextGap="10">
+            <graphic>
+                <SVGPath content="M8 1a7 7 0 1 1 0 14A7 7 0 0 1 8 1z M8 7v4.5 M8 4.6v.2" styleClass="note-icon"/>
+            </graphic>
+        </Label>
 
-        <!-- RF-PER-01 2a: el documento ya es de un cliente; se muestra en vez de duplicarlo -->
+        <!-- El documento ya es de un cliente; se muestra en vez de duplicarlo -->
         <HBox fx:id="existingBox" styleClass="existing-client">
             <VBox spacing="2" HBox.hgrow="ALWAYS">
                 <Label styleClass="existing-title" text="Este documento ya está registrado"/>
