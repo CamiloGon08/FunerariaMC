@@ -8,12 +8,14 @@ import com.example.funerariamc.model.Thanatopractor;
 import com.example.funerariamc.utils.enums.EmployeePosition;
 import com.example.funerariamc.utils.enums.Sex;
 import com.example.funerariamc.service.AccessLogService;
+import com.example.funerariamc.service.SaleParameters;
 import com.example.funerariamc.service.EmployeeData;
 import com.example.funerariamc.service.EmployeeService;
 import com.example.funerariamc.service.RoleNames;
 import com.example.funerariamc.service.UserAccountService;
 import com.example.funerariamc.service.UserAccountService.AccountCredentials;
 import com.example.funerariamc.service.UserAccountService.AccountSummary;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
@@ -45,7 +47,7 @@ import java.util.Optional;
 import java.util.function.Consumer;
 
 /**
- * Formulario de Personal (mockup 09). Registra (HU-02) o actualiza (HU-03)
+ * Formulario de Personal. Registra o actualiza
  * un empleado y muestra solo la sección del cargo elegido.
  * Las validaciones de negocio están en {@link EmployeeService}; aquí solo se
  * convierten los textos a números y fechas.
@@ -87,6 +89,7 @@ public class EmployeeFormController {
 
     private final EmployeeService employeeService;
     private final UserAccountService userAccountService;
+    private final SaleParameters saleParameters;
 
     @FXML
     private Label titleLabel;
@@ -174,9 +177,11 @@ public class EmployeeFormController {
     /** Mientras el usuario no escriba su propio usuario, se sugiere uno con el nombre y el apellido. */
     private boolean usernameEdited;
 
-    public EmployeeFormController(EmployeeService employeeService, UserAccountService userAccountService) {
+    public EmployeeFormController(EmployeeService employeeService, UserAccountService userAccountService,
+                                  SaleParameters saleParameters) {
         this.employeeService = employeeService;
         this.userAccountService = userAccountService;
+        this.saleParameters = saleParameters;
     }
 
     @FXML
@@ -251,6 +256,7 @@ public class EmployeeFormController {
         if (employee == null) {
             titleLabel.setText("Registrar empleado");
             hireDatePicker.setValue(LocalDate.now(AccessLogService.APP_ZONE));
+            suggestCommissions();
             return;
         }
         titleLabel.setText("Actualizar empleado");
@@ -302,8 +308,8 @@ public class EmployeeFormController {
     }
 
     /**
-     * HU-06: Administrador, Secretaría y Vendedor reciben su cuenta desde aquí mismo,
-     * con contraseña temporal; los demás cargos no ingresan al sistema (RN-23).
+     * Administrador, Secretaría y Vendedor reciben su cuenta desde aquí mismo,
+     * con contraseña temporal; los demás cargos no ingresan al sistema.
      */
     private void showAccountFor(EmployeePosition position) {
         boolean canHaveAccount = position != null && position.canHaveUserAccount();
@@ -313,7 +319,7 @@ public class EmployeeFormController {
             return;
         }
         if (!canHaveAccount) {
-            accountNote.setText("Este cargo no tiene acceso al sistema, así que no tendrá cuenta de usuario (RN-23).");
+            accountNote.setText("Este cargo no tiene acceso al sistema, así que no tendrá cuenta de usuario.");
             return;
         }
         if (existingAccount.isPresent()) {
@@ -366,7 +372,7 @@ public class EmployeeFormController {
         return accountSection.isVisible() && existingAccount.isEmpty() && createAccountCheck.isSelected();
     }
 
-    /** RN-26: avisa, pero deja guardar. */
+    /** Avisa, pero deja guardar. */
     private void updateLicenseWarning() {
         licenseWarning.setVisible(positionCombo.getValue() == EmployeePosition.DRIVER
                 && EmployeeController.isPast(licenseExpiryPicker.getValue()));
@@ -391,7 +397,7 @@ public class EmployeeFormController {
     }
 
     /**
-     * RN-25: en la BD solo va la URL del archivo. Mientras no haya un servicio
+     * En la BD solo va la URL del archivo. Mientras no haya un servicio
      * de almacenamiento se guarda la ruta local (file:/...) del archivo elegido.
      */
     private File chooseFile(String title) {
@@ -402,7 +408,7 @@ public class EmployeeFormController {
         return chooser.showOpenDialog(window());
     }
 
-    /** HU-03: si el archivo no se puede leer, no se toma y se pide elegirlo otra vez. */
+    /** Si el archivo no se puede leer, no se toma y se pide elegirlo otra vez. */
     private boolean isReadable(File file) {
         if (file == null) {
             return false; // canceló la selección
@@ -511,6 +517,33 @@ public class EmployeeFormController {
         } catch (NumberFormatException e) {
             throw new NumberFormatException("El porcentaje de comisión debe ser un número, por ejemplo 5 o 5,5.");
         }
+    }
+
+    /**
+     * Al registrar, sugiere la comisión del vendedor (8 % hoy) y el bono del tanatólogo por cuerpo
+     * guardados en Parámetros. Se leen en otro hilo y se pueden cambiar en el formulario.
+     */
+    private void suggestCommissions() {
+        Thread thread = new Thread(() -> {
+            BigDecimal rate;
+            BigDecimal bonus;
+            try {
+                rate = saleParameters.suggested(SaleParameters.SELLER_COMMISSION_PERCENT);
+                bonus = saleParameters.suggested(SaleParameters.THANATOLOGIST_BONUS_PER_BODY);
+            } catch (RuntimeException e) {
+                return; // sin sugerencia: el usuario escribe los valores
+            }
+            Platform.runLater(() -> {
+                if (employee == null && rate != null && commissionRateField.getText().isBlank()) {
+                    commissionRateField.setText(plain(rate));
+                }
+                if (employee == null && bonus != null && commissionPerCaseField.getText().isBlank()) {
+                    commissionPerCaseField.setText(pesos(bonus));
+                }
+            });
+        }, "employee-commission-suggestion");
+        thread.setDaemon(true);
+        thread.start();
     }
 
     private static String plain(BigDecimal value) {
