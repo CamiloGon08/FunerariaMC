@@ -12,13 +12,16 @@ import com.example.funerariamc.service.RoleNames;
 import com.example.funerariamc.service.SessionContext;
 import com.example.funerariamc.ui.ModuleIcons;
 import com.example.funerariamc.ui.RefreshableView;
+import com.example.funerariamc.ui.Reveal;
 import com.example.funerariamc.ui.SidebarAnimator;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
+import javafx.scene.Parent;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.geometry.Pos;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
@@ -31,9 +34,11 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.EnumMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Menú principal con los módulos del rol de la sesión.
@@ -92,6 +97,7 @@ public class MainController {
     private VBox financeItems;
     /** Pantallas ya abiertas en esta sesión; al cerrar sesión se descartan con este controlador. */
     private final Map<AppModule, FxmlViewLoader.View<Object>> openViews = new EnumMap<>(AppModule.class);
+    private final Set<Node> revealed = new HashSet<>();
     private static final DateTimeFormatter HOME_DATE =
             DateTimeFormatter.ofPattern("EEEE d 'de' MMMM · HH:mm", Locale.forLanguageTag("es-CO"));
     private FxmlViewLoader.View<Object> homeView;
@@ -140,6 +146,7 @@ public class MainController {
                 menuBox.getChildren().add(modulePill(module, module.getLabel(), ModuleIcons.of(module), "nav-pill"));
             }
         }
+        sidebarAnimator.showExpanded();
         onHome();
     }
 
@@ -297,7 +304,7 @@ public class MainController {
     private void onHome() {
         currentModule = null;
         sidebarAnimator.markActive(homePill);
-        String greeting = "Hola, " + firstName(sessionContext.getDisplayName());
+        String greeting = salutation(LocalDateTime.now(AccessLogService.APP_ZONE).getHour()) + ", " + firstName(sessionContext.getDisplayName());
         if (!seesHomeBoard()) {
             showMessage(greeting, "Seleccione un módulo en el menú de la izquierda.");
             return;
@@ -345,6 +352,10 @@ public class MainController {
         contentPane.getChildren().setAll(content);
         placeHeader(content);
         SidebarAnimator.fadeIn(content);
+        // La primera vez que se abre cada pantalla: esqueleto, entrada escalonada y contadores.
+        if (revealed.add(content)) {
+            Reveal.play(content);
+        }
     }
 
     /**
@@ -353,7 +364,7 @@ public class MainController {
      * para que quede dentro de la banda. Las demás pantallas lo siguen mostrando arriba.
      */
     private void placeHeader(Node content) {
-        Node slot = content.lookup("#" + HERO_HEADER_SLOT);
+        Node slot = findById(content, HERO_HEADER_SLOT);
         if (slot instanceof Pane heroSlot) {
             if (headerBar.getParent() != heroSlot) {
                 centerBox.getChildren().remove(headerBar);
@@ -369,6 +380,36 @@ public class MainController {
             centerBox.getChildren().add(0, headerBar);
             headerBar.getStyleClass().remove(ON_HERO);
         }
+    }
+
+    /**
+     * Busca un nodo por id también dentro de un ScrollPane: las pantallas que se desplazan completas
+     * tienen la banda verde dentro de uno, y lookup no entra a su contenido hasta que se dibuja.
+     */
+    private static Node findById(Node node, String id) {
+        if (id.equals(node.getId())) {
+            return node;
+        }
+        if (node instanceof ScrollPane scroll) {
+            return scroll.getContent() == null ? null : findById(scroll.getContent(), id);
+        }
+        if (node instanceof Parent parent) {
+            for (Node child : parent.getChildrenUnmodifiable()) {
+                Node found = findById(child, id);
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+        return null;
+    }
+
+    /** "Buenos días" hasta las 12, "Buenas tardes" hasta las 19 y luego "Buenas noches". */
+    private static String salutation(int hour) {
+        if (hour < 12) {
+            return "Buenos días";
+        }
+        return hour < 19 ? "Buenas tardes" : "Buenas noches";
     }
 
     private static String firstName(String displayName) {
