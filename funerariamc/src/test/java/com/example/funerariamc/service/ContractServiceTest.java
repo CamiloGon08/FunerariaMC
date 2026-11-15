@@ -4,6 +4,7 @@ import com.example.funerariamc.exception.InstallmentExceedsBalanceException;
 import com.example.funerariamc.exception.InactiveEmployeeException;
 import com.example.funerariamc.exception.InsufficientStockException;
 import com.example.funerariamc.exception.InvalidDataException;
+import com.example.funerariamc.exception.UnauthorizedActionException;
 import com.example.funerariamc.exception.WaitingPeriodException;
 import com.example.funerariamc.model.AppUser;
 import com.example.funerariamc.model.Thanatopractor;
@@ -37,6 +38,10 @@ import com.example.funerariamc.service.ContractService.SaleKind;
 import com.example.funerariamc.service.ContractService.SaleRow;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 
 import java.math.BigDecimal;
@@ -184,6 +189,263 @@ class ContractServiceTest {
         assertEquals(0, error.getAvailableQuantity());
     }
 
+    @Test
+    void premiumCoversItsCoffinAllowanceAndTheSpecialRoomWithoutASurcharge() {
+        planNamed(PlanParameters.PREMIUM_PLAN);
+        when(items.findById(50L)).thenReturn(Optional.of(item(50L, "Ataúd Premium", "2500000", 3)));
+        when(rooms.findById(1L)).thenReturn(Optional.of(room(true)));
+        when(parameters.premiumCoffinPrice()).thenReturn(new BigDecimal("2000000"));
+
+        Quote quote = service.quote(new ContractData(SaleKind.PLAN, 10L, 20L, 9L, 3L, BigDecimal.ZERO, null,
+                1L, TODAY.atTime(8, 0), TODAY.atTime(18, 0), 50L, 0, List.of(), null));
+
+        assertEquals(0, new BigDecimal("500000").compareTo(quote.total()));
+        assertEquals(2, quote.lines().size());
+        verify(parameters, never()).basicCoffinPrice();
+        verify(parameters, never()).wakeRoomSurcharge();
+        verify(plans).detail(9L);
+    }
+
+    @Test
+    void coffinBelowThePremiumAllowanceDoesNotProduceANegativeCharge() {
+        planNamed(PlanParameters.PREMIUM_PLAN);
+        when(items.findById(50L)).thenReturn(Optional.of(item(50L, "Ataúd", "1500000", 3)));
+        when(parameters.premiumCoffinPrice()).thenReturn(new BigDecimal("2000000"));
+
+        Quote quote = service.quote(new ContractData(SaleKind.PLAN, 10L, 20L, 9L, 3L, BigDecimal.ZERO, null,
+                null, null, null, 50L, 0, List.of(), null));
+
+        assertEquals(0, BigDecimal.ZERO.compareTo(quote.total()));
+        assertEquals(0, BigDecimal.ZERO.compareTo(quote.lines().get(1).subtotal()));
+    }
+
+    @Test
+    void normalPlanStillPaysTheSpecialRoomSurcharge() {
+        planNamed(PlanParameters.NORMAL_PLAN);
+        when(rooms.findById(1L)).thenReturn(Optional.of(room(true)));
+        when(parameters.wakeRoomSurcharge()).thenReturn(new BigDecimal("50000"));
+
+        Quote quote = service.quote(new ContractData(SaleKind.PLAN, 10L, 20L, 9L, 3L, BigDecimal.ZERO, null,
+                1L, TODAY.atTime(8, 0), TODAY.atTime(18, 0), null, 0, List.of(), null));
+
+        assertEquals(0, new BigDecimal("50000").compareTo(quote.total()));
+        verify(parameters).wakeRoomSurcharge();
+    }
+
+    @Test
+    void homeWakeKeepsTheBasePriceAndRecordsTheIncludedCafeteria() {
+        Quote quote = service.quote(extendedPrivate(new BigDecimal("200000"), true, 0,
+                ContractData.CemeteryCharge.NONE, 0, false, null));
+
+        assertEquals(0, new BigDecimal("200000").compareTo(quote.total()));
+        assertEquals(2, quote.lines().size());
+        assertEquals(ContractService.HOME_WAKE_LINE, quote.lines().get(1).description());
+        assertEquals(0, BigDecimal.ZERO.compareTo(quote.lines().get(1).subtotal()));
+        verifyNoInteractions(parameters, rooms);
+    }
+
+    @Test
+    void homeWakeCannotAlsoReserveAWakeRoom() {
+        ContractData data = new ContractData(SaleKind.PRIVATE, 10L, 20L, null, 3L, BigDecimal.ZERO, null,
+                1L, TODAY.atTime(8, 0), TODAY.atTime(18, 0), null, 0, List.of(), null,
+                true, 0, ContractData.CemeteryCharge.NONE, 0, false);
+
+        assertThrows(InvalidDataException.class, () -> service.register(data));
+        verify(sales, never()).save(any());
+        verifyNoInteractions(parameters, rooms);
+    }
+
+    @Test
+    void intercityTransferIsChargedByKilometreEvenWithAPlan() {
+        planNamed(PlanParameters.NORMAL_PLAN);
+        when(parameters.intercityPricePerKm()).thenReturn(new BigDecimal("2500.50"));
+        ContractData data = new ContractData(SaleKind.PLAN, 10L, 20L, 9L, 3L, BigDecimal.ZERO, null,
+                null, null, null, null, 0, List.of(), null,
+                false, 12, ContractData.CemeteryCharge.NONE, 0, false);
+
+        Quote quote = service.quote(data);
+
+        assertEquals(0, new BigDecimal("30006.00").compareTo(quote.total()));
+        assertEquals(12, quote.lines().get(1).quantity());
+        assertEquals(new BigDecimal("2500.50"), quote.lines().get(1).unitPrice());
+    }
+
+    @Test
+    void planCoversTheInitialVaultLeaseWithoutReadingAPrice() {
+        planNamed(PlanParameters.NORMAL_PLAN);
+        Quote quote = service.quote(new ContractData(SaleKind.PLAN, 10L, 20L, 9L, 3L, BigDecimal.ZERO, null,
+                null, null, null, null, 0, List.of(), null,
+                false, 0, ContractData.CemeteryCharge.VAULT_LEASE, 0, false));
+
+        assertEquals(0, BigDecimal.ZERO.compareTo(quote.total()));
+        assertEquals(ContractService.LEASE_COVERED_LINE, quote.lines().get(1).description());
+        verify(parameters, never()).vaultLeasePerYear();
+    }
+
+    @Test
+    void privateVaultLeaseChargesFourYearsAtTheConfiguredAnnualPrice() {
+        when(parameters.vaultLeasePerYear()).thenReturn(new BigDecimal("180000.25"));
+
+        Quote quote = service.quote(extendedPrivate(BigDecimal.ZERO, false, 0,
+                ContractData.CemeteryCharge.VAULT_LEASE, 0, false, null));
+
+        assertEquals(0, new BigDecimal("720001.00").compareTo(quote.total()));
+        assertEquals(CemeteryService.LEASE_YEARS, quote.lines().get(1).quantity());
+        assertEquals(new BigDecimal("180000.25"), quote.lines().get(1).unitPrice());
+    }
+
+    @Test
+    void lotConstructionAndPreparationRemainSeparateParameterizedConcepts() {
+        when(parameters.doubleLotPrice()).thenReturn(new BigDecimal("4000000"));
+        when(parameters.lotConstructionPrice()).thenReturn(new BigDecimal("2000000"));
+        when(parameters.lotPreparationFee()).thenReturn(new BigDecimal("100000.50"));
+        ContractData data = new ContractData(SaleKind.PRODUCT, 10L, null, null, null, null, null,
+                null, null, null, null, 0, List.of(), null,
+                false, 0, ContractData.CemeteryCharge.DOUBLE_LOT, 2, true);
+
+        Quote quote = service.quote(data);
+
+        assertEquals(0, new BigDecimal("8100000.50").compareTo(quote.total()));
+        assertEquals(3, quote.lines().size());
+        assertEquals(2, quote.lines().get(1).quantity());
+        assertEquals(ContractService.PREPARATION_LINE, quote.lines().get(2).description());
+        verifyNoInteractions(items);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"transfer", "lease", "construction"})
+    void quantitySubtotalMayExceedTheUnitLimitWhileRespectingTheSaleLimit(String concept) {
+        ContractData data = largeConcept(concept, new BigDecimal("60000000"), 2);
+
+        Quote quote = service.quote(data);
+
+        BigDecimal expected = new BigDecimal("60000000")
+                .multiply(BigDecimal.valueOf(concept.equals("lease") ? CemeteryService.LEASE_YEARS : 2));
+        assertEquals(0, expected.compareTo(quote.total()));
+        assertTrue(quote.total().compareTo(ContractService.MAX_UNIT) > 0);
+        assertTrue(quote.total().compareTo(ContractService.MAX_TOTAL) <= 0);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"transfer", "lease", "construction"})
+    void parameterizedConceptStillRejectsAnUnrepresentableUnitPrice(String concept) {
+        ContractData data = largeConcept(concept, ContractService.MAX_UNIT.add(new BigDecimal("0.01")), 1);
+
+        assertThrows(InvalidDataException.class, () -> service.quote(data));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"transfer", "construction"})
+    void quantityCannotMakeTheSaleExceedItsDatabaseLimit(String concept) {
+        ContractData data = largeConcept(concept, new BigDecimal("60000000"), 200);
+
+        assertThrows(InvalidDataException.class, () -> service.quote(data));
+    }
+
+    @ParameterizedTest
+    @CsvSource({"-1,0", "0,-1"})
+    void kilometresAndConstructionQuantitiesCannotBeNegative(int kilometres, int constructions) {
+        assertThrows(InvalidDataException.class, () -> service.quote(extendedPrivate(BigDecimal.ZERO, false,
+                kilometres, ContractData.CemeteryCharge.NONE, constructions, false, null)));
+        verifyNoInteractions(parameters);
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = ContractData.CemeteryCharge.class, names = {"DOUBLE_LOT", "OSSUARY"})
+    void cashCemeterySaleRejectsAnOmittedInitialPayment(ContractData.CemeteryCharge charge) {
+        cashPrice(charge);
+
+        assertThrows(InvalidDataException.class, () -> service.register(cemeterySale(charge, null)));
+        verify(sales, never()).save(any());
+        verify(transactions, never()).save(any());
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = ContractData.CemeteryCharge.class, names = {"DOUBLE_LOT", "OSSUARY"})
+    void cashCemeterySaleRejectsZeroInitialPayment(ContractData.CemeteryCharge charge) {
+        cashPrice(charge);
+
+        assertThrows(InvalidDataException.class, () -> service.register(cemeterySale(charge, BigDecimal.ZERO)));
+        verify(sales, never()).save(any());
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = ContractData.CemeteryCharge.class, names = {"DOUBLE_LOT", "OSSUARY"})
+    void cashCemeterySaleRejectsPartialInitialPayment(ContractData.CemeteryCharge charge) {
+        cashPrice(charge);
+
+        assertThrows(InvalidDataException.class,
+                () -> service.register(cemeterySale(charge, new BigDecimal("999.99"))));
+        verify(sales, never()).save(any());
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = ContractData.CemeteryCharge.class, names = {"DOUBLE_LOT", "OSSUARY"})
+    void cashCemeterySaleRecordsTheFullInitialPayment(ContractData.CemeteryCharge charge) {
+        cashPrice(charge);
+
+        assertEquals(148L, service.register(cemeterySale(charge, new BigDecimal("1000"))));
+
+        ArgumentCaptor<FinancialTransaction> income = ArgumentCaptor.forClass(FinancialTransaction.class);
+        verify(transactions).save(income.capture());
+        assertEquals(0, new BigDecimal("1000").compareTo(income.getValue().getAmount()));
+        verifyNoInteractions(contracts);
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = ContractData.CemeteryCharge.class, names = {"DOUBLE_LOT", "OSSUARY"})
+    void cashConceptCanBePaidWhileTheOtherServiceConceptsRemainOnCredit(ContractData.CemeteryCharge charge) {
+        cashPrice(charge);
+
+        service.register(extendedPrivate(new BigDecimal("500"), false, 0, charge, 0, false,
+                new BigDecimal("1000")));
+
+        ArgumentCaptor<Sale> sale = ArgumentCaptor.forClass(Sale.class);
+        verify(sales).save(sale.capture());
+        assertEquals(0, new BigDecimal("1500").compareTo(sale.getValue().getTotalAmount()));
+        ArgumentCaptor<FinancialTransaction> income = ArgumentCaptor.forClass(FinancialTransaction.class);
+        verify(transactions).save(income.capture());
+        assertEquals(0, new BigDecimal("1000").compareTo(income.getValue().getAmount()));
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = ContractData.CemeteryCharge.class, names = {"DOUBLE_LOT", "OSSUARY"})
+    void combiningACashConceptWithAServiceDoesNotAllowFinancingTheCashConcept(ContractData.CemeteryCharge charge) {
+        cashPrice(charge);
+
+        assertThrows(InvalidDataException.class,
+                () -> service.register(extendedPrivate(new BigDecimal("500"), false, 0, charge, 0, false,
+                        new BigDecimal("999.99"))));
+
+        verify(sales, never()).save(any());
+        verify(contracts, never()).save(any());
+        verify(transactions, never()).save(any());
+    }
+
+    @Test
+    void cashSaleStillRejectsAnInitialPaymentAboveItsTotal() {
+        cashPrice(ContractData.CemeteryCharge.DOUBLE_LOT);
+
+        InstallmentExceedsBalanceException failure = assertThrows(InstallmentExceedsBalanceException.class,
+                () -> service.register(cemeterySale(ContractData.CemeteryCharge.DOUBLE_LOT,
+                        new BigDecimal("1000.01"))));
+
+        assertEquals(0, new BigDecimal("1000").compareTo(failure.getOutstandingBalance()));
+        verify(sales, never()).save(any());
+    }
+
+    @Test
+    void cemeterySaleCannotBypassContractsModulePermissions() {
+        loginAs(RoleNames.CEMETERY_ADMIN);
+
+        assertThrows(UnauthorizedActionException.class,
+                () -> service.quote(cemeterySale(ContractData.CemeteryCharge.DOUBLE_LOT, null)));
+        assertThrows(UnauthorizedActionException.class,
+                () -> service.register(cemeterySale(ContractData.CemeteryCharge.DOUBLE_LOT, BigDecimal.TEN)));
+        verifyNoInteractions(parameters, transactions, details);
+        verify(sales, never()).save(any());
+    }
+
     // ---------- contrato ----------
 
     @Test
@@ -288,6 +550,57 @@ class ContractServiceTest {
     }
 
     // ---------- ayudas ----------
+
+    private void planNamed(String name) {
+        FuneralPlanService.PlanCard card = mock(FuneralPlanService.PlanCard.class);
+        when(card.planName()).thenReturn(name);
+        FuneralPlanService.PlanDetail detail = mock(FuneralPlanService.PlanDetail.class);
+        when(detail.card()).thenReturn(card);
+        when(detail.totalSurcharge()).thenReturn(BigDecimal.ZERO);
+        when(plans.detail(9L)).thenReturn(detail);
+    }
+
+    private void cashPrice(ContractData.CemeteryCharge charge) {
+        if (charge == ContractData.CemeteryCharge.DOUBLE_LOT) {
+            when(parameters.doubleLotPrice()).thenReturn(new BigDecimal("1000"));
+        } else {
+            when(parameters.ossuaryPrice()).thenReturn(new BigDecimal("1000"));
+        }
+    }
+
+    private ContractData largeConcept(String concept, BigDecimal price, int quantity) {
+        return switch (concept) {
+            case "transfer" -> {
+                when(parameters.intercityPricePerKm()).thenReturn(price);
+                yield extendedPrivate(BigDecimal.ZERO, false, quantity,
+                        ContractData.CemeteryCharge.NONE, 0, false, null);
+            }
+            case "lease" -> {
+                when(parameters.vaultLeasePerYear()).thenReturn(price);
+                yield extendedPrivate(BigDecimal.ZERO, false, 0,
+                        ContractData.CemeteryCharge.VAULT_LEASE, 0, false, null);
+            }
+            case "construction" -> {
+                when(parameters.lotConstructionPrice()).thenReturn(price);
+                yield extendedPrivate(BigDecimal.ZERO, false, 0,
+                        ContractData.CemeteryCharge.NONE, quantity, false, null);
+            }
+            default -> throw new IllegalArgumentException(concept);
+        };
+    }
+
+    private static ContractData cemeterySale(ContractData.CemeteryCharge charge, BigDecimal initial) {
+        return new ContractData(SaleKind.PRODUCT, 10L, null, null, null, null, null,
+                null, null, null, null, 0, List.of(), initial, false, 0, charge, 0, false);
+    }
+
+    private static ContractData extendedPrivate(BigDecimal base, boolean homeWake, int kilometres,
+                                                ContractData.CemeteryCharge charge, int constructions,
+                                                boolean preparation, BigDecimal initial) {
+        return new ContractData(SaleKind.PRIVATE, 10L, 20L, null, 3L, base, null,
+                null, null, null, null, 0, List.of(), initial, homeWake, kilometres, charge,
+                constructions, preparation);
+    }
 
     private static ContractData privateService(BigDecimal base, Long roomId, int buses, BigDecimal initial) {
         return new ContractData(SaleKind.PRIVATE, 10L, 20L, null, 3L, base, null, roomId,

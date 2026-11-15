@@ -3,6 +3,7 @@ package com.example.funerariamc.service;
 import com.example.funerariamc.exception.InvalidDataException;
 import com.example.funerariamc.exception.UnauthorizedActionException;
 import com.example.funerariamc.model.AppUser;
+import com.example.funerariamc.model.FuneralPlan;
 import com.example.funerariamc.model.Manager;
 import com.example.funerariamc.model.Role;
 import com.example.funerariamc.model.Sale;
@@ -206,7 +207,90 @@ class WakeRoomServiceTest {
         verify(accessLog).record(eq(5L), eq(AccessLogService.WAKE_ROOM_CHANGED + "CT-2026-0001 Sala Edén > Sala Paz"));
     }
 
+    @Test
+    void premiumPlanCanUseASpecialRoomWithoutAnAdditionalCharge() {
+        ServiceContract contract = contract(30L);
+        contract.setFuneralPlan(premiumPlan());
+        WakeRoom eden = room(1L, "Sala Edén", true);
+        Sale sale = new Sale();
+        sale.setId(70L);
+        sale.setTotalAmount(new BigDecimal("200000"));
+        when(contracts.findDetailById(30L)).thenReturn(Optional.of(contract));
+        when(rooms.findById(1L)).thenReturn(Optional.of(eden));
+        when(sales.findByContract(30L, SaleStatus.ACTIVE)).thenReturn(List.of(sale));
+        when(details.findBySale(70L)).thenReturn(List.of());
+
+        service.assign(new AssignWakeData(1L, 30L, NOW.minusHours(2), NOW.plusHours(8)));
+
+        assertSame(eden, contract.getWakeRoom());
+        assertEquals(0, new BigDecimal("200000").compareTo(sale.getTotalAmount()));
+        assertEquals(0, new BigDecimal("200000").compareTo(contract.getTotalAmount()));
+        verify(details, never()).save(any());
+        verifyNoInteractions(parameters);
+    }
+
+    @Test
+    void changingAPremiumContractToAnotherSpecialRoomRemovesAnExistingSurcharge() {
+        ServiceContract contract = contract(30L);
+        WakeRoom oldRoom = room(1L, "Sala Edén", true);
+        WakeRoom newRoom = room(2L, "Sala Luz", true);
+        contract.setFuneralPlan(premiumPlan());
+        contract.setWakeRoom(oldRoom);
+        contract.setWakeStartAt(NOW.minusHours(2));
+        contract.setWakeEndAt(NOW.plusHours(8));
+        Sale sale = new Sale();
+        sale.setId(70L);
+        sale.setTotalAmount(new BigDecimal("250000"));
+        SaleDetail oldSurcharge = WakeRoomService.surchargeLine(sale, oldRoom, new BigDecimal("50000"));
+        when(contracts.findDetailById(30L)).thenReturn(Optional.of(contract));
+        when(rooms.findById(2L)).thenReturn(Optional.of(newRoom));
+        when(sales.findByContract(30L, SaleStatus.ACTIVE)).thenReturn(List.of(sale));
+        when(details.findBySale(70L)).thenReturn(List.of(oldSurcharge));
+        when(transactions.sumIncomeBySale(70L, TransactionType.INCOME, TransactionStatus.ACTIVE))
+                .thenReturn(new BigDecimal("200000"));
+
+        service.changeRoom(30L, 2L);
+
+        verify(details).deleteAll(List.of(oldSurcharge));
+        assertEquals(0, new BigDecimal("200000").compareTo(sale.getTotalAmount()));
+        assertSame(newRoom, contract.getWakeRoom());
+        verifyNoInteractions(parameters);
+    }
+
+    @Test
+    void premiumSurchargeRemovalCannotMakeTheSaleLowerThanItsPayments() {
+        ServiceContract contract = contract(30L);
+        WakeRoom oldRoom = room(1L, "Sala Edén", true);
+        contract.setFuneralPlan(premiumPlan());
+        contract.setWakeRoom(oldRoom);
+        contract.setWakeStartAt(NOW.minusHours(2));
+        contract.setWakeEndAt(NOW.plusHours(8));
+        Sale sale = new Sale();
+        sale.setId(70L);
+        sale.setTotalAmount(new BigDecimal("250000"));
+        SaleDetail oldSurcharge = WakeRoomService.surchargeLine(sale, oldRoom, new BigDecimal("50000"));
+        when(contracts.findDetailById(30L)).thenReturn(Optional.of(contract));
+        when(rooms.findById(2L)).thenReturn(Optional.of(room(2L, "Sala Luz", true)));
+        when(sales.findByContract(30L, SaleStatus.ACTIVE)).thenReturn(List.of(sale));
+        when(details.findBySale(70L)).thenReturn(List.of(oldSurcharge));
+        when(transactions.sumIncomeBySale(70L, TransactionType.INCOME, TransactionStatus.ACTIVE))
+                .thenReturn(new BigDecimal("225000"));
+
+        assertThrows(InvalidDataException.class, () -> service.changeRoom(30L, 2L));
+
+        verify(details, never()).deleteAll(any());
+        verify(contracts, never()).save(any());
+        verify(sales, never()).save(any());
+        verifyNoInteractions(accessLog);
+    }
+
     // ---------- ayudas ----------
+
+    private static FuneralPlan premiumPlan() {
+        FuneralPlan plan = new FuneralPlan();
+        plan.setPlanName(PlanParameters.PREMIUM_PLAN);
+        return plan;
+    }
 
     private static WakeRoom room(Long id, String name, boolean special) {
         WakeRoom room = new WakeRoom();
