@@ -22,7 +22,14 @@ class SaleParametersTest {
             new ParameterCase("WAKE_ROOM_SURCHARGE", value -> value.wakeRoomSurcharge()),
             new ParameterCase("EXTRA_BUS_FEE", value -> value.extraBusFee()),
             new ParameterCase("PLAN_BASIC_COFFIN_PRICE", value -> value.basicCoffinPrice()),
-            new ParameterCase("MINIMUM_WAGE", value -> value.minimumWage())
+            new ParameterCase("MINIMUM_WAGE", value -> value.minimumWage()),
+            new ParameterCase("PLAN_PREMIUM_COFFIN_PRICE", value -> value.premiumCoffinPrice()),
+            new ParameterCase("INTERCITY_TRANSFER_PRICE_PER_KM", value -> value.intercityPricePerKm()),
+            new ParameterCase("VAULT_LEASE_PRICE_PER_YEAR", value -> value.vaultLeasePerYear()),
+            new ParameterCase("DOUBLE_LOT_PRICE", value -> value.doubleLotPrice()),
+            new ParameterCase("LOT_CONSTRUCTION_PRICE", value -> value.lotConstructionPrice()),
+            new ParameterCase("OSSUARY_PRICE", value -> value.ossuaryPrice()),
+            new ParameterCase("LOT_PREPARATION_FEE", value -> value.lotPreparationFee())
     );
 
     @Test
@@ -74,5 +81,35 @@ class SaleParametersTest {
                 () -> parameters.minimumWage());
         assertTrue(failure.getMessage().contains("MINIMUM_WAGE"));
         assertFalse(failure.getMessage().contains("Falta"));
+    }
+
+    @Test
+    void missingOptionalSuggestionDoesNotInventAValueOrReadAMissingParameter() {
+        when(configuration.exists(SaleParameters.CREMATION_PREPAID_PRICE)).thenReturn(false);
+
+        assertNull(parameters.suggested(SaleParameters.CREMATION_PREPAID_PRICE));
+
+        verify(configuration, never()).getBigDecimal(anyString());
+    }
+
+    @Test
+    void optionalSuggestionPreservesTheConfiguredAmountIncludingZero() {
+        when(configuration.exists(SaleParameters.NETWORK_FEE_AMOUNT)).thenReturn(true);
+        when(configuration.getBigDecimal(SaleParameters.NETWORK_FEE_AMOUNT))
+                .thenReturn(new BigDecimal("1250.50"), BigDecimal.ZERO);
+
+        assertEquals(new BigDecimal("1250.50"), parameters.suggested(SaleParameters.NETWORK_FEE_AMOUNT));
+        assertEquals(BigDecimal.ZERO, parameters.suggested(SaleParameters.NETWORK_FEE_AMOUNT));
+    }
+
+    @Test
+    void invalidOptionalSuggestionReturnsNoSuggestionInsteadOfABusinessDefault() {
+        when(configuration.exists(SaleParameters.THANATOLOGIST_BONUS_PER_BODY)).thenReturn(true);
+        when(configuration.getBigDecimal(SaleParameters.THANATOLOGIST_BONUS_PER_BODY))
+                .thenReturn(new BigDecimal("-1"))
+                .thenThrow(new InvalidDataException("No contiene un decimal válido"));
+
+        assertNull(parameters.suggested(SaleParameters.THANATOLOGIST_BONUS_PER_BODY));
+        assertNull(parameters.suggested(SaleParameters.THANATOLOGIST_BONUS_PER_BODY));
     }
 }

@@ -5,8 +5,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.Arrays;
+import java.util.List;
 
-/** Parámetros de Planes definidos en el contrato del equipo; no sustituye valores faltantes. */
+/** Parámetros de Planes; si falta un valor se avisa, nunca se reemplaza por otro. */
 @Component
 @Transactional(readOnly = true)
 public class PlanParameters {
@@ -18,6 +20,13 @@ public class PlanParameters {
     public static final String MAX_MONTHS_AHEAD = "PLAN_MAX_MONTHS_AHEAD";
     public static final String WAITING_SOON_DAYS = "PLAN_WAITING_SOON_DAYS";
     public static final String MAX_START_MONTHS_AHEAD = "PLAN_MAX_START_MONTHS_AHEAD";
+    public static final String ARREARS_RESET_MONTHS = "PLAN_ARREARS_RESET_MONTHS";
+    public static final String OVERDUE_LETTER_DAYS = "PLAN_OVERDUE_LETTER_DAYS";
+
+    /** Nombres de los dos planes que maneja la funeraria. */
+    public static final String NORMAL_PLAN = "Plan Normal";
+    public static final String PREMIUM_PLAN = "Plan Premium";
+    public static final List<String> PLAN_NAMES = List.of(NORMAL_PLAN, PREMIUM_PLAN);
 
     private final SystemParameterService parameters;
 
@@ -51,6 +60,35 @@ public class PlanParameters {
 
     public int maxStartMonthsAhead() {
         return nonNegativeInteger(MAX_START_MONTHS_AHEAD);
+    }
+
+    /** Cuotas atrasadas a partir de las cuales, al ponerse al día, la carencia vuelve a empezar. */
+    public int arrearsResetMonths() {
+        return nonNegativeInteger(ARREARS_RESET_MONTHS);
+    }
+
+    /** Días de atraso en que se le manda carta al afiliado (por ejemplo "30,60,90"), de menor a mayor. */
+    public List<Integer> overdueLetterDays() {
+        String text = parameters.getString(OVERDUE_LETTER_DAYS);
+        try {
+            List<Integer> days = Arrays.stream(text.split("[,;\\s]+"))
+                    .filter(part -> !part.isBlank())
+                    .map(Integer::parseInt)
+                    .distinct()
+                    .sorted()
+                    .toList();
+            if (days.isEmpty() || days.stream().anyMatch(day -> day <= 0)) {
+                throw new NumberFormatException();
+            }
+            return days;
+        } catch (NumberFormatException e) {
+            throw new InvalidDataException("Los días de las cartas de mora deben ser números separados por coma, por ejemplo 30,60,90.");
+        }
+    }
+
+    /** El plan premium permite un ataúd y una sala más grandes. */
+    public static boolean isPremium(String planName) {
+        return planName != null && planName.trim().equalsIgnoreCase(PREMIUM_PLAN);
     }
 
     private int nonNegativeInteger(String name) {
