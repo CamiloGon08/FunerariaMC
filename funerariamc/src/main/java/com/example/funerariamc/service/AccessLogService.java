@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 
-/** RF-ACC-07 y RNF-AUD-01: registro y consulta de la bitácora de accesos. */
+/** Registro y consulta de la bitácora de accesos. */
 @Service
 public class AccessLogService {
 
@@ -58,6 +58,7 @@ public class AccessLogService {
     public static final String PLAN_REACTIVATED = "PLAN_REACTIVATED: ";
     public static final String PLAN_CANCELLED = "PLAN_CANCELLED: ";
     public static final String PLAN_HOLDER_CHANGED = "PLAN_HOLDER_CHANGED: ";
+    public static final String PLAN_WAITING_RESTARTED = "PLAN_WAITING_RESTARTED: ";
     public static final String WAKE_ROOM_REGISTERED = "WAKE_ROOM_REGISTERED: ";
     public static final String WAKE_ROOM_ASSIGNED = "WAKE_ROOM_ASSIGNED: ";
     public static final String WAKE_ROOM_CHANGED = "WAKE_ROOM_CHANGED: ";
@@ -102,9 +103,10 @@ public class AccessLogService {
     public static final String ALLIED_PAYMENT_REGISTERED = "ALLIED_PAYMENT_REGISTERED: ";
     public static final String ALLIED_PAYMENT_PAID = "ALLIED_PAYMENT_PAID: ";
     public static final String ALLIED_PAYMENT_VOIDED = "ALLIED_PAYMENT_VOIDED: ";
+    public static final String NETWORK_FEE_PAID = "NETWORK_FEE_PAID: ";
     public static final String ANALYTICS_REPORT_EXPORTED = "ANALYTICS_REPORT_EXPORTED: ";
 
-    /** Límite técnico de filas por página del contrato de bitácora EP-01. */
+    /** Límite técnico de filas por página de la bitácora. */
     public static final int MAX_PAGE_SIZE = 100;
 
     /**
@@ -162,7 +164,7 @@ public class AccessLogService {
     }
 
     /**
-     * RF-ACC-08: página filtrada por fechas (días completos en hora de Colombia, ambos incluidos)
+     * Página filtrada por fechas (días completos en hora de Colombia, ambos incluidos)
      * y por usuario (parte del nombre de usuario o del nombre del empleado). Lo que llegue
      * vacío o en null no filtra.
      */
