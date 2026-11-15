@@ -21,6 +21,7 @@ import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import javafx.scene.shape.SVGPath;
 import javafx.stage.Window;
 
 import java.util.List;
@@ -145,6 +146,13 @@ final class AccountDialogs {
         Label note = new Label(text);
         note.getStyleClass().add("note-info");
         note.setWrapText(true);
+        // Ícono de información, como los avisos de los demás formularios de registro
+        SVGPath icon = new SVGPath();
+        icon.setContent("M8 1a7 7 0 1 1 0 14A7 7 0 0 1 8 1z M8 7v4.5 M8 4.6v.2");
+        icon.getStyleClass().add("note-icon");
+        note.setGraphic(icon);
+        note.setGraphicTextGap(10);
+        note.setMaxWidth(Double.MAX_VALUE);
         return note;
     }
 
