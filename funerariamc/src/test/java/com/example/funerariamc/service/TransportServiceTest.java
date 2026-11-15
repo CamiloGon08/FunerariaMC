@@ -345,8 +345,69 @@ class TransportServiceTest {
     // ---------- vehículos ----------
 
     @Test
-    void onlyTheMasterAdminRegistersVehicles() {
+    void onlyTheMasterAdminAndTheSecretaryRegisterVehicles() {
+        loginAs(RoleNames.CEMETERY_ADMIN);
         assertThrows(UnauthorizedActionException.class, () -> service.registerVehicle(vehicleData("KLM-777")));
+    }
+
+    @Test
+    void secretaryCanRegisterVehiclesAndTheirDocuments() {
+        loginAs(RoleNames.SECRETARY);
+        when(files.store(any(), anyString())).thenReturn("vehiculos/soat.pdf", "vehiculos/rtm.pdf");
+
+        Saved result = service.registerVehicle(vehicleData("KLM-777"));
+
+        assertEquals(50L, result.id());
+        ArgumentCaptor<Vehicle> saved = ArgumentCaptor.forClass(Vehicle.class);
+        verify(vehicles).save(saved.capture());
+        assertEquals("KLM-777", saved.getValue().getPlate());
+        assertEquals("vehiculos/soat.pdf", saved.getValue().getSoatFileUrl());
+        verify(accessLog).record(5L, AccessLogService.VEHICLE_REGISTERED + "KLM-777");
+    }
+
+    @Test
+    void secretaryCanEditVehicleDataWithoutReplacingItsDocuments() {
+        loginAs(RoleNames.SECRETARY);
+        hearse.setSoatFileUrl("vehiculos/existing-soat.pdf");
+        hearse.setTechnicalReviewFileUrl("vehiculos/existing-rtm.pdf");
+        when(vehicles.findById(1L)).thenReturn(Optional.of(hearse));
+        VehicleData changed = new VehicleData("KLM-520", VehicleType.HEARSE, 2,
+                TODAY.plusYears(1), null, TODAY.plusYears(1), null);
+
+        Saved result = service.updateVehicle(1L, changed);
+
+        assertEquals(1L, result.id());
+        assertEquals("KLM-520", hearse.getPlate());
+        assertEquals(2, hearse.getCapacity());
+        assertEquals("vehiculos/existing-soat.pdf", hearse.getSoatFileUrl());
+        assertEquals("vehiculos/existing-rtm.pdf", hearse.getTechnicalReviewFileUrl());
+        verify(files, never()).store(any(), anyString());
+        verify(accessLog).record(5L, AccessLogService.VEHICLE_UPDATED + "KLM-520");
+    }
+
+    @Test
+    void secretaryCanSetMaintenanceAndReturnTheVehicleToAvailable() {
+        loginAs(RoleNames.SECRETARY);
+        when(vehicles.findById(1L)).thenReturn(Optional.of(hearse));
+
+        service.setMaintenance(1L, true);
+        assertEquals(VehicleStatus.MAINTENANCE, hearse.getStatus());
+        service.setMaintenance(1L, false);
+        assertEquals(VehicleStatus.AVAILABLE, hearse.getStatus());
+
+        verify(accessLog).record(5L, AccessLogService.VEHICLE_MAINTENANCE + "KLM-519");
+        verify(accessLog).record(5L, AccessLogService.VEHICLE_AVAILABLE + "KLM-519");
+    }
+
+    @Test
+    void secretaryScreenEnablesVehicleManagement() {
+        loginAs(RoleNames.SECRETARY);
+        when(parameters.getLong(EmployeeService.DOC_EXPIRY_WARNING_DAYS)).thenReturn(30L);
+        when(vehicles.findAllByOrderByPlateAsc()).thenReturn(List.of());
+        when(drivers.findRowsByStatus(any())).thenReturn(List.of());
+        when(transports.findTransfers(any(), any(), any(), any())).thenReturn(List.of());
+
+        assertTrue(service.screen().canManageVehicles());
     }
 
     @Test
