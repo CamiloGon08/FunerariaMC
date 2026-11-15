@@ -8,13 +8,15 @@
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.TextField?>
+<?import javafx.scene.shape.SVGPath?>
 <?import javafx.scene.layout.ColumnConstraints?>
 <?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Pane?>
 <?import javafx.scene.layout.VBox?>
 
-<!-- Formulario de Personal (mockup 09): registrar (HU-02) y actualizar (HU-03).
+<!-- Formulario de Personal: registrar y actualizar.
      Se abre en una ventana modal desde employees.fxml. -->
 <VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.example.funerariamc.controller.EmployeeFormController"
@@ -31,7 +33,10 @@
         <VBox spacing="18" styleClass="form-body">
 
             <!-- Datos personales (tabla person) -->
-            <Label styleClass="section-title" text="Datos personales"/>
+            <HBox styleClass="section-legend">
+                <Label styleClass="section-title" text="DATOS PERSONALES"/>
+                <Region styleClass="section-rule" HBox.hgrow="ALWAYS"/>
+            </HBox>
             <GridPane hgap="18" vgap="12">
                 <columnConstraints>
                     <ColumnConstraints percentWidth="33.3"/>
@@ -77,7 +82,10 @@
             </GridPane>
 
             <!-- Datos laborales (tabla employee) -->
-            <Label styleClass="section-title" text="Datos laborales"/>
+            <HBox styleClass="section-legend">
+                <Label styleClass="section-title" text="DATOS LABORALES"/>
+                <Region styleClass="section-rule" HBox.hgrow="ALWAYS"/>
+            </HBox>
             <GridPane hgap="18" vgap="12">
                 <columnConstraints>
                     <ColumnConstraints percentWidth="33.3"/>
@@ -98,9 +106,12 @@
                     <TextField fx:id="salaryField" promptText="1.800.000"/>
                 </VBox>
             </GridPane>
-            <!-- Cuenta de acceso (tabla app_user): solo Administrador, Secretaría y Vendedor (RN-23) -->
+            <!-- Cuenta de acceso (tabla app_user): solo Administrador, Secretaría y Vendedor -->
             <VBox fx:id="accountSection" spacing="12">
-                <Label styleClass="section-title" text="Cuenta de acceso al sistema"/>
+                <HBox styleClass="section-legend">
+                    <Label styleClass="section-title" text="CUENTA DE ACCESO AL SISTEMA"/>
+                    <Region styleClass="section-rule" HBox.hgrow="ALWAYS"/>
+                </HBox>
                 <CheckBox fx:id="createAccountCheck" text="Crear la cuenta de acceso ahora" selected="true"
                           styleClass="form-check"/>
                 <GridPane fx:id="accountFields" hgap="18" vgap="12">
@@ -133,20 +144,30 @@
                     </VBox>
                 </HBox>
             </VBox>
-            <Label fx:id="accountNote" styleClass="note-info" wrapText="true"/>
+            <Label fx:id="accountNote" styleClass="note-info" wrapText="true" graphicTextGap="10">
+                <graphic>
+                    <SVGPath content="M8 1a7 7 0 1 1 0 14A7 7 0 0 1 8 1z M8 7v4.5 M8 4.6v.2" styleClass="note-icon"/>
+                </graphic>
+            </Label>
 
             <!-- Vendedor funerario (tabla funeral_salesperson) -->
             <VBox fx:id="salespersonSection" spacing="12">
-                <Label styleClass="section-title" text="Vendedor funerario"/>
+                <HBox styleClass="section-legend">
+                    <Label styleClass="section-title" text="VENDEDOR FUNERARIO"/>
+                    <Region styleClass="section-rule" HBox.hgrow="ALWAYS"/>
+                </HBox>
                 <VBox styleClass="form-field" maxWidth="230">
                     <Label styleClass="field-label" text="PORCENTAJE DE COMISIÓN (%) *"/>
                     <TextField fx:id="commissionRateField" promptText="5"/>
                 </VBox>
             </VBox>
 
-            <!-- Tanatólogo (tabla thanatopractor). RN-18: sin número de licencia. -->
+            <!-- Tanatólogo (tabla thanatopractor): sin número de licencia. -->
             <VBox fx:id="thanatopractorSection" spacing="12">
-                <Label styleClass="section-title" text="Tanatólogo"/>
+                <HBox styleClass="section-legend">
+                    <Label styleClass="section-title" text="TANATÓLOGO"/>
+                    <Region styleClass="section-rule" HBox.hgrow="ALWAYS"/>
+                </HBox>
                 <GridPane hgap="18" vgap="12">
                     <columnConstraints>
                         <ColumnConstraints percentWidth="33.3"/>
@@ -177,12 +198,15 @@
                     </VBox>
                 </GridPane>
                 <Label styleClass="cell-muted" wrapText="true"
-                       text="No se pide número de licencia: en Colombia no existe registro individual (RN-18)."/>
+                       text="No se pide número de licencia: en Colombia no existe registro individual."/>
             </VBox>
 
             <!-- Conductor (tabla driver) -->
             <VBox fx:id="driverSection" spacing="12">
-                <Label styleClass="section-title" text="Conductor"/>
+                <HBox styleClass="section-legend">
+                    <Label styleClass="section-title" text="CONDUCTOR"/>
+                    <Region styleClass="section-rule" HBox.hgrow="ALWAYS"/>
+                </HBox>
                 <GridPane hgap="18" vgap="12">
                     <columnConstraints>
                         <ColumnConstraints percentWidth="33.3"/>
@@ -213,7 +237,7 @@
                     </VBox>
                 </GridPane>
                 <Label fx:id="licenseWarning" styleClass="note-alert" wrapText="true"
-                       text="La licencia está vencida. Se guarda, pero el conductor no podrá asignarse a traslados hasta renovarla (RN-26)."/>
+                       text="La licencia está vencida. Se guarda, pero el conductor no podrá asignarse a traslados hasta renovarla."/>
             </VBox>
         </VBox>
     </ScrollPane>

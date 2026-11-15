@@ -13,7 +13,7 @@
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 
-<!-- Shell del Administrador Maestro (mockups 06 y 07 en Figma). El ancho del menú lo anima SidebarAnimator. -->
+<!-- Shell del Administrador Maestro. El ancho del menú lo anima SidebarAnimator. -->
 <BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="com.example.funerariamc.controller.MainController"
             styleClass="shell" prefWidth="1280" prefHeight="800" stylesheets="@../css/app.css">
@@ -21,7 +21,7 @@
     <left>
         <VBox fx:id="sidebar" styleClass="sidebar" alignment="TOP_CENTER">
             <BorderPane.margin>
-                <Insets top="24" bottom="24" left="24"/>
+                <Insets top="16" bottom="16" left="16"/>
             </BorderPane.margin>
 
             <HBox styleClass="sidebar-brand" spacing="12" alignment="CENTER">
@@ -68,9 +68,9 @@
     <center>
         <!-- Si el módulo trae una banda verde con el espacio #heroHeaderSlot, MainController pasa
              este encabezado (título, sesión y Cerrar sesión) dentro de la banda; si no, queda aquí arriba. -->
-        <VBox fx:id="centerBox" spacing="22">
+        <VBox fx:id="centerBox" spacing="16">
             <padding>
-                <Insets top="24" right="24" bottom="24" left="24"/>
+                <Insets top="16" right="16" bottom="16" left="16"/>
             </padding>
             <HBox fx:id="headerBar" styleClass="content-header" spacing="14" alignment="CENTER_LEFT" maxWidth="Infinity">
                 <VBox spacing="2">

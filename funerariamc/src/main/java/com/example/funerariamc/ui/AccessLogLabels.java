@@ -4,6 +4,7 @@ import com.example.funerariamc.utils.enums.DocumentType;
 import com.example.funerariamc.service.AccessLogService;
 import com.example.funerariamc.service.AppModule;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -62,7 +63,8 @@ public final class AccessLogLabels {
             AccessLogService.PLAN_SUSPENDED, "Suspensión del plan ",
             AccessLogService.PLAN_REACTIVATED, "Reactivación del plan ",
             AccessLogService.PLAN_CANCELLED, "Cancelación del plan ",
-            AccessLogService.PLAN_HOLDER_CHANGED, "Cambio de titular del plan ");
+            AccessLogService.PLAN_HOLDER_CHANGED, "Cambio de titular del plan ",
+            AccessLogService.PLAN_WAITING_RESTARTED, "Carencia reiniciada por atraso en el plan ");
 
     /** Acciones del módulo Salas de velación: guardan el nombre de la sala o el número del contrato y la sala. */
     private static final Map<String, String> WAKE_ROOM_ACTIONS = Map.of(
@@ -269,6 +271,13 @@ public final class AccessLogLabels {
 
     /** Funerarias aliadas: guardan el NIT y, en los pagos, el contrato o el egreso y el valor. Null si no es de la red. */
     private static String alliedDetails(String action) {
+        if (action.startsWith(AccessLogService.NETWORK_FEE_PAID)) {
+            // "NETWORK_FEE_PAID: Anual 2026 6400000.00"
+            String[] parts = action.substring(AccessLogService.NETWORK_FEE_PAID.length()).trim().split(" ");
+            String period = String.join(" ", Arrays.copyOf(parts, Math.max(0, parts.length - 1)));
+            return "Pago de la cuota de la red de funerarias (" + period.toLowerCase(Locale.ROOT) + ")"
+                    + (parts.length == 0 ? "" : money(parts[parts.length - 1]));
+        }
         String[][] homes = {
                 {AccessLogService.ALLIED_HOME_REGISTERED, "Registro de la funeraria aliada con NIT "},
                 {AccessLogService.ALLIED_HOME_UPDATED, "Actualización de la funeraria aliada con NIT "},

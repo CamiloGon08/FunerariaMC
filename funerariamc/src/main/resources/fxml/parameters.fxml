@@ -20,51 +20,53 @@
            fx:id="root" fx:controller="com.example.funerariamc.controller.ParametersController"
            styleClass="personal-root,parameters-root" stylesheets="@../css/personal.css, @../css/parameters.css">
 
-    <VBox spacing="16">
-        <!-- Banda verde: arriba el encabezado del menú (MainController lo pone en #heroHeaderSlot) -->
-        <VBox styleClass="hero-band" spacing="18">
-            <StackPane id="heroHeaderSlot" alignment="TOP_LEFT"/>
-            <HBox spacing="16">
-                <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
-                    <Label text="PARÁMETROS CON VALOR" styleClass="hero-kpi-caption"/>
-                    <Label fx:id="definedValue" text="—" styleClass="hero-kpi-value"/>
-                    <Label fx:id="definedDetail" styleClass="hero-kpi-detail"/>
-                </VBox>
-                <VBox fx:id="undefinedCard" styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
-                    <Label text="SIN DEFINIR" styleClass="hero-kpi-caption"/>
-                    <Label fx:id="undefinedValue" text="—" styleClass="hero-kpi-value"/>
-                    <Label fx:id="undefinedDetail" styleClass="hero-kpi-detail"/>
-                </VBox>
-                <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
-                    <Label text="ÚLTIMO CAMBIO" styleClass="hero-kpi-caption"/>
-                    <Label fx:id="lastValue" text="—" styleClass="hero-kpi-value"/>
-                    <Label fx:id="lastDetail" styleClass="hero-kpi-detail"/>
-                </VBox>
+    <!-- Toda la pantalla se desplaza junta: banda verde, filtros y contenido -->
+    <ScrollPane fx:id="scroll" fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED"
+                styleClass="card-scroll,page-scroll">
+        <VBox spacing="16" styleClass="page-content">
+            <!-- Banda verde: arriba el encabezado del menú (MainController lo pone en #heroHeaderSlot) -->
+            <VBox styleClass="hero-band" spacing="18">
+                <StackPane id="heroHeaderSlot" alignment="TOP_LEFT"/>
+                <HBox spacing="16">
+                    <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
+                        <Label text="PARÁMETROS CON VALOR" styleClass="hero-kpi-caption"/>
+                        <Label fx:id="definedValue" text="—" styleClass="hero-kpi-value"/>
+                        <Label fx:id="definedDetail" styleClass="hero-kpi-detail"/>
+                    </VBox>
+                    <VBox fx:id="undefinedCard" styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
+                        <Label text="SIN DEFINIR" styleClass="hero-kpi-caption"/>
+                        <Label fx:id="undefinedValue" text="—" styleClass="hero-kpi-value"/>
+                        <Label fx:id="undefinedDetail" styleClass="hero-kpi-detail"/>
+                    </VBox>
+                    <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
+                        <Label text="ÚLTIMO CAMBIO" styleClass="hero-kpi-caption"/>
+                        <Label fx:id="lastValue" text="—" styleClass="hero-kpi-value"/>
+                        <Label fx:id="lastDetail" styleClass="hero-kpi-detail"/>
+                    </VBox>
+                </HBox>
+            </VBox>
+
+            <!-- Buscador, categorías y Nuevo parámetro -->
+            <HBox styleClass="filter-card">
+                <HBox styleClass="search-box" HBox.hgrow="ALWAYS" minWidth="180">
+                    <SVGPath content="M7 1.5a5.5 5.5 0 1 1 0 11a5.5 5.5 0 0 1 0-11z M11.2 11.2 L15 15" styleClass="search-icon"/>
+                    <TextField fx:id="searchField" promptText="Buscar parámetro" HBox.hgrow="ALWAYS"/>
+                </HBox>
+                <HBox fx:id="categoryBar" styleClass="segmented" minWidth="-Infinity"/>
+                <Button text="+  Nuevo parámetro" onAction="#onNewParameter" styleClass="primary-button" minWidth="-Infinity"/>
             </HBox>
-        </VBox>
 
-        <!-- Buscador, categorías y Nuevo parámetro -->
-        <HBox styleClass="filter-card">
-            <HBox styleClass="search-box" HBox.hgrow="ALWAYS" minWidth="180">
-                <SVGPath content="M7 1.5a5.5 5.5 0 1 1 0 11a5.5 5.5 0 0 1 0-11z M11.2 11.2 L15 15" styleClass="search-icon"/>
-                <TextField fx:id="searchField" promptText="Buscar parámetro" HBox.hgrow="ALWAYS"/>
+            <!-- Aviso: cómo se guardan los cambios, o cuántos parámetros faltan por definir -->
+            <HBox fx:id="notice" styleClass="notice">
+                <SVGPath fx:id="noticeIcon" content="M8 1a7 7 0 1 1 0 14A7 7 0 0 1 8 1z M8 7v4.5 M8 4.6v.2" styleClass="notice-icon"/>
+                <Label fx:id="noticeText" styleClass="notice-text" wrapText="true" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+                <Button fx:id="noticeLink" text="Ver cuáles" onAction="#onShowUndefined" styleClass="notice-link"
+                        minWidth="-Infinity" managed="false" visible="false"/>
             </HBox>
-            <HBox fx:id="categoryBar" styleClass="segmented" minWidth="-Infinity"/>
-            <Button text="+  Nuevo parámetro" onAction="#onNewParameter" styleClass="primary-button" minWidth="-Infinity"/>
-        </HBox>
 
-        <!-- Aviso: cómo se guardan los cambios, o cuántos parámetros faltan por definir -->
-        <HBox fx:id="notice" styleClass="notice">
-            <SVGPath fx:id="noticeIcon" content="M8 1a7 7 0 1 1 0 14A7 7 0 0 1 8 1z M8 7v4.5 M8 4.6v.2" styleClass="notice-icon"/>
-            <Label fx:id="noticeText" styleClass="notice-text" wrapText="true" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
-            <Button fx:id="noticeLink" text="Ver cuáles" onAction="#onShowUndefined" styleClass="notice-link"
-                    minWidth="-Infinity" managed="false" visible="false"/>
-        </HBox>
-
-        <ScrollPane fx:id="scroll" fitToWidth="true" hbarPolicy="NEVER" styleClass="card-scroll" VBox.vgrow="ALWAYS">
             <VBox fx:id="sections" spacing="14" styleClass="scroll-content"/>
-        </ScrollPane>
-    </VBox>
+        </VBox>
+    </ScrollPane>
 
     <!-- Aviso corto al guardar; se desvanece solo -->
     <Label fx:id="toast" styleClass="toast" StackPane.alignment="BOTTOM_LEFT" wrapText="true" maxWidth="420">

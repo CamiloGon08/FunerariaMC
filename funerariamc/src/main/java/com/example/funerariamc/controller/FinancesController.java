@@ -48,7 +48,6 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.MenuButton;
-import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
@@ -147,7 +146,7 @@ public class FinancesController implements RefreshableView {
     @FXML private Label kpi4Caption;
     @FXML private Label kpi4Value;
     @FXML private Label kpi4Detail;
-    @FXML private ScrollPane summaryPane;
+    @FXML private VBox summaryPane;
     @FXML private VBox summaryContent;
     @FXML private VBox movementsPane;
     @FXML private Label movementsCount;
@@ -198,6 +197,10 @@ public class FinancesController implements RefreshableView {
         period = FinancePeriod.month(YearMonth.from(today));
         month = YearMonth.from(today);
 
+        // Solo la pestaña visible ocupa espacio, así el desplazamiento de la pantalla se ajusta a ella.
+        for (Node pane : List.of(summaryPane, movementsPane, commissionsPane)) {
+            pane.managedProperty().bind(pane.visibleProperty());
+        }
         // La Secretaría no ve el Resumen (balance y exportar): solo Movimientos y Comisiones.
         show(summaryTab, master);
         show(exportButton, master);

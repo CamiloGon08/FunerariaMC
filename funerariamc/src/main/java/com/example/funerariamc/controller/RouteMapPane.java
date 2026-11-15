@@ -6,10 +6,12 @@ import com.example.funerariamc.utils.enums.VehicleType;
 import com.example.funerariamc.service.TransportService.Stop;
 import com.example.funerariamc.service.TransportService.Transfer;
 import com.example.funerariamc.service.TransportService.Unit;
+import javafx.animation.PauseTransition;
 import javafx.concurrent.Worker;
 import javafx.scene.layout.StackPane;
 import javafx.scene.web.WebEngine;
 import javafx.scene.web.WebView;
+import javafx.util.Duration;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.time.format.DateTimeFormatter;
@@ -30,17 +32,31 @@ class RouteMapPane extends StackPane {
 
     private final WebView webView = new WebView();
     private final WebEngine engine = webView.getEngine();
+    // Espera corta para avisar a Leaflet una sola vez cuando el espacio termina de cambiar de tamaño
+    private final PauseTransition resizeDelay = new PauseTransition(Duration.millis(120));
     private boolean loaded;
     private String pending;
 
     RouteMapPane() {
         getStyleClass().add("route-map");
         webView.setContextMenuEnabled(false);
-        setMinHeight(260);
+        setMinHeight(340);
+        setPrefHeight(420);
         getChildren().add(webView);
+        // Si Leaflet no se entera del tamaño real, dibuja los mosaicos solo en una esquina.
+        resizeDelay.setOnFinished(e -> {
+            if (loaded) {
+                run("refreshSize()");
+            }
+        });
+        widthProperty().addListener((obs, old, value) -> resizeDelay.playFromStart());
+        heightProperty().addListener((obs, old, value) -> resizeDelay.playFromStart());
+        visibleProperty().addListener((obs, old, value) -> resizeDelay.playFromStart());
+        sceneProperty().addListener((obs, old, value) -> resizeDelay.playFromStart());
         engine.getLoadWorker().stateProperty().addListener((obs, old, state) -> {
             if (state == Worker.State.SUCCEEDED) {
                 loaded = true;
+                run("refreshSize()");
                 if (pending != null) {
                     run(pending);
                     pending = null;

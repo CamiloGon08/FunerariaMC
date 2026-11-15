@@ -16,7 +16,7 @@
 <?import javafx.scene.shape.SVGPath?>
 
 <!--
-  Módulo de Personal (HU-02, HU-03, HU-04, HU-06, HU-07), propuesta P-08 / P-08.1:
+  Módulo de Personal:
   filtros por área, indicadores, tarjetas por empleado y panel lateral de detalle.
   Se muestra dentro del contentPane de main.fxml.
 -->
@@ -52,7 +52,7 @@
                 <VBox styleClass="kpi-card" HBox.hgrow="ALWAYS" prefWidth="0">
                     <Label text="INACTIVOS" styleClass="kpi-caption"/>
                     <Label fx:id="inactiveValue" text="—" styleClass="kpi-value"/>
-                    <Label text="no se borran (RN-19)" styleClass="kpi-detail"/>
+                    <Label text="no se borran, quedan en historial" styleClass="kpi-detail"/>
                 </VBox>
             </HBox>
         </VBox>
@@ -97,7 +97,7 @@
         </ScrollPane>
     </VBox>
 
-    <!-- Panel de detalle (P-08.1): velo que oscurece la lista y panel a la derecha -->
+    <!-- Panel de detalle: velo que oscurece la lista y panel a la derecha -->
     <Region fx:id="veil" styleClass="drawer-veil" visible="false" onMouseClicked="#onCloseDrawer"/>
     <VBox fx:id="drawer" styleClass="drawer" StackPane.alignment="CENTER_RIGHT"
           prefWidth="440" maxWidth="440" visible="false">

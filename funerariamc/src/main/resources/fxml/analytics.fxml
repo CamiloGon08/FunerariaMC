@@ -25,40 +25,42 @@
         <ToggleGroup fx:id="rangeGroup"/>
     </fx:define>
 
-    <VBox spacing="16">
-        <VBox styleClass="hero-band" spacing="18">
-            <StackPane id="heroHeaderSlot" alignment="TOP_LEFT"/>
-            <HBox fx:id="kpiRow" spacing="16"/>
-        </VBox>
+    <!-- Toda la pantalla se desplaza junta: banda verde, filtros y contenido -->
+    <ScrollPane fx:id="pageScroll" fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED"
+                styleClass="card-scroll,page-scroll">
+        <VBox spacing="16" styleClass="page-content">
+            <VBox styleClass="hero-band" spacing="18">
+                <StackPane id="heroHeaderSlot" alignment="TOP_LEFT"/>
+                <HBox fx:id="kpiRow" spacing="16"/>
+            </VBox>
 
-        <HBox styleClass="filter-card">
-            <HBox styleClass="segmented" minWidth="-Infinity">
-                <ToggleButton fx:id="salesTab" text="Ventas y servicios" toggleGroup="$tabGroup" selected="true" styleClass="segment"/>
-                <ToggleButton fx:id="occupancyTab" text="Ocupación" toggleGroup="$tabGroup" styleClass="segment"/>
-                <ToggleButton fx:id="teamTab" text="Equipo" toggleGroup="$tabGroup" styleClass="segment"/>
+            <HBox styleClass="filter-card">
+                <HBox styleClass="segmented" minWidth="-Infinity">
+                    <ToggleButton fx:id="salesTab" text="Ventas y servicios" toggleGroup="$tabGroup" selected="true" styleClass="segment"/>
+                    <ToggleButton fx:id="occupancyTab" text="Ocupación" toggleGroup="$tabGroup" styleClass="segment"/>
+                    <ToggleButton fx:id="teamTab" text="Equipo" toggleGroup="$tabGroup" styleClass="segment"/>
+                </HBox>
+                <HBox styleClass="segmented" minWidth="-Infinity">
+                    <ToggleButton fx:id="weekRange" text="7 días" toggleGroup="$rangeGroup" styleClass="segment"/>
+                    <ToggleButton fx:id="monthRange" text="Mes" toggleGroup="$rangeGroup" selected="true" styleClass="segment"/>
+                    <ToggleButton fx:id="yearRange" text="Año" toggleGroup="$rangeGroup" styleClass="segment"/>
+                </HBox>
+                <HBox spacing="6" alignment="CENTER_LEFT" minWidth="-Infinity">
+                    <Button fx:id="previousButton" onAction="#onPrevious" styleClass="period-arrow" text="‹"/>
+                    <VBox styleClass="period-box">
+                        <Label text="PERÍODO" styleClass="period-caption"/>
+                        <Label fx:id="periodLabel" styleClass="period-value"/>
+                    </VBox>
+                    <Button fx:id="nextButton" onAction="#onNext" styleClass="period-arrow" text="›"/>
+                </HBox>
+                <Label text="Solo lectura" styleClass="readonly-chip" minWidth="-Infinity"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Button fx:id="exportButton" text="Exportar PDF" onAction="#onExport" styleClass="primary-button" minWidth="-Infinity"/>
             </HBox>
-            <HBox styleClass="segmented" minWidth="-Infinity">
-                <ToggleButton fx:id="weekRange" text="7 días" toggleGroup="$rangeGroup" styleClass="segment"/>
-                <ToggleButton fx:id="monthRange" text="Mes" toggleGroup="$rangeGroup" selected="true" styleClass="segment"/>
-                <ToggleButton fx:id="yearRange" text="Año" toggleGroup="$rangeGroup" styleClass="segment"/>
-            </HBox>
-            <HBox spacing="6" alignment="CENTER_LEFT" minWidth="-Infinity">
-                <Button fx:id="previousButton" onAction="#onPrevious" styleClass="period-arrow" text="‹"/>
-                <VBox styleClass="period-box">
-                    <Label text="PERÍODO" styleClass="period-caption"/>
-                    <Label fx:id="periodLabel" styleClass="period-value"/>
-                </VBox>
-                <Button fx:id="nextButton" onAction="#onNext" styleClass="period-arrow" text="›"/>
-            </HBox>
-            <Label text="Solo lectura" styleClass="readonly-chip" minWidth="-Infinity"/>
-            <Region HBox.hgrow="ALWAYS"/>
-            <Button fx:id="exportButton" text="Exportar PDF" onAction="#onExport" styleClass="primary-button" minWidth="-Infinity"/>
-        </HBox>
 
-        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="card-scroll" VBox.vgrow="ALWAYS">
             <VBox fx:id="content" spacing="16" styleClass="scroll-content"/>
-        </ScrollPane>
-    </VBox>
+        </VBox>
+    </ScrollPane>
 
     <Label fx:id="toast" styleClass="toast" StackPane.alignment="BOTTOM_LEFT" wrapText="true" maxWidth="420">
         <StackPane.margin>

@@ -29,51 +29,52 @@
         <ToggleGroup fx:id="filterGroup"/>
     </fx:define>
 
-    <VBox spacing="16">
-        <!-- Banda verde: arriba el encabezado del menú (MainController lo pone en #heroHeaderSlot) -->
-        <VBox styleClass="hero-band" spacing="18">
-            <StackPane id="heroHeaderSlot" alignment="TOP_LEFT"/>
-            <HBox spacing="16">
-                <VBox styleClass="hero-kpi,highlight" HBox.hgrow="ALWAYS" prefWidth="0">
-                    <Label text="EN RUTA" styleClass="hero-kpi-caption"/>
-                    <Label fx:id="inRouteValue" text="—" styleClass="hero-kpi-value"/>
-                    <Label fx:id="inRouteDetail" styleClass="hero-kpi-detail"/>
-                </VBox>
-                <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
-                    <Label text="DISPONIBLES" styleClass="hero-kpi-caption"/>
-                    <Label fx:id="availableValue" text="—" styleClass="hero-kpi-value"/>
-                    <Label fx:id="availableDetail" styleClass="hero-kpi-detail"/>
-                </VBox>
-                <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
-                    <Label text="MANTENIMIENTO" styleClass="hero-kpi-caption"/>
-                    <Label fx:id="maintenanceValue" text="—" styleClass="hero-kpi-value"/>
-                    <Label fx:id="maintenanceDetail" styleClass="hero-kpi-detail"/>
-                </VBox>
-                <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
-                    <Label text="DOCUMENTOS VENCIDOS" styleClass="hero-kpi-caption"/>
-                    <Label fx:id="expiredValue" text="—" styleClass="hero-kpi-value"/>
-                    <Label fx:id="expiredDetail" styleClass="hero-kpi-detail"/>
-                </VBox>
-            </HBox>
-        </VBox>
+    <!-- Toda la pantalla se desplaza junta: banda verde, filtros y contenido -->
+    <ScrollPane fx:id="contentScroll" fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED"
+                styleClass="card-scroll,page-scroll">
+        <VBox spacing="16" styleClass="page-content">
+            <!-- Banda verde: arriba el encabezado del menú (MainController lo pone en #heroHeaderSlot) -->
+            <VBox styleClass="hero-band" spacing="18">
+                <StackPane id="heroHeaderSlot" alignment="TOP_LEFT"/>
+                <HBox spacing="16">
+                    <VBox styleClass="hero-kpi,highlight" HBox.hgrow="ALWAYS" prefWidth="0">
+                        <Label text="EN RUTA" styleClass="hero-kpi-caption"/>
+                        <Label fx:id="inRouteValue" text="—" styleClass="hero-kpi-value"/>
+                        <Label fx:id="inRouteDetail" styleClass="hero-kpi-detail"/>
+                    </VBox>
+                    <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
+                        <Label text="DISPONIBLES" styleClass="hero-kpi-caption"/>
+                        <Label fx:id="availableValue" text="—" styleClass="hero-kpi-value"/>
+                        <Label fx:id="availableDetail" styleClass="hero-kpi-detail"/>
+                    </VBox>
+                    <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
+                        <Label text="MANTENIMIENTO" styleClass="hero-kpi-caption"/>
+                        <Label fx:id="maintenanceValue" text="—" styleClass="hero-kpi-value"/>
+                        <Label fx:id="maintenanceDetail" styleClass="hero-kpi-detail"/>
+                    </VBox>
+                    <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
+                        <Label text="DOCUMENTOS VENCIDOS" styleClass="hero-kpi-caption"/>
+                        <Label fx:id="expiredValue" text="—" styleClass="hero-kpi-value"/>
+                        <Label fx:id="expiredDetail" styleClass="hero-kpi-detail"/>
+                    </VBox>
+                </HBox>
+            </VBox>
 
-        <!-- Pestañas, hora de actualización, filtro de la pestaña y botón principal -->
-        <HBox styleClass="filter-card">
-            <HBox styleClass="segmented,tab-segmented" minWidth="-Infinity">
-                <ToggleButton fx:id="monitorTab" text="Monitor" toggleGroup="$tabGroup" selected="true" styleClass="segment"/>
-                <ToggleButton fx:id="vehiclesTab" text="Vehículos" toggleGroup="$tabGroup" styleClass="segment"/>
-                <ToggleButton fx:id="driversTab" text="Conductores" toggleGroup="$tabGroup" styleClass="segment"/>
-                <ToggleButton fx:id="transfersTab" text="Traslados" toggleGroup="$tabGroup" styleClass="segment"/>
+            <!-- Pestañas, hora de actualización, filtro de la pestaña y botón principal -->
+            <HBox styleClass="filter-card">
+                <HBox styleClass="segmented,tab-segmented" minWidth="-Infinity">
+                    <ToggleButton fx:id="monitorTab" text="Monitor" toggleGroup="$tabGroup" selected="true" styleClass="segment"/>
+                    <ToggleButton fx:id="vehiclesTab" text="Vehículos" toggleGroup="$tabGroup" styleClass="segment"/>
+                    <ToggleButton fx:id="driversTab" text="Conductores" toggleGroup="$tabGroup" styleClass="segment"/>
+                    <ToggleButton fx:id="transfersTab" text="Traslados" toggleGroup="$tabGroup" styleClass="segment"/>
+                </HBox>
+                <Label fx:id="updatedLabel" styleClass="update-chip" minWidth="-Infinity"/>
+                <Pane HBox.hgrow="ALWAYS"/>
+                <HBox fx:id="filterBox" styleClass="segmented,sub-segmented" minWidth="-Infinity"/>
+                <Button fx:id="mainButton" text="+  Asignar traslado" onAction="#onMainAction" styleClass="primary-button" minWidth="-Infinity"/>
             </HBox>
-            <Label fx:id="updatedLabel" styleClass="update-chip" minWidth="-Infinity"/>
-            <Pane HBox.hgrow="ALWAYS"/>
-            <HBox fx:id="filterBox" styleClass="segmented,sub-segmented" minWidth="-Infinity"/>
-            <Button fx:id="mainButton" text="+  Asignar traslado" onAction="#onMainAction" styleClass="primary-button" minWidth="-Infinity"/>
-        </HBox>
 
-        <!-- Contenido de la pestaña con barra de desplazamiento visible (sin paginación) -->
-        <ScrollPane fx:id="contentScroll" fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="ALWAYS"
-                    styleClass="card-scroll" VBox.vgrow="ALWAYS">
+            <!-- Contenido de la pestaña (sin paginación) -->
             <StackPane>
                 <!-- 23 Monitor -->
                 <VBox fx:id="monitorPane" spacing="16">
@@ -84,7 +85,7 @@
                                 <Pane HBox.hgrow="ALWAYS"/>
                                 <Label fx:id="monitorRouteHint" styleClass="route-hint"/>
                             </HBox>
-                            <StackPane fx:id="monitorRouteSlot" styleClass="route-canvas" minHeight="230"/>
+                            <StackPane fx:id="monitorRouteSlot" styleClass="route-canvas" minHeight="380"/>
                         </VBox>
                         <VBox fx:id="monitorDetail" styleClass="detail-card" prefWidth="430" minWidth="380" maxWidth="460"/>
                     </HBox>
@@ -133,7 +134,7 @@
                                     <Pane HBox.hgrow="ALWAYS"/>
                                     <Label fx:id="transferRouteHint" styleClass="route-hint"/>
                                 </HBox>
-                                <StackPane fx:id="transferRouteSlot" styleClass="route-canvas" minHeight="200"/>
+                                <StackPane fx:id="transferRouteSlot" styleClass="route-canvas" minHeight="380"/>
                             </VBox>
                             <VBox styleClass="table-card" spacing="12">
                                 <HBox alignment="CENTER_LEFT" spacing="10">
@@ -151,8 +152,8 @@
                     </HBox>
                 </VBox>
             </StackPane>
-        </ScrollPane>
-    </VBox>
+        </VBox>
+    </ScrollPane>
 
     <!-- Aviso corto al guardar; se desvanece solo -->
     <Label fx:id="toast" styleClass="toast" StackPane.alignment="BOTTOM_LEFT" wrapText="true" maxWidth="460">

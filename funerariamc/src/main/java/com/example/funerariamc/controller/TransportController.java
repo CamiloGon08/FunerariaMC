@@ -92,7 +92,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 
 /**
- * Pantalla de Transporte (pantallas 23, 23.1, 23.2 y 23.3 de Figma, paleta verde oscura): indicadores
+ * Pantalla de Transporte (paleta verde oscura): indicadores
  * de la flota, pestañas Monitor, Vehículos, Conductores y Traslados, y los diálogos Nuevo vehículo
  * y Asignar traslado. La tarjeta "Ubicación de traslados activos" deja el
  * espacio del mapa y, mientras tanto, dibuja la ruta como una línea de paradas.
@@ -423,7 +423,7 @@ public class TransportController implements RefreshableView {
         if (rows.isEmpty()) {
             rows.add(wrapped(screen.canManageVehicles()
                     ? "Todavía no hay vehículos. Regístrelos en la pestaña Vehículos con \"+ Nuevo vehículo\"."
-                    : "Todavía no hay vehículos registrados. El Administrador Maestro los registra en la pestaña Vehículos.",
+                    : "Todavía no hay vehículos registrados. La Secretaría o el Administrador Maestro los registran en la pestaña Vehículos.",
                     "empty-table"));
         }
         fleetRows.getChildren().setAll(rows);
@@ -513,7 +513,7 @@ public class TransportController implements RefreshableView {
         vehicleCards.getChildren().setAll(cards);
         String empty = screen.vehicles().isEmpty()
                 ? (screen.canManageVehicles() ? "Todavía no hay vehículos. Use \"+ Nuevo vehículo\" para registrar el primero."
-                : "Todavía no hay vehículos registrados. El Administrador Maestro los registra aquí.")
+                : "Todavía no hay vehículos registrados. La Secretaría o el Administrador Maestro los registran aquí.")
                 : cards.isEmpty() ? "No hay vehículos de este tipo." : "";
         vehiclesEmpty.setText(empty);
         show(vehiclesEmpty, !empty.isEmpty());

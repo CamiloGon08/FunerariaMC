@@ -39,6 +39,7 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.DatePicker;
 import javafx.scene.control.Dialog;
@@ -85,7 +86,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
- * Pantalla de Contratos y ventas (pantalla 08 de Figma, paleta verde oscura): indicadores del mes,
+ * Pantalla de Contratos y ventas (paleta verde oscura): indicadores del mes,
  * buscador con filtro por tipo de venta y por estado de pago, tabla "Contratos
  * registrados", panel "Ver" con conceptos y abonos, y los diálogos Nuevo contrato, Abonar, Anular venta y Registrar preparación.
  * Todas las consultas corren en otro hilo; la tabla filtra en memoria y solo dibuja las filas visibles.
@@ -675,6 +676,22 @@ public class ContractController implements RefreshableView {
         ComboBox<ItemOption> coffin = itemCombo("Sin ataúd del inventario");
         bindItemSearch(coffinSearch, coffin);
 
+        // Velación en casa: no lleva sala y no tiene descuento (se entrega la cafetería)
+        CheckBox homeWake = new CheckBox("La familia vela en la casa");
+        homeWake.getStyleClass().add("form-check");
+        // Traslado desde otra ciudad: el plan no lo cubre, se cobra por kilómetro
+        TextField intercityKm = new TextField("0");
+        // Cementerio: arriendo de bóveda, lote doble u osario, construcción y adecuación del lote
+        ComboBox<ContractData.CemeteryCharge> cemetery = new ComboBox<>();
+        cemetery.getItems().setAll(ContractData.CemeteryCharge.values());
+        cemetery.setValue(ContractData.CemeteryCharge.NONE);
+        cemetery.setConverter(converter(ContractData.CemeteryCharge::getLabel, "Sin cementerio"));
+        cemetery.getStyleClass().add("form-combo");
+        cemetery.setMaxWidth(Double.MAX_VALUE);
+        TextField constructions = new TextField("0");
+        CheckBox preparation = new CheckBox("Se usa un puesto del lote (adecuación)");
+        preparation.getStyleClass().add("form-check");
+
         // Sala de velación
         ComboBox<Option> room = optionCombo("Sin sala por ahora");
         room.setConverter(converter(o -> o.label() + " · " + o.detail(), "Sin sala por ahora"));
@@ -730,13 +747,19 @@ public class ContractController implements RefreshableView {
                 .field("BUSES ADICIONALES", buses)
                 .field("BUSCAR ATAÚD", coffinSearch)
                 .field("ATAÚD", coffin)
+                .field("TRASLADO DESDE OTRA CIUDAD (KM)", intercityKm)
                 .section("Sala de velación", 3)
+                .field("VELACIÓN", homeWake)
                 .field("SALA", room)
                 .field("FECHA DE INGRESO", startDate)
                 .field("HORA DE INGRESO", startTime)
                 .field("", new Region())
                 .field("FECHA DE SALIDA", endDate)
                 .field("HORA DE SALIDA", endTime)
+                .section("Cementerio", 3)
+                .field("QUÉ SE COBRA", cemetery)
+                .field("PUESTOS A CONSTRUIR", constructions)
+                .field("ADECUACIÓN", preparation)
                 .section("Productos", 3)
                 .field("BUSCAR PRODUCTO", productSearch)
                 .field("PRODUCTO", product)
@@ -748,10 +771,11 @@ public class ContractController implements RefreshableView {
                 .note(quoteHint)
                 .section("Abono", 3)
                 .field("ABONO INICIAL *", initial)
-.note(note("Con plan se cobra solo el excedente del ataúd frente al básico del plan y el "
-                        + "recargo por beneficiarios; la sala especial agrega su recargo y "
-                        + "cada bus adicional su tarifa. Los valores salen de Parámetros del sistema. "
-                        + "Si el abono es igual al total, la venta queda pagada."));
+                .note(note("Con plan se cobra solo el excedente del ataúd frente al que cubre el plan y el "
+                        + "recargo por beneficiarios; el plan premium cubre un ataúd más grande y la sala especial. "
+                        + "Sin plan premium la sala especial agrega su recargo, y cada bus adicional y cada "
+                        + "kilómetro de traslado desde otra ciudad su tarifa. Los valores salen de Parámetros "
+                        + "del sistema. Si el abono es igual al total, la venta queda pagada."));
         HBox.setHgrow(quantity, Priority.ALWAYS);
 
         // Habilita solo los campos que usa cada tipo de venta
@@ -767,8 +791,10 @@ public class ContractController implements RefreshableView {
             buses.setDisable(!service);
             coffinSearch.setDisable(!service);
             coffin.setDisable(!service);
-            room.setDisable(!service);
-            boolean withRoom = service && room.getValue() != null;
+            homeWake.setDisable(!service);
+            intercityKm.setDisable(!service);
+            room.setDisable(!service || homeWake.isSelected());
+            boolean withRoom = service && !homeWake.isSelected() && room.getValue() != null;
             for (Node n : List.of(startDate, startTime, endDate, endTime)) {
                 n.setDisable(!withRoom);
             }
@@ -778,7 +804,7 @@ public class ContractController implements RefreshableView {
         Function<Boolean, ContractData> data = strict -> {
             SaleKind kind = (SaleKind) kindGroup.getSelectedToggle().getUserData();
             boolean service = kind.isService();
-            boolean withRoom = service && room.getValue() != null;
+            boolean withRoom = service && !homeWake.isSelected() && room.getValue() != null;
             return new ContractData(kind, idOf(client.getValue()),
                     service ? idOf(deceased.getValue()) : null,
                     kind == SaleKind.PLAN ? idOf(plan.getValue()) : null,
@@ -791,7 +817,12 @@ public class ContractController implements RefreshableView {
                     service && coffin.getValue() != null ? coffin.getValue().id() : null,
                     service ? orZero(parseInteger(buses.getText(), "Los buses adicionales")) : 0,
                     List.copyOf(products),
-                    strict ? parseAmount(initial.getText(), "El abono inicial") : null);
+                    strict ? parseAmount(initial.getText(), "El abono inicial") : null,
+                    service && homeWake.isSelected(),
+                    service ? orZero(parseInteger(intercityKm.getText(), "Los kilómetros del traslado")) : 0,
+                    kind == SaleKind.PENSION ? ContractData.CemeteryCharge.NONE : cemetery.getValue(),
+                    kind == SaleKind.PENSION ? 0 : orZero(parseInteger(constructions.getText(), "Los puestos a construir")),
+                    kind != SaleKind.PENSION && preparation.isSelected());
         };
 
         // Resumen en vivo: se recalcula en otro hilo cuando el usuario deja de cambiar datos
@@ -902,8 +933,15 @@ public class ContractController implements RefreshableView {
         for (DatePicker picker : List.of(startDate, endDate)) {
             picker.valueProperty().addListener((obs, old, value) -> requote.run());
         }
-        for (TextField field : List.of(base, wages, buses)) {
+        for (TextField field : List.of(base, wages, buses, intercityKm, constructions)) {
             field.textProperty().addListener((obs, old, value) -> requote.run());
+        }
+        cemetery.valueProperty().addListener((obs, old, value) -> requote.run());
+        for (CheckBox box : List.of(homeWake, preparation)) {
+            box.selectedProperty().addListener((obs, old, value) -> {
+                applyKind.run();
+                requote.run();
+            });
         }
         applyKind.run();
         requote.run();

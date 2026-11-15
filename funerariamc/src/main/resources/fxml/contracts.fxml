@@ -29,65 +29,70 @@
         <ToggleGroup fx:id="typeGroup"/>
     </fx:define>
 
-    <VBox spacing="16">
-        <!-- Banda verde: arriba el encabezado del menú (MainController lo pone en #heroHeaderSlot) -->
-        <VBox styleClass="hero-band" spacing="18">
-            <StackPane id="heroHeaderSlot" alignment="TOP_LEFT"/>
-            <HBox spacing="16">
-                <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
-                    <Label text="REGISTROS" styleClass="hero-kpi-caption"/>
-                    <Label fx:id="recordsValue" text="—" styleClass="hero-kpi-value"/>
-                    <Label fx:id="recordsDetail" styleClass="hero-kpi-detail"/>
-                </VBox>
-                <VBox styleClass="hero-kpi,highlight" HBox.hgrow="ALWAYS" prefWidth="0">
-                    <Label fx:id="soldCaption" text="VENDIDO EN EL MES" styleClass="hero-kpi-caption"/>
-                    <Label fx:id="soldValue" text="—" styleClass="hero-kpi-value"/>
-                    <Label fx:id="soldDetail" styleClass="hero-kpi-detail"/>
-                </VBox>
-                <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
-                    <Label text="POR COBRAR" styleClass="hero-kpi-caption"/>
-                    <Label fx:id="receivableValue" text="—" styleClass="hero-kpi-value"/>
-                    <Label fx:id="receivableDetail" styleClass="hero-kpi-detail"/>
-                </VBox>
-                <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
-                    <Label text="ANULADAS" styleClass="hero-kpi-caption"/>
-                    <Label fx:id="voidedValue" text="—" styleClass="hero-kpi-value"/>
-                    <Label text="se anulan, no se borran" styleClass="hero-kpi-detail"/>
-                </VBox>
-            </HBox>
-        </VBox>
-
-        <!-- Buscador, tipo de venta, estado de pago y Nuevo contrato -->
-        <HBox styleClass="filter-card">
-            <HBox styleClass="search-box" HBox.hgrow="ALWAYS" minWidth="180">
-                <SVGPath content="M7 1.5a5.5 5.5 0 1 1 0 11a5.5 5.5 0 0 1 0-11z M11.2 11.2 L15 15" styleClass="search-icon"/>
-                <TextField fx:id="searchField" promptText="Buscar por número, difunto o cliente" HBox.hgrow="ALWAYS"/>
-            </HBox>
-            <Label text="TIPO" styleClass="segment-caption" minWidth="-Infinity"/>
-            <HBox styleClass="segmented" minWidth="-Infinity">
-                <ToggleButton fx:id="allToggle" text="Todos" toggleGroup="$typeGroup" selected="true" styleClass="segment"/>
-                <ToggleButton fx:id="contractToggle" text="Contrato" toggleGroup="$typeGroup" styleClass="segment"/>
-                <ToggleButton fx:id="privateToggle" text="Particular" toggleGroup="$typeGroup" styleClass="segment"/>
-                <ToggleButton fx:id="productToggle" text="Venta" toggleGroup="$typeGroup" styleClass="segment"/>
-            </HBox>
-            <ComboBox fx:id="paymentCombo" styleClass="chip-combo" minWidth="-Infinity" prefWidth="160"/>
-            <Button fx:id="newButton" text="+  Nuevo contrato" onAction="#onNewContract" styleClass="primary-button" minWidth="-Infinity"/>
-        </HBox>
-
-        <!-- Tabla con barra de desplazamiento visible (sin paginación); la lista solo dibuja las filas visibles -->
-        <VBox styleClass="table-card" spacing="12" VBox.vgrow="ALWAYS">
-            <VBox spacing="2">
-                <Label text="Contratos registrados" styleClass="card-title"/>
-                <Label fx:id="countLabel" styleClass="card-subtitle"/>
+    <!-- Toda la pantalla se desplaza junta: banda verde, filtros y contenido -->
+    <ScrollPane fx:id="pageScroll" fitToWidth="true" fitToHeight="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED"
+                styleClass="card-scroll,page-scroll">
+        <VBox spacing="16" styleClass="page-content">
+            <!-- Banda verde: arriba el encabezado del menú (MainController lo pone en #heroHeaderSlot) -->
+            <VBox styleClass="hero-band" spacing="18">
+                <StackPane id="heroHeaderSlot" alignment="TOP_LEFT"/>
+                <HBox spacing="16">
+                    <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
+                        <Label text="REGISTROS" styleClass="hero-kpi-caption"/>
+                        <Label fx:id="recordsValue" text="—" styleClass="hero-kpi-value"/>
+                        <Label fx:id="recordsDetail" styleClass="hero-kpi-detail"/>
+                    </VBox>
+                    <VBox styleClass="hero-kpi,highlight" HBox.hgrow="ALWAYS" prefWidth="0">
+                        <Label fx:id="soldCaption" text="VENDIDO EN EL MES" styleClass="hero-kpi-caption"/>
+                        <Label fx:id="soldValue" text="—" styleClass="hero-kpi-value"/>
+                        <Label fx:id="soldDetail" styleClass="hero-kpi-detail"/>
+                    </VBox>
+                    <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
+                        <Label text="POR COBRAR" styleClass="hero-kpi-caption"/>
+                        <Label fx:id="receivableValue" text="—" styleClass="hero-kpi-value"/>
+                        <Label fx:id="receivableDetail" styleClass="hero-kpi-detail"/>
+                    </VBox>
+                    <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
+                        <Label text="ANULADAS" styleClass="hero-kpi-caption"/>
+                        <Label fx:id="voidedValue" text="—" styleClass="hero-kpi-value"/>
+                        <Label text="se anulan, no se borran" styleClass="hero-kpi-detail"/>
+                    </VBox>
+                </HBox>
             </VBox>
-            <HBox fx:id="tableHead" styleClass="table-head"/>
-            <StackPane VBox.vgrow="ALWAYS">
-                <ListView fx:id="salesList" styleClass="sales-list"/>
-                <Label fx:id="emptyLabel" styleClass="empty-table" wrapText="true" StackPane.alignment="TOP_LEFT"
-                       visible="false" mouseTransparent="true"/>
-            </StackPane>
+
+            <!-- Buscador, tipo de venta, estado de pago y Nuevo contrato -->
+            <HBox styleClass="filter-card">
+                <HBox styleClass="search-box" HBox.hgrow="ALWAYS" minWidth="180">
+                    <SVGPath content="M7 1.5a5.5 5.5 0 1 1 0 11a5.5 5.5 0 0 1 0-11z M11.2 11.2 L15 15" styleClass="search-icon"/>
+                    <TextField fx:id="searchField" promptText="Buscar por número, difunto o cliente" HBox.hgrow="ALWAYS"/>
+                </HBox>
+                <Label text="TIPO" styleClass="segment-caption" minWidth="-Infinity"/>
+                <HBox styleClass="segmented" minWidth="-Infinity">
+                    <ToggleButton fx:id="allToggle" text="Todos" toggleGroup="$typeGroup" selected="true" styleClass="segment"/>
+                    <ToggleButton fx:id="contractToggle" text="Contrato" toggleGroup="$typeGroup" styleClass="segment"/>
+                    <ToggleButton fx:id="privateToggle" text="Particular" toggleGroup="$typeGroup" styleClass="segment"/>
+                    <ToggleButton fx:id="productToggle" text="Venta" toggleGroup="$typeGroup" styleClass="segment"/>
+                </HBox>
+                <ComboBox fx:id="paymentCombo" styleClass="chip-combo" minWidth="-Infinity" prefWidth="160"/>
+                <Button fx:id="newButton" text="+  Nuevo contrato" onAction="#onNewContract" styleClass="primary-button" minWidth="-Infinity"/>
+            </HBox>
+
+            <!-- Tabla con su propia barra para bajar entre los contratos; la lista solo dibuja las filas visibles.
+                 Alto mínimo para ver varias filas: si la ventana es baja, se desplaza toda la pantalla. -->
+            <VBox styleClass="table-card" spacing="12" VBox.vgrow="ALWAYS" minHeight="560">
+                <VBox spacing="2">
+                    <Label text="Contratos registrados" styleClass="card-title"/>
+                    <Label fx:id="countLabel" styleClass="card-subtitle"/>
+                </VBox>
+                <HBox fx:id="tableHead" styleClass="table-head"/>
+                <StackPane VBox.vgrow="ALWAYS">
+                    <ListView fx:id="salesList" styleClass="sales-list"/>
+                    <Label fx:id="emptyLabel" styleClass="empty-table" wrapText="true" StackPane.alignment="TOP_LEFT"
+                           visible="false" mouseTransparent="true"/>
+                </StackPane>
+            </VBox>
         </VBox>
-    </VBox>
+    </ScrollPane>
 
     <!-- Panel "Ver" de la venta -->
     <Region fx:id="veil" styleClass="drawer-veil" visible="false" onMouseClicked="#onCloseDrawer"/>
