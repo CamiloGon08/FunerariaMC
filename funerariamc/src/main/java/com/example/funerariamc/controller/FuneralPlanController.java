@@ -27,6 +27,7 @@ import com.example.funerariamc.service.PlanParameters;
 import com.example.funerariamc.service.PlanPaymentData;
 import com.example.funerariamc.ui.DetailCache;
 import com.example.funerariamc.ui.RefreshableView;
+import com.example.funerariamc.ui.FormShell;
 import javafx.animation.FadeTransition;
 import javafx.animation.ParallelTransition;
 import javafx.animation.PauseTransition;
@@ -895,6 +896,8 @@ public class FuneralPlanController implements RefreshableView {
 
         Long[] savedId = new Long[1];
         Dialog<ButtonType> dialog = formDialog("Afiliar plan", "Los campos con * son obligatorios.", form, 620, false);
+        FormShell.panel(dialog, "Planes exequiales");
+        FormShell.money(fee);
         if (runForm(dialog, form, "Afiliar", () -> savedId[0] = planService.register(new PlanData(
                 idOf(clientBox.getValue()), name.getValue(), money(fee, "La cuota"), start.getValue())).getId())) {
             loadOverview(savedId[0]);
@@ -963,6 +966,8 @@ public class FuneralPlanController implements RefreshableView {
 
         Dialog<ButtonType> dialog = formDialog("Registrar pago", c.code() + " · " + c.holderName()
                 + ". Los campos con * son obligatorios.", form, 520, false);
+        FormShell.window(dialog, "Planes exequiales");
+        FormShell.money(amount);
         if (runForm(dialog, form, "Registrar", () -> planService.registerPayment(
                 new PlanPaymentData(c.id(), month.getValue(), money(amount, "El valor"))))) {
             loadOverview(c.id());
@@ -1014,6 +1019,7 @@ public class FuneralPlanController implements RefreshableView {
         String count = d.beneficiaries().size() + (c.corporate() ? "" : " de " + d.beneficiaryLimit()) + " beneficiarios";
         Dialog<ButtonType> dialog = formDialog("Agregar beneficiario", c.code() + " · " + count
                 + ". Los campos con * son obligatorios.", form, 620, false);
+        FormShell.window(dialog, "Planes exequiales");
         if (runForm(dialog, form, "Agregar", () -> planService.addBeneficiary(new BeneficiaryData(
                 c.id(), name.getText(), lastname.getText(), document.getText(), relationship.getValue(),
                 accept.isSelected())))) {
@@ -1050,6 +1056,7 @@ public class FuneralPlanController implements RefreshableView {
 
         Dialog<ButtonType> dialog = formDialog("Cambiar titular", "Plan " + c.code() + " · titular actual "
                 + c.holderName() + ".", form, 540, false);
+        FormShell.window(dialog, "Planes exequiales");
         if (runForm(dialog, form, "Cambiar titular", () -> planService.changeHolder(c.id(), idOf(clientBox.getValue())))) {
             loadOverview(c.id());
         }
