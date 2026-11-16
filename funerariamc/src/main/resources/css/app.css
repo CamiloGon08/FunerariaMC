@@ -168,6 +168,15 @@
 .side-scroll .scroll-bar .increment-arrow, .side-scroll .scroll-bar .decrement-arrow { -fx-shape: " "; -fx-padding: 0; }
 .sidebar-decor { -fx-opacity: 0.30; } /* intensidad de la foto del lirio detrás de los módulos */
 
+/* Lirio difuminado a la derecha de la banda verde de cada módulo. La imagen ya trae la transparencia
+   y los bordes desvanecidos, así no se sale de las esquinas redondeadas. Cada módulo pone su color. */
+.hero-band {
+    -fx-background-image: url("../images/lirio-banda.png");
+    -fx-background-repeat: no-repeat;
+    -fx-background-position: right center;
+    -fx-background-size: auto 100%;
+}
+
 /* Ítems del menú: círculo de 40 px contraído, píldora de 240 px expandido */
 .nav-pill {
     -fx-background-color: transparent; /* sin caja: el lirio de fondo se ve entre los ítems */ -fx-background-radius: 12;
