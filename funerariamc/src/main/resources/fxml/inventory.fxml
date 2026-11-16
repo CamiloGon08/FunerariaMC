@@ -16,8 +16,7 @@
 <?import javafx.scene.shape.SVGPath?>
 
 <!--
-  Módulo Inventario, pantalla 22 de Figma con la paleta verde
-  oscura (captura 09_inventario): banda verde con el título y 4 indicadores, buscador, vista
+  Módulo Inventario: banda verde con el título y 4 indicadores, buscador, vista
   Tarjetas / Tabla, filtro Para la venta / Uso de la funeraria / "Bajo mínimo", tarjetas con foto y panel lateral.
   Se muestra dentro del contentPane de main.fxml. El menú la guarda abierta (RefreshableView).
 -->
@@ -117,7 +116,6 @@
     <Region fx:id="veil" styleClass="drawer-veil" visible="false" onMouseClicked="#onCloseDrawer"/>
     <VBox fx:id="drawer" styleClass="drawer" StackPane.alignment="CENTER_RIGHT"
           prefWidth="480" maxWidth="480" visible="false">
-        <VBox fx:id="drawerHead" styleClass="drawer-head"/>
         <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="card-scroll" VBox.vgrow="ALWAYS">
             <VBox fx:id="drawerBody" spacing="12" styleClass="drawer-body"/>
         </ScrollPane>
