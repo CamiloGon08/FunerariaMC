@@ -24,6 +24,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.ByteArrayOutputStream;
+import com.lowagie.text.pdf.PdfReader;
+import com.lowagie.text.pdf.parser.PdfTextExtractor;
 import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -176,6 +178,21 @@ class AnalyticsServiceTest {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         AnalyticsService.writePdf(service.overview(NOVEMBER), out);
         assertTrue(out.size() > 500);
+    }
+
+    @Test
+    void exportedPdfContainsTheConfiguredBrand(@TempDir Path folder) throws Exception {
+        BrandingService branding = mock(BrandingService.class);
+        when(branding.fullName()).thenReturn("Funeraria Jardines de Paz");
+        AnalyticsService branded = new AnalyticsService(sales, contracts, rooms, vaults, staff, transactions,
+                audit, session, clock, branding);
+        Path target = folder.resolve("branded.pdf");
+        branded.exportPdf(NOVEMBER, target);
+        try (PdfReader reader = new PdfReader(Files.readAllBytes(target))) {
+            String text = new PdfTextExtractor(reader).getTextFromPage(1);
+            assertTrue(text.contains("Funeraria Jardines de Paz"), text);
+            assertFalse(text.contains("Funeraria El Edén"), text);
+        }
     }
 
     private void login(String role) {
