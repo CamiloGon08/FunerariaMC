@@ -1,5 +1,5 @@
 /*
- * Módulo Cementerio y bóvedas (propuesta P-17 / P-17.1). Se carga junto con personal.css
+ * Módulo Cementerio y bóvedas. Se carga junto con personal.css
  * (tarjetas, indicadores, panel lateral) y usa los colores de app.css (-color-primary, ...).
  * Muro: ocupada en salvia, libre con borde punteado, vence pronto en caqui y en mora en terracota.
  * Trae también el formulario de los diálogos con el estilo de la vista "Personal · El Edén" (19/10),
@@ -16,7 +16,7 @@
     -fx-background-radius: 10; -fx-padding: 7 14; -fx-font-weight: bold; -fx-font-size: 12.5px;
     -fx-cursor: hand;
 }
-.segment:hover { -fx-background-color: rgba(250,249,246,0.6); }
+.segment:hover { -fx-background-color: -color-card-a60; }
 .segment:selected { -fx-background-color: -color-accent; -fx-text-fill: -color-background; }
 .segmented.view .segment:selected { -fx-background-color: -color-card; -fx-text-fill: -color-primary; }
 
@@ -55,7 +55,7 @@
     -fx-background-color: -color-card; -fx-border-color: -color-border;
     -fx-border-style: segments(4, 3);
 }
-.vault-expiring { -fx-background-color: #F1EAD9; -fx-border-color: #F1EAD9; }
+.vault-expiring { -fx-background-color: -color-gold-wash; -fx-border-color: -color-gold-wash; }
 .vault-expiring .vault-code, .vault-expiring .vault-name { -fx-text-fill: -color-gold-text; }
 .vault-overdue { -fx-background-color: -color-error-bg; -fx-border-color: -color-error-bg; }
 .vault-overdue .vault-code, .vault-overdue .vault-name { -fx-text-fill: -color-error; }
@@ -91,7 +91,7 @@
     -fx-background-radius: 8; -fx-font-weight: bold; -fx-font-size: 12px;
 }
 .code-overdue { -fx-background-color: -color-error-bg; -fx-text-fill: -color-error; }
-.code-expiring { -fx-background-color: #F1EAD9; -fx-text-fill: -color-gold-text; }
+.code-expiring { -fx-background-color: -color-gold-wash; -fx-text-fill: -color-gold-text; }
 .code-occupied { -fx-background-color: -color-surface; -fx-text-fill: -color-primary; }
 .code-available { -fx-background-color: -color-card; -fx-text-fill: -color-secondary; -fx-border-color: -color-border; -fx-border-style: segments(4, 3); -fx-border-radius: 8; }
 .attention-name { -fx-text-fill: -color-primary; -fx-font-weight: bold; -fx-font-size: 13px; }
@@ -105,7 +105,7 @@
 .exhumation-title { -fx-text-fill: -color-primary; -fx-font-weight: bold; -fx-font-size: 13px; }
 .exhumation-detail { -fx-text-fill: -color-secondary; -fx-font-size: 12px; }
 
-/* ---------- Panel de detalle (P-17.1) ---------- */
+/* ---------- Panel de detalle ---------- */
 .vault-badge {
     -fx-border-color: -color-primary; -fx-border-width: 2; -fx-border-radius: 10;
     -fx-background-color: -color-surface; -fx-background-radius: 10;
@@ -140,7 +140,7 @@
 .toast {
     -fx-background-color: -color-primary; -fx-text-fill: -color-background;
     -fx-background-radius: 12; -fx-padding: 12 18; -fx-font-size: 13.5px; -fx-font-weight: bold;
-    -fx-effect: dropshadow(gaussian, rgba(24,47,37,0.25), 18, 0, 0, 6);
+    -fx-effect: dropshadow(gaussian, -color-primary-a25, 18, 0, 0, 6);
 }
 
 /* ---------- Diálogos: formulario "Personal · El Edén" ----------
@@ -190,27 +190,27 @@
    selección en bosque profundo y estados suaves: aviso oliva y alerta terracota apagada.
    Todo va bajo .cemetery-root para no tocar otros módulos. */
 .cemetery-root {
-    -eden-forest: #1E3A2E;
-    -eden-deep: #0F1F17;
-    -eden-moss: #3E5A3F;
-    -eden-sage: #6B7F67;
-    -eden-linen: #C7CBB8;
-    -eden-card: #FAFBF7;
-    -eden-tint: #EEF0E6;
-    -eden-text: #1E2A22;
-    -eden-muted: #6A7366;
-    -eden-warn: #6E6A45;
-    -eden-warn-bg: #EDEBDD;
-    -eden-alert: #8A4B3C;
-    -eden-alert-bg: #F0E3DC;
+    -eden-forest: -color-forest;
+    -eden-deep: -color-forest-deep;
+    -eden-moss: -color-moss;
+    -eden-sage: -color-sage-dark;
+    -eden-linen: -color-linen;
+    -eden-card: -color-paper-white;
+    -eden-tint: -color-soft;
+    -eden-text: -color-ink;
+    -eden-muted: -color-text-muted;
+    -eden-warn: -color-warning;
+    -eden-warn-bg: -color-warning-bg;
+    -eden-alert: -color-alert;
+    -eden-alert-bg: -color-alert-bg;
 }
 
 /* Banda superior */
 .hero-band {
-    -fx-background-color: linear-gradient(to right, #1E3A2E 0%, #3E5A3F 62%, #6B7F67 100%);
+    -fx-background-color: linear-gradient(to right, -color-forest 0%, -color-moss 62%, -color-sage-dark 100%);
     -fx-background-radius: 26;
     -fx-padding: 22 26 24 26;
-    -fx-effect: dropshadow(gaussian, rgba(15,31,23,0.22), 24, 0, 0, 8);
+    -fx-effect: dropshadow(gaussian, -color-shadow-22, 24, 0, 0, 8);
 }
 .hero-kpi {
     -fx-background-color: rgba(255,255,255,0.07);
@@ -218,15 +218,15 @@
     -fx-background-radius: 16; -fx-border-radius: 16;
     -fx-padding: 14 18 14 18; -fx-spacing: 2;
 }
-.hero-kpi-caption { -fx-text-fill: rgba(244,245,238,0.88); -fx-font-size: 11px; -fx-font-weight: bold; }
+.hero-kpi-caption { -fx-text-fill: -color-paper-a88; -fx-font-size: 11px; -fx-font-weight: bold; }
 .hero-kpi-value {
     -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif;
-    -fx-text-fill: #F4F5EE; -fx-font-size: 30px;
+    -fx-text-fill: -color-paper; -fx-font-size: 30px;
 }
-.hero-kpi-detail { -fx-text-fill: rgba(244,245,238,0.72); -fx-font-size: 12.5px; }
+.hero-kpi-detail { -fx-text-fill: -color-paper-a72; -fx-font-size: 12.5px; }
 .hero-kpi .occupancy-bar { -fx-padding: 8 0 0 0; }
 .hero-kpi .occupancy-bar > .track { -fx-background-color: rgba(255,255,255,0.18); }
-.hero-kpi .occupancy-bar > .bar { -fx-background-color: #E4E7DC; }
+.hero-kpi .occupancy-bar > .bar { -fx-background-color: -color-surface; }
 
 /* Barra de búsqueda y filtros */
 .cemetery-root .filter-card {
@@ -236,9 +236,9 @@
 .cemetery-root .search-box { -fx-background-color: -eden-tint; -fx-background-radius: 12; }
 .cemetery-root .segmented { -fx-background-color: -eden-tint; }
 .cemetery-root .segment { -fx-text-fill: -eden-text; }
-.cemetery-root .segment:hover { -fx-background-color: rgba(199,203,184,0.45); }
+.cemetery-root .segment:hover { -fx-background-color: -color-linen-a45; }
 .cemetery-root .segment:selected,
-.cemetery-root .segmented.view .segment:selected { -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; }
+.cemetery-root .segmented.view .segment:selected { -fx-background-color: -eden-forest; -fx-text-fill: -color-paper; }
 .cemetery-root .chip-combo { -fx-background-color: -eden-card; -fx-border-color: -eden-linen; -fx-background-radius: 12; -fx-border-radius: 12; }
 .cemetery-root .primary-button { -fx-background-color: -eden-forest; -fx-background-radius: 12; }
 .cemetery-root .primary-button:hover { -fx-background-color: -eden-moss; }
@@ -268,7 +268,7 @@
 .cemetery-root .vault-code { -fx-text-fill: -eden-text; }
 .cemetery-root .vault-name { -fx-text-fill: -eden-muted; }
 .cemetery-root .vault-occupied { -fx-background-color: -eden-tint; -fx-border-color: -eden-tint; }
-.cemetery-root .vault-available { -fx-background-color: -eden-card; -fx-border-color: #B9C0B0; }
+.cemetery-root .vault-available { -fx-background-color: -eden-card; -fx-border-color: -color-mist; }
 .cemetery-root .vault-expiring { -fx-background-color: -eden-warn-bg; -fx-border-color: -eden-warn-bg; }
 .cemetery-root .vault-expiring .vault-code, .cemetery-root .vault-expiring .vault-name { -fx-text-fill: -eden-warn; }
 .cemetery-root .vault-overdue { -fx-background-color: -eden-alert-bg; -fx-border-color: -eden-alert-bg; }
@@ -276,13 +276,13 @@
 .cemetery-root .vault-cell:hover { -fx-border-color: -eden-sage; }
 .cemetery-root .vault-cell:selected { -fx-border-color: -eden-forest; -fx-border-width: 2; -fx-border-style: solid; }
 .cemetery-root .vault-row { -fx-background-color: -eden-tint; }
-.cemetery-root .vault-row:hover { -fx-background-color: #E3E6DA; }
+.cemetery-root .vault-row:hover { -fx-background-color: -color-content; }
 
 /* Requieren atención */
 .cemetery-root .code-overdue { -fx-background-color: -eden-alert-bg; -fx-text-fill: -eden-alert; }
 .cemetery-root .code-expiring { -fx-background-color: -eden-warn-bg; -fx-text-fill: -eden-warn; }
 .cemetery-root .code-occupied { -fx-background-color: -eden-tint; -fx-text-fill: -eden-text; }
-.cemetery-root .attention-row { -fx-padding: 8 0; -fx-border-color: transparent transparent #E6E8DE transparent; -fx-border-width: 0 0 1 0; }
+.cemetery-root .attention-row { -fx-padding: 8 0; -fx-border-color: transparent transparent -color-panel transparent; -fx-border-width: 0 0 1 0; }
 .cemetery-root .attention-name { -fx-text-fill: -eden-text; -fx-font-size: 14px; }
 .cemetery-root .attention-detail-overdue { -fx-text-fill: -eden-alert; }
 .cemetery-root .attention-detail-expiring { -fx-text-fill: -eden-muted; }
@@ -290,30 +290,30 @@
 .cemetery-root .text-action:hover { -fx-background-color: -eden-tint; }
 
 /* Panel de detalle y aviso */
-.cemetery-root .drawer-veil { -fx-background-color: rgba(15,31,23,0.32); }
-.cemetery-root .drawer-primary { -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; }
+.cemetery-root .drawer-veil { -fx-background-color: -color-shadow-32; }
+.cemetery-root .drawer-primary { -fx-background-color: -eden-forest; -fx-text-fill: -color-paper; }
 .cemetery-root .drawer-primary:hover { -fx-background-color: -eden-moss; }
 .cemetery-root .vault-badge { -fx-border-color: -eden-forest; -fx-background-color: -eden-tint; }
 .cemetery-root .lease-bar > .bar { -fx-background-color: -eden-forest; }
 .cemetery-root .lease-bar.overdue > .bar { -fx-background-color: -eden-alert; }
-.cemetery-root .toast { -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; }
+.cemetery-root .toast { -fx-background-color: -eden-forest; -fx-text-fill: -color-paper; }
 
 /* Resumen de la bóveda tocada, bajo el muro */
 .vault-preview {
-    -fx-background-color: linear-gradient(to right, #1E3A2E 0%, #3E5A3F 100%);
+    -fx-background-color: linear-gradient(to right, -color-forest 0%, -color-moss 100%);
     -fx-background-radius: 18; -fx-padding: 16 20 16 26;
 }
 .preview-code {
     -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif;
-    -fx-font-size: 36px; -fx-text-fill: #F4F5EE;
+    -fx-font-size: 36px; -fx-text-fill: -color-paper;
 }
-.preview-caption { -fx-text-fill: rgba(244,245,238,0.70); -fx-font-size: 10.5px; -fx-font-weight: bold; }
-.preview-value { -fx-text-fill: #F1F2EA; -fx-font-size: 13.5px; }
+.preview-caption { -fx-text-fill: -color-paper-a72; -fx-font-size: 10.5px; -fx-font-weight: bold; }
+.preview-value { -fx-text-fill: -color-background; -fx-font-size: 13.5px; }
 .preview-button {
-    -fx-background-color: #C7CBB8; -fx-text-fill: #0F1F17; -fx-font-weight: bold;
+    -fx-background-color: -color-linen; -fx-text-fill: -color-forest-deep; -fx-font-weight: bold;
     -fx-background-radius: 12; -fx-padding: 10 18; -fx-cursor: hand;
 }
-.preview-button:hover { -fx-background-color: #D6D9C9; }
+.preview-button:hover { -fx-background-color: -color-line; }
 
 /* RF-BOV-01: botones "+ Cementerio" y "+ Agregar bóvedas" (solo Administrador Maestro) */
 .ghost-button {
@@ -324,6 +324,6 @@
 .ghost-button:hover { -fx-background-color: -color-surface; }
 .cemetery-root .ghost-button { -fx-background-color: -eden-card; -fx-text-fill: -eden-text; -fx-border-color: -eden-linen; }
 .cemetery-root .ghost-button:hover { -fx-background-color: -eden-tint; }
-.cemetery-root .wall-axis { -fx-text-fill: #9AA294; -fx-font-size: 11px; }
+.cemetery-root .wall-axis { -fx-text-fill: -color-sage-mid; -fx-font-size: 11px; }
 .cemetery-root .wall-scroll .scroll-bar:horizontal { -fx-pref-height: 10; -fx-background-color: -eden-tint; }
-.cemetery-root .wall-scroll .scroll-bar:horizontal .thumb { -fx-background-color: #9DA897; }
+.cemetery-root .wall-scroll .scroll-bar:horizontal .thumb { -fx-background-color: -color-sage-mid; }
