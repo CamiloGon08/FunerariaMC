@@ -4,6 +4,7 @@ import com.example.funerariamc.exception.BusinessException;
 import com.example.funerariamc.utils.enums.PlanPaymentStatus;
 import com.example.funerariamc.utils.enums.PlanStatus;
 import com.example.funerariamc.utils.enums.Relationship;
+import com.example.funerariamc.service.AppModule;
 import com.example.funerariamc.service.AccessLogService;
 import com.example.funerariamc.service.BeneficiaryData;
 import com.example.funerariamc.service.FuneralPlanService;
@@ -25,13 +26,12 @@ import com.example.funerariamc.service.FuneralPlanService.WaitingSoon;
 import com.example.funerariamc.service.PlanData;
 import com.example.funerariamc.service.PlanParameters;
 import com.example.funerariamc.service.PlanPaymentData;
+import com.example.funerariamc.ui.DetailShell;
 import com.example.funerariamc.ui.DetailCache;
 import com.example.funerariamc.ui.RefreshableView;
 import com.example.funerariamc.ui.FormShell;
-import javafx.animation.FadeTransition;
-import javafx.animation.ParallelTransition;
+import com.example.funerariamc.ui.ModuleLink;
 import javafx.animation.PauseTransition;
-import javafx.animation.TranslateTransition;
 import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -62,7 +62,6 @@ import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.control.Tooltip;
 import javafx.scene.layout.ColumnConstraints;
-import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
@@ -87,7 +86,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * Pantalla Planes exequiales: recaudo del mes, indicadores, gráfica de
@@ -105,7 +106,6 @@ public class FuneralPlanController implements RefreshableView {
     private static final Locale ES = Locale.forLanguageTag("es-CO");
     private static final DateTimeFormatter MONTH = DateTimeFormatter.ofPattern("MMMM yyyy", ES);
     private static final DateTimeFormatter SHORT_MONTH = DateTimeFormatter.ofPattern("MMM", ES);
-    private static final double DRAWER_WIDTH = 460;
     /** Tarjetas que se agregan cada vez que el usuario llega al final de la página. */
     private static final int CARDS_STEP = 12;
     private static final int COLUMNS = 3;
@@ -177,18 +177,13 @@ public class FuneralPlanController implements RefreshableView {
     private VBox drawer;
     @FXML
     private Region veil;
-    @FXML
-    private VBox drawerBody;
-    @FXML
-    private HBox drawerActions;
 
     private Overview overview;
     private List<PlanCard> filtered = List.of();
     private int shown;
     /** Plan del panel abierto; null si está cerrado. */
     private Long drawerPlanId;
-    /** Animación del panel en curso (abrir o cerrar); null si está quieto. */
-    private ParallelTransition drawerMotion;
+    private DetailShell detail;
 
     public FuneralPlanController(FuneralPlanService planService, PlanParameters planParameters) {
         this.planService = planService;
@@ -257,7 +252,7 @@ public class FuneralPlanController implements RefreshableView {
                 return null;
             }
         });
-        drawer.setTranslateX(DRAWER_WIDTH);
+        detail = DetailShell.install(drawer, veil, DetailShell.Kind.MODAL);
         loadOverview(null);
     }
 
@@ -553,69 +548,42 @@ public class FuneralPlanController implements RefreshableView {
     // ---------- panel del plan ----------
 
     /**
-     * Abre el panel al instante: con el plan si ya está guardado, o con el titular de la tarjeta y
-     * "Cargando plan…" mientras llega. Si el panel ya muestra ese plan (recarga después de guardar),
-     * conserva lo que se ve hasta que llegue lo nuevo.
+     * Abre el plan al instante: con los datos si ya están guardados, o con el titular de la tarjeta y
+     * "Cargando plan…" mientras llegan. Si ya muestra ese plan (recarga después de guardar), conserva
+     * lo que se ve hasta que llegue lo nuevo.
      */
     private void openDrawer(Long planId) {
-        boolean sameOpen = drawer.isVisible() && planId.equals(drawerPlanId);
+        boolean sameOpen = detail.isOpen() && planId.equals(drawerPlanId);
         drawerPlanId = planId;
         PlanDetail cached = details.get(planId);
         if (cached != null) {
             fillDrawer(cached);
-        } else {
-            if (!sameOpen) {
-                fillDrawerLoading(planId);
-            }
-            details.load(planId, detail -> {
-                if (planId.equals(drawerPlanId)) {
-                    fillDrawer(detail);
-                }
-            }, error -> {
-                if (planId.equals(drawerPlanId)) {
-                    closeDrawer();
-                    showError(error instanceof BusinessException business ? business.getMessage()
-                            : "No se pudo cargar el plan.");
-                }
-            });
+            return;
         }
-        slideIn();
+        if (!sameOpen) {
+            fillDrawerLoading(planId);
+        }
+        details.load(planId, data -> {
+            if (planId.equals(drawerPlanId)) {
+                fillDrawer(data);
+            }
+        }, error -> {
+            if (planId.equals(drawerPlanId)) {
+                closeDrawer();
+                showError(error instanceof BusinessException business ? business.getMessage()
+                        : "No se pudo cargar el plan.");
+            }
+        });
     }
 
     private void fillDrawerLoading(Long planId) {
         PlanCard c = overview == null ? null : overview.cards().stream()
                 .filter(card -> planId.equals(card.id())).findFirst().orElse(null);
-        Label caption = new Label("PLAN EXEQUIAL" + (c == null ? "" : " · " + c.code()));
-        caption.getStyleClass().add("kpi-caption");
-        VBox titles = new VBox(2, caption, wrapped(c == null ? "Plan" : c.holderName(), "drawer-name"));
-        HBox.setHgrow(titles, Priority.ALWAYS);
-        Button close = new Button("✕");
-        close.getStyleClass().add("drawer-close");
-        close.setOnAction(event -> closeDrawer());
-        HBox header = new HBox(14, titles, close);
-        header.setAlignment(Pos.TOP_LEFT);
-        drawerBody.getChildren().setAll(header, wrapped("Cargando plan…", "card-subtitle"));
-        drawerActions.getChildren().clear();
-    }
-
-    private void slideIn() {
-        if (drawer.isVisible() && drawer.getTranslateX() == 0 && drawerMotion == null) {
-            return;
-        }
-        if (drawerMotion != null) {
-            drawerMotion.stop(); // si se estaba cerrando, vuelve a abrir desde donde iba
-        }
-        boolean hidden = !drawer.isVisible();
-        veil.setVisible(true);
-        drawer.setVisible(true);
-        TranslateTransition slide = new TranslateTransition(Duration.millis(220), drawer);
-        slide.setToX(0);
-        FadeTransition fade = new FadeTransition(Duration.millis(220), veil);
-        fade.setFromValue(hidden ? 0 : veil.getOpacity());
-        fade.setToValue(1);
-        drawerMotion = new ParallelTransition(slide, fade);
-        drawerMotion.setOnFinished(event -> drawerMotion = null);
-        drawerMotion.play();
+        String name = c == null ? "Plan" : c.holderName();
+        DetailShell.Hero hero = new DetailShell.Hero("Plan exequial" + (c == null ? "" : " · " + c.code()), name)
+                .leading(DetailShell.initials(name))
+                .onClose(this::closeDrawer);
+        detail.show(planId, hero, List.of(DetailShell.empty("Cargando plan…")), List.of(), null);
     }
 
     @FXML
@@ -625,38 +593,11 @@ public class FuneralPlanController implements RefreshableView {
 
     private void closeDrawer() {
         drawerPlanId = null;
-        if (!drawer.isVisible()) {
-            return;
-        }
-        TranslateTransition slide = new TranslateTransition(Duration.millis(180), drawer);
-        slide.setToX(DRAWER_WIDTH);
-        FadeTransition fade = new FadeTransition(Duration.millis(180), veil);
-        fade.setToValue(0);
-        if (drawerMotion != null) {
-            drawerMotion.stop();
-        }
-        ParallelTransition out = new ParallelTransition(slide, fade);
-        drawerMotion = out;
-        out.setOnFinished(event -> {
-            drawerMotion = null;
-            if (drawerPlanId == null) {
-                drawer.setVisible(false);
-                veil.setVisible(false);
-            }
-        });
-        out.play();
+        detail.close(null);
     }
 
     private void fillDrawer(PlanDetail d) {
         PlanCard c = d.card();
-        Label initials = new Label(initialsOf(c.holderName()));
-        initials.getStyleClass().add("avatar-text");
-        StackPane avatar = new StackPane(initials);
-        avatar.getStyleClass().addAll("avatar", "avatar-large", "avatar-gold");
-        avatar.setMinSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
-
-        Label caption = new Label("PLAN EXEQUIAL · " + c.code());
-        caption.getStyleClass().add("kpi-caption");
         List<String> contact = new ArrayList<>();
         contact.add(c.corporate() ? "Empresa titular" : "Titular");
         if (c.holderDocument() != null) {
@@ -665,36 +606,37 @@ public class FuneralPlanController implements RefreshableView {
         if (d.holderPhone() != null && !d.holderPhone().isBlank()) {
             contact.add(d.holderPhone());
         }
-        VBox titles = new VBox(2, caption, wrapped(c.holderName(), "drawer-name"),
-                wrapped(String.join(" · ", contact), "card-subtitle"));
-        HBox.setHgrow(titles, Priority.ALWAYS);
-        Button close = new Button("✕");
-        close.getStyleClass().add("drawer-close");
-        close.setOnAction(event -> closeDrawer());
-        HBox header = new HBox(14, avatar, titles, close);
-        header.setAlignment(Pos.TOP_LEFT);
-
-        FlowPane pills = new FlowPane(8, 8, statusPill(c),
-                c.inWaiting() ? pill("Carencia hasta " + DATE.format(c.waitingEnds()), "pill-warning")
-                        : pill("Carencia cumplida", "status-active"),
-                pill(c.planName() + " · " + ClientController.pesos(c.monthlyFee()) + "/mes", "pill-neutral"));
-
-        drawerBody.getChildren().setAll(header, pills);
-        if (d.holderDeceased()) {
-            drawerBody.getChildren().add(band("El titular falleció: asigne un nuevo titular para que el plan siga "
-                    + "vigente.", "band-warning"));
+        DetailShell.Hero hero = new DetailShell.Hero("Plan exequial · " + c.code(), c.holderName())
+                .subtitle(String.join(" · ", contact))
+                .leading(DetailShell.initials(c.holderName()))
+                .chips(statusChip(c),
+                        c.inWaiting() ? DetailShell.chip("Carencia hasta " + DATE.format(c.waitingEnds()), DetailShell.Tone.WARN)
+                                : DetailShell.chip("Carencia cumplida", DetailShell.Tone.OK),
+                        DetailShell.chip(c.planName() + " · " + ClientController.pesos(c.monthlyFee()) + "/mes",
+                                DetailShell.Tone.NEUTRAL))
+                .extra(monthStrip(d))
+                .navigation(DetailShell.neighbor(filtered, x -> x.id().equals(c.id()), -1, x -> openDrawer(x.id())),
+                        DetailShell.neighbor(filtered, x -> x.id().equals(c.id()), 1, x -> openDrawer(x.id())))
+                .onClose(this::closeDrawer);
+        if (d.nextDue() != null) {
+            hero.extra(DetailShell.heroLine("Próxima cuota:", capitalize(MONTH.format(d.nextDue())) + ", vence el "
+                    + DATE.format(FuneralPlanService.dueDate(c.startDate(), d.nextDue()))));
         }
-        drawerBody.getChildren().addAll(
-                titled("CUOTAS · ÚLTIMOS 12 MESES", monthGrid(d)),
-                beneficiariesSection(d),
-                titled("PAGOS REGISTRADOS", paymentsBox(d)),
-                titled("SERVICIOS USADOS", usedBox(d.usedServices())));
+        if (!c.corporate() && d.beneficiaryLimit() > 0) {
+            hero.extra(DetailShell.progress("Beneficiarios", d.beneficiaries().size() + " de " + d.beneficiaryLimit() + " cupos",
+                    d.beneficiaries().size() / (double) d.beneficiaryLimit(), DetailShell.Tone.NEUTRAL));
+        }
 
-        drawerActions.getChildren().clear();
-        Button status = drawerButton(c.status() == PlanStatus.SUSPENDED ? "Reactivar plan" : "Suspender plan",
-                "drawer-secondary");
-        status.setDisable(c.status() == PlanStatus.CANCELLED);
-        status.setOnAction(e -> {
+        List<Node> sections = new ArrayList<>();
+        if (d.holderDeceased()) {
+            sections.add(DetailShell.nextStep("El titular falleció: asigne un nuevo titular para que el plan siga vigente.",
+                    DetailShell.Tone.WARN));
+        }
+        sections.add(DetailShell.columns(List.of(beneficiariesSection(d)),
+                List.of(DetailShell.section("Pagos registrados", paymentsBox(d)),
+                        DetailShell.section("Servicios usados", usedBox(d.usedServices())))));
+
+        Button status = DetailShell.secondary(c.status() == PlanStatus.SUSPENDED ? "Reactivar plan" : "Suspender plan", () -> {
             if (c.status() == PlanStatus.SUSPENDED) {
                 confirmAndRun("Reactivar plan", "¿Reactivar el plan " + c.code() + "?",
                         "Vuelve a cubrir a sus beneficiarios.", "Reactivar", false, () -> planService.reactivate(c.id()));
@@ -704,156 +646,160 @@ public class FuneralPlanController implements RefreshableView {
                         () -> planService.suspend(c.id()));
             }
         });
+        status.setDisable(c.status() == PlanStatus.CANCELLED);
         // "Más" abre un menú con las acciones menos frecuentes.
-        Button more = drawerButton("Más…", "drawer-secondary");
         MenuItem holder = new MenuItem("Cambiar titular");
         holder.setOnAction(e -> openChangeHolderDialog(c));
         MenuItem cancel = new MenuItem("Cancelar plan");
+        cancel.getStyleClass().add("menu-danger");
         cancel.setOnAction(e -> confirmAndRun("Cancelar plan", "¿Cancelar definitivamente el plan " + c.code() + "?",
                 "No se borra: queda en «Cancelados» con sus cuotas.", "Cancelar plan", true,
                 () -> planService.cancel(c.id())));
         ContextMenu menu = new ContextMenu(holder, cancel);
+        Button more = DetailShell.secondary("Más…", null);
         more.setOnAction(e -> menu.show(more, javafx.geometry.Side.TOP, 0, -4));
         more.setDisable(c.status() == PlanStatus.CANCELLED);
-        Button pay = drawerButton("Registrar pago", "drawer-primary");
+        Button pay = DetailShell.primary("Registrar pago", () -> openPaymentDialog(d));
         pay.setDisable(c.status() == PlanStatus.CANCELLED);
-        pay.setOnAction(e -> openPaymentDialog(d));
-        drawerActions.getChildren().addAll(status, more, pay);
+        detail.show(c.id(), hero, sections, List.of(status, more, pay), null);
     }
 
-    private VBox monthGrid(PlanDetail d) {
-        HBox cells = new HBox(5);
+    /** Estado del plan en la banda: mora (con cuántas cuotas), suspendido, cancelado o al día. */
+    private static Label statusChip(PlanCard c) {
+        Label pill = statusPill(c);
+        String text = pill.getText();
+        DetailShell.Tone tone = pill.getStyleClass().contains("pill-alert") ? DetailShell.Tone.ALERT
+                : pill.getStyleClass().contains("pill-warning") ? DetailShell.Tone.WARN
+                : pill.getStyleClass().contains("status-active") ? DetailShell.Tone.OK : DetailShell.Tone.NEUTRAL;
+        return DetailShell.chip(tone == DetailShell.Tone.ALERT ? "● " + text : text, tone);
+    }
+
+    /** Cuotas de los últimos 12 meses en la banda. */
+    private static VBox monthStrip(PlanDetail d) {
+        List<DetailShell.Cell> cells = new ArrayList<>();
         for (MonthCell cell : d.grid()) {
-            Region box = new Region();
-            box.getStyleClass().addAll("month-cell", "month-" + cell.state().name().toLowerCase(Locale.ROOT));
-            Tooltip.install(box, new Tooltip(capitalize(MONTH.format(cell.month())) + ": " + monthStateLabel(cell)));
-            Label month = new Label(capitalize(SHORT_MONTH.format(cell.month()).replace(".", "")));
-            month.getStyleClass().add("month-label");
-            VBox column = new VBox(3, box, month);
-            column.setAlignment(Pos.CENTER);
-            HBox.setHgrow(column, Priority.ALWAYS);
-            cells.getChildren().add(column);
+            DetailShell.CellState state = switch (cell.state()) {
+                case PAID_ON_TIME -> DetailShell.CellState.OK;
+                case PAID_LATE -> DetailShell.CellState.LATE;
+                case UNPAID -> DetailShell.CellState.MISSING;
+                case UPCOMING, BEFORE_START -> DetailShell.CellState.NONE;
+            };
+            cells.add(new DetailShell.Cell(capitalize(SHORT_MONTH.format(cell.month()).replace(".", "")),
+                    capitalize(MONTH.format(cell.month())) + ": " + monthStateLabel(cell), state));
         }
-        HBox legendRow = new HBox(12, legendSwatch("month-paid_on_time", "A tiempo"),
-                legendSwatch("month-paid_late", "Con retraso"), legendSwatch("month-unpaid", "Sin pagar"));
-        legendRow.setAlignment(Pos.CENTER_LEFT);
-        VBox box = new VBox(10, cells, legendRow);
-        if (d.nextDue() != null) {
-            box.getChildren().add(label("Próxima cuota: " + capitalize(MONTH.format(d.nextDue())) + ", vence el "
-                    + DATE.format(FuneralPlanService.dueDate(d.card().startDate(), d.nextDue())), "cell-strong"));
-        }
-        box.getStyleClass().add("section-box");
-        return box;
+        return DetailShell.strip(cells, DetailShell.CellState.OK, "A tiempo",
+                DetailShell.CellState.LATE, "Con retraso", DetailShell.CellState.MISSING, "Sin pagar");
     }
 
     private VBox beneficiariesSection(PlanDetail d) {
         PlanCard c = d.card();
-        Label caption = new Label("BENEFICIARIOS · " + d.beneficiaries().size()
-                + (c.corporate() ? "" : " DE " + d.beneficiaryLimit()));
-        caption.getStyleClass().add("kpi-caption");
-        Pane gap = new Pane();
-        HBox.setHgrow(gap, Priority.ALWAYS);
         Button add = new Button("+ Agregar");
-        add.getStyleClass().add("text-action");
         add.setDisable(!c.isActive());
         add.setOnAction(e -> openBeneficiaryDialog(d));
-        HBox head = new HBox(caption, gap, add);
-        head.setAlignment(Pos.CENTER_LEFT);
-
-        VBox list = new VBox();
-        list.getStyleClass().add("section-box");
-        list.getChildren().add(personRow(initialsOf(c.holderName()), c.holderName(),
+        List<Node> rows = new ArrayList<>();
+        rows.add(DetailShell.person(DetailShell.initials(c.holderName()), c.holderName(),
                 (c.corporate() ? "Empresa titular" : "Titular") + " · " + orDash(c.holderDocument()),
-                d.holderDeceased() ? pill("Falleció", "pill-neutral") : coveredPill(c)));
+                d.holderDeceased() ? DetailShell.chip("Falleció", DetailShell.Tone.NEUTRAL) : coveredChip(c)));
         for (BeneficiaryInfo b : d.beneficiaries()) {
-            String detail = b.relationshipLabel() + " · CC " + orDash(b.documentNumber());
+            String line = b.relationshipLabel() + " · CC " + orDash(b.documentNumber());
             if (b.isDeceased()) {
-                detail += " · falleció " + (b.deathDate() == null ? "" : DATE.format(b.deathDate()));
+                line += " · falleció " + (b.deathDate() == null ? "" : DATE.format(b.deathDate()));
             }
-            HBox row = personRow(initialsOf(b.fullName()), b.fullName(), detail,
-                    b.isDeceased() ? pill("Usó el plan", "pill-neutral") : coveredPill(c));
             if (b.surcharge().signum() > 0) {
-                ((VBox) row.getChildren().get(1)).getChildren().add(
-                        label("Recargo " + ClientController.pesos(b.surcharge()) + " · " + b.surchargeReason(), "surcharge"));
+                line += "\nRecargo " + ClientController.pesos(b.surcharge()) + " · " + b.surchargeReason();
             }
-            list.getChildren().add(row);
+            Node aside = b.isDeceased() ? DetailShell.chip("Usó el plan", DetailShell.Tone.GOLD) : coveredChip(c);
+            if (b.isDeceased() && withoutContract(d).contains(b.deceasedId())) {
+                aside = asideWithContract(aside, b.deceasedId());
+            }
+            rows.add(DetailShell.person(DetailShell.initials(b.fullName()), b.fullName(), line, aside));
         }
         if (d.beneficiaries().isEmpty()) {
-            list.getChildren().add(wrapped("Sin beneficiarios. El titular está cubierto.", "card-subtitle"));
+            rows.add(wrapped("Sin beneficiarios. El titular está cubierto.", "detail-empty"));
         }
         if (d.totalSurcharge().signum() > 0) {
-            list.getChildren().add(wrapped("Recargos: " + ClientController.pesos(d.totalSurcharge())
-                    + ", se cobran una vez al vender el servicio.", "card-subtitle"));
+            rows.add(wrapped("Recargos: " + ClientController.pesos(d.totalSurcharge())
+                    + ", se cobran una vez al vender el servicio.", "detail-empty"));
         }
-        return new VBox(8, head, list);
+        String title = "Beneficiarios · " + d.beneficiaries().size() + (c.corporate() ? "" : " de " + d.beneficiaryLimit());
+        return DetailShell.sectionWithAction(title, add, DetailShell.list(rows.toArray(Node[]::new)));
     }
 
-    private static Label coveredPill(PlanCard c) {
-        return c.isActive() && !c.inWaiting() ? pill("Cubierto", "status-active")
-                : c.isActive() ? pill("En carencia", "pill-warning") : pill("Sin cobertura", "pill-neutral");
+    private static Label coveredChip(PlanCard c) {
+        return c.isActive() && !c.inWaiting() ? DetailShell.chip("Cubierto", DetailShell.Tone.OK)
+                : c.isActive() ? DetailShell.chip("En carencia", DetailShell.Tone.WARN)
+                : DetailShell.chip("Sin cobertura", DetailShell.Tone.NEUTRAL);
     }
 
-    private static HBox personRow(String initials, String name, String detail, Label state) {
-        Label avatarText = new Label(initials);
-        avatarText.getStyleClass().add("mini-avatar");
-        avatarText.setMinSize(30, 30);
-        VBox text = new VBox(1, wrapped(name, "list-name"), wrapped(detail, "list-detail"));
-        HBox.setHgrow(text, Priority.ALWAYS);
-        HBox row = new HBox(avatarText, text, state);
-        row.getStyleClass().add("list-row");
-        return row;
-    }
-
-    private VBox paymentsBox(PlanDetail d) {
-        VBox box = new VBox();
-        box.getStyleClass().add("section-box");
+    private Node paymentsBox(PlanDetail d) {
         if (d.payments().isEmpty()) {
-            box.getChildren().add(wrapped("Todavía no hay cuotas registradas.", "card-subtitle"));
-            return box;
+            return DetailShell.empty("Todavía no hay cuotas registradas.");
         }
+        List<DetailShell.Event> events = new ArrayList<>();
         for (PaymentInfo p : d.payments().stream().limit(8).toList()) {
             boolean voided = p.status() == PlanPaymentStatus.VOIDED;
-            String detail = (p.paidAt() == null ? "" : "Pagada el " + DATE.format(p.paidAt()))
+            String line = voided ? "Anulada" : (p.paidAt() == null ? "" : "Pagada el " + DATE.format(p.paidAt()))
                     + (p.registeredBy() == null ? "" : " · " + p.registeredBy());
-            VBox text = new VBox(1, label(capitalize(MONTH.format(p.period())), voided ? "list-voided" : "list-name"),
-                    label(voided ? "Anulada" : detail, "list-detail"));
-            HBox.setHgrow(text, Priority.ALWAYS);
-            Label amount = label(ClientController.pesos(p.amount()), voided ? "list-voided" : "cell-strong");
-            HBox row = new HBox(text, amount);
-            row.getStyleClass().add("list-row");
+            Label amount = DetailShell.value(ClientController.pesos(p.amount()), null);
+            if (voided) {
+                amount.getStyleClass().add("detail-voided");
+            }
+            HBox aside = new HBox(8, amount);
+            aside.setAlignment(Pos.TOP_RIGHT);
             if (!voided) {
-                Button cancel = new Button("Anular");
-                cancel.getStyleClass().add("text-action");
-                cancel.setOnAction(e -> confirmAndRun("Anular cuota", "¿Anular la cuota de "
+                Button cancel = DetailShell.link("Anular", () -> confirmAndRun("Anular cuota", "¿Anular la cuota de "
                         + MONTH.format(p.period()) + " por " + ClientController.pesos(p.amount()) + "?",
                         "El ingreso queda anulado en Finanzas, no se borra.", "Anular cuota", true,
                         () -> planService.voidPayment(p.id())));
-                row.getChildren().add(cancel);
+                cancel.getStyleClass().add("detail-link-danger");
+                aside.getChildren().add(cancel);
             }
-            box.getChildren().add(row);
+            events.add(new DetailShell.Event(capitalize(MONTH.format(p.period())), line,
+                    voided ? DetailShell.Tone.NEUTRAL : DetailShell.Tone.OK, aside));
         }
+        VBox box = new VBox(4, DetailShell.timeline(events));
         if (d.payments().size() > 8) {
-            box.getChildren().add(wrapped("y " + (d.payments().size() - 8) + " cuotas anteriores.", "card-subtitle"));
+            box.getChildren().add(wrapped("y " + (d.payments().size() - 8) + " cuotas anteriores.", "detail-empty"));
         }
         return box;
     }
 
-    private static VBox usedBox(List<UsedService> used) {
-        VBox box = new VBox();
-        box.getStyleClass().add("section-box");
+    private static Node usedBox(List<UsedService> used) {
         if (used.isEmpty()) {
-            box.getChildren().add(wrapped("El plan no se ha usado.", "card-subtitle"));
-            return box;
+            return DetailShell.empty("El plan no se ha usado.");
         }
+        List<Node> rows = new ArrayList<>();
         for (UsedService u : used) {
             String title = (u.contractNumber() == null ? "Sin contrato" : u.contractNumber()) + " · " + u.deceasedName();
-            String detail = (u.deathDate() == null ? "" : "Falleció el " + DATE.format(u.deathDate()))
+            String line = (u.deathDate() == null ? "" : "Falleció el " + DATE.format(u.deathDate()))
                     + (u.wakeRoom() == null ? "" : " · velación sala " + u.wakeRoom());
-            VBox text = new VBox(1, wrapped(title, "list-name"), wrapped(detail, "list-detail"));
-            HBox row = new HBox(text);
-            row.getStyleClass().add("list-row");
-            box.getChildren().add(row);
+            Node aside = u.contractNumber() == null ? startContractLink(u.deceasedId()) : null;
+            rows.add(DetailShell.item(null, title, line, aside));
         }
+        return DetailShell.list(rows.toArray(Node[]::new));
+    }
+
+    /** Difuntos del plan que todavía no tienen contrato. */
+    private static Set<Long> withoutContract(PlanDetail d) {
+        return d.usedServices().stream().filter(u -> u.contractNumber() == null)
+                .map(UsedService::deceasedId).collect(Collectors.toSet());
+    }
+
+    /** "Iniciar contrato": abre Contratos con el difunto, el titular y el plan ya llenos. */
+    private static Node startContractLink(Long deceasedId) {
+        if (deceasedId == null || !ModuleLink.canOpen(AppModule.CONTRATOS)) {
+            return null;
+        }
+        return DetailShell.link("Iniciar contrato", () -> ModuleLink.open(AppModule.CONTRATOS, deceasedId));
+    }
+
+    private static Node asideWithContract(Node chip, Long deceasedId) {
+        Node link = startContractLink(deceasedId);
+        if (link == null) {
+            return chip;
+        }
+        VBox box = new VBox(4, chip, link);
+        box.setAlignment(Pos.TOP_RIGHT);
         return box;
     }
 
@@ -982,6 +928,7 @@ public class FuneralPlanController implements RefreshableView {
         lastname.setPromptText("Apellidos");
         TextField document = new TextField();
         document.setPromptText("Solo números, 5 a 11 dígitos");
+        FormShell.document(document, null, 11);
         ComboBox<Relationship> relationship = new ComboBox<>();
         relationship.getItems().setAll(Relationship.values());
         relationship.setConverter(converter(Relationship::getDisplayName, ""));
@@ -1098,16 +1045,6 @@ public class FuneralPlanController implements RefreshableView {
         };
     }
 
-    private static HBox legendSwatch(String styleClass, String text) {
-        Region swatch = new Region();
-        swatch.getStyleClass().addAll("legend-swatch", styleClass);
-        Label label = label(text, "legend-text");
-        label.setMinWidth(Region.USE_PREF_SIZE);
-        HBox item = new HBox(swatch, label);
-        item.getStyleClass().add("legend-item");
-        return item;
-    }
-
     /** Pesos sin decimales: acepta "52.000", "52000" o "$ 52 000". */
     private static BigDecimal money(TextField field, String what) {
         String value = field.getText();
@@ -1128,13 +1065,6 @@ public class FuneralPlanController implements RefreshableView {
         return pill;
     }
 
-    private static Label band(String text, String styleClass) {
-        Label band = wrapped(text, "band");
-        band.getStyleClass().add(styleClass);
-        band.setMaxWidth(Double.MAX_VALUE);
-        return band;
-    }
-
     private static Label label(String text, String styleClass) {
         Label label = new Label(text);
         label.getStyleClass().add(styleClass);
@@ -1145,20 +1075,6 @@ public class FuneralPlanController implements RefreshableView {
         Label label = label(text, styleClass);
         label.setWrapText(true);
         return label;
-    }
-
-    private static VBox titled(String title, Node content) {
-        Label caption = new Label(title);
-        caption.getStyleClass().add("kpi-caption");
-        return new VBox(8, caption, content);
-    }
-
-    private static Button drawerButton(String text, String styleClass) {
-        Button button = new Button(text);
-        button.getStyleClass().addAll("drawer-button", styleClass);
-        button.setMaxWidth(Double.MAX_VALUE);
-        HBox.setHgrow(button, Priority.ALWAYS);
-        return button;
     }
 
     /**
