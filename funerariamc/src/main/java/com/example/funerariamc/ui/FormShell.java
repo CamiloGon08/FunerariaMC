@@ -22,6 +22,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextFormatter;
+import javafx.scene.control.Tooltip;
 import javafx.scene.effect.ColorAdjust;
 import javafx.scene.effect.Effect;
 import javafx.scene.layout.ColumnConstraints;
@@ -88,6 +89,55 @@ public final class FormShell {
             }));
             field.setText(current == null ? "" : current);
         }
+    }
+
+    /**
+     * Campo de número de documento: no deja escribir más de lo que admite el tipo y lo avisa al lado
+     * del campo. Cédula y NIT: 10 dígitos; sin tipo (beneficiario, difunto): 11, porque puede ser una
+     * tarjeta de identidad. Los puntos, espacios y guiones que pegue el usuario no cuentan.
+     * {@code type} da el tipo elegido en el formulario (CC, CE, PA, NIT) o null si el campo no tiene tipo;
+     * {@code otherMax} es el máximo de cédula de extranjería y pasaporte, que llevan letras y dígitos.
+     */
+    public static void document(TextField field, java.util.function.Supplier<String> type, int otherMax) {
+        Tooltip warning = new Tooltip();
+        warning.getStyleClass().add("field-warning");
+        field.setTextFormatter(new TextFormatter<String>(change -> {
+            String kind = type == null ? null : type.get();
+            boolean numeric = kind == null || "CC".equals(kind) || "NIT".equals(kind);
+            int max = "CC".equals(kind) || "NIT".equals(kind) ? 10 : kind == null ? 11 : otherMax;
+            String clean = change.getControlNewText().replaceAll("[.\\s-]", "");
+            String problem = null;
+            if (numeric && !clean.matches("\\d*")) {
+                problem = "Solo números.";
+            } else if (!numeric && !clean.matches("[A-Za-z0-9]*")) {
+                problem = "Solo letras y números.";
+            } else if (clean.length() > max) {
+                problem = switch (kind == null ? "" : kind) {
+                    case "CC" -> "La cédula tiene máximo 10 dígitos.";
+                    case "NIT" -> "El NIT tiene 10 dígitos, con el de verificación.";
+                    case "" -> "El documento tiene máximo 11 dígitos.";
+                    default -> "Máximo " + max + " caracteres.";
+                };
+            }
+            if (problem == null) {
+                warning.hide();
+                return change;
+            }
+            warning.setText(problem);
+            javafx.geometry.Bounds b = field.localToScreen(field.getBoundsInLocal());
+            if (b != null && field.getScene() != null) {
+                warning.show(field, b.getMinX(), b.getMaxY() + 4);
+                javafx.animation.PauseTransition hide = new javafx.animation.PauseTransition(javafx.util.Duration.seconds(2.5));
+                hide.setOnFinished(e -> warning.hide());
+                hide.play();
+            }
+            return null;
+        }));
+        field.focusedProperty().addListener((obs, was, focused) -> {
+            if (!focused) {
+                warning.hide();
+            }
+        });
     }
 
     /** "4000000,5" a "$ 4.000.000,5"; null si no es un valor en pesos (se rechaza la tecla). */
