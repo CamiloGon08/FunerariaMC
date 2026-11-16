@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import javafx.application.Platform;
 import javafx.collections.MapChangeListener;
 import javafx.event.EventHandler;
 import javafx.geometry.Bounds;
@@ -33,6 +34,7 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.SVGPath;
+import javafx.stage.Screen;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import javafx.stage.Window;
@@ -177,7 +179,8 @@ public final class FormShell {
             pane.setContent(root);
             dressHeader(root, module, close);
         }
-        if (kind != Kind.WINDOW && pane.getContent() instanceof Pane box) {
+        if (pane.getContent() instanceof Pane box) {
+            // También en la ventana pequeña: si no cabe en la pantalla, el cuerpo se desplaza y los botones siguen a la vista
             scrollBody(box);
             if (kind == Kind.PANEL) {
                 twoColumns(box);
@@ -199,6 +202,9 @@ public final class FormShell {
                 shown.handle(e);
             }
             place(pane.getScene().getWindow(), pane, owner, kind);
+            if (kind == Kind.WINDOW) {
+                fitWindow(pane, owner);
+            }
         });
         EventHandler<DialogEvent> hidden = dialog.getOnHidden();
         dialog.setOnHidden(e -> {
@@ -746,6 +752,82 @@ public final class FormShell {
                 window.setY(sy + MARGIN);
             }
         }
+    }
+
+    /**
+     * Ventana pequeña: el alto se calcula con el ancho real de la ventana y queda fijo, así la ventana
+     * no se estira de más (los textos largos que se parten en varias líneas a veces se miden con un ancho
+     * menor y el alto salía enorme, con los botones fuera de la pantalla). Si el formulario no cabe,
+     * el cuerpo se desplaza y Cancelar y la acción quedan siempre abajo. Si después aparecen o se ocultan
+     * campos, la ventana se vuelve a ajustar.
+     */
+    private static void fitWindow(DialogPane pane, Window owner) {
+        if (!(pane.getContent() instanceof Pane root) || !(scrollOf(root) instanceof ScrollPane scroll)
+                || !(scroll.getContent() instanceof Region body)) {
+            return;
+        }
+        boolean[] fitting = new boolean[1];
+        double[] fixed = {-1};
+        Runnable fit = () -> {
+            Window window = pane.getScene() == null ? null : pane.getScene().getWindow();
+            if (window == null || fitting[0]) {
+                return;
+            }
+            fitting[0] = true;
+            try {
+                double width = window.getWidth();
+                double viewport = scroll.getViewportBounds().getWidth();
+                scroll.setPrefViewportHeight(body.prefHeight(viewport > 0 ? viewport : -1));
+                pane.setMinHeight(Region.USE_COMPUTED_SIZE);
+                pane.setPrefHeight(Region.USE_COMPUTED_SIZE);
+                pane.setMaxHeight(Region.USE_COMPUTED_SIZE);
+                double height = Math.min(pane.prefHeight(width), maxHeight(owner, window));
+                pane.setMinHeight(height);
+                pane.setPrefHeight(height);
+                pane.setMaxHeight(height);
+                fixed[0] = height;
+                double top = window.getY() + (window.getHeight() - height) / 2;
+                window.setHeight(height);
+                if (owner != null && owner.getScene() != null) {
+                    top = owner.getY() + owner.getScene().getY() + (owner.getScene().getHeight() - height) / 2;
+                }
+                window.setY(top);
+            } finally {
+                fitting[0] = false;
+            }
+        };
+        fit.run();
+        body.heightProperty().addListener((obs, old, value) -> Platform.runLater(fit));
+        // Si algo más cambia el alto de la ventana (el diálogo se reajusta solo), vuelve al alto calculado
+        Window window = pane.getScene().getWindow();
+        window.heightProperty().addListener((obs, old, value) -> {
+            if (fixed[0] > 0 && Math.abs(value.doubleValue() - fixed[0]) > 1) {
+                Platform.runLater(() -> {
+                    if (window.isShowing() && Math.abs(window.getHeight() - fixed[0]) > 1) {
+                        window.setHeight(fixed[0]);
+                    }
+                });
+            }
+        });
+    }
+
+    /** El desplazamiento que envuelve el cuerpo del formulario (null si no hay). */
+    private static ScrollPane scrollOf(Pane root) {
+        for (Node child : root.getChildren()) {
+            if (child instanceof ScrollPane scroll) {
+                return scroll;
+            }
+        }
+        return null;
+    }
+
+    /** Alto máximo de la ventana pequeña: el área visible de la ventana principal (o de la pantalla) menos el margen. */
+    private static double maxHeight(Window owner, Window window) {
+        if (owner != null && owner.getScene() != null) {
+            return owner.getScene().getHeight() - 2 * MARGIN;
+        }
+        return Screen.getScreensForRectangle(window.getX(), window.getY(), window.getWidth(), 1)
+                .stream().findFirst().orElse(Screen.getPrimary()).getVisualBounds().getHeight() - 2 * MARGIN;
     }
 
     /** Ancho del panel lateral: un poco más de un tercio de la ventana, entre 560 y 760 px. */
