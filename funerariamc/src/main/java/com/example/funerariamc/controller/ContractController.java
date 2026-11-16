@@ -5,6 +5,7 @@ import com.example.funerariamc.exception.InvalidDataException;
 import com.example.funerariamc.utils.enums.ContractStatus;
 import com.example.funerariamc.utils.enums.SaleType;
 import com.example.funerariamc.service.AccessLogService;
+import com.example.funerariamc.service.AppModule;
 import com.example.funerariamc.service.ContractData;
 import com.example.funerariamc.service.ContractService;
 import com.example.funerariamc.service.ContractService.ContractInfo;
@@ -20,14 +21,15 @@ import com.example.funerariamc.service.ContractService.SaleKind;
 import com.example.funerariamc.service.ContractService.SaleRow;
 import com.example.funerariamc.service.ContractService.SaleView;
 import com.example.funerariamc.service.SalePaymentData;
+import com.example.funerariamc.ui.DetailShell;
 import com.example.funerariamc.ui.DetailCache;
 import com.example.funerariamc.ui.RefreshableView;
 import com.example.funerariamc.ui.FormShell;
+import com.example.funerariamc.ui.ModuleLink;
 import javafx.animation.FadeTransition;
-import javafx.animation.ParallelTransition;
 import javafx.animation.PauseTransition;
 import javafx.animation.SequentialTransition;
-import javafx.animation.TranslateTransition;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
@@ -48,7 +50,6 @@ import javafx.scene.control.DialogPane;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
-import javafx.scene.control.ProgressBar;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
 import javafx.scene.control.Toggle;
@@ -58,7 +59,6 @@ import javafx.scene.input.MouseButton;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
-import javafx.scene.layout.Pane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
@@ -100,7 +100,6 @@ public class ContractController implements RefreshableView {
     private static final DateTimeFormatter HOUR = DateTimeFormatter.ofPattern("HH:mm");
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter DATE_HOUR = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
-    private static final double DRAWER_WIDTH = 500;
     /** Filas que se traen al caché apenas carga la tabla (las primeras que se ven). */
     private static final int PREFETCH = 12;
 
@@ -161,12 +160,6 @@ public class ContractController implements RefreshableView {
     @FXML
     private VBox drawer;
     @FXML
-    private VBox drawerHead;
-    @FXML
-    private VBox drawerBody;
-    @FXML
-    private HBox drawerActions;
-    @FXML
     private Label toast;
 
     private final ObservableList<SaleRow> visibleRows = FXCollections.observableArrayList();
@@ -174,6 +167,7 @@ public class ContractController implements RefreshableView {
     private boolean loaded;
     /** Venta abierta en el panel; null si está cerrado. */
     private Long drawerSaleId;
+    private DetailShell detail;
     /** Cada carga lleva un número; si llega una respuesta vieja, se descarta. */
     private int generation;
     private SequentialTransition toastMotion;
@@ -188,6 +182,7 @@ public class ContractController implements RefreshableView {
     @Override
     public void refresh() {
         loadOverview(drawerSaleId);
+        takeLink();
     }
 
     @FXML
@@ -239,11 +234,12 @@ public class ContractController implements RefreshableView {
         salesList.setMinWidth(0);
         salesList.setPrefWidth(0); // la tabla toma el ancho disponible, no el de su contenido
 
-        drawer.setTranslateX(DRAWER_WIDTH);
+        detail = DetailShell.install(drawer, veil, DetailShell.Kind.MODAL);
         toast.setOpacity(0);
         toast.setMouseTransparent(true);
 
         loadOverview(null);
+        Platform.runLater(this::takeLink); // primera vez que se abre, desde el plan exequial
     }
 
     // ---------- carga ----------
@@ -419,129 +415,113 @@ public class ContractController implements RefreshableView {
         return box;
     }
 
-    // ---------- panel "Ver" ----------
+    // ---------- detalle de la venta ----------
 
     private void openDrawer(Long saleId) {
         drawerSaleId = saleId;
         SaleView cached = details.get(saleId);
         if (cached != null) {
             fillDrawer(cached);
-        } else {
-            drawerHead.getChildren().setAll(label("Cargando la venta…", "drawer-head-text"));
-            drawerBody.getChildren().clear();
-            drawerActions.getChildren().clear();
-            details.load(saleId, view -> {
-                if (saleId.equals(drawerSaleId)) {
-                    fillDrawer(view);
-                }
-            }, failure -> {
-                if (saleId.equals(drawerSaleId)) {
-                    closeDrawer();
-                    showError(message(failure, "No se pudo cargar el detalle de la venta."));
-                }
-            });
+            return;
         }
-        slideDrawerIn();
+        detail.show(saleId, new DetailShell.Hero("Venta", "Cargando la venta…").onClose(this::closeDrawer),
+                List.of(), List.of(), null);
+        details.load(saleId, view -> {
+            if (saleId.equals(drawerSaleId)) {
+                fillDrawer(view);
+            }
+        }, failure -> {
+            if (saleId.equals(drawerSaleId)) {
+                closeDrawer();
+                showError(message(failure, "No se pudo cargar el detalle de la venta."));
+            }
+        });
     }
 
     private void fillDrawer(SaleView v) {
         SaleRow r = v.row();
-        Label caption = label(("VENTA N.° " + r.number() + " · " + r.kind().getLabel()).toUpperCase(ES),
-                "drawer-head-caption");
-        Button close = new Button("✕");
-        close.getStyleClass().add("drawer-close-light");
-        close.setOnAction(e -> closeDrawer());
-        Pane spacer = new Pane();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-        HBox top = new HBox(caption, spacer, close);
-        top.setAlignment(Pos.CENTER_LEFT);
+        double paidShare = r.total().signum() == 0 ? 1
+                : r.paid().divide(r.total(), 4, RoundingMode.HALF_UP).doubleValue();
+        DetailShell.Hero hero = new DetailShell.Hero("Venta n.° " + r.number() + " · " + r.kind().getLabel(), r.title())
+                .subtitle(r.saleDate() == null ? null : "Registrada el " + DATE_HOUR.format(r.saleDate()))
+                .chips(DetailShell.chip("● " + r.state().getLabel(), switch (r.state()) {
+                    case PAID -> DetailShell.Tone.OK;
+                    case WITH_BALANCE -> DetailShell.Tone.GOLD;
+                    case VOIDED -> DetailShell.Tone.ALERT;
+                }))
+                .extra(DetailShell.heroSpread(DetailShell.heroLine("Total", pesos(r.total())),
+                        DetailShell.heroLine("Abonado", pesos(r.paid())),
+                        DetailShell.heroLine("Saldo", pesos(r.balance()))))
+                .extra(DetailShell.bar(paidShare, DetailShell.Tone.GOLD))
+                .navigation(DetailShell.neighbor(visibleRows, x -> x.saleId().equals(r.saleId()), -1, x -> openDrawer(x.saleId())),
+                        DetailShell.neighbor(visibleRows, x -> x.saleId().equals(r.saleId()), 1, x -> openDrawer(x.saleId())))
+                .onClose(this::closeDrawer);
 
-        Label state = label("", "state-chip");
-        stateChip(state, r.state());
-        Label name = wrapped(r.title(), "drawer-head-name");
-        HBox nameRow = new HBox(12, name, state);
-        nameRow.setAlignment(Pos.CENTER_LEFT);
-
-        Pane s1 = new Pane();
-        Pane s2 = new Pane();
-        HBox.setHgrow(s1, Priority.ALWAYS);
-        HBox.setHgrow(s2, Priority.ALWAYS);
-        HBox money = new HBox(label("Total " + pesos(r.total()), "drawer-head-strong"), s1,
-                label("Abonado " + pesos(r.paid()), "drawer-head-text"), s2,
-                label("Saldo " + pesos(r.balance()), "drawer-head-strong"));
-        ProgressBar bar = new ProgressBar(r.total().signum() == 0 ? 1
-                : r.paid().divide(r.total(), 4, RoundingMode.HALF_UP).doubleValue());
-        bar.getStyleClass().add("progress-light");
-        bar.setMaxWidth(Double.MAX_VALUE);
-        Label date = label(r.saleDate() == null ? "" : "Registrada el " + DATE_HOUR.format(r.saleDate()),
-                "drawer-head-text");
-        drawerHead.getChildren().setAll(top, nameRow, date, money, bar);
-
-        GridPane client = grid();
-        field(client, 0, 0, r.kind() == SaleKind.PENSION ? "Entidad pagadora" : "Cliente", v.clientName());
-        field(client, 1, 0, "Documento", orDash(v.clientDocument()));
-        field(client, 0, 1, "Teléfono", orDash(v.clientPhone()));
-        field(client, 1, 1, "Vendedor", orDash(v.salesperson()));
-        List<Node> sections = new ArrayList<>();
-        sections.add(section(r.kind() == SaleKind.PENSION ? "ENTIDAD PAGADORA" : "CLIENTE", client));
-
+        List<Node> left = new ArrayList<>();
+        left.add(DetailShell.section(r.kind() == SaleKind.PENSION ? "Entidad pagadora" : "Cliente",
+                DetailShell.card(DetailShell.fields(
+                        r.kind() == SaleKind.PENSION ? "Entidad pagadora" : "Cliente", v.clientName(),
+                        "Documento", orDash(v.clientDocument()),
+                        "Teléfono", orDash(v.clientPhone()),
+                        "Vendedor", orDash(v.salesperson())))));
         ContractInfo c = v.contract();
         if (c != null) {
-            GridPane service = grid();
-            field(service, 0, 0, "Contrato", c.number());
-            field(service, 1, 0, "Estado del contrato", contractStatus(c.status()));
-            field(service, 0, 1, "Difunto", orDash(c.deceasedName()));
-            field(service, 1, 1, "Plan exequial", c.planLabel() == null ? "Sin plan" : c.planLabel());
-            field(service, 0, 2, "Sala de velación", c.roomName() == null ? "Sin sala asignada"
-                    : c.roomName() + (c.wakeStart() == null ? "" : " · " + DATE_HOUR.format(c.wakeStart())
-                    + (c.wakeEnd() == null ? "" : " a " + HOUR.format(c.wakeEnd()))));
-            field(service, 1, 2, "Preparación (tanatopraxia)", c.preparationCompletedAt() == null ? "Pendiente"
-                    : "Completada " + DATE_HOUR.format(c.preparationCompletedAt())
-                    + (c.thanatopractor() == null ? "" : " · " + c.thanatopractor()));
-            sections.add(section("SERVICIO", service));
+            left.add(DetailShell.section("Servicio", DetailShell.card(DetailShell.fields(
+                    "Contrato", c.number(),
+                    "Estado del contrato", contractStatus(c.status()),
+                    "Difunto", orDash(c.deceasedName()),
+                    "Plan exequial", c.planLabel() == null ? "Sin plan" : c.planLabel(),
+                    "Sala de velación", c.roomName() == null ? "Sin sala asignada"
+                            : c.roomName() + (c.wakeStart() == null ? "" : " · " + DATE_HOUR.format(c.wakeStart())
+                            + (c.wakeEnd() == null ? "" : " a " + HOUR.format(c.wakeEnd()))),
+                    "Preparación (tanatopraxia)", c.preparationCompletedAt() == null ? "Pendiente"
+                            : "Completada " + DATE_HOUR.format(c.preparationCompletedAt())
+                            + (c.thanatopractor() == null ? "" : " · " + c.thanatopractor())))));
         }
-
-        sections.add(section("CONCEPTOS", linesGrid(v.lines(), r.total())));
-
-        VBox payments = new VBox(8);
-        if (v.payments().isEmpty()) {
-            payments.getChildren().add(label("Sin abonos registrados.", "field-caption"));
-        }
-        for (Payment p : v.payments()) {
-            Label amount = label(pesos(p.amount()) + (p.voided() ? "  · anulado" : ""), "line-value");
-            Label when = label((p.date() == null ? "" : DATE_HOUR.format(p.date())) + (p.employee() == null ? "" : " · " + p.employee()),
-                    "field-caption");
-            VBox text = new VBox(1, amount, when);
-            if (p.description() != null && !p.description().isBlank()) {
-                text.getChildren().add(wrapped(p.description(), "line-text"));
-            }
-            if (p.voided()) {
-                amount.getStyleClass().add("payment-voided");
-            }
-            payments.getChildren().add(text);
-        }
-        sections.add(section("ABONOS", payments));
-        drawerBody.getChildren().setAll(sections);
+        List<Node> right = List.of(DetailShell.section("Conceptos", linesBox(v.lines(), r.total())),
+                DetailShell.section("Abonos", paymentsBox(v.payments())));
 
         List<Button> actions = new ArrayList<>();
         if (r.state() != PaymentState.VOIDED) {
-            Button voidButton = drawerButton("Anular venta", "drawer-danger");
-            voidButton.setOnAction(e -> confirmVoid(r));
-            actions.add(voidButton);
+            actions.add(DetailShell.danger("Anular venta", () -> confirmVoid(r)));
         }
         if (c != null && v.canRegisterPreparation() && c.status() == ContractStatus.ACTIVE
                 && c.preparationCompletedAt() == null) {
-            Button prep = drawerButton("Registrar preparación", "drawer-secondary");
-            prep.setOnAction(e -> openPreparationDialog(r, c));
-            actions.add(prep);
+            actions.add(DetailShell.secondary("Registrar preparación", () -> openPreparationDialog(r, c)));
         }
         if (r.state() == PaymentState.WITH_BALANCE) {
-            Button pay = drawerButton("Abonar", "drawer-primary");
-            pay.setOnAction(e -> openPaymentDialog(r));
-            actions.add(pay);
+            actions.add(DetailShell.primary("Abonar", () -> openPaymentDialog(r)));
         }
-        drawerActions.getChildren().setAll(actions);
-        show(drawerActions, !actions.isEmpty());
+        detail.show(r.saleId(), hero, List.of(DetailShell.columns(left, right)), actions, null);
+    }
+
+    /** Conceptos con su valor y, separado por una línea, el total. */
+    private static VBox linesBox(List<Line> lines, BigDecimal total) {
+        List<Object> pairs = new ArrayList<>();
+        for (Line line : lines) {
+            pairs.add(line.description() + (line.quantity() > 1
+                    ? " × " + line.quantity() + " (" + pesos(line.unitPrice()) + " c/u)" : ""));
+            pairs.add(pesos(line.subtotal()));
+        }
+        Node concepts = lines.isEmpty() ? label("Sin conceptos.", "detail-empty") : DetailShell.rows(pairs.toArray());
+        Label totalValue = DetailShell.value(pesos(total), null);
+        totalValue.setStyle("-fx-font-size: 13px;");
+        return DetailShell.list(concepts, DetailShell.rows("Total", totalValue));
+    }
+
+    private static Node paymentsBox(List<Payment> payments) {
+        if (payments.isEmpty()) {
+            return DetailShell.empty("Sin abonos registrados.");
+        }
+        List<DetailShell.Event> events = new ArrayList<>();
+        for (Payment p : payments) {
+            String line = (p.date() == null ? "" : DATE_HOUR.format(p.date())) + (p.employee() == null ? "" : " · " + p.employee())
+                    + (p.description() == null || p.description().isBlank() ? "" : " · " + p.description());
+            events.add(new DetailShell.Event(pesos(p.amount()), line,
+                    p.voided() ? DetailShell.Tone.NEUTRAL : DetailShell.Tone.OK,
+                    p.voided() ? DetailShell.chip("Anulado", DetailShell.Tone.NEUTRAL) : DetailShell.chip("Abono", DetailShell.Tone.OK)));
+        }
+        return DetailShell.timeline(events);
     }
 
     private static GridPane linesGrid(List<Line> lines, BigDecimal total) {
@@ -568,42 +548,6 @@ public class ContractController implements RefreshableView {
         return grid;
     }
 
-    private static VBox section(String title, Node... content) {
-        VBox box = new VBox(10, label(title, "drawer-section-title"));
-        box.getChildren().addAll(content);
-        box.getStyleClass().add("drawer-section");
-        return box;
-    }
-
-    private static GridPane grid() {
-        GridPane grid = new GridPane();
-        grid.setHgap(16);
-        grid.setVgap(10);
-        for (int i = 0; i < 2; i++) {
-            ColumnConstraints column = new ColumnConstraints();
-            column.setPercentWidth(50);
-            grid.getColumnConstraints().add(column);
-        }
-        return grid;
-    }
-
-    private static void field(GridPane grid, int column, int row, String caption, String value) {
-        grid.add(new VBox(2, label(caption, "field-caption"), wrapped(value, "field-value")), column, row);
-    }
-
-    private void slideDrawerIn() {
-        if (drawer.isVisible() && drawer.getTranslateX() == 0) {
-            return;
-        }
-        veil.setVisible(true);
-        drawer.setVisible(true);
-        TranslateTransition slide = new TranslateTransition(Duration.millis(220), drawer);
-        slide.setToX(0);
-        FadeTransition fade = new FadeTransition(Duration.millis(220), veil);
-        fade.setToValue(1);
-        new ParallelTransition(slide, fade).play();
-    }
-
     @FXML
     private void onCloseDrawer() {
         closeDrawer();
@@ -611,27 +555,34 @@ public class ContractController implements RefreshableView {
 
     private void closeDrawer() {
         drawerSaleId = null;
-        if (!drawer.isVisible()) {
-            return;
-        }
-        TranslateTransition slide = new TranslateTransition(Duration.millis(180), drawer);
-        slide.setToX(DRAWER_WIDTH);
-        FadeTransition fade = new FadeTransition(Duration.millis(180), veil);
-        fade.setToValue(0);
-        ParallelTransition out = new ParallelTransition(slide, fade);
-        out.setOnFinished(event -> {
-            if (drawerSaleId == null) {
-                drawer.setVisible(false);
-                veil.setVisible(false);
-            }
-        });
-        out.play();
+        detail.close(null);
     }
 
     // ---------- Nuevo contrato ----------
 
     @FXML
     private void onNewContract() {
+        openNewSale(null);
+    }
+
+    /** Llega desde el plan exequial con el difunto: se abre la venta con él ya elegido. */
+    private void takeLink() {
+        ModuleLink.take(AppModule.CONTRATOS).filter(Long.class::isInstance).map(Long.class::cast)
+                .ifPresent(this::openSaleFor);
+    }
+
+    private void openSaleFor(Long deceasedId) {
+        async("sale-from-plan", () -> contractService.deceasedForSale(deceasedId), found -> {
+            if (found.isPresent()) {
+                openNewSale(found.get());
+            } else {
+                showError("Ese difunto ya tiene un contrato vigente. Búsquelo en la lista de contratos.");
+            }
+        }, failure -> showError(message(failure, "No se pudo abrir el contrato del difunto.")));
+    }
+
+    /** presetDeceased va en null si la venta se empieza desde cero. */
+    private void openNewSale(Option presetDeceased) {
         // Tipo de venta
         ToggleGroup kindGroup = new ToggleGroup();
         HBox kinds = new HBox();
@@ -659,6 +610,9 @@ public class ContractController implements RefreshableView {
         deceasedSearch.setPromptText("Nombre o documento del difunto");
         ComboBox<Option> deceased = optionCombo("Seleccione el difunto");
         ComboBox<Option> salesperson = optionCombo("Seleccione el vendedor");
+        // Si el difunto está en un plan exequial, se llenan solos el tipo, el titular y el plan
+        Label planNote = note("");
+        Long[] wantedPlan = new Long[1];
         bindSearch(clientSearch, client, contractService::searchClients);
         bindSearch(deceasedSearch, deceased, contractService::searchDeceased);
         async("sale-salespeople", contractService::salespeople, list -> {
@@ -746,6 +700,7 @@ public class ContractController implements RefreshableView {
                 .field("BUSCAR DIFUNTO", deceasedSearch)
                 .field("DIFUNTO *", deceased)
                 .field("VENDEDOR *", salesperson)
+                .note(planNote)
                 .section("Servicio", 3)
                 .field("CUOTA BASE DEL SERVICIO *", base)
                 .field("SALARIOS MÍNIMOS (PENSIÓN) *", wages)
@@ -918,12 +873,41 @@ public class ContractController implements RefreshableView {
                 async("sale-plans", () -> contractService.plansOf(value.id()), list -> {
                     if (value.equals(client.getValue())) {
                         plan.getItems().setAll(list);
-                        plan.setValue(list.size() == 1 ? list.get(0) : null);
+                        Option chosen = list.stream().filter(o -> o.id().equals(wantedPlan[0])).findFirst()
+                                .orElse(list.size() == 1 ? list.get(0) : null);
+                        plan.setValue(chosen);
                         plan.setPromptText(list.isEmpty() ? "El cliente no tiene plan activo" : "Seleccione el plan");
                     }
                 }, failure -> plan.setPromptText("No se pudo cargar"));
             }
             requote.run();
+        });
+        deceased.valueProperty().addListener((obs, old, value) -> {
+            planNote.setText("");
+            wantedPlan[0] = null;
+            if (value == null) {
+                return;
+            }
+            async("sale-deceased-plan", () -> contractService.planOfDeceased(value.id()), match -> {
+                if (!value.equals(deceased.getValue()) || match.isEmpty()) {
+                    return;
+                }
+                ContractService.PlanMatch m = match.get();
+                wantedPlan[0] = m.plan().id();
+                planNote.setText(m.note());
+                for (Toggle toggle : kindGroup.getToggles()) {
+                    if (toggle.getUserData() == SaleKind.PLAN) {
+                        toggle.setSelected(true);
+                    }
+                }
+                if (!m.client().equals(client.getValue())) {
+                    client.getItems().setAll(List.of(m.client()));
+                    client.setValue(m.client()); // carga los planes del titular y elige este
+                } else {
+                    plan.getItems().stream().filter(o -> o.id().equals(m.plan().id())).findFirst()
+                            .ifPresent(plan::setValue);
+                }
+            }, failure -> planNote.setText(""));
         });
         room.valueProperty().addListener((obs, old, value) -> {
             applyKind.run();
@@ -947,6 +931,10 @@ public class ContractController implements RefreshableView {
         }
         applyKind.run();
         requote.run();
+        if (presetDeceased != null) {
+            deceased.getItems().setAll(List.of(presetDeceased));
+            deceased.setValue(presetDeceased); // el plan, el titular y el tipo se llenan solos
+        }
 
         Dialog<ButtonType> dialog = formDialog("Nuevo contrato", "Los campos con * son obligatorios.", form, 900);
         FormShell.page(dialog, "Contratos y ventas");
@@ -1330,14 +1318,6 @@ public class ContractController implements RefreshableView {
         return box;
     }
 
-    private static Button drawerButton(String text, String styleClass) {
-        Button button = new Button(text);
-        button.getStyleClass().addAll("drawer-button", styleClass);
-        button.setMaxWidth(Double.MAX_VALUE);
-        HBox.setHgrow(button, Priority.ALWAYS);
-        return button;
-    }
-
     /** Las ventanas cargan app.css, personal.css y contracts.css (formulario El Edén y colores verdes). */
     private static void styleDialog(DialogPane pane) {
         pane.getStylesheets().addAll(
@@ -1391,11 +1371,6 @@ public class ContractController implements RefreshableView {
 
     private static String message(Throwable failure, String fallback) {
         return failure instanceof BusinessException business ? business.getMessage() : fallback;
-    }
-
-    private static void show(Node node, boolean visible) {
-        node.setVisible(visible);
-        node.setManaged(visible);
     }
 
     private static Label label(String text, String styleClass) {
