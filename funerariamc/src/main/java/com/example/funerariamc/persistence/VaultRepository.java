@@ -124,4 +124,16 @@ public interface VaultRepository extends JpaRepository<Vault, Long> {
     List<Vault> findByStatusWithCemetery(@Param("status") VaultStatus status, Pageable pageable);
 
     long countByStatus(VaultStatus status);
+
+    /** Arriendos próximos a vencer, con el titular y el cementerio para el recordatorio. */
+    @Query("""
+            select v from Vault v
+            join fetch v.client
+            join fetch v.cemetery
+            where v.leaseEndDate between :from and :to
+              and v.status <> :excludedStatus
+            order by v.leaseEndDate, v.id
+            """)
+    List<Vault> findLeasesEndingBetween(@Param("from") LocalDate from, @Param("to") LocalDate to,
+                                       @Param("excludedStatus") VaultStatus excludedStatus);
 }
