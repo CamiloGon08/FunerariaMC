@@ -4,6 +4,7 @@ import com.example.funerariamc.model.Deceased;
 import com.example.funerariamc.model.FuneralPlan;
 import com.example.funerariamc.model.ServiceContract;
 import com.example.funerariamc.utils.enums.ContractStatus;
+import com.example.funerariamc.utils.enums.PlanStatus;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -20,6 +21,9 @@ public interface ServiceContractRepository extends JpaRepository<ServiceContract
 
     /** Un difunto solo puede tener un contrato. */
     boolean existsByDeceasedId(Long deceasedId);
+
+    /** Si el difunto ya tiene un contrato que no está cancelado. */
+    boolean existsByDeceasedIdAndStatusNot(Long deceasedId, ContractStatus status);
 
     /**
      * Velación de una sala en el tablero de Salas: solo las columnas que pinta la tarjeta.
@@ -165,6 +169,35 @@ public interface ServiceContractRepository extends JpaRepository<ServiceContract
             order by p.startDate desc, p.id desc
             """)
     List<FuneralPlan> findPlansOfClient(@Param("clientId") Long clientId);
+
+    /** Difunto con el plan que tiene vinculado en Difuntos y el titular de ese plan. */
+    @Query("""
+            select d from Deceased d
+            left join fetch d.funeralPlan p
+            left join fetch p.client
+            where d.id = :deceasedId
+            """)
+    Optional<Deceased> findDeceasedWithPlan(@Param("deceasedId") Long deceasedId);
+
+    /** Si ese documento es el del titular o el de un beneficiario del plan. */
+    @Query("""
+            select count(p) > 0 from FuneralPlan p
+            where p.id = :planId
+              and (p.client.documentNumber = :document
+                   or exists (select b.id from Beneficiary b where b.funeralPlan = p and b.documentNumber = :document))
+            """)
+    boolean planCoversDocument(@Param("planId") Long planId, @Param("document") String document);
+
+    /** Planes activos donde ese documento es titular o beneficiario, con el titular. */
+    @Query("""
+            select distinct p from FuneralPlan p
+            join fetch p.client c
+            where p.status = :active
+              and (c.documentNumber = :document
+                   or exists (select b.id from Beneficiary b where b.funeralPlan = p and b.documentNumber = :document))
+            """)
+    List<FuneralPlan> findActivePlansCovering(@Param("document") String document,
+                                              @Param("active") PlanStatus active);
 
     /** Preparaciones del cuerpo por tanatólogo en un rango. */
     interface PreparationCount {
