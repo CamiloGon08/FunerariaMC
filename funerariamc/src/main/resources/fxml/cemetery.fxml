@@ -76,7 +76,7 @@
                 <HBox fx:id="cemeteryTabs" styleClass="segmented" minWidth="-Infinity"/>
                 <!-- RF-BOV-01: solo lo ve el Administrador Maestro -->
                 <Button fx:id="addCemeteryButton" text="+ Cementerio" onAction="#onAddCemetery" styleClass="ghost-button" minWidth="-Infinity"/>
-                <ComboBox fx:id="pavilionFilter" styleClass="chip-combo" prefWidth="130" minWidth="130"/>
+                <ComboBox fx:id="pavilionFilter" styleClass="chip-combo" prefWidth="175" minWidth="175"/>
                 <HBox styleClass="segmented,view" minWidth="-Infinity">
                     <ToggleButton fx:id="planToggle" text="Plano" toggleGroup="$viewGroup" selected="true" styleClass="segment"/>
                     <ToggleButton fx:id="listToggle" text="Lista" toggleGroup="$viewGroup" styleClass="segment"/>

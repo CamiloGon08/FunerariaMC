@@ -31,6 +31,7 @@ import javafx.animation.ParallelTransition;
 import javafx.animation.PauseTransition;
 import javafx.animation.SequentialTransition;
 import javafx.animation.TranslateTransition;
+import javafx.beans.binding.Bindings;
 import javafx.concurrent.Task;
 import javafx.css.PseudoClass;
 import javafx.event.ActionEvent;
@@ -234,6 +235,10 @@ public class VaultController implements RefreshableView {
     @FXML
     private void initialize() {
         buildLegend();
+        // Sin pabellones (cementerio nuevo o sin cementerios) el selector no se muestra: quedaba una caja vacía
+        pavilionFilter.setPromptText("Pabellón");
+        pavilionFilter.visibleProperty().bind(Bindings.isNotEmpty(pavilionFilter.getItems()));
+        pavilionFilter.managedProperty().bind(pavilionFilter.visibleProperty());
         pavilionFilter.setButtonCell(pavilionCell());
         pavilionFilter.setCellFactory(list -> pavilionCell());
         pavilionFilter.valueProperty().addListener((obs, old, value) -> renderPavilion());
