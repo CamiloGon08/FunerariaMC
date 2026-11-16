@@ -16,6 +16,7 @@ import com.example.funerariamc.service.InventoryService.MovementResult;
 import com.example.funerariamc.service.InventoryService.Overview;
 import com.example.funerariamc.ui.DetailCache;
 import com.example.funerariamc.ui.RefreshableView;
+import com.example.funerariamc.ui.FormShell;
 import javafx.animation.FadeTransition;
 import javafx.animation.ParallelTransition;
 import javafx.animation.PauseTransition;
@@ -980,6 +981,8 @@ public class InventoryController implements RefreshableView {
         Dialog<ButtonType> dialog = formDialog(creating ? "Nuevo artículo" : "Editar artículo",
                 creating ? "Registre el artículo con su existencia inicial y su nivel mínimo. Los campos con * son obligatorios."
                         : r.code() + " · Los campos con * son obligatorios.", form, 760);
+        FormShell.panel(dialog, "Inventario");
+        FormShell.money(price);
         runForm(dialog, form, creating ? "Registrar artículo" : "Guardar cambios", () -> {
             InventoryItemData data = new InventoryItemData(name.getText(), category.getValue(),
                     creating ? parseInteger(stock.getText(), "La cantidad disponible") : null,
@@ -1096,6 +1099,7 @@ public class InventoryController implements RefreshableView {
                 .field("", previewBox)
                 .note(note("Las ventas de Contratos y ventas ya descuentan el inventario solas; aquí se registran compras, consumos y ajustes."));
         Dialog<ButtonType> dialog = formDialog("Registrar movimiento", r.code() + " · " + r.name(), form, 640);
+        FormShell.panel(dialog, "Inventario");
         runForm(dialog, form, "Registrar", () -> inventoryService.registerMovement(new InventoryMovementData(r.id(),
                 (MovementType) typeGroup.getSelectedToggle().getUserData(),
                 parseInteger(quantity.getText(), "La cantidad"), reason.getText())), result -> {
