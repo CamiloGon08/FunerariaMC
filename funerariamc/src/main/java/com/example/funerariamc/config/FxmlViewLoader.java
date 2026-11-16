@@ -1,5 +1,6 @@
 package com.example.funerariamc.config;
 
+import com.example.funerariamc.ui.BrandTheme;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
 import javafx.scene.Parent;
@@ -43,6 +44,7 @@ public class FxmlViewLoader {
     public static final String ALLIED_NETWORK = "/fxml/allied-network.fxml";
     public static final String HOME = "/fxml/home.fxml";
     public static final String ANALYTICS = "/fxml/analytics.fxml";
+    public static final String BOT_MESSAGES = "/fxml/bot-messages.fxml";
 
     
     private static final String[] FONTS = {
@@ -55,12 +57,13 @@ public class FxmlViewLoader {
             "/fonts/Montserrat-Bold.ttf",
             "/fonts/Montserrat-Italic.ttf"
     };
-
     public static final String LOGIN_TITLE = "Funeraria MC — Iniciar sesión";
     public static final String MAIN_TITLE = "Funeraria MC";
     public static final String PASSWORD_RECOVERY_TITLE = "Funeraria MC — Recuperar contraseña";
     public static final String CHANGE_PASSWORD_TITLE = "Funeraria MC — Cambiar contraseña";
-
+    /** Tamaño mínimo de la ventana del menú principal (con el menú lateral contraído caben los módulos). */
+    private static final double MAIN_MIN_WIDTH = 1000;
+    private static final double MAIN_MIN_HEIGHT = 640;
     private final ApplicationContext context;
 
     public FxmlViewLoader(ApplicationContext context) {
@@ -110,7 +113,11 @@ public class FxmlViewLoader {
     public void switchScene(Node source, String fxmlPath, String title) {
         Stage stage = (Stage) source.getScene().getWindow();
         stage.setScene(new Scene(load(fxmlPath)));
-        stage.setTitle(title);
+        stage.setTitle(BrandTheme.title(title));
+        // La ventana del menú no se deja achicar tanto que los módulos queden ilegibles
+        boolean main = MAIN.equals(fxmlPath);
+        stage.setMinWidth(main ? MAIN_MIN_WIDTH : 0);
+        stage.setMinHeight(main ? MAIN_MIN_HEIGHT : 0);
         stage.sizeToScene();
         stage.centerOnScreen();
     }

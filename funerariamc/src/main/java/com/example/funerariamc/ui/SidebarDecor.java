@@ -1,5 +1,6 @@
 package com.example.funerariamc.ui;
 
+import javafx.beans.binding.Bindings;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.Pane;
@@ -8,9 +9,7 @@ import javafx.scene.shape.Rectangle;
 import java.util.Objects;
 
 /**
- * Foto del lirio detrás de los módulos del menú lateral (images/lirio-fondo.png).
- * Va como primera capa de un StackPane, no recibe clics y se recorta al tamaño
- * del menú; la intensidad se ajusta en app.css con la clase .sidebar-decor.
+ * Foto del lirio detrás de los módulos del menú lateral.
  */
 public class SidebarDecor extends Pane {
 
@@ -35,6 +34,11 @@ public class SidebarDecor extends Pane {
         clip.widthProperty().bind(widthProperty());
         clip.heightProperty().bind(heightProperty());
         setClip(clip);
+        Image eden = lily.getImage();
+        lily.imageProperty().bind(Bindings.createObjectBinding(() -> BrandTheme.menuImageProperty().get() != null
+                ? BrandTheme.menuImageProperty().get() : eden, BrandTheme.menuImageProperty()));
+        visibleProperty().bind(Bindings.createBooleanBinding(() -> BrandTheme.brand().showMenuImage(),
+                BrandTheme.brandProperty()));
     }
 
     /** Ancla la flor abajo a la izquierda aunque el menú cambie de ancho o alto. */
