@@ -27,6 +27,8 @@ import com.example.funerariamc.service.TransportService.VehicleCard;
 import com.example.funerariamc.service.TransportService.VehicleState;
 import com.example.funerariamc.service.VehicleData;
 import com.example.funerariamc.ui.RefreshableView;
+import com.example.funerariamc.ui.BrandTheme;
+import com.example.funerariamc.ui.FormShell;
 import javafx.animation.Animation;
 import javafx.animation.FadeTransition;
 import javafx.animation.KeyFrame;
@@ -109,8 +111,6 @@ public class TransportController implements RefreshableView {
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("EEEE d 'de' MMMM", ES);
     /** Cada cuánto se vuelve a leer la flota mientras la pantalla está abierta. */
     private static final Duration AUTO_REFRESH = Duration.seconds(60);
-    /** Nombre de la primera parada por defecto (se puede cambiar en el diálogo). */
-    private static final String DEFAULT_ORIGIN = "Sede El Edén";
 
     private enum Tab { MONITOR, VEHICLES, DRIVERS, TRANSFERS }
 
@@ -983,6 +983,7 @@ public class TransportController implements RefreshableView {
         Dialog<ButtonType> dialog = formDialog(editing ? "Editar vehículo" : "Nuevo vehículo",
                 editing ? "Placa, capacidad y vigencia de documentos de " + current.plate()
                         : "Coche fúnebre o bus con su SOAT y su revisión técnico-mecánica", form, 760);
+        FormShell.panel(dialog, "Transporte");
         runForm(dialog, form, editing ? "Guardar cambios" : "Registrar vehículo", () -> {
             VehicleData data = new VehicleData(plate.getText(), type.getValue(),
                     parseInteger(capacity.getText(), "La capacidad"), soat.getValue(), soatFile[0],
@@ -1088,7 +1089,8 @@ public class TransportController implements RefreshableView {
             });
             row.time.valueProperty().addListener((o, a, b) -> reloadCandidates[0].run());
         };
-        addStopRow.accept(new StopRow(StopType.ORIGIN, DEFAULT_ORIGIN, nextQuarter()));
+        // El origen sugerido es la sede de la funeraria (su nombre sale de la marca)
+        addStopRow.accept(new StopRow(StopType.ORIGIN, "Sede " + BrandTheme.brand().commercialName(), nextQuarter()));
         addStopRow.accept(new StopRow(StopType.CEREMONY, "", null));
         addStopRow.accept(new StopRow(StopType.DESTINATION, "", null));
         addStop.setOnAction(e -> {
@@ -1156,6 +1158,8 @@ public class TransportController implements RefreshableView {
                         + "ocupado entre la salida y la última parada no se puede asignar."));
         Dialog<ButtonType> dialog = formDialog("Asignar traslado",
                 "Coche fúnebre y bus incluidos, buses adicionales y paradas del servicio", form, 1040);
+        FormShell.page(dialog, "Transporte");
+        FormShell.split(dialog, 420, "Transporte incluido", "Buses adicionales");
         runForm(dialog, form, "Asignar traslado", () -> {
             Option chosen = contract.getValue();
             if (chosen == null) {
@@ -1247,6 +1251,10 @@ public class TransportController implements RefreshableView {
             time.setPromptText("Hora");
             time.setPrefWidth(120);
             remove.getStyleClass().add("chip-remove");
+            // El tipo, la hora y la X no se encogen; el lugar y la dirección toman el resto
+            for (Region fixed : List.of(type, time, remove)) {
+                fixed.setMinWidth(Region.USE_PREF_SIZE);
+            }
             for (Node field : List.of(place, address)) {
                 field.getStyleClass().add("stop-field");
             }
