@@ -621,6 +621,7 @@ public class ParametersController implements RefreshableView {
             this.stored = stored;
             choice.getItems().setAll(BrandingData.ImageChoice.values());
             choice.getStyleClass().add("form-combo");
+            choice.setMaxWidth(Double.MAX_VALUE);
             choice.setConverter(new StringConverter<>() {
                 @Override
                 public String toString(BrandingData.ImageChoice c) {
@@ -648,6 +649,7 @@ public class ParametersController implements RefreshableView {
             info.setWrapText(true);
             Button choose = new Button("Elegir imagen…");
             choose.getStyleClass().add("edit-button");
+            choose.setGraphic(pictureIcon());
             choose.setMinWidth(Region.USE_PREF_SIZE);
             choose.setOnAction(e -> {
                 FileChooser chooser = new FileChooser();
@@ -712,6 +714,14 @@ public class ParametersController implements RefreshableView {
         }
     }
 
+    /** Dibujo de una foto (marco, sol y montaña) para los botones "Elegir imagen…". */
+    private static SVGPath pictureIcon() {
+        SVGPath icon = new SVGPath();
+        icon.setContent("M1.5 2.5h11v9h-11z M4.5 5.2a1 1 0 1 0 0.01 0 M1.5 10l3.5-3.2 2.5 2.2 2-1.6 3 2.6");
+        icon.getStyleClass().add("brand-pick-icon");
+        return icon;
+    }
+
     private static HBox swatch(String caption, String hex) {
         Region color = new Region();
         color.getStyleClass().add("brand-swatch");
@@ -746,6 +756,7 @@ public class ParametersController implements RefreshableView {
         Label logoInfo = label(brand.hasCustomLogo() ? "Logo propio de la funeraria." : "Emblema del lirio (El Edén).",
                 "param-desc");
         logoInfo.setWrapText(true);
+        logoInfo.getStyleClass().add("brand-logo-title");
         Label logoHint = label("PNG o JPG de hasta 1 MB. Mejor cuadrado y con fondo transparente.", "param-meta");
         logoHint.setWrapText(true);
         Button choose = new Button("Elegir imagen…");
@@ -815,12 +826,27 @@ public class ParametersController implements RefreshableView {
         // Vista previa: menú con el nombre y un botón, con los colores que se están eligiendo
         Label previewSub = label("F U N E R A R I A", "brand-preview-sub");
         Label previewName = label("", "brand-preview-name");
+        Label previewTagline = label("", "brand-preview-tagline");
+        previewTagline.setWrapText(true);
+        previewTagline.managedProperty().bind(previewTagline.textProperty().isNotEmpty());
+        previewTagline.visibleProperty().bind(previewTagline.managedProperty());
         Label previewButton = label("Guardar", "brand-preview-button");
         Label previewLink = label("¿Olvidó su contraseña?", "brand-preview-link");
-        VBox previewMenu = new VBox(2, previewSub, previewName);
+        Region previewRule = new Region();
+        previewRule.getStyleClass().add("brand-preview-rule");
+        // El logo de la vista previa sigue al logo elegido arriba
+        ImageView previewLogo = new ImageView();
+        previewLogo.imageProperty().bind(logoView.imageProperty());
+        previewLogo.setFitWidth(34);
+        previewLogo.setFitHeight(34);
+        previewLogo.setPreserveRatio(true);
+        HBox previewTitle = new HBox(10, previewLogo, new VBox(1, previewSub, previewName));
+        previewTitle.setAlignment(Pos.CENTER_LEFT);
+        VBox previewMenu = new VBox(14, previewTitle, previewTagline);
         previewMenu.getStyleClass().add("brand-preview-menu");
         previewMenu.setMinWidth(210);
-        VBox previewBody = new VBox(10, previewButton, previewLink);
+        previewMenu.setPrefWidth(235);
+        VBox previewBody = new VBox(12, previewRule, previewButton, previewLink);
         previewBody.getStyleClass().add("brand-preview-body");
         previewBody.setAlignment(Pos.CENTER_LEFT);
         HBox.setHgrow(previewBody, Priority.ALWAYS);
@@ -834,6 +860,10 @@ public class ParametersController implements RefreshableView {
             BrandPalette palette = BrandPalette.of(hex(primary.getValue()), hex(accent.getValue()), hex(detail.getValue()));
             String typed = name.getText() == null || name.getText().isBlank() ? "Nombre" : name.getText().strip();
             previewName.setText(typed);
+            previewTagline.setText(tagline.getText() == null || tagline.getText().isBlank() ? ""
+                    : "\u201C" + tagline.getText().strip() + "\u201D");
+            previewTagline.setStyle("-fx-text-fill: " + palette.get("-color-background") + ";");
+            previewRule.setStyle("-fx-background-color: " + palette.get("-color-detail") + ";");
             previewMenu.setStyle("-fx-background-color: linear-gradient(to bottom, " + palette.get("-color-forest")
                     + ", " + palette.get("-color-forest-deep") + ");");
             previewSub.setStyle("-fx-text-fill: " + palette.get("-color-detail") + ";");
@@ -845,6 +875,7 @@ public class ParametersController implements RefreshableView {
             readability.setText(String.join(" ", palette.readabilityProblems()));
         };
         name.textProperty().addListener((obs, old, text) -> updatePreview.run());
+        tagline.textProperty().addListener((obs, old, text) -> updatePreview.run());
         primary.valueProperty().addListener((obs, old, value) -> updatePreview.run());
         accent.valueProperty().addListener((obs, old, value) -> updatePreview.run());
         detail.valueProperty().addListener((obs, old, value) -> updatePreview.run());
@@ -880,12 +911,42 @@ public class ParametersController implements RefreshableView {
                 + " el de detalle, los filetes y los textos dorados. Los demás tonos se calculan solos. Los colores de"
                 + " error, aviso y éxito no cambian. Si un color deja un texto ilegible no se puede guardar."
                 + " Cada cambio queda en la bitácora."));
-        Dialog<ButtonType> dialog = formDialog("Identidad de la funeraria", "Los campos con * son obligatorios.", form, 760);
+        // Dos columnas: a la izquierda nombre, logo e imágenes; a la derecha colores y vista previa
+        twoColumns(form, "Colores");
+        Dialog<ButtonType> dialog = formDialog("Identidad de la funeraria", "Los campos con * son obligatorios.", form, 1180);
+        FormShell.window(dialog, "Parámetros del sistema");
         runForm(dialog, form, "Guardar identidad",
                 () -> brandingService.save(new BrandingData(name.getText(), tagline.getText(), newLogo[0], removeLogo[0],
                         hex(primary.getValue()), hex(accent.getValue()), hex(detail.getValue()),
                         band.value(), band.picked(), menu.value(), menu.picked())),
                 saved -> showToast("Identidad guardada. Los colores ya cambiaron en todas las ventanas."));
+    }
+
+    /**
+     * Reparte el formulario en dos columnas del mismo ancho: desde la sección {@code rightFrom}
+     * (con sus avisos) todo pasa a la columna derecha.
+     */
+    private static void twoColumns(Form form, String rightFrom) {
+        List<Node> nodes = new ArrayList<>(form.body.getChildren());
+        int split = nodes.size();
+        for (int i = 0; i < nodes.size(); i++) {
+            if (nodes.get(i).lookup(".section-title") instanceof Label title
+                    && title.getText().equalsIgnoreCase(rightFrom)) {
+                split = i;
+                break;
+            }
+        }
+        VBox left = new VBox(form.body.getSpacing());
+        left.getChildren().setAll(nodes.subList(0, split));
+        VBox right = new VBox(form.body.getSpacing());
+        right.getChildren().setAll(nodes.subList(split, nodes.size()));
+        for (VBox column : List.of(left, right)) {
+            column.setPrefWidth(0);
+            column.setMaxWidth(Double.MAX_VALUE);
+            HBox.setHgrow(column, Priority.ALWAYS);
+        }
+        HBox columns = new HBox(34, left, right);
+        form.body.getChildren().setAll(columns);
     }
 
     private static ColorPicker colorPicker(String hex) {

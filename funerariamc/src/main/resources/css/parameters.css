@@ -238,4 +238,8 @@
 .brand-preview-body { -fx-padding: 18 22; -fx-background-radius: 0 14 14 0; }
 .brand-preview-button { -fx-background-radius: 10; -fx-padding: 9 18; -fx-font-weight: bold; }
 .brand-preview-link { -fx-font-size: 12px; -fx-underline: true; }
+.brand-preview-tagline { -fx-font-style: italic; -fx-font-size: 12px; -fx-opacity: 0.85; }
+.brand-preview-rule { -fx-min-width: 34; -fx-max-width: 34; -fx-min-height: 2; -fx-max-height: 2; -fx-background-radius: 2; }
+.brand-logo-title { -fx-text-fill: -color-ink; -fx-font-weight: bold; }
+.brand-pick-icon { -fx-fill: transparent; -fx-stroke: -color-accent; -fx-stroke-width: 1.3; -fx-stroke-line-cap: round; -fx-stroke-line-join: round; }
 .brand-image-frame { -fx-background-color: -color-forest; -fx-background-radius: 10; -fx-padding: 4; }
