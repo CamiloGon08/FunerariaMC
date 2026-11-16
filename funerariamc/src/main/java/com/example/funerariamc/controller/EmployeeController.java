@@ -14,6 +14,7 @@ import com.example.funerariamc.service.RoleNames;
 import com.example.funerariamc.service.UserAccountService;
 import com.example.funerariamc.service.UserAccountService.AccountSummary;
 import com.example.funerariamc.ui.RefreshableView;
+import com.example.funerariamc.ui.FormShell;
 import javafx.animation.FadeTransition;
 import javafx.animation.ParallelTransition;
 import javafx.animation.PauseTransition;
@@ -596,6 +597,12 @@ public class EmployeeController implements RefreshableView {
         stage.setTitle(employee == null ? "Registrar empleado" : "Actualizar empleado");
         stage.setScene(new Scene(view.root()));
         view.controller().init(employee, saved -> reload());
+        FormShell.stage(stage, "Seguridad: personal y cuentas", FormShell.Kind.PAGE);
+        FormShell.steps(stage, null,
+                new FormShell.Step("Datos personales", "Datos personales"),
+                new FormShell.Step("Datos laborales", "Datos laborales"),
+                new FormShell.Step("Datos del cargo y cuenta", "Cuenta de acceso al sistema", "Vendedor funerario",
+                        "Tanatólogo", "Conductor"));
         stage.showAndWait();
     }
 
