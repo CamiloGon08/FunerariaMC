@@ -1,5 +1,6 @@
 package com.example.funerariamc.service.bot;
 
+import com.example.funerariamc.service.BrandingService;
 import com.example.funerariamc.model.Client;
 import com.example.funerariamc.persistence.ClientRepository;
 import com.example.funerariamc.service.AccessLogService;
@@ -88,21 +89,36 @@ public class ChatbotService {
     private final BotVerificationService verification;
     private final SystemParameterService parameterService;
     private final Clock clock;
+    private final BrandingService brandingService;
     private final Map<String, Session> sessions = new ConcurrentHashMap<>();
 
     @Autowired
     public ChatbotService(ClientRepository clientRepository, FuneralPlanService planService,
+                          BotVerificationService verification, SystemParameterService parameterService,
+                          BrandingService brandingService) {
+        this(clientRepository, planService, verification, parameterService,
+                Clock.system(AccessLogService.APP_ZONE), brandingService);
+    }
+
+    public ChatbotService(ClientRepository clientRepository, FuneralPlanService planService,
                           BotVerificationService verification, SystemParameterService parameterService) {
-        this(clientRepository, planService, verification, parameterService, Clock.system(AccessLogService.APP_ZONE));
+        this(clientRepository, planService, verification, parameterService, Clock.system(AccessLogService.APP_ZONE), null);
     }
 
     ChatbotService(ClientRepository clientRepository, FuneralPlanService planService,
                    BotVerificationService verification, SystemParameterService parameterService, Clock clock) {
+        this(clientRepository, planService, verification, parameterService, clock, null);
+    }
+
+    ChatbotService(ClientRepository clientRepository, FuneralPlanService planService,
+                   BotVerificationService verification, SystemParameterService parameterService, Clock clock,
+                   BrandingService brandingService) {
         this.clientRepository = clientRepository;
         this.planService = planService;
         this.verification = verification;
         this.parameterService = parameterService;
         this.clock = clock;
+        this.brandingService = brandingService;
     }
 
     /** Atiende un mensaje de texto del chat y devuelve las respuestas. Nunca lanza excepción. */
@@ -131,7 +147,7 @@ public class ChatbotService {
         String digits = text.replaceAll("\\D", "");
         if (digits.isEmpty() || text.startsWith("/")) {
             return answer(text, BotTopic.IDENTIFICATION, null, new Reply(
-                    "Hola, soy Lily, la asistente de Funeraria El Edén.\n\n" + ASK_DOCUMENT, BotTopic.IDENTIFICATION, NO_OPTIONS));
+                    "Hola, soy Lily, la asistente de " + BrandingService.fullNameOf(brandingService) + ".\n\n" + ASK_DOCUMENT, BotTopic.IDENTIFICATION, NO_OPTIONS));
         }
         if (digits.length() < 5 || digits.length() > 15 || digits.length() != text.replaceAll("[\\s.\\-]", "").length()) {
             return answer(text, BotTopic.IDENTIFICATION, null, new Reply(
@@ -335,13 +351,13 @@ public class ChatbotService {
         String phone = parameter(FUNERAL_HOME_PHONE);
         String hours = parameter(FUNERAL_HOME_HOURS);
         if (address == null && phone == null && hours == null) {
-            return "Contacto\nPara cualquier trámite acérquese a la sede de Funeraria El Edén.";
+            return "Contacto\nPara cualquier trámite acérquese a la sede de " + BrandingService.fullNameOf(brandingService) + ".";
         }
         return "Contacto\n"
                 + (address == null ? "" : "Dirección: " + address + "\n")
                 + (phone == null ? "" : "Teléfono: " + phone + "\n")
                 + (hours == null ? "" : "Horario: " + hours + "\n")
-                + "Funeraria El Edén";
+                + BrandingService.fullNameOf(brandingService);
     }
 
     /** null si el parámetro no existe o no tiene valor: el bot no inventa datos de la sede. */
