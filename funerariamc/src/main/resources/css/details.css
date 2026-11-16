@@ -1,0 +1,258 @@
+/* Formato común de las pantallas de detalle (DetailShell): banda verde, secciones con filete,
+   tarjetas de datos y botones abajo. Solo usa las variables de color de app.css, así cambia con la
+   identidad de la funeraria. Todo va bajo .detail-shell para no tocar lo demás del módulo. */
+
+/* ---------- Marco ---------- */
+.detail-shell {
+    -fx-background-color: -color-paper-white;
+    -fx-background-radius: 20;
+    -fx-border-color: -color-line;
+    -fx-border-radius: 20;
+    -fx-border-width: 1;
+    -fx-padding: 0;
+    -fx-spacing: 0;
+    -fx-effect: dropshadow(gaussian, -color-shadow-16, 28, 0.15, 0, 8);
+}
+.detail-veil-modal { -fx-background-color: -color-primary-a25; }
+.detail-shell .text { -fx-font-smoothing-type: gray; }
+
+/* ---------- Banda superior ---------- */
+.detail-shell .detail-hero {
+    -fx-background-color: linear-gradient(to right, -color-primary 0%, -color-forest 55%, -color-sage-dark 100%);
+    -fx-padding: 16 20 18 20;
+    -fx-spacing: 10;
+}
+.detail-shell.detail-modal .detail-hero { -fx-padding: 18 26 20 26; }
+.detail-shell .detail-eyebrow { -fx-text-fill: -color-detail; -fx-font-size: 10px; -fx-font-weight: bold; }
+.detail-shell .detail-title {
+    -fx-text-fill: -color-paper;
+    -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif;
+    -fx-font-size: 21px;
+    -fx-font-weight: bold;
+}
+.detail-shell .detail-subtitle { -fx-text-fill: -color-sage-pale; -fx-font-size: 11.5px; }
+
+/* Flechas y X: círculos translúcidos */
+.detail-shell .detail-round {
+    -fx-background-color: transparent;
+    -fx-border-color: -color-paper-a50;
+    -fx-border-radius: 999; -fx-background-radius: 999;
+    -fx-min-width: 28; -fx-min-height: 28; -fx-pref-width: 28; -fx-pref-height: 28;
+    -fx-max-width: 28; -fx-max-height: 28;
+    -fx-padding: 0; -fx-cursor: hand;
+}
+.detail-shell .detail-round:hover { -fx-background-color: -color-linen-a22; }
+.detail-shell .detail-round:disabled { -fx-opacity: 0.35; }
+.detail-shell .detail-round-icon {
+    -fx-stroke: -color-paper; -fx-stroke-width: 1.6; -fx-stroke-line-cap: round; -fx-stroke-line-join: round;
+    -fx-fill: transparent; -fx-scale-x: 0.85; -fx-scale-y: 0.85;
+}
+
+/* Iniciales y recuadro de código sobre la banda */
+.detail-shell .detail-hero .detail-avatar {
+    -fx-background-color: -color-paper-a85; -fx-text-fill: -color-primary;
+    -fx-min-width: 44; -fx-min-height: 44; -fx-pref-width: 44; -fx-pref-height: 44;
+    -fx-background-radius: 999; -fx-alignment: center; -fx-font-weight: bold; -fx-font-size: 14px;
+}
+.detail-shell .detail-badge {
+    -fx-border-color: -color-paper-a50; -fx-border-radius: 10; -fx-background-radius: 10;
+    -fx-background-color: -color-linen-a12; -fx-padding: 4 8; -fx-min-width: 44; -fx-min-height: 44;
+}
+.detail-shell .detail-badge-main { -fx-text-fill: -color-paper; -fx-font-size: 13px; -fx-font-weight: bold; }
+.detail-shell .detail-badge-sub { -fx-text-fill: -color-sage-pale; -fx-font-size: 8.5px; }
+
+.detail-shell .detail-icon-badge {
+    -fx-border-color: -color-paper-a50; -fx-border-radius: 10; -fx-background-radius: 10;
+    -fx-background-color: -color-linen-a12; -fx-min-width: 44; -fx-min-height: 44; -fx-pref-width: 44; -fx-pref-height: 44;
+}
+.detail-shell .detail-badge-icon {
+    -fx-stroke: -color-paper; -fx-stroke-width: 1.6; -fx-stroke-line-cap: round; -fx-fill: transparent;
+    -fx-scale-x: 0.8; -fx-scale-y: 0.8;
+}
+
+/* Estados en cápsulas */
+.detail-shell .detail-chip {
+    -fx-background-radius: 999; -fx-padding: 3 10; -fx-font-size: 10.5px; -fx-font-weight: bold;
+    -fx-background-color: -color-paper-a85; -fx-text-fill: -color-ink;
+}
+.detail-shell .detail-chip.tone-ok { -fx-background-color: -color-success-bg; -fx-text-fill: -color-moss; }
+.detail-shell .detail-chip.tone-warn { -fx-background-color: -color-warning-bg; -fx-text-fill: -color-warning-deep; }
+.detail-shell .detail-chip.tone-alert { -fx-background-color: -color-alert-bg; -fx-text-fill: -color-alert; }
+.detail-shell .detail-chip.tone-gold { -fx-background-color: -color-gold-wash; -fx-text-fill: -color-gold-deep; }
+
+/* Línea de pasos */
+.detail-shell .detail-steps { -fx-padding: 4 0 0 0; }
+.detail-shell .detail-step-dot {
+    -fx-min-width: 16; -fx-min-height: 16; -fx-pref-width: 16; -fx-pref-height: 16;
+    -fx-max-width: 16; -fx-max-height: 16; -fx-background-radius: 999; -fx-border-radius: 999;
+    -fx-border-width: 1.5; -fx-border-color: -color-paper-a75; -fx-alignment: center;
+    -fx-font-size: 9px; -fx-font-weight: bold; -fx-text-fill: -color-primary; -fx-padding: 0;
+}
+.detail-shell .detail-step-dot.done { -fx-background-color: -color-paper; -fx-border-color: -color-paper; }
+.detail-shell .detail-step-dot.current {
+    -fx-background-color: -color-paper; -fx-border-color: -color-detail; -fx-border-width: 3;
+}
+.detail-shell .detail-step-dot.blocked { -fx-background-color: -color-alert; -fx-border-color: -color-alert-bg; }
+.detail-shell .detail-step-line { -fx-min-height: 1.5; -fx-max-height: 1.5; -fx-background-color: -color-paper-a50; }
+.detail-shell .detail-step-line.done { -fx-background-color: -color-paper; }
+.detail-shell .detail-step-name { -fx-text-fill: -color-paper; -fx-font-size: 11px; -fx-font-weight: bold; }
+.detail-shell .detail-step.pending .detail-step-name { -fx-text-fill: -color-sage-pale; }
+.detail-shell .detail-step.blocked .detail-step-name { -fx-text-fill: -color-alert-bg; }
+.detail-shell .detail-step-detail { -fx-text-fill: -color-sage-pale; -fx-font-size: 9.5px; -fx-padding: 0 8 0 0; }
+
+/* Barra de avance */
+.detail-shell .detail-progress-text { -fx-text-fill: -color-paper; -fx-font-size: 10.5px; }
+.detail-shell .detail-progress-strong { -fx-font-weight: bold; }
+.detail-shell .detail-progress-track,
+.detail-shell .detail-progress-fill { -fx-min-height: 5; -fx-max-height: 5; -fx-background-radius: 999; }
+.detail-shell .detail-progress-track { -fx-background-color: -color-paper-a50; }
+.detail-shell .detail-progress-fill { -fx-background-color: -color-paper; }
+.detail-shell .detail-progress-fill.tone-gold { -fx-background-color: -color-detail; }
+.detail-shell .detail-progress-fill.tone-alert { -fx-background-color: -color-alert-soft; }
+.detail-shell .detail-progress-fill.tone-warn { -fx-background-color: -color-warning; }
+
+/* Tira de casillas (cuotas por mes) y líneas de texto sobre la banda */
+.detail-shell .detail-cell { -fx-min-height: 22; -fx-pref-height: 22; -fx-background-radius: 5; -fx-border-radius: 5; }
+.detail-shell .detail-cell.ok,
+.detail-shell .detail-cell-swatch.ok { -fx-background-color: -color-linen; }
+.detail-shell .detail-cell.late,
+.detail-shell .detail-cell-swatch.late { -fx-background-color: -color-detail; }
+.detail-shell .detail-cell.missing,
+.detail-shell .detail-cell-swatch.missing {
+    -fx-background-color: -color-forest; -fx-border-color: -color-paper-a50; -fx-border-width: 1;
+}
+.detail-shell .detail-cell.none { -fx-background-color: -color-linen-a12; }
+.detail-shell .detail-cell-swatch {
+    -fx-min-width: 8; -fx-min-height: 8; -fx-max-width: 8; -fx-max-height: 8; -fx-background-radius: 2; -fx-border-radius: 2;
+}
+.detail-shell .detail-cell-label { -fx-text-fill: -color-sage-pale; -fx-font-size: 9.5px; }
+.detail-shell .detail-hero-line { -fx-text-fill: -color-paper; -fx-font-size: 11px; }
+.detail-shell .detail-hero-strong { -fx-text-fill: -color-paper; -fx-font-size: 11px; -fx-font-weight: bold; }
+
+/* Franja del día (Salas) */
+.detail-shell .detail-day-track { -fx-background-color: -color-linen-a12; -fx-background-radius: 6; }
+.detail-shell .detail-day-bar {
+    -fx-background-color: -color-linen; -fx-background-radius: 6; -fx-text-fill: -color-primary;
+    -fx-font-size: 10px; -fx-padding: 0 10; -fx-text-overrun: ellipsis;
+}
+.detail-shell .detail-day-now { -fx-background-color: -color-alert-soft; }
+.detail-shell .detail-day-now-tag {
+    -fx-background-color: -color-alert; -fx-text-fill: -color-paper; -fx-font-size: 8.5px; -fx-font-weight: bold;
+    -fx-background-radius: 4; -fx-padding: 1 5;
+}
+
+/* Muro en miniatura (Cementerio) */
+.detail-shell .detail-wall-cell { -fx-min-height: 8; -fx-pref-height: 8; -fx-background-radius: 2; }
+.detail-shell .detail-wall-cell.other { -fx-background-color: -color-paper-a50; -fx-opacity: 0.45; }
+.detail-shell .detail-wall-cell.current { -fx-background-color: -color-detail; }
+
+/* ---------- Cuerpo ---------- */
+.detail-shell .detail-scroll,
+.detail-shell .detail-scroll > .viewport { -fx-background-color: -color-paper-white; -fx-background-insets: 0; -fx-padding: 0; }
+.detail-shell .detail-body { -fx-background-color: -color-paper-white; -fx-padding: 16 20 18 20; -fx-spacing: 16; }
+.detail-shell.detail-modal .detail-body { -fx-padding: 18 26 20 26; }
+.detail-shell .detail-section { -fx-spacing: 8; }
+.detail-shell .detail-section-title { -fx-text-fill: -color-gold-deep; -fx-font-size: 9.5px; -fx-font-weight: bold; }
+.detail-shell .detail-section-rule { -fx-min-height: 1; -fx-max-height: 1; -fx-background-color: -color-line; }
+.detail-shell .detail-section-aside { -fx-text-fill: -color-text-strong; -fx-font-size: 10.5px; -fx-font-weight: bold; }
+.detail-shell .detail-card {
+    -fx-background-color: -color-surface; -fx-background-radius: 12; -fx-padding: 10 14; -fx-spacing: 8;
+}
+.detail-shell .detail-key { -fx-text-fill: -color-text-muted; -fx-font-size: 11.5px; }
+.detail-shell .detail-value { -fx-text-fill: -color-ink; -fx-font-size: 11.5px; -fx-font-weight: bold; }
+.detail-shell .detail-field-key { -fx-text-fill: -color-text-muted; -fx-font-size: 10px; }
+.detail-shell .detail-fields .detail-value { -fx-text-alignment: left; }
+.detail-shell .detail-value.tone-alert { -fx-text-fill: -color-alert; }
+.detail-shell .detail-value.tone-warn { -fx-text-fill: -color-warning-deep; }
+.detail-shell .detail-value.tone-ok { -fx-text-fill: -color-moss; }
+.detail-shell .detail-value.tone-gold { -fx-text-fill: -color-gold-deep; }
+.detail-shell .detail-empty { -fx-text-fill: -color-text-muted; -fx-font-size: 11.5px; }
+
+/* Persona o registro vinculado */
+.detail-shell .detail-person-name { -fx-text-fill: -color-ink; -fx-font-size: 12px; -fx-font-weight: bold; }
+.detail-shell .detail-person-line { -fx-text-fill: -color-text-muted; -fx-font-size: 10.5px; }
+.detail-shell .detail-text { -fx-text-fill: -color-ink; -fx-font-size: 11px; }
+.detail-shell .detail-big { -fx-font-size: 22px; -fx-font-weight: bold; }
+.detail-shell .detail-person-avatar {
+    -fx-background-color: -color-paper-white; -fx-text-fill: -color-primary;
+    -fx-min-width: 32; -fx-min-height: 32; -fx-pref-width: 32; -fx-pref-height: 32;
+    -fx-max-width: 32; -fx-max-height: 32;
+    -fx-background-radius: 999; -fx-alignment: center; -fx-font-weight: bold; -fx-font-size: 11px;
+}
+
+/* Listas con estado (documentos, requisitos) */
+.detail-shell .detail-list-rule { -fx-min-height: 1; -fx-max-height: 1; -fx-background-color: -color-line; }
+.detail-shell .detail-mark {
+    -fx-min-width: 28; -fx-min-height: 28; -fx-pref-width: 28; -fx-pref-height: 28;
+    -fx-max-width: 28; -fx-max-height: 28; -fx-alignment: center; -fx-background-radius: 999; -fx-border-radius: 999;
+    -fx-font-size: 12px; -fx-font-weight: bold;
+}
+.detail-shell .detail-mark.done { -fx-background-color: -color-success-bg; -fx-text-fill: -color-primary; }
+.detail-shell .detail-mark.not-applicable { -fx-background-color: -color-paper-white; -fx-text-fill: -color-text-strong; }
+.detail-shell .detail-mark.pending {
+    -fx-background-color: transparent; -fx-border-color: -color-text-muted; -fx-border-style: segments(3, 3);
+}
+.detail-shell .detail-mark.missing { -fx-background-color: -color-alert-bg; -fx-text-fill: -color-alert; }
+.detail-shell .detail-link {
+    -fx-background-color: transparent; -fx-text-fill: -color-primary; -fx-font-size: 11px; -fx-font-weight: bold;
+    -fx-padding: 4 8; -fx-cursor: hand; -fx-underline: false;
+}
+.detail-shell .detail-link:hover { -fx-underline: true; }
+.detail-shell .detail-link.detail-link-danger { -fx-text-fill: -color-alert; -fx-underline: true; }
+.detail-shell .detail-value.detail-voided { -fx-text-fill: -color-text-faint; -fx-strikethrough: true; }
+
+.detail-shell .detail-icon-circle {
+    -fx-background-color: -color-paper-white; -fx-background-radius: 999;
+    -fx-min-width: 32; -fx-min-height: 32; -fx-pref-width: 32; -fx-pref-height: 32; -fx-max-width: 32; -fx-max-height: 32;
+}
+.detail-shell .detail-icon-path { -fx-fill: transparent; -fx-stroke: -color-primary; -fx-stroke-width: 1.6; -fx-stroke-line-cap: round; -fx-scale-x: 0.75; -fx-scale-y: 0.75; }
+
+/* Historial */
+.detail-shell .detail-timeline-dot {
+    -fx-min-width: 9; -fx-min-height: 9; -fx-max-width: 9; -fx-max-height: 9;
+    -fx-background-radius: 999; -fx-background-color: -color-primary; -fx-translate-y: 3;
+}
+.detail-shell .detail-timeline-dot.tone-alert { -fx-background-color: -color-alert; }
+.detail-shell .detail-timeline-dot.tone-warn { -fx-background-color: -color-warning; }
+.detail-shell .detail-timeline-dot.tone-gold { -fx-background-color: -color-detail; }
+.detail-shell .detail-timeline-dot.tone-neutral { -fx-background-color: -color-text-faint; }
+.detail-shell .detail-timeline-line { -fx-min-width: 1; -fx-max-width: 1; -fx-background-color: -color-line; -fx-translate-y: 3; }
+.detail-shell .detail-timeline-title { -fx-text-fill: -color-ink; -fx-font-size: 11.5px; -fx-font-weight: bold; }
+.detail-shell .detail-timeline-detail { -fx-text-fill: -color-text-muted; -fx-font-size: 10.5px; }
+
+/* Qué sigue */
+.detail-shell .detail-next {
+    -fx-background-color: -color-surface; -fx-background-radius: 12; -fx-padding: 10 14;
+}
+.detail-shell .detail-next.tone-alert { -fx-background-color: -color-alert-bg; }
+.detail-shell .detail-next.tone-warn { -fx-background-color: -color-warning-bg; }
+.detail-shell .detail-next-icon { -fx-fill: transparent; -fx-stroke: -color-text-strong; -fx-stroke-width: 1.2; -fx-stroke-line-cap: round; }
+.detail-shell .detail-next.tone-alert .detail-next-icon { -fx-stroke: -color-alert; }
+.detail-shell .detail-next-title { -fx-text-fill: -color-text-strong; -fx-font-size: 9px; -fx-font-weight: bold; }
+.detail-shell .detail-next.tone-alert .detail-next-title { -fx-text-fill: -color-alert; }
+.detail-shell .detail-next-text { -fx-text-fill: -color-ink; -fx-font-size: 11px; }
+
+/* ---------- Pie con las acciones ---------- */
+.detail-shell .detail-actions {
+    -fx-background-color: -color-paper-white; -fx-padding: 12 20 12 20; -fx-spacing: 10;
+    -fx-border-color: -color-line transparent transparent transparent; -fx-border-width: 1 0 0 0;
+}
+.detail-shell.detail-modal .detail-actions { -fx-padding: 12 26 14 26; }
+.detail-shell .detail-action-hint {
+    -fx-text-fill: -color-text-muted; -fx-font-size: 10.5px; -fx-padding: 0 20 10 20;
+}
+.detail-shell .detail-button {
+    -fx-background-radius: 10; -fx-border-radius: 10; -fx-min-height: 38; -fx-pref-height: 38;
+    -fx-font-size: 12.5px; -fx-font-weight: bold; -fx-cursor: hand; -fx-padding: 0 16;
+}
+.detail-shell .detail-primary { -fx-background-color: -color-primary; -fx-text-fill: -color-paper; }
+.detail-shell .detail-primary:hover { -fx-background-color: -color-forest; }
+.detail-shell .detail-secondary {
+    -fx-background-color: -color-paper-white; -fx-text-fill: -color-ink; -fx-border-color: -color-line;
+}
+.detail-shell .detail-secondary:hover { -fx-background-color: -color-surface; }
+.detail-shell .detail-danger {
+    -fx-background-color: -color-paper-white; -fx-text-fill: -color-alert; -fx-border-color: -color-line;
+}
+.detail-shell .detail-danger:hover { -fx-background-color: -color-alert-bg; }
+.detail-shell .detail-button:disabled { -fx-opacity: 0.45; }
