@@ -17,6 +17,7 @@ import com.example.funerariamc.service.WakeRoomService.Wake;
 import com.example.funerariamc.service.WakeRoomService.WakeDetail;
 import com.example.funerariamc.ui.DetailCache;
 import com.example.funerariamc.ui.RefreshableView;
+import com.example.funerariamc.ui.FormShell;
 import javafx.animation.FadeTransition;
 import javafx.animation.KeyFrame;
 import javafx.animation.ParallelTransition;
@@ -641,6 +642,8 @@ public class WakeRoomController implements RefreshableView {
 .note(note("La capacidad debe ser mayor que cero. Si la sala es especial, al asignarla "
                         + "a un contrato se agrega el recargo configurado en Parámetros del sistema."));
         Dialog<ButtonType> dialog = formDialog("Nueva sala", "Los campos con * son obligatorios.", form, 720);
+        FormShell.panel(dialog, "Salas de velación");
+        FormShell.money(price);
         runForm(dialog, form, "Registrar sala", () -> wakeRoomService.register(new WakeRoomData(name.getText(),
                 parseInteger(capacity.getText(), "La capacidad"), parseAmount(price.getText(), "El precio base"),
                 special.isSelected())), saved -> {
@@ -680,6 +683,8 @@ public class WakeRoomController implements RefreshableView {
                         ? "Es una sala especial: el recargo configurado se agrega como una línea aparte de la venta."
                         : "Sala sin recargo. No se permite que dos velaciones se crucen en la misma sala."));
         Dialog<ButtonType> dialog = formDialog("Asignar " + room.name(), "Los campos con * son obligatorios.", form, 820);
+        FormShell.page(dialog, "Salas de velación");
+        FormShell.visual(dialog, roomAgenda(room, startDate, startTime, endDate, endTime), true, 460);
         runForm(dialog, form, "Asignar sala", () -> {
             wakeRoomService.assign(new AssignWakeData(room.id(), idOf(contract.getValue()),
                     at(startDate.getValue(), startTime.getValue()), at(endDate.getValue(), endTime.getValue())));
@@ -688,6 +693,136 @@ public class WakeRoomController implements RefreshableView {
             showToast(room.name() + " asignada al contrato " + contract.getValue().label() + ".");
             loadBoard(contractId);
         });
+    }
+
+    private static final int AGENDA_FROM = 8;
+    private static final int AGENDA_TO = 22;
+
+    /**
+     * Agenda del día de ingreso: una franja por sala de 8:00 a 22:00 con la velación que ya tiene
+     * (ocupada en verde oscuro, reservada en beige) y, en la sala que se asigna, la velación nueva
+     * con borde dorado, que se mueve al cambiar las fechas y horas del formulario.
+     */
+    private Node roomAgenda(RoomCard target, DatePicker startDate, ComboBox<LocalTime> startTime,
+                            DatePicker endDate, ComboBox<LocalTime> endTime) {
+        Label title = new Label();
+        title.getStyleClass().add("form-visual-title");
+        HBox legend = new HBox(16, agendaLegend("taken", "Ocupada"), agendaLegend("reserved", "Reservada"),
+                agendaLegend("this", "Esta velación"));
+        GridPane grid = new GridPane();
+        grid.setHgap(14);
+        grid.setVgap(10);
+        grid.setMinWidth(0);
+        ColumnConstraints names = new ColumnConstraints();
+        names.setMinWidth(Region.USE_PREF_SIZE);
+        ColumnConstraints tracks = new ColumnConstraints();
+        tracks.setHgrow(Priority.ALWAYS);
+        tracks.setMinWidth(0);
+        grid.getColumnConstraints().addAll(names, tracks);
+        // Regla de horas encima de las franjas
+        Pane hours = new Pane();
+        hours.setMinWidth(0);
+        hours.setPrefHeight(18);
+        for (int h = AGENDA_FROM; h <= AGENDA_TO; h++) {
+            Label tick = new Label(String.valueOf(h));
+            tick.getStyleClass().add("agenda-hour");
+            hours.getChildren().add(tick);
+        }
+        hours.widthProperty().addListener((obs, old, w) -> {
+            for (int i = 0; i < hours.getChildren().size(); i++) {
+                Label tick = (Label) hours.getChildren().get(i);
+                tick.setLayoutX(w.doubleValue() * i / (AGENDA_TO - AGENDA_FROM) - tick.getWidth() / 2);
+            }
+        });
+        grid.add(hours, 1, 0);
+        Runnable draw = () -> {
+            grid.getChildren().removeIf(n -> GridPane.getRowIndex(n) != null && GridPane.getRowIndex(n) > 0);
+            LocalDate day = startDate.getValue() == null ? today() : startDate.getValue();
+            title.setText("Agenda de salas · " + DATE.format(day));
+            List<RoomCard> rooms = board == null ? List.of(target) : board.rooms();
+            boolean sameDay = board != null && day.equals(board.date());
+            int row = 1;
+            for (RoomCard room : rooms) {
+                boolean mine = room.id().equals(target.id());
+                Label name = new Label(room.name());
+                name.getStyleClass().addAll("agenda-room", mine ? "mine" : "other");
+                Pane track = new Pane();
+                track.getStyleClass().addAll("agenda-track", mine ? "mine" : "other");
+                track.setMinWidth(0);
+                track.setPrefHeight(30);
+                Wake wake = room.wake();
+                if (sameDay && wake != null) {
+                    boolean ongoing = room.state() == RoomState.IN_WAKE;
+                    String text = wake.deceasedName() + (ongoing ? (wake.endKnown()
+                            ? " · sale " + whenText(day, wake.end()) : " · velación")
+                            : " · llega " + HOUR.format(wake.start()));
+                    placeBar(track, day, wake.start(), wake.end(), text, ongoing ? "taken" : "reserved");
+                }
+                if (mine && startTime.getValue() != null && endTime.getValue() != null) {
+                    LocalDateTime start = at(day, startTime.getValue());
+                    LocalDateTime end = at(endDate.getValue() == null ? day : endDate.getValue(), endTime.getValue());
+                    if (end.isAfter(start)) {
+                        placeBar(track, day, start, end, "Velación a asignar · " + HOUR.format(start) + " a "
+                                + whenText(day, end), "this");
+                    }
+                }
+                grid.add(name, 0, row);
+                grid.add(track, 1, row);
+                row++;
+            }
+        };
+        startDate.valueProperty().addListener((obs, old, value) -> draw.run());
+        startTime.valueProperty().addListener((obs, old, value) -> draw.run());
+        endDate.valueProperty().addListener((obs, old, value) -> draw.run());
+        endTime.valueProperty().addListener((obs, old, value) -> draw.run());
+        draw.run();
+        VBox box = new VBox(14, title, legend, grid);
+        box.getStyleClass().add("form-visual-body");
+        return box;
+    }
+
+    /** Barra de una velación dentro de la franja, recortada a las horas que se ven ese día. */
+    private static void placeBar(Pane track, LocalDate day, LocalDateTime start, LocalDateTime end, String text,
+                                 String kind) {
+        double span = (AGENDA_TO - AGENDA_FROM) * 60.0;
+        double from = Math.max(0, minutesFrom(day, start)) / span;
+        double to = Math.min(span, minutesFrom(day, end)) / span;
+        if (to <= 0 || from >= 1 || to <= from) {
+            return;
+        }
+        Label bar = new Label(text);
+        bar.getStyleClass().addAll("agenda-bar", kind);
+        bar.setMinWidth(0);
+        bar.setPrefHeight(30);
+        Runnable place = () -> {
+            double w = track.getWidth();
+            bar.setLayoutX(w * from);
+            bar.setPrefWidth(Math.max(0, w * (to - from)));
+        };
+        track.widthProperty().addListener((obs, old, w) -> place.run());
+        place.run();
+        track.getChildren().add(bar);
+    }
+
+    private static double minutesFrom(LocalDate day, LocalDateTime moment) {
+        return java.time.Duration.between(day.atTime(AGENDA_FROM, 0), moment).toMinutes();
+    }
+
+    /** "18:00" si es el mismo día; "mañana 10:00" o "17/11 10:00" si no. */
+    private static String whenText(LocalDate day, LocalDateTime moment) {
+        if (moment.toLocalDate().equals(day)) {
+            return HOUR.format(moment);
+        }
+        return (moment.toLocalDate().equals(day.plusDays(1)) ? "mañana " : DATE.format(moment.toLocalDate()) + " ")
+                + HOUR.format(moment);
+    }
+
+    private static Label agendaLegend(String kind, String text) {
+        Region swatch = new Region();
+        swatch.getStyleClass().addAll("agenda-swatch", kind);
+        Label item = new Label(text, swatch);
+        item.getStyleClass().add("form-legend-item");
+        return item;
     }
 
     /** "Cambiar sala": mismo horario en otra sala libre; el recargo se ajusta solo. */
@@ -710,6 +845,7 @@ public class WakeRoomController implements RefreshableView {
         }, failure -> roomBox.setPromptText("No se pudieron buscar las salas"));
         Dialog<ButtonType> dialog = formDialog("Cambiar sala", "Contrato " + d.contractNumber() + " · "
                 + d.deceasedName(), form, 680);
+        FormShell.window(dialog, "Salas de velación");
         runForm(dialog, form, "Cambiar sala", () -> {
             wakeRoomService.changeRoom(d.contractId(), idOf(roomBox.getValue()));
             return d.contractId();

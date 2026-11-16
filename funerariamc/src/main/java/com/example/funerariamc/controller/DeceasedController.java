@@ -26,6 +26,7 @@ import com.example.funerariamc.service.DeceasedService.TimelineStep;
 import com.example.funerariamc.service.FileStorageService;
 import com.example.funerariamc.ui.DetailCache;
 import com.example.funerariamc.ui.RefreshableView;
+import com.example.funerariamc.ui.FormShell;
 import javafx.animation.FadeTransition;
 import javafx.animation.ParallelTransition;
 import javafx.animation.PauseTransition;
@@ -970,6 +971,11 @@ public class DeceasedController implements RefreshableView {
         Dialog<ButtonType> dialog = formDialog("Registrar difunto",
                 "Los campos con * son obligatorios. Sin el certificado de defunción no se registra el difunto.",
                 form, 760, true);
+        FormShell.page(dialog, "Difuntos");
+        FormShell.steps(dialog, null,
+                new FormShell.Step("Datos del difunto", "Datos del difunto"),
+                new FormShell.Step("Responsable y plan", "Responsable y plan exequial"),
+                new FormShell.Step("Certificado de defunción", "Certificado de defunción"));
         Long[] savedId = new Long[1];
         boolean saved = runForm(dialog, form, "Registrar", () -> {
             boolean nn = unidentified.isSelected();
@@ -1043,6 +1049,7 @@ public class DeceasedController implements RefreshableView {
 
         Dialog<ButtonType> dialog = formDialog("Subir documento",
                 fullName + ". Los campos con * son obligatorios.", form, 640, false);
+        FormShell.panel(dialog, "Difuntos");
         boolean saved = runForm(dialog, form, "Guardar", () -> certificateService.addDocument(deceasedId,
                 new DeathDocumentData(type.getValue(), authority.getEditor().getText(), number.getText(), issued.getValue(),
                         file[0], notes.getText())));
@@ -1096,6 +1103,7 @@ public class DeceasedController implements RefreshableView {
 
         Dialog<ButtonType> dialog = formDialog("Vincular plan exequial", d.item().fullName()
                 + ". Se buscan los planes donde su documento es titular o beneficiario.", form, 540, false);
+        FormShell.window(dialog, "Difuntos");
         boolean saved = runForm(dialog, form, "Guardar", () -> {
             PlanSuggestion plan = planBox.getValue();
             deceasedService.linkPlan(d.item().id(), plan == null ? null : plan.planId());

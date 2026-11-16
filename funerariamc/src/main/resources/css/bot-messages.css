@@ -4,29 +4,29 @@
  * .bot-root, así no depende de otro módulo para verse bien.
  */
 .bot-root {
-    -eden-forest: #1E3A2E;
-    -eden-deep: #0F1F17;
-    -eden-moss: #3E5A3F;
-    -eden-sage: #6B7F67;
-    -eden-linen: #C7CBB8;
-    -eden-card: #FAFBF7;
-    -eden-tint: #EEF0E6;
-    -eden-line: #E6E8DE;
-    -eden-text: #1E2A22;
-    -eden-muted: #6A7366;
-    -eden-warn: #6E6A45;
-    -eden-warn-bg: #EDEBDD;
-    -eden-alert: #8A4B3C;
-    -eden-alert-bg: #F0E3DC;
-    -eden-khaki: #C4AF84;
+    -eden-forest: -color-forest;
+    -eden-deep: -color-forest-deep;
+    -eden-moss: -color-moss;
+    -eden-sage: -color-sage-dark;
+    -eden-linen: -color-linen;
+    -eden-card: -color-paper-white;
+    -eden-tint: -color-soft;
+    -eden-line: -color-panel;
+    -eden-text: -color-ink;
+    -eden-muted: -color-text-muted;
+    -eden-warn: -color-warning;
+    -eden-warn-bg: -color-warning-bg;
+    -eden-alert: -color-alert;
+    -eden-alert-bg: -color-alert-bg;
+    -eden-khaki: -color-detail;
 }
 
 /* ---------- Banda superior ---------- */
 .bot-root .hero-band {
-    -fx-background-color: linear-gradient(to right, #1E3A2E 0%, #3E5A3F 62%, #6B7F67 100%);
+    -fx-background-color: linear-gradient(to right, -color-forest 0%, -color-moss 62%, -color-sage-dark 100%);
     -fx-background-radius: 26;
     -fx-padding: 22 26 24 26;
-    -fx-effect: dropshadow(gaussian, rgba(15,31,23,0.22), 24, 0, 0, 8);
+    -fx-effect: dropshadow(gaussian, -color-shadow-22, 24, 0, 0, 8);
 }
 .bot-root .hero-kpi {
     -fx-background-color: rgba(255,255,255,0.07);
@@ -34,12 +34,12 @@
     -fx-background-radius: 16; -fx-border-radius: 16;
     -fx-padding: 14 18 14 18; -fx-spacing: 2;
 }
-.bot-root .hero-kpi-caption { -fx-text-fill: rgba(244,245,238,0.88); -fx-font-size: 11px; -fx-font-weight: bold; }
+.bot-root .hero-kpi-caption { -fx-text-fill: -color-paper-a88; -fx-font-size: 11px; -fx-font-weight: bold; }
 .bot-root .hero-kpi-value {
     -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif;
-    -fx-text-fill: #F4F5EE; -fx-font-size: 30px;
+    -fx-text-fill: -color-paper; -fx-font-size: 30px;
 }
-.bot-root .hero-kpi-detail { -fx-text-fill: rgba(244,245,238,0.72); -fx-font-size: 12.5px; }
+.bot-root .hero-kpi-detail { -fx-text-fill: -color-paper-a72; -fx-font-size: 12.5px; }
 
 /* ---------- Barra de búsqueda y filtros ---------- */
 .bot-root .filter-card {
@@ -56,8 +56,8 @@
     -fx-background-color: transparent; -fx-text-fill: -eden-text;
     -fx-background-radius: 10; -fx-padding: 7 14; -fx-font-weight: bold; -fx-font-size: 12.5px; -fx-cursor: hand;
 }
-.bot-root .segment:hover { -fx-background-color: rgba(199,203,184,0.45); }
-.bot-root .segment:selected { -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; }
+.bot-root .segment:hover { -fx-background-color: -color-linen-a45; }
+.bot-root .segment:selected { -fx-background-color: -eden-forest; -fx-text-fill: -color-paper; }
 .bot-root .secondary-button {
     -fx-background-color: -eden-card; -fx-text-fill: -eden-text; -fx-border-color: -eden-linen;
     -fx-background-radius: 12; -fx-border-radius: 12; -fx-padding: 8 14; -fx-cursor: hand;
@@ -94,18 +94,18 @@
     -fx-alignment: center-left; -fx-cursor: hand;
 }
 .bot-root .conversation-row:hover { -fx-background-color: -eden-tint; }
-.bot-root .list-cell:selected .conversation-row { -fx-background-color: #E2E6DD; }
+.bot-root .list-cell:selected .conversation-row { -fx-background-color: -color-surface; }
 .bot-root .avatar {
     -fx-background-color: -eden-moss; -fx-background-radius: 999;
     -fx-min-width: 40; -fx-min-height: 40; -fx-max-width: 40; -fx-max-height: 40; -fx-alignment: center;
 }
 .bot-root .avatar.mail { -fx-background-color: -eden-khaki; }
 .bot-root .avatar.unknown { -fx-background-color: -eden-linen; }
-.bot-root .avatar-text { -fx-text-fill: #F4F5EE; -fx-font-weight: bold; -fx-font-size: 13.5px; }
+.bot-root .avatar-text { -fx-text-fill: -color-paper; -fx-font-weight: bold; -fx-font-size: 13.5px; }
 .bot-root .avatar.mail .avatar-text, .bot-root .avatar.unknown .avatar-text { -fx-text-fill: -eden-deep; }
 .bot-root .row-title { -fx-text-fill: -eden-text; -fx-font-weight: bold; -fx-font-size: 14px; }
 .bot-root .row-time { -fx-text-fill: -eden-muted; -fx-font-size: 12px; }
-.bot-root .row-preview { -fx-text-fill: #4A524B; -fx-font-size: 13px; }
+.bot-root .row-preview { -fx-text-fill: -color-text-strong; -fx-font-size: 13px; }
 .bot-root .row-tag { -fx-background-radius: 999; -fx-padding: 2 8; -fx-font-size: 11px; -fx-font-weight: bold; }
 .bot-root .row-tag.mail { -fx-background-color: -eden-warn-bg; -fx-text-fill: -eden-warn; }
 .bot-root .row-tag.failed { -fx-background-color: -eden-alert-bg; -fx-text-fill: -eden-alert; }
@@ -128,30 +128,30 @@
     -fx-padding: 6 12; -fx-font-size: 12px; -fx-font-weight: bold;
 }
 .bot-root .thread-scroll, .bot-root .thread-scroll > .viewport {
-    -fx-background-color: #F1EFE9; -fx-background: #F1EFE9; -fx-background-insets: 0; -fx-padding: 0;
+    -fx-background-color: -color-ivory-mute; -fx-background: -color-ivory-mute; -fx-background-insets: 0; -fx-padding: 0;
 }
 .bot-root .thread-scroll > .scroll-bar:vertical { -fx-background-color: transparent; -fx-pref-width: 10; }
-.bot-root .thread-scroll > .scroll-bar:vertical .thumb { -fx-background-color: #B9C0B0; -fx-background-radius: 999; }
+.bot-root .thread-scroll > .scroll-bar:vertical .thumb { -fx-background-color: -color-mist; -fx-background-radius: 999; }
 .bot-root .thread-box { -fx-padding: 18 22; }
 .bot-root .thread-empty { -fx-text-fill: -eden-muted; -fx-font-size: 14px; }
 .bot-root .day-chip {
-    -fx-background-color: #E2E0D8; -fx-text-fill: #3F4740; -fx-background-radius: 999;
+    -fx-background-color: -color-ivory-line; -fx-text-fill: -color-text-strong; -fx-background-radius: 999;
     -fx-padding: 4 12; -fx-font-size: 11.5px;
 }
 .bot-root .bubble { -fx-padding: 11 14; -fx-spacing: 5; }
 .bot-root .bubble.bot {
-    -fx-background-color: #FFFFFF; -fx-border-color: #DCD8CF; -fx-border-width: 1;
+    -fx-background-color: white; -fx-border-color: -color-ivory-line; -fx-border-width: 1;
     -fx-background-radius: 4 16 16 16; -fx-border-radius: 4 16 16 16;
 }
-.bot-root .bubble.holder { -fx-background-color: #465E47; -fx-background-radius: 16 4 16 16; }
+.bot-root .bubble.holder { -fx-background-color: -color-accent; -fx-background-radius: 16 4 16 16; }
 .bot-root .bubble.failed { -fx-border-color: -eden-alert; -fx-border-width: 1.4; }
 .bot-root .bubble-topic { -fx-text-fill: -eden-moss; -fx-font-size: 10.5px; -fx-font-weight: bold; }
-.bot-root .bubble.holder .bubble-topic { -fx-text-fill: #D5DBD0; }
-.bot-root .bubble-text { -fx-text-fill: #1F2A22; -fx-font-size: 13.5px; -fx-line-spacing: 2; }
-.bot-root .bubble.holder .bubble-text { -fx-text-fill: #F4F1EC; }
-.bot-root .bubble-meta { -fx-text-fill: #5C645D; -fx-font-size: 11px; }
-.bot-root .bubble.holder .bubble-meta { -fx-text-fill: #D5DBD0; }
+.bot-root .bubble.holder .bubble-topic { -fx-text-fill: -color-line; }
+.bot-root .bubble-text { -fx-text-fill: -color-ink; -fx-font-size: 13.5px; -fx-line-spacing: 2; }
+.bot-root .bubble.holder .bubble-text { -fx-text-fill: -color-background; }
+.bot-root .bubble-meta { -fx-text-fill: -color-secondary; -fx-font-size: 11px; }
+.bot-root .bubble.holder .bubble-meta { -fx-text-fill: -color-line; }
 .bot-root .bubble-meta.failed { -fx-text-fill: -eden-alert; -fx-font-weight: bold; }
-.bot-root .chat-foot { -fx-background-color: #E2E6DD; -fx-background-radius: 0 0 22 22; -fx-padding: 12 22; }
-.bot-root .chat-foot-text { -fx-text-fill: #1F2A22; -fx-font-size: 12.5px; }
+.bot-root .chat-foot { -fx-background-color: -color-surface; -fx-background-radius: 0 0 22 22; -fx-padding: 12 22; }
+.bot-root .chat-foot-text { -fx-text-fill: -color-ink; -fx-font-size: 12.5px; }
 .bot-root .note-icon { -fx-fill: transparent; -fx-stroke: -eden-moss; -fx-stroke-width: 1.6; -fx-stroke-line-cap: round; }

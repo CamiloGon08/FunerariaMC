@@ -135,6 +135,17 @@ class AccessLogLabelsTest {
     }
 
     @Test
+    void translatesBrandingChanges() {
+        assertEquals("Cambio de la identidad de la funeraria: nombre, logo y colores", AccessLogLabels.of(
+                "BRANDING_UPDATED: name 'El Edén' -> 'Otra'; logo uploaded; colors #182F25 #465E47 #C4AF84 -> #1B2A3D #3D5A80 #C9A96E"));
+        assertEquals("Cambio de la identidad de la funeraria: colores",
+                AccessLogLabels.of("BRANDING_UPDATED: colors #182F25 #465E47 #C4AF84 -> #1B2A3D #3D5A80 #C9A96E"));
+        assertEquals("Cambio de la identidad de la funeraria", AccessLogLabels.of("BRANDING_UPDATED: no changes"));
+        assertEquals("Cambio de la identidad de la funeraria: imágenes",
+                AccessLogLabels.of("BRANDING_UPDATED: band image custom; menu image none"));
+    }
+
+    @Test
     void translatesParameterActions() {
         assertEquals("Cambio del parámetro Período de carencia: de 62 a 45",
                 AccessLogLabels.of("SYSTEM_PARAMETER_UPDATED: PLAN_WAITING_DAYS 62 -> 45"));

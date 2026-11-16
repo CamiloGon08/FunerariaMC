@@ -231,7 +231,7 @@ public class HomeController implements RefreshableView {
                     cell(label(a.destination(), "item-row-text"), 220), cell(label(a.vehicles(), "item-row-text"), 170),
                     cell(state, 120));
             row.getStyleClass().add("item-row");
-            row.setStyle("-fx-border-color: transparent transparent #E6E8DE transparent; -fx-cursor: default;");
+            row.setStyle("-fx-border-color: transparent transparent -color-panel transparent; -fx-cursor: default;");
             card.getChildren().add(row);
         }
         return card;
