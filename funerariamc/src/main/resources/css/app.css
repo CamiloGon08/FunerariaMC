@@ -478,6 +478,32 @@
     -fx-background-color: transparent; -fx-border-width: 0; -fx-padding: 9 0;
 }
 .filter-card .button { -fx-pref-height: 40; -fx-min-height: 40; -fx-padding: 0 20; }
+/* Todos los controles de la barra de filtros con el mismo alto (40 px), en todos los módulos.
+   Va con .shell delante para ganarle a las reglas propias de cada módulo. */
+.shell .filter-card .search-box,
+.shell .filter-card .combo-box,
+.shell .filter-card .date-picker,
+.shell .filter-card .button {
+    -fx-min-height: 40; -fx-pref-height: 40; -fx-max-height: 40;
+}
+.shell .filter-card .combo-box { -fx-padding: 0 4; }
+.shell .filter-card .segmented {
+    -fx-min-height: 40; -fx-pref-height: 40; -fx-max-height: 40;
+    -fx-padding: 4; -fx-spacing: 2; -fx-alignment: center-left;
+}
+.shell .filter-card .segmented .segment,
+.shell .filter-card .segmented .toggle-button {
+    -fx-min-height: 32; -fx-pref-height: 32; -fx-max-height: 32; -fx-padding: 0 14;
+}
+/* Pastillas sueltas (sin el contenedor .segmented): mismo alto que lo demás */
+.shell .filter-card > .toggle-button,
+.shell .filter-card > .segment,
+.shell .filter-card .chip {
+    -fx-min-height: 40; -fx-pref-height: 40; -fx-max-height: 40; -fx-padding: 0 16;
+}
+.shell .filter-card .segment-caption { -fx-min-height: 40; -fx-alignment: center-left; }
+/* Avisos de estado dentro de la barra (por ejemplo, el estado del bot): cápsula del mismo alto */
+.shell .filter-card .bot-status { -fx-min-height: 40; -fx-pref-height: 40; -fx-max-height: 40; -fx-alignment: center; -fx-padding: 0 14; }
 .date-picker > .arrow-button { -fx-background-color: transparent; -fx-padding: 8 10; -fx-cursor: hand; }
 .date-picker > .arrow-button > .arrow { -fx-background-color: -color-secondary; }
 .date-picker > .arrow-button:hover > .arrow { -fx-background-color: -color-accent; }
@@ -559,3 +585,46 @@
 /* Listas largas dentro de la pantalla (contratos, movimientos): barra visible para bajar entre filas */
 .page-content .list-view .scroll-bar:vertical { -fx-pref-width: 10; }
 .page-content .list-view .scroll-bar:vertical .thumb { -fx-background-color: -color-mist; -fx-background-radius: 999; }
+
+/* ---------- Menús desplegables (Exportar, "Más…", clic derecho en campos) ----------
+   Mismo estilo en toda la app: tarjeta clara redondeada, opciones amplias y resalte verde de la marca. */
+.context-menu {
+    -fx-background-color: -color-paper-white;
+    -fx-background-radius: 12;
+    -fx-border-color: -color-line;
+    -fx-border-radius: 12;
+    -fx-border-width: 1;
+    -fx-padding: 6;
+    -fx-effect: dropshadow(gaussian, -color-shadow-10, 18, 0.2, 0, 6);
+}
+.context-menu .menu-item {
+    -fx-background-color: transparent;
+    -fx-background-radius: 8;
+    -fx-padding: 9 16 9 12;
+    -fx-pref-width: 200;
+    -fx-cursor: hand;
+}
+.context-menu .menu-item > .label { -fx-text-fill: -color-ink; -fx-font-size: 13px; }
+.context-menu .menu-item:focused,
+.context-menu .menu-item:hover { -fx-background-color: -color-primary; }
+.context-menu .menu-item:focused > .label,
+.context-menu .menu-item:hover > .label { -fx-text-fill: -color-paper; }
+.context-menu .menu-item:disabled > .label { -fx-text-fill: -color-text-faint; }
+.context-menu .menu-item.menu-danger > .label { -fx-text-fill: -color-error; }
+.context-menu .menu-item.menu-danger:focused,
+.context-menu .menu-item.menu-danger:hover { -fx-background-color: -color-error-bg; }
+.context-menu .menu-item.menu-danger:focused > .label,
+.context-menu .menu-item.menu-danger:hover > .label { -fx-text-fill: -color-error; }
+.context-menu .separator:horizontal .line { -fx-border-color: -color-line transparent transparent transparent; -fx-padding: 0; }
+.context-menu .menu-item .menu-icon { -fx-fill: -color-detail; }
+.context-menu .menu-item:focused .menu-icon,
+.context-menu .menu-item:hover .menu-icon { -fx-fill: -color-detail; }
+/* Aviso junto a un campo cuando se pasa del máximo (por ejemplo, la cédula de 10 dígitos) */
+.tooltip.field-warning {
+    -fx-background-color: -color-alert-bg;
+    -fx-text-fill: -color-alert;
+    -fx-border-color: -color-alert-soft;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-font-weight: bold;
+}
