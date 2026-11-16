@@ -15,16 +15,15 @@ import com.example.funerariamc.service.WakeRoomService.RoomCard;
 import com.example.funerariamc.service.WakeRoomService.RoomState;
 import com.example.funerariamc.service.WakeRoomService.Wake;
 import com.example.funerariamc.service.WakeRoomService.WakeDetail;
+import com.example.funerariamc.ui.DetailShell;
 import com.example.funerariamc.ui.DetailCache;
 import com.example.funerariamc.ui.RefreshableView;
 import com.example.funerariamc.ui.FormShell;
 import javafx.animation.FadeTransition;
 import javafx.animation.KeyFrame;
-import javafx.animation.ParallelTransition;
 import javafx.animation.PauseTransition;
 import javafx.animation.SequentialTransition;
 import javafx.animation.Timeline;
-import javafx.animation.TranslateTransition;
 import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -77,7 +76,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * Pantalla de Salas de velación (tablero 19 y panel 19.1 de Figma, paleta verde oscura):
+ * Pantalla de Salas de velación (tablero del día y panel de detalle, paleta verde oscura):
  * ocupación por día con flechas y "Hoy", filtro por estado, una tarjeta por sala,
  * panel con difunto, familia, servicio y salida, y los diálogos Nueva sala,
  * Asignar a contrato y Cambiar sala.
@@ -93,7 +92,6 @@ public class WakeRoomController implements RefreshableView {
     private static final DateTimeFormatter HOUR = DateTimeFormatter.ofPattern("HH:mm");
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter DATE_HOUR = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
-    private static final double DRAWER_WIDTH = 480;
     /** Columnas del tablero, como en el diseño. */
     private static final int COLUMNS = 3;
 
@@ -146,17 +144,13 @@ public class WakeRoomController implements RefreshableView {
     @FXML
     private VBox drawer;
     @FXML
-    private VBox drawerHead;
-    @FXML
-    private VBox drawerBody;
-    @FXML
-    private HBox drawerActions;
-    @FXML
     private Label toast;
 
     private Board board;
     /** Contrato del panel abierto; null si está cerrado. */
     private Long drawerContractId;
+    /** Detalle de la velación con el formato común de detalle. */
+    private DetailShell shell;
     /** Descarta respuestas viejas si el usuario cambió de fecha mientras cargaba. */
     private int generation;
     private SequentialTransition toastMotion;
@@ -209,7 +203,7 @@ public class WakeRoomController implements RefreshableView {
         newRoomButton.setVisible(canRegister);
         newRoomButton.setManaged(canRegister);
 
-        drawer.setTranslateX(DRAWER_WIDTH);
+        shell = DetailShell.install(drawer, veil, DetailShell.Kind.PANEL);
         toast.setOpacity(0);
         toast.setMouseTransparent(true);
 
@@ -429,121 +423,94 @@ public class WakeRoomController implements RefreshableView {
         return chip;
     }
 
-    // ---------- panel de detalle (19.1) ----------
+    // ---------- panel de detalle ----------
 
     private void openDrawer(Long contractId) {
         drawerContractId = contractId;
         WakeDetail cached = details.get(contractId);
         if (cached != null) {
             fillDrawer(cached);
-        } else {
-            drawerHead.getChildren().setAll(label("Cargando la velación…", "drawer-head-text"));
-            drawerBody.getChildren().clear();
-            drawerActions.getChildren().clear();
-            details.load(contractId, detail -> {
-                if (contractId.equals(drawerContractId)) {
-                    fillDrawer(detail);
-                }
-            }, failure -> {
-                if (contractId.equals(drawerContractId)) {
-                    closeDrawer();
-                    showError(failure instanceof BusinessException business ? business.getMessage()
-                            : "No se pudo cargar el detalle de la sala.");
-                }
-            });
+            return;
         }
-        slideDrawerIn();
+        shell.show(contractId, new DetailShell.Hero("Sala", "Cargando la velación…").onClose(this::closeDrawer),
+                List.of(), List.of(), null);
+        details.load(contractId, data -> {
+            if (contractId.equals(drawerContractId)) {
+                fillDrawer(data);
+            }
+        }, failure -> {
+            if (contractId.equals(drawerContractId)) {
+                closeDrawer();
+                showError(failure instanceof BusinessException business ? business.getMessage()
+                        : "No se pudo cargar el detalle de la sala.");
+            }
+        });
     }
 
     private void fillDrawer(WakeDetail d) {
         LocalDateTime now = LocalDateTime.now(AccessLogService.APP_ZONE);
-        Label caption = label("SALA %02d%s".formatted(d.roomNumber(), d.special() ? " · ESPECIAL" : ""),
-                "drawer-head-caption");
-        Button close = new Button("✕");
-        close.getStyleClass().add("drawer-close-light");
-        close.setOnAction(e -> closeDrawer());
-        Pane spacer = new Pane();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-        HBox top = new HBox(caption, spacer, close);
-        top.setAlignment(Pos.CENTER_LEFT);
+        LocalDate day = board == null ? now.toLocalDate() : board.date();
+        List<Long> wakes = board == null ? List.of() : board.rooms().stream()
+                .filter(r -> r.wake() != null).map(r -> r.wake().contractId()).toList();
+        DetailShell.Hero hero = new DetailShell.Hero("Sala %02d%s".formatted(d.roomNumber(), d.special() ? " · especial" : ""),
+                d.roomName())
+                .chips(switch (d.state()) {
+                    case IN_WAKE -> DetailShell.chip("● En velación", DetailShell.Tone.OK);
+                    case RESERVED -> DetailShell.chip("● Reservada · " + HOUR.format(d.start()), DetailShell.Tone.GOLD);
+                    case AVAILABLE -> DetailShell.chip("● Velación terminada", DetailShell.Tone.NEUTRAL);
+                })
+                .navigation(DetailShell.neighbor(wakes, id -> id.equals(d.contractId()), -1, this::openDrawer),
+                        DetailShell.neighbor(wakes, id -> id.equals(d.contractId()), 1, this::openDrawer))
+                .onClose(this::closeDrawer);
 
-        Label state = label(switch (d.state()) {
-            case IN_WAKE -> "●  En velación";
-            case RESERVED -> "Reservada · " + HOUR.format(d.start());
-            case AVAILABLE -> "●  Velación terminada";
-        }, "state-chip");
-        state.getStyleClass().add(d.state() == RoomState.RESERVED ? "state-warn" : "state-ok");
-        HBox nameRow = new HBox(12, label(d.roomName(), "drawer-head-name"), state);
-        nameRow.setAlignment(Pos.CENTER_LEFT);
-
+        // Franja del día consultado: la velación de la sala y la hora actual si es hoy.
+        String exit = d.endKnown() ? "sale " + dayAndHour(d.end(), day) : "salida por definir";
+        hero.extra(DetailShell.dayTrack(8, 24, hourOf(d.start(), day), d.endKnown() ? hourOf(d.end(), day) : 24,
+                d.deceasedName() + " · " + exit + (d.endKnown() && d.end().toLocalDate().isAfter(day) ? " →" : ""),
+                now.toLocalDate().equals(day) ? now.getHour() + now.getMinute() / 60.0 : null, HOUR.format(now)));
         String middle = switch (d.state()) {
-            case IN_WAKE -> "Ahora " + HOUR.format(now) + " · faltan " + remaining(now, d.end());
+            case IN_WAKE -> "Faltan " + remaining(now, d.end());
             case RESERVED -> "Ingresa en " + remaining(now, d.start());
             case AVAILABLE -> "Terminó " + dayAndHour(d.end(), now.toLocalDate());
         };
-        Pane s1 = new Pane();
-        Pane s2 = new Pane();
-        HBox.setHgrow(s1, Priority.ALWAYS);
-        HBox.setHgrow(s2, Priority.ALWAYS);
-        HBox times = new HBox(label("Ingreso " + dayAndHour(d.start(), now.toLocalDate()), "drawer-head-strong"), s1,
-                label(middle, "drawer-head-text"), s2,
-                label(d.endKnown() ? "Salida " + dayAndHour(d.end(), now.toLocalDate()) : "Salida por definir",
-                        "drawer-head-strong"));
-        ProgressBar bar = new ProgressBar(progress(d.start(), d.end(), now));
-        bar.getStyleClass().add("progress-light");
-        bar.setMaxWidth(Double.MAX_VALUE);
-        drawerHead.getChildren().setAll(top, nameRow, times, bar);
+        hero.extra(DetailShell.heroSpread(DetailShell.heroLine("Ingreso", dayAndHour(d.start(), now.toLocalDate())),
+                DetailShell.heroLine(middle, null),
+                DetailShell.heroLine("Salida", d.endKnown() ? dayAndHour(d.end(), now.toLocalDate()) : "por definir")));
 
-        // Difunto
-        Label initials = label(initials(d.deceasedName()), "initials");
         String sub = (d.deceasedDocument() == null ? "Sin documento" : "Doc. " + d.deceasedDocument())
                 + (d.age() == null ? "" : " · " + d.age() + " años");
-        VBox who = new VBox(0, wrapped(d.deceasedName(), "person-title"), label(sub, "field-caption"));
-        HBox person = new HBox(12, initials, who);
-        person.setAlignment(Pos.CENTER_LEFT);
-        GridPane deceased = grid();
-        field(deceased, 0, 0, "Fecha de fallecimiento", d.deathDate() == null ? "—" : DATE.format(d.deathDate()));
-        field(deceased, 1, 0, "Tipo de muerte", deathType(d.deathType()));
-        field(deceased, 0, 1, "Certificado de defunción", d.certificate() == null ? "Sin registrar" : d.certificate());
-        field(deceased, 1, 1, "Tanatopraxia", d.preparationCompletedAt() == null ? "Pendiente"
-                : "Completada " + dayAndHour(d.preparationCompletedAt(), now.toLocalDate())
-                + (d.thanatopractor() == null ? "" : " · " + d.thanatopractor()));
+        VBox deceased = DetailShell.list(
+                DetailShell.person(DetailShell.initials(d.deceasedName()), d.deceasedName(), sub, null),
+                DetailShell.fields(
+                        "Fecha de fallecimiento", d.deathDate() == null ? "—" : DATE.format(d.deathDate()),
+                        "Tipo de muerte", deathType(d.deathType()),
+                        "Certificado de defunción", d.certificate() == null
+                                ? DetailShell.value("Sin registrar", DetailShell.Tone.WARN) : d.certificate(),
+                        "Tanatopraxia", d.preparationCompletedAt() == null ? "Pendiente"
+                                : "Completada " + dayAndHour(d.preparationCompletedAt(), now.toLocalDate())
+                                + (d.thanatopractor() == null ? "" : " · " + d.thanatopractor())));
+        VBox family = DetailShell.card(DetailShell.fields(
+                "Cliente titular", d.clientName(),
+                "Documento", orDash(d.clientDocument()),
+                "Teléfono", orDash(d.clientPhone())));
+        VBox service = DetailShell.card(DetailShell.fields(
+                "Contrato", d.contractNumber(),
+                "Plan exequial", d.planLabel() == null ? "Sin plan" : d.planLabel(),
+                "Vendedor", orDash(d.salesperson()),
+                "Recargo sala especial", d.roomSurcharge() == null
+                        ? (d.special() ? "Se agrega al generar la venta" : "No aplica") : pesos(d.roomSurcharge())));
+        VBox departure = DetailShell.card(DetailShell.fields(
+                "Hora de salida", d.endKnown() ? dayAndHour(d.end(), now.toLocalDate()) : "Por definir",
+                "Destino", d.destination() == null ? "Sin traslado registrado" : d.destination()));
 
-        GridPane family = grid();
-        field(family, 0, 0, "Cliente titular", d.clientName());
-        field(family, 1, 0, "Documento", orDash(d.clientDocument()));
-        field(family, 0, 1, "Teléfono", orDash(d.clientPhone()));
-
-        GridPane service = grid();
-        field(service, 0, 0, "Contrato", d.contractNumber());
-        field(service, 1, 0, "Plan exequial", d.planLabel() == null ? "Sin plan" : d.planLabel());
-        field(service, 0, 1, "Vendedor", orDash(d.salesperson()));
-        field(service, 1, 1, "Recargo sala especial", d.roomSurcharge() == null
-                ? (d.special() ? "Se agrega al generar la venta" : "No aplica") : pesos(d.roomSurcharge()));
-
-        GridPane departure = grid();
-        field(departure, 0, 0, "Hora de salida", d.endKnown() ? dayAndHour(d.end(), now.toLocalDate()) : "Por definir");
-        field(departure, 1, 0, "Destino", d.destination() == null ? "Sin traslado registrado" : d.destination());
-
-        drawerBody.getChildren().setAll(
-                section("DIFUNTO", person, deceased),
-                section("FAMILIA Y CLIENTE TITULAR", family),
-                section("SERVICIO", service),
-                section("SALIDA Y TRASLADO", departure));
-
-        Button contract = drawerButton("Ver contrato", "drawer-secondary");
-        contract.setOnAction(e -> openContract(d));
-        Button change = drawerButton("Cambiar sala", "drawer-primary");
+        Button contract = DetailShell.secondary("Ver contrato", () -> openContract(d));
+        Button change = DetailShell.primary("Cambiar sala", () -> openChangeDialog(d));
         change.setDisable(d.state() == RoomState.AVAILABLE);
-        change.setOnAction(e -> openChangeDialog(d));
-        drawerActions.getChildren().setAll(contract, change);
-    }
-
-    private static VBox section(String title, Node... content) {
-        VBox box = new VBox(10, label(title, "drawer-section-title"));
-        box.getChildren().addAll(content);
-        box.getStyleClass().add("drawer-section");
-        return box;
+        shell.show(d.contractId(), hero, List.of(
+                DetailShell.section("Difunto", deceased),
+                DetailShell.section("Familia y cliente titular", family),
+                DetailShell.section("Servicio", service),
+                DetailShell.section("Salida y traslado", departure)), List.of(contract, change), null);
     }
 
     private static GridPane grid() {
@@ -563,17 +530,15 @@ public class WakeRoomController implements RefreshableView {
         grid.add(box, column, row);
     }
 
-    private void slideDrawerIn() {
-        if (drawer.isVisible() && drawer.getTranslateX() == 0) {
-            return;
+    /** Hora del día (con decimales) de un momento respecto al día que se ve: antes de ese día 0, después 24. */
+    private static double hourOf(LocalDateTime moment, LocalDate day) {
+        if (moment.toLocalDate().isBefore(day)) {
+            return 0;
         }
-        veil.setVisible(true);
-        drawer.setVisible(true);
-        TranslateTransition slide = new TranslateTransition(Duration.millis(220), drawer);
-        slide.setToX(0);
-        FadeTransition fade = new FadeTransition(Duration.millis(220), veil);
-        fade.setToValue(1);
-        new ParallelTransition(slide, fade).play();
+        if (moment.toLocalDate().isAfter(day)) {
+            return 24;
+        }
+        return moment.getHour() + moment.getMinute() / 60.0;
     }
 
     @FXML
@@ -583,21 +548,7 @@ public class WakeRoomController implements RefreshableView {
 
     private void closeDrawer() {
         drawerContractId = null;
-        if (!drawer.isVisible()) {
-            return;
-        }
-        TranslateTransition slide = new TranslateTransition(Duration.millis(180), drawer);
-        slide.setToX(DRAWER_WIDTH);
-        FadeTransition fade = new FadeTransition(Duration.millis(180), veil);
-        fade.setToValue(0);
-        ParallelTransition out = new ParallelTransition(slide, fade);
-        out.setOnFinished(event -> {
-            if (drawerContractId == null) {
-                drawer.setVisible(false);
-                veil.setVisible(false);
-            }
-        });
-        out.play();
+        shell.close(null);
     }
 
     // ---------- fecha ----------
@@ -1140,14 +1091,6 @@ public class WakeRoomController implements RefreshableView {
         return box;
     }
 
-    private static Button drawerButton(String text, String styleClass) {
-        Button button = new Button(text);
-        button.getStyleClass().addAll("drawer-button", styleClass);
-        button.setMaxWidth(Double.MAX_VALUE);
-        HBox.setHgrow(button, Priority.ALWAYS);
-        return button;
-    }
-
     /** Las ventanas cargan app.css, personal.css y wake-rooms.css (formulario El Edén y colores verdes). */
     private static void styleDialog(DialogPane pane) {
         pane.getStylesheets().addAll(
@@ -1304,16 +1247,6 @@ public class WakeRoomController implements RefreshableView {
     private static String pesos(BigDecimal value) {
         NumberFormat format = NumberFormat.getIntegerInstance(ES);
         return "$ " + format.format(value == null ? BigDecimal.ZERO : value);
-    }
-
-    private static String initials(String name) {
-        StringBuilder result = new StringBuilder();
-        for (String part : name.trim().split("\\s+")) {
-            if (!part.isEmpty() && result.length() < 2) {
-                result.append(Character.toUpperCase(part.charAt(0)));
-            }
-        }
-        return result.toString();
     }
 
     private static String capitalize(String text) {
