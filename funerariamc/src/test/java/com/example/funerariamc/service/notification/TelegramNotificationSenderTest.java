@@ -64,4 +64,57 @@ class TelegramNotificationSenderTest {
         assertThrows(RestClientException.class, () -> sender.send("123", "Mensaje"));
         server.verify();
     }
+
+    @Test
+    void sendsReplyKeyboardButtons() {
+        server.expect(method(HttpMethod.POST))
+                .andExpect(jsonPath("$.reply_markup.keyboard[0][0].text").value("Mi plan"))
+                .andExpect(jsonPath("$.reply_markup.resize_keyboard").value(true))
+                .andRespond(withSuccess("{\"ok\":true}", MediaType.APPLICATION_JSON));
+        sender.sendWithOptions("555", "Choose", java.util.List.of(java.util.List.of("Mi plan")));
+        server.verify();
+    }
+
+    @Test
+    void emptyOptionsRemoveTheKeyboard() {
+        server.expect(method(HttpMethod.POST))
+                .andExpect(jsonPath("$.reply_markup.remove_keyboard").value(true))
+                .andRespond(withSuccess("{\"ok\":true}", MediaType.APPLICATION_JSON));
+        sender.sendWithOptions("555", "Goodbye", java.util.List.of());
+        server.verify();
+    }
+
+    @Test
+    void noOptionsLeaveTheKeyboardUntouched() {
+        server.expect(method(HttpMethod.POST))
+                .andExpect(jsonPath("$.reply_markup").doesNotExist())
+                .andRespond(withSuccess("{\"ok\":true}", MediaType.APPLICATION_JSON));
+        sender.sendWithOptions("555", "Message", null);
+        server.verify();
+    }
+
+    @Test
+    void telegramApplicationRejectionIsReported() {
+        server.expect(method(HttpMethod.POST))
+                .andRespond(withSuccess("{\"ok\":false}", MediaType.APPLICATION_JSON));
+        assertThrows(IllegalStateException.class, () -> sender.sendWithOptions("555", "Message", null));
+        server.verify();
+    }
+
+    @Test
+    void parsesATextUpdateWithALongChatIdentifier() {
+        var update = TelegramNotificationSender.parse(java.util.Map.of("update_id", 91L, "message",
+                java.util.Map.of("chat", java.util.Map.of("id", 4_000_000_001L), "text", "Hola")));
+        assertEquals(91L, update.updateId());
+        assertEquals("4000000001", update.chatId());
+        assertEquals("Hola", update.text());
+    }
+
+    @Test
+    void nonTextMessagesKeepTheChatWithoutInventingText() {
+        var update = TelegramNotificationSender.parse(java.util.Map.of("update_id", 92L, "message",
+                java.util.Map.of("chat", java.util.Map.of("id", 555L), "sticker", java.util.Map.of())));
+        assertEquals("555", update.chatId());
+        assertEquals("", update.text());
+    }
 }
