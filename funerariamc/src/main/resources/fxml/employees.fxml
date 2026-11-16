@@ -58,7 +58,7 @@
         </VBox>
 
         <!-- Búsqueda, áreas, estado y registrar (.filter-card y .search-box en app.css) -->
-        <HBox fx:id="filterBar" styleClass="filter-card">
+        <HBox styleClass="filter-card">
             <HBox styleClass="search-box" HBox.hgrow="ALWAYS" minWidth="150">
                 <SVGPath content="M7 1.5a5.5 5.5 0 1 1 0 11a5.5 5.5 0 0 1 0-11z M11.2 11.2 L15 15" styleClass="search-icon"/>
                 <TextField fx:id="searchField" promptText="Buscar por nombre o cédula" HBox.hgrow="ALWAYS"/>

@@ -12,6 +12,7 @@ import com.example.funerariamc.service.RoleNames;
 import com.example.funerariamc.service.SessionContext;
 import com.example.funerariamc.ui.ModuleIcons;
 import com.example.funerariamc.ui.RefreshableView;
+import com.example.funerariamc.ui.Responsive;
 import com.example.funerariamc.ui.Reveal;
 import com.example.funerariamc.ui.SidebarAnimator;
 import javafx.concurrent.Task;
@@ -86,7 +87,15 @@ public class MainController {
     private static final String HERO_HEADER_SLOT = "heroHeaderSlot";
     /** Clase que pone el encabezado en colores claros cuando está sobre la banda verde. */
     private static final String ON_HERO = "on-hero";
+    /** Ventana más angosta que esto: el menú lateral se contrae solo para dejarle espacio al módulo. */
+    private static final double COMPACT_WINDOW_WIDTH = 1200;
+    /** Módulo más angosto que esto: se oculta "Sesión activa" para que el título y Cerrar sesión quepan. */
+    private static final double SESSION_BADGE_MIN_WIDTH = 960;
+    /** Propiedad donde cada módulo guarda su marco con barra horizontal (se reutiliza al volver). */
+    private static final String MODULE_FRAME = "module-frame";
     private SidebarAnimator sidebarAnimator;
+    /** true mientras la ventana es angosta (menú contraído solo). */
+    private boolean compactWindow;
     /** Primer ítem del menú: vuelve al saludo de inicio. */
     private Button homePill;
     /** Grupo desplegable de Finanzas: Resumen financiero y Panel de análisis. */
@@ -145,7 +154,39 @@ public class MainController {
             }
         }
         sidebarAnimator.showExpanded();
+        watchWindowSize();
         onHome();
+    }
+
+    /**
+     * Ajuste al tamaño de la ventana: en ventanas angostas el menú se contrae solo (y se vuelve a
+     * abrir al agrandarla) y la píldora "Sesión activa" se oculta si no cabe en el encabezado.
+     */
+    private void watchWindowSize() {
+        sessionBadge.managedProperty().bind(sessionBadge.visibleProperty());
+        contentPane.widthProperty().addListener((obs, old, width) ->
+                sessionBadge.setVisible(width.doubleValue() == 0 || width.doubleValue() >= SESSION_BADGE_MIN_WIDTH));
+        sidebar.sceneProperty().addListener((obs, oldScene, scene) -> {
+            if (scene != null) {
+                scene.widthProperty().addListener((o, old, width) -> adjustToWindow(width.doubleValue()));
+                adjustToWindow(scene.getWidth());
+            }
+        });
+    }
+
+    private void adjustToWindow(double width) {
+        if (width <= 0) {
+            return;
+        }
+        boolean compact = width < COMPACT_WINDOW_WIDTH;
+        if (compact == compactWindow) {
+            return;
+        }
+        compactWindow = compact;
+        if (compact) {
+            showFinanceItems(false);
+        }
+        sidebarAnimator.setExpanded(!compact, null);
     }
 
     private Button modulePill(AppModule module, String text, Node icon, String styleClass) {
@@ -194,8 +235,13 @@ public class MainController {
         }
     }
 
-    /** Como en el diseño: si el menú está contraído, primero se expande y luego abre el módulo. */
+    /** Como en el diseño: si el menú está contraído, primero se expande y luego abre el módulo (salvo en ventana angosta). */
     private void onModuleSelected(AppModule module, Button button) {
+        // En ventana angosta el menú sigue contraído: el módulo necesita el espacio
+        if (compactWindow) {
+            openModule(module, button);
+            return;
+        }
         sidebarAnimator.setExpanded(true, () -> openModule(module, button));
        
     }
@@ -349,13 +395,33 @@ public class MainController {
         subtitleLabel.setText(subtitle);
         subtitleLabel.setVisible(!subtitle.isEmpty());
         subtitleLabel.setManaged(!subtitle.isEmpty());
-        contentPane.getChildren().setAll(content);
+        contentPane.getChildren().setAll(frame(content));
         placeHeader(content);
         SidebarAnimator.fadeIn(content);
         // La primera vez que se abre cada pantalla: esqueleto, entrada escalonada y contadores.
         if (revealed.add(content)) {
+            // Indicadores y filtros que bajan de línea cuando la ventana es angosta
+            Responsive.apply(content);
             Reveal.play(content);
         }
+    }
+
+    /**
+     * Marco de cada módulo: si la ventana es más angosta que lo mínimo que necesita el módulo
+     * (por ejemplo una tabla con columnas de ancho fijo), aparece una barra horizontal en vez de
+     * cortarse a la derecha. Mientras el módulo cabe, el marco no se nota.
+     */
+    private Node frame(Node content) {
+        return (Node) content.getProperties().computeIfAbsent(MODULE_FRAME, key -> {
+            ScrollPane frame = new ScrollPane(content);
+            frame.setFitToWidth(true);
+            frame.setFitToHeight(true);
+            frame.setHbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+            frame.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+            frame.setFocusTraversable(false);
+            frame.getStyleClass().add("module-frame");
+            return frame;
+        });
     }
 
     /**
