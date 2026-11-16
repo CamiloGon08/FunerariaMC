@@ -1,5 +1,6 @@
 package com.example.funerariamc.service.bot;
 
+import com.example.funerariamc.service.BrandingService;
 import com.example.funerariamc.model.Client;
 import com.example.funerariamc.model.ClientVerificationCode;
 import com.example.funerariamc.persistence.ClientVerificationCodeRepository;
@@ -41,19 +42,33 @@ public class BotVerificationService {
     private final int expirationMinutes;
     private final int maxAttempts;
     private final Clock clock;
+    private final BrandingService brandingService;
     private final SecureRandom random = new SecureRandom();
 
     @Autowired
     public BotVerificationService(ClientVerificationCodeRepository codeRepository, EmailNotificationSender emailSender,
                                   PasswordEncoder passwordEncoder,
                                   @Value("${app.password-reset.expiration-minutes:10}") int expirationMinutes,
-                                  @Value("${app.password-reset.max-attempts:5}") int maxAttempts) {
+                                  @Value("${app.password-reset.max-attempts:5}") int maxAttempts,
+                                  BrandingService brandingService) {
         this(codeRepository, emailSender, passwordEncoder, expirationMinutes, maxAttempts,
-                Clock.system(AccessLogService.APP_ZONE));
+                Clock.system(AccessLogService.APP_ZONE), brandingService);
+    }
+
+    public BotVerificationService(ClientVerificationCodeRepository codeRepository, EmailNotificationSender emailSender,
+                                  PasswordEncoder passwordEncoder, int expirationMinutes, int maxAttempts) {
+        this(codeRepository, emailSender, passwordEncoder, expirationMinutes, maxAttempts,
+                Clock.system(AccessLogService.APP_ZONE), null);
     }
 
     BotVerificationService(ClientVerificationCodeRepository codeRepository, EmailNotificationSender emailSender,
                            PasswordEncoder passwordEncoder, int expirationMinutes, int maxAttempts, Clock clock) {
+        this(codeRepository, emailSender, passwordEncoder, expirationMinutes, maxAttempts, clock, null);
+    }
+
+    BotVerificationService(ClientVerificationCodeRepository codeRepository, EmailNotificationSender emailSender,
+                           PasswordEncoder passwordEncoder, int expirationMinutes, int maxAttempts, Clock clock,
+                           BrandingService brandingService) {
         if (expirationMinutes <= 0 || maxAttempts <= 0) {
             throw new IllegalArgumentException("La vigencia y los intentos del código deben ser mayores que cero.");
         }
@@ -63,6 +78,7 @@ public class BotVerificationService {
         this.expirationMinutes = expirationMinutes;
         this.maxAttempts = maxAttempts;
         this.clock = clock;
+        this.brandingService = brandingService;
     }
 
     public int expirationMinutes() {
@@ -78,11 +94,12 @@ public class BotVerificationService {
         LocalDateTime now = LocalDateTime.now(clock);
         codeRepository.invalidatePending(chatId, now);
         String code = "%06d".formatted(random.nextInt(1_000_000));
-        emailSender.send(client.getEmail(), "Código para consultar su plan · Funeraria El Edén",
+        String funeralHome = BrandingService.fullNameOf(brandingService);
+        emailSender.send(client.getEmail(), "Código para consultar su plan · " + funeralHome,
                 "Hola, " + client.getName() + ".\n\n"
                         + "Su código para consultar el plan exequial en Telegram es " + code + ".\n"
                         + "Vence en " + expirationMinutes + " minutos. Si usted no lo pidió, ignore este correo.\n\n"
-                        + "Funeraria El Edén");
+                        + funeralHome);
         ClientVerificationCode saved = new ClientVerificationCode();
         saved.setClient(client);
         saved.setChatId(chatId);
