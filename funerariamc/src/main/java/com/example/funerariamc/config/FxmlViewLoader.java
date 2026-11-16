@@ -43,6 +43,7 @@ public class FxmlViewLoader {
     public static final String ALLIED_NETWORK = "/fxml/allied-network.fxml";
     public static final String HOME = "/fxml/home.fxml";
     public static final String ANALYTICS = "/fxml/analytics.fxml";
+    public static final String BOT_MESSAGES = "/fxml/bot-messages.fxml";
 
     
     private static final String[] FONTS = {
@@ -55,12 +56,10 @@ public class FxmlViewLoader {
             "/fonts/Montserrat-Bold.ttf",
             "/fonts/Montserrat-Italic.ttf"
     };
-
     public static final String LOGIN_TITLE = "Funeraria MC — Iniciar sesión";
     public static final String MAIN_TITLE = "Funeraria MC";
     public static final String PASSWORD_RECOVERY_TITLE = "Funeraria MC — Recuperar contraseña";
     public static final String CHANGE_PASSWORD_TITLE = "Funeraria MC — Cambiar contraseña";
-
     private final ApplicationContext context;
 
     public FxmlViewLoader(ApplicationContext context) {
