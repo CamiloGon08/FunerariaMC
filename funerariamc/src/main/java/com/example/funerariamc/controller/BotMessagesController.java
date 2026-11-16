@@ -394,7 +394,7 @@ public class BotMessagesController implements RefreshableView {
         } else {
             SVGPath icon = new SVGPath();
             icon.setContent("M4 5h16v11H9l-5 4z");
-            icon.setStyle("-fx-fill: transparent; -fx-stroke: #1E2A22; -fx-stroke-width: 1.5;");
+            icon.setStyle("-fx-fill: transparent; -fx-stroke: -color-ink; -fx-stroke-width: 1.5;");
             avatar.getChildren().add(icon);
         }
         return avatar;
