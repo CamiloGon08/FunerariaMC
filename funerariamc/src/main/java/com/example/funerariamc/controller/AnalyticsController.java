@@ -11,6 +11,8 @@ import com.example.funerariamc.service.AnalyticsService.SellerLine;
 import com.example.funerariamc.service.AnalyticsService.ThanatoLine;
 import com.example.funerariamc.service.FinancePeriod;
 import com.example.funerariamc.ui.RefreshableView;
+import com.example.funerariamc.service.BrandPalette;
+import com.example.funerariamc.ui.BrandTheme;
 import javafx.animation.FadeTransition;
 import javafx.animation.PauseTransition;
 import javafx.animation.SequentialTransition;
@@ -289,7 +291,7 @@ public class AnalyticsController implements RefreshableView {
 
         HBox legend = new HBox(16);
         legend.setAlignment(Pos.CENTER_LEFT);
-        String[] colors = {"#3E5A3F", "#C4AF84", "#1E3A2E", "#9FB09A"};
+        String[] colors = {"-color-moss", "-color-detail", "-color-forest", "-color-sage-mid"};
         for (int kind = 0; kind < AnalyticsService.KINDS.length; kind++) {
             Region dot = new Region();
             dot.getStyleClass().add("legend-dot");
@@ -375,7 +377,7 @@ public class AnalyticsController implements RefreshableView {
                 cell.getStyleClass().add("heat-text");
                 cell.setMaxWidth(Double.MAX_VALUE);
                 cell.setStyle("-fx-background-color: " + heatColor(p) + "; -fx-text-fill: "
-                        + (p >= 50 ? "#F4F5EE" : "#2B3A2F") + ";");
+                        + (p >= 50 ? "-color-paper" : "-color-ink") + ";");
                 grid.add(cell, d + 1, r + 1);
             }
         }
@@ -392,12 +394,18 @@ public class AnalyticsController implements RefreshableView {
         return card;
     }
 
-    /** De un salvia muy claro (0 %) al verde bosque (100 %). */
+    /** Del tono más claro (0 %) al color principal de la marca (100 %); en El Edén, de salvia a verde bosque. */
     static String heatColor(int percent) {
         double t = Math.max(0, Math.min(100, percent)) / 100.0;
-        int[] from = {0xEE, 0xF0, 0xE6};
-        int[] to = {0x1E, 0x3A, 0x2E};
+        BrandPalette palette = BrandTheme.brand().palette();
+        int[] from = rgb(palette.get("-color-soft"));
+        int[] to = rgb(palette.get("-color-forest"));
         return String.format("#%02X%02X%02X", mix(from[0], to[0], t), mix(from[1], to[1], t), mix(from[2], to[2], t));
+    }
+
+    private static int[] rgb(String hex) {
+        return new int[]{Integer.parseInt(hex.substring(1, 3), 16), Integer.parseInt(hex.substring(3, 5), 16),
+                Integer.parseInt(hex.substring(5, 7), 16)};
     }
 
     private static int mix(int a, int b, double t) {
@@ -456,7 +464,7 @@ public class AnalyticsController implements RefreshableView {
             row.getChildren().add(cell(label(v, "item-row-text"), 150));
         }
         row.getStyleClass().add("item-row");
-        row.setStyle("-fx-border-color: transparent transparent #E6E8DE transparent; -fx-cursor: default;");
+        row.setStyle("-fx-border-color: transparent transparent -color-panel transparent; -fx-cursor: default;");
         return row;
     }
 
