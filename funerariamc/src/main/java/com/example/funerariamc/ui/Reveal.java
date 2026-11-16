@@ -23,11 +23,13 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.Parent;
+import javafx.scene.control.ComboBoxBase;
 import javafx.scene.control.IndexedCell;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TableView;
+import javafx.scene.layout.BackgroundFill;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
@@ -37,6 +39,11 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.TilePane;
 import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
+import javafx.scene.paint.LinearGradient;
+import javafx.scene.paint.Paint;
+import javafx.scene.paint.RadialGradient;
+import javafx.scene.paint.Stop;
 import javafx.util.Duration;
 
 import java.util.ArrayList;
@@ -79,12 +86,20 @@ public final class Reveal {
     /** Primer número del texto: "1.200.000", "58,4", "3"... (formato colombiano). */
     private static final Pattern NUMBER = Pattern.compile("\\d{1,3}(?:\\.\\d{3})+(?:,\\d+)?|\\d+(?:,\\d+)?");
 
-    // Colores de la paleta (definidos en .root de app.css)
-    private static final String BAR_STYLE = "-fx-background-color: #DCE0D6; -fx-background-radius: 6;";
-    private static final String CARD_STYLE = "-fx-background-color: -color-card; -fx-background-radius: 16;"
-            + " -fx-border-color: #E4E6DF; -fx-border-radius: 16; -fx-border-width: 1;";
-    private static final String ROW_STYLE = "-fx-border-color: transparent transparent #E4E6DF transparent;"
-            + " -fx-border-width: 0 0 1 0;";
+    // Colores del esqueleto tomados de la paleta El Edén (app.css): verde musgo #465E47,
+    // caqui dorado #C4AF84 y marfil #F4F1EC, con transparencia para que se mezclen con el fondo.
+    // Sobre fondo claro (tarjetas, tablas): barras verde salvia y la primera en caqui.
+    private static final String LIGHT_BAR = "rgba(110,140,100,0.28)";
+    private static final String LIGHT_TITLE = "rgba(196,175,132,0.55)";
+    private static final String LIGHT_LINE = "rgba(110,140,100,0.20)";
+    private static final String LIGHT_CARD = "-fx-background-color: -color-card;";
+    // Sobre la banda verde (indicadores, encabezados oscuros): barras marfil y caqui translúcidas.
+    private static final String DARK_BAR = "rgba(244,241,236,0.16)";
+    private static final String DARK_TITLE = "rgba(196,175,132,0.38)";
+    private static final String DARK_LINE = "rgba(244,241,236,0.12)";
+    private static final String DARK_CARD = "-fx-background-color: rgba(255,255,255,0.07);";
+    /** Por debajo de esta luminosidad (0 negro, 1 blanco) el fondo se considera oscuro. */
+    private static final double DARK_LIMIT = 0.45;
 
     // Un solo brillo compartido por todos los esqueletos que estén esperando datos
     private static final List<Node> SKELETONS = new ArrayList<>();
@@ -107,10 +122,19 @@ public final class Reveal {
             countWhenReady(value, screen);
         }
         for (Pane zone : found.zones) {
-            screen.waitFor(new PaneZone(zone, screen));
+            // Si el controlador ya muestra su aviso de "sin datos" junto a la zona, no se pone esqueleto
+            if (!EmptyNotice.showing(zone)) {
+                PaneZone waiter = new PaneZone(zone, screen);
+                screen.waitFor(waiter);
+                EmptyNotice.endWhenShown(zone, waiter, screen);
+            }
         }
         for (Node list : found.lists) {
-            screen.waitFor(new ListZone(list, screen));
+            if (!EmptyNotice.showing(list)) {
+                ListZone waiter = new ListZone(list, screen);
+                screen.waitFor(waiter);
+                EmptyNotice.endWhenShown(list, waiter, screen);
+            }
         }
         for (Label overlay : found.overlays) {
             screen.waitFor(new HiddenLoadingText(overlay, screen));
@@ -144,14 +168,18 @@ public final class Reveal {
         if (hasAny(node, CARDS)) {
             found.cards.add(node);
         }
+        if (node instanceof ComboBoxBase<?>) {
+            // La lista interna de un ComboBox no es una zona de registros
+            return;
+        }
         if (node instanceof TableView<?> table) {
-            if (table.getItems() == null || table.getItems().isEmpty()) {
+            if (!table.placeholderProperty().isBound() && (table.getItems() == null || table.getItems().isEmpty())) {
                 found.lists.add(table);
             }
             return;
         }
         if (node instanceof ListView<?> list) {
-            if (list.getItems() == null || list.getItems().isEmpty()) {
+            if (!list.placeholderProperty().isBound() && (list.getItems() == null || list.getItems().isEmpty())) {
                 found.lists.add(list);
             }
             return;
@@ -325,6 +353,7 @@ public final class Reveal {
 
         private void addSkeletons() {
             busy = true;
+            boolean dark = onDark(pane);
             skeletons.clear();
             if (pane instanceof GridPane grid) {
                 int columns = Math.max(1, grid.getColumnConstraints().size());
@@ -332,17 +361,17 @@ public final class Reveal {
                     columns = 3;
                 }
                 for (int i = 0; i < SKELETON_CARDS; i++) {
-                    Node card = skeletonCard();
+                    Node card = skeletonCard(dark);
                     GridPane.setConstraints(card, i % columns, i / columns);
                     skeletons.add(card);
                 }
             } else if (pane instanceof FlowPane || pane instanceof TilePane) {
                 for (int i = 0; i < SKELETON_CARDS; i++) {
-                    skeletons.add(skeletonCard());
+                    skeletons.add(skeletonCard(dark));
                 }
             } else {
                 for (int i = 0; i < SKELETON_ROWS; i++) {
-                    skeletons.add(skeletonRow(i));
+                    skeletons.add(skeletonRow(i, dark));
                 }
             }
             pane.getChildren().addAll(skeletons);
@@ -405,11 +434,12 @@ public final class Reveal {
                 items = list.itemsProperty();
             }
             original = placeholder.get();
+            boolean dark = onDark(control);
             VBox rows = new VBox();
             rows.setFillWidth(true);
             rows.setAlignment(Pos.TOP_LEFT);
             for (int i = 0; i < SKELETON_ROWS; i++) {
-                rows.getChildren().add(skeletonRow(i));
+                rows.getChildren().add(skeletonRow(i, dark));
             }
             rows.getProperties().put(SKELETON_NODE, Boolean.TRUE);
             skeleton = rows;
@@ -465,9 +495,11 @@ public final class Reveal {
                 ((ObservableList<Object>) watched).removeListener(onItems);
             }
             stopShimmer(skeleton);
-            // Solo se devuelve el aviso original si el controlador no puso otro mientras tanto
+            // Solo se devuelve el aviso original si el controlador no puso otro mientras tanto. Si no
+            // tenía aviso, se pone uno vacío: con null la lista seguía mostrando el esqueleto debajo
+            // del mensaje "sin datos" del controlador.
             if (placeholder.get() == skeleton) {
-                placeholder.set(original);
+                placeholder.set(original != null ? original : new Region());
             }
             if (animate) {
                 Platform.runLater(this::animateRows);
@@ -506,7 +538,7 @@ public final class Reveal {
 
         private void textChanged(String text) {
             if (!isLoading(text)) {
-                // Ya llegó la respuesta ("No hay ventas", vacío...): el texto vuelve a verse
+                // Ya llegó la respuesta ("No hay ventas", vacío...)
                 finish(false);
             }
         }
@@ -523,19 +555,79 @@ public final class Reveal {
         }
     }
 
+    /**
+     * Aviso de "sin datos" que el controlador pone encima de una lista o zona
+     */
+    private static final class EmptyNotice {
+        /** Niveles que se suben para encontrar el ScrollPane que contiene la zona. */
+        private static final int SCROLL_LEVELS = 4;
+
+        private EmptyNotice() {
+        }
+
+        static boolean showing(Node zone) {
+            return notices(zone).stream().anyMatch(EmptyNotice::isShown);
+        }
+
+        static void endWhenShown(Node zone, Waiter waiter, Screen screen) {
+            boolean[] ended = {false};
+            for (Label notice : notices(zone)) {
+                InvalidationListener check = obs -> {
+                    if (!ended[0] && isShown(notice)) {
+                        ended[0] = true;
+                        waiter.finish(false);
+                        screen.loaded();
+                    }
+                };
+                notice.visibleProperty().addListener(check);
+                notice.textProperty().addListener(check);
+            }
+        }
+
+        /** Etiquetas hermanas de la zona (o del ScrollPane que la contiene) dentro de un StackPane. */
+        private static List<Label> notices(Node zone) {
+            Node host = zone;
+            Node parent = zone.getParent();
+            for (int i = 0; i < SCROLL_LEVELS && parent != null; i++) {
+                if (parent instanceof ScrollPane scroll) {
+                    if (scroll.getContent() == zone) {
+                        host = scroll;
+                    }
+                    break;
+                }
+                parent = parent.getParent();
+            }
+            List<Label> labels = new ArrayList<>();
+            if (host.getParent() instanceof StackPane stack) {
+                for (Node child : stack.getChildren()) {
+                    if (child != host && child instanceof Label label && !isSkeleton(label)) {
+                        labels.add(label);
+                    }
+                }
+            }
+            return labels;
+        }
+
+        private static boolean isShown(Label label) {
+            String text = label.getText();
+            return label.isVisible() && text != null && !text.isBlank() && !isLoading(text);
+        }
+    }
+
     // ---------- bloques de esqueleto ----------
 
-    /** Fila gris con tres o cuatro barras de distinto largo, como una fila de tabla. */
-    private static Node skeletonRow(int index) {
+    /** Fila con cuatro barras de distinto largo, como una fila de tabla, en los colores del fondo. */
+    private static Node skeletonRow(int index, boolean dark) {
         HBox row = new HBox(18);
         row.setAlignment(Pos.CENTER_LEFT);
         row.setPadding(new Insets(14, 16, 14, 16));
         row.setMinHeight(46);
-        row.setStyle(ROW_STYLE);
+        row.setStyle("-fx-border-color: transparent transparent " + (dark ? DARK_LINE : LIGHT_LINE)
+                + " transparent; -fx-border-width: 0 0 1 0;");
         double[][] widths = {{190, 120, 90, 70}, {150, 140, 80, 60}, {210, 100, 100, 70}, {170, 130, 70, 80}};
         double[] pattern = widths[index % widths.length];
         for (int i = 0; i < pattern.length; i++) {
-            Region bar = bar(pattern[i], i == 0 ? 13 : 11);
+            Region bar = bar(pattern[i], i == 0 ? 13 : 11, dark, i == 0);
             row.getChildren().add(bar);
             if (i == 1) {
                 Region spacer = new Region();
@@ -548,27 +640,31 @@ public final class Reveal {
         return row;
     }
 
-    /** Tarjeta gris con título, subtítulo y dos líneas, del tamaño de una tarjeta real. */
-    private static Node skeletonCard() {
+    /** Tarjeta con título, subtítulo y dos líneas, del tamaño de una tarjeta real. */
+    private static Node skeletonCard(boolean dark) {
         VBox card = new VBox(12);
         card.setPadding(new Insets(20));
         card.setPrefSize(260, 150);
         card.setMinHeight(150);
         card.setMaxWidth(Double.MAX_VALUE);
-        card.setStyle(CARD_STYLE);
+        card.setStyle((dark ? DARK_CARD : LIGHT_CARD) + " -fx-background-radius: 16; -fx-border-radius: 16;"
+                + " -fx-border-width: 1; -fx-border-color: " + (dark ? DARK_LINE : LIGHT_LINE) + ";");
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
-        card.getChildren().addAll(bar(150, 16), bar(100, 11), spacer, bar(190, 11), bar(120, 11));
+        card.getChildren().addAll(bar(150, 16, dark, true), bar(100, 11, dark, false), spacer,
+                bar(190, 11, dark, false), bar(120, 11, dark, false));
         card.getProperties().put(SKELETON_NODE, Boolean.TRUE);
         return card;
     }
 
-    private static Region bar(double width, double height) {
+    /** Barra del esqueleto; la primera de cada fila o tarjeta (el título) va en caqui. */
+    private static Region bar(double width, double height, boolean dark, boolean title) {
         Region bar = new Region();
         bar.setPrefSize(width, height);
         bar.setMinSize(Math.min(width, 40), height);
         bar.setMaxSize(width, height);
-        bar.setStyle(BAR_STYLE);
+        String color = title ? (dark ? DARK_TITLE : LIGHT_TITLE) : (dark ? DARK_BAR : LIGHT_BAR);
+        bar.setStyle("-fx-background-color: " + color + "; -fx-background-radius: 6;");
         return bar;
     }
 
@@ -604,13 +700,17 @@ public final class Reveal {
 
     // ---------- indicadores ----------
 
-    /** Si el dato ya está, cuenta de una vez. si no, muestra el esqueleto hasta que llegue. */
+    /** Si el dato ya está, cuenta de una vez; si no, muestra el esqueleto hasta que llegue. */
     private static void countWhenReady(Label label, Screen screen) {
         if (!isPending(label.getText())) {
             count(label, label.getText());
             return;
         }
+        String ownStyle = label.getStyle();
         label.getStyleClass().add(SKELETON);
+        // El color del bloque se toma del fondo: caqui sobre la banda verde, musgo sobre tarjeta clara
+        label.setStyle((ownStyle == null || ownStyle.isBlank() ? "" : ownStyle + "; ") + "-fx-text-fill: transparent; -fx-background-color: "
+                + (onDark(label) ? DARK_TITLE : LIGHT_BAR) + ";");
         startShimmer(label);
         screen.waitFor(new Waiter() {
             private final ChangeListener<String> whenLoaded = (obs, oldText, newText) -> {
@@ -634,6 +734,7 @@ public final class Reveal {
                 screen.done(this);
                 label.textProperty().removeListener(whenLoaded);
                 label.getStyleClass().remove(SKELETON);
+                label.setStyle(ownStyle);
                 stopShimmer(label);
                 // Si la consulta falla o tarda demasiado, se quita el esqueleto y queda el texto de espera.
                 if (animate) {
@@ -687,6 +788,52 @@ public final class Reveal {
             integer = withDots.toString();
         }
         return integer + fraction;
+    }
+
+    // ---------- color del fondo ----------
+
+    /**
+     * Dice si el nodo está sobre un fondo oscuro o claro.
+     * Sube por los contenedores hasta el primero que tenga un fondo casi opaco y mide su luminosidad.
+     */
+    static boolean onDark(Node node) {
+        for (Node current = node; current != null; current = current.getParent()) {
+            if (current instanceof Region region && region.getBackground() != null) {
+                List<BackgroundFill> fills = region.getBackground().getFills();
+                for (int i = fills.size() - 1; i >= 0; i--) {
+                    Color color = colorOf(fills.get(i).getFill());
+                    if (color != null && color.getOpacity() >= 0.6) {
+                        return luminance(color) < DARK_LIMIT;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    /** Color de un relleno; en un degradado, el promedio de sus paradas. */
+    private static Color colorOf(Paint paint) {
+        if (paint instanceof Color color) {
+            return color;
+        }
+        List<Stop> stops = paint instanceof LinearGradient linear ? linear.getStops()
+                : paint instanceof RadialGradient radial ? radial.getStops() : List.of();
+        if (stops.isEmpty()) {
+            return null;
+        }
+        double r = 0, g = 0, b = 0, a = 0;
+        for (Stop stop : stops) {
+            r += stop.getColor().getRed();
+            g += stop.getColor().getGreen();
+            b += stop.getColor().getBlue();
+            a += stop.getColor().getOpacity();
+        }
+        int n = stops.size();
+        return new Color(r / n, g / n, b / n, a / n);
+    }
+
+    private static double luminance(Color color) {
+        return 0.2126 * color.getRed() + 0.7152 * color.getGreen() + 0.0722 * color.getBlue();
     }
 
     // ---------- brillo ----------
