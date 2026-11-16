@@ -13,7 +13,7 @@
     -fx-background-radius: 10; -fx-padding: 7 14; -fx-font-weight: bold; -fx-font-size: 12.5px;
     -fx-cursor: hand;
 }
-.segment:hover { -fx-background-color: rgba(250,249,246,0.6); }
+.segment:hover { -fx-background-color: -color-card-a60; }
 .segment:selected { -fx-background-color: -color-accent; -fx-text-fill: -color-background; }
 .segment-caption { -fx-text-fill: -color-secondary; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 0 4 0 8; }
 
@@ -21,7 +21,7 @@
 .toast {
     -fx-background-color: -color-primary; -fx-text-fill: -color-background;
     -fx-background-radius: 12; -fx-padding: 12 18; -fx-font-size: 13.5px; -fx-font-weight: bold;
-    -fx-effect: dropshadow(gaussian, rgba(24,47,37,0.25), 18, 0, 0, 6);
+    -fx-effect: dropshadow(gaussian, -color-primary-a25, 18, 0, 0, 6);
 }
 
 .drawer-secondary { -fx-background-color: transparent; -fx-text-fill: -color-primary; -fx-border-color: -color-border; }
@@ -75,27 +75,27 @@
    Banda verde con el título y los indicadores, tarjetas claras sobre fondo salvia,
    selección en bosque profundo y estados suaves. Todo va bajo .contracts-root para no tocar otros módulos. */
 .contracts-root {
-    -eden-forest: #1E3A2E;
-    -eden-deep: #0F1F17;
-    -eden-moss: #3E5A3F;
-    -eden-sage: #6B7F67;
-    -eden-linen: #C7CBB8;
-    -eden-card: #FAFBF7;
-    -eden-tint: #EEF0E6;
-    -eden-text: #1E2A22;
-    -eden-muted: #6A7366;
-    -eden-warn: #6E6A45;
-    -eden-warn-bg: #EDEBDD;
-    -eden-alert: #8A4B3C;
-    -eden-alert-bg: #F0E3DC;
+    -eden-forest: -color-forest;
+    -eden-deep: -color-forest-deep;
+    -eden-moss: -color-moss;
+    -eden-sage: -color-sage-dark;
+    -eden-linen: -color-linen;
+    -eden-card: -color-paper-white;
+    -eden-tint: -color-soft;
+    -eden-text: -color-ink;
+    -eden-muted: -color-text-muted;
+    -eden-warn: -color-warning;
+    -eden-warn-bg: -color-warning-bg;
+    -eden-alert: -color-alert;
+    -eden-alert-bg: -color-alert-bg;
 }
 
 /* Banda superior */
 .contracts-root .hero-band {
-    -fx-background-color: linear-gradient(to right, #1E3A2E 0%, #3E5A3F 62%, #6B7F67 100%);
+    -fx-background-color: linear-gradient(to right, -color-forest 0%, -color-moss 62%, -color-sage-dark 100%);
     -fx-background-radius: 26;
     -fx-padding: 22 26 24 26;
-    -fx-effect: dropshadow(gaussian, rgba(15,31,23,0.22), 24, 0, 0, 8);
+    -fx-effect: dropshadow(gaussian, -color-shadow-22, 24, 0, 0, 8);
 }
 .contracts-root .hero-kpi {
     -fx-background-color: rgba(255,255,255,0.07);
@@ -103,12 +103,12 @@
     -fx-background-radius: 16; -fx-border-radius: 16;
     -fx-padding: 14 18 14 18; -fx-spacing: 2;
 }
-.contracts-root .hero-kpi-caption { -fx-text-fill: rgba(244,245,238,0.88); -fx-font-size: 11px; -fx-font-weight: bold; }
+.contracts-root .hero-kpi-caption { -fx-text-fill: -color-paper-a88; -fx-font-size: 11px; -fx-font-weight: bold; }
 .contracts-root .hero-kpi-value {
     -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif;
-    -fx-text-fill: #F4F5EE; -fx-font-size: 30px;
+    -fx-text-fill: -color-paper; -fx-font-size: 30px;
 }
-.contracts-root .hero-kpi-detail { -fx-text-fill: rgba(244,245,238,0.72); -fx-font-size: 12.5px; }
+.contracts-root .hero-kpi-detail { -fx-text-fill: -color-paper-a72; -fx-font-size: 12.5px; }
 /* Tarjeta destacada de la banda: fondo lino claro y texto oscuro, como en la captura aprobada */
 
 /* Barra de búsqueda y filtros */
@@ -120,8 +120,8 @@
 .contracts-root .search-box { -fx-background-color: -eden-tint; -fx-background-radius: 12; }
 .contracts-root .segmented { -fx-background-color: -eden-tint; }
 .contracts-root .segment { -fx-text-fill: -eden-text; }
-.contracts-root .segment:hover { -fx-background-color: rgba(199,203,184,0.45); }
-.contracts-root .segment:selected { -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; }
+.contracts-root .segment:hover { -fx-background-color: -color-linen-a45; }
+.contracts-root .segment:selected { -fx-background-color: -eden-forest; -fx-text-fill: -color-paper; }
 .contracts-root .segment-caption { -fx-text-fill: -eden-muted; }
 .contracts-root .chip-combo { -fx-background-color: -eden-card; -fx-border-color: -eden-linen; -fx-background-radius: 12; -fx-border-radius: 12; -fx-padding: 4 8; }
 .contracts-root .primary-button { -fx-background-color: -eden-forest; -fx-background-radius: 12; }
@@ -141,38 +141,38 @@
 
 /* Estados suaves con punto */
 .contracts-root .state-chip { -fx-background-radius: 999; -fx-padding: 5 12; -fx-font-size: 12px; -fx-font-weight: bold; }
-.contracts-root .state-dark { -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; }
+.contracts-root .state-dark { -fx-background-color: -eden-forest; -fx-text-fill: -color-paper; }
 .contracts-root .state-ok { -fx-background-color: -eden-tint; -fx-text-fill: -eden-moss; }
 .contracts-root .state-warn { -fx-background-color: -eden-warn-bg; -fx-text-fill: -eden-warn; }
 .contracts-root .state-alert { -fx-background-color: -eden-alert-bg; -fx-text-fill: -eden-alert; }
 
 /* Panel lateral y aviso */
-.contracts-root .drawer-veil { -fx-background-color: rgba(15,31,23,0.32); }
-.contracts-root .drawer { -fx-background-color: #F4F5EF; -fx-background-radius: 22 0 0 22; }
-.contracts-root .drawer-primary { -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; }
+.contracts-root .drawer-veil { -fx-background-color: -color-shadow-32; }
+.contracts-root .drawer { -fx-background-color: -color-paper; -fx-background-radius: 22 0 0 22; }
+.contracts-root .drawer-primary { -fx-background-color: -eden-forest; -fx-text-fill: -color-paper; }
 .contracts-root .drawer-primary:hover { -fx-background-color: -eden-moss; }
 .contracts-root .drawer-danger { -fx-background-color: transparent; -fx-text-fill: -eden-alert; -fx-border-color: -eden-alert; }
 .contracts-root .drawer-danger:hover { -fx-background-color: -eden-alert-bg; }
-.contracts-root .toast { -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; }
+.contracts-root .toast { -fx-background-color: -eden-forest; -fx-text-fill: -color-paper; }
 .contracts-root .drawer-head {
-    -fx-background-color: linear-gradient(to right, #1E3A2E 0%, #3E5A3F 100%);
+    -fx-background-color: linear-gradient(to right, -color-forest 0%, -color-moss 100%);
     -fx-background-radius: 22 0 0 0; -fx-padding: 22 24 18 24; -fx-spacing: 8;
 }
-.contracts-root .drawer-head-caption { -fx-text-fill: rgba(244,245,238,0.75); -fx-font-size: 11px; -fx-font-weight: bold; }
+.contracts-root .drawer-head-caption { -fx-text-fill: -color-paper-a75; -fx-font-size: 11px; -fx-font-weight: bold; }
 .contracts-root .drawer-head-name {
     -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif;
-    -fx-text-fill: #F4F5EE; -fx-font-size: 34px;
+    -fx-text-fill: -color-paper; -fx-font-size: 34px;
 }
-.contracts-root .drawer-head-text { -fx-text-fill: rgba(244,245,238,0.85); -fx-font-size: 12.5px; }
-.contracts-root .drawer-head-strong { -fx-text-fill: #F4F5EE; -fx-font-size: 12.5px; -fx-font-weight: bold; }
+.contracts-root .drawer-head-text { -fx-text-fill: -color-paper-a85; -fx-font-size: 12.5px; }
+.contracts-root .drawer-head-strong { -fx-text-fill: -color-paper; -fx-font-size: 12.5px; -fx-font-weight: bold; }
 .contracts-root .drawer-close-light {
-    -fx-background-color: transparent; -fx-text-fill: #F4F5EE; -fx-border-color: rgba(244,245,238,0.5);
+    -fx-background-color: transparent; -fx-text-fill: -color-paper; -fx-border-color: -color-paper-a50;
     -fx-background-radius: 999; -fx-border-radius: 999; -fx-padding: 4 10; -fx-cursor: hand;
 }
 .contracts-root .drawer-close-light:hover { -fx-background-color: rgba(255,255,255,0.12); }
 .contracts-root .drawer-section {
     -fx-background-color: -eden-card; -fx-background-radius: 14; -fx-padding: 14 16; -fx-spacing: 10;
-    -fx-border-color: #E6E8DE; -fx-border-radius: 14;
+    -fx-border-color: -color-panel; -fx-border-radius: 14;
 }
 .contracts-root .drawer-section-title { -fx-text-fill: -color-gold-text; -fx-font-size: 11px; -fx-font-weight: bold; }
 .contracts-root .field-caption { -fx-text-fill: -eden-muted; -fx-font-size: 11.5px; }
@@ -187,8 +187,8 @@
     -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif; -fx-font-size: 17px; -fx-text-fill: -eden-moss;
 }
 .contracts-root .progress-light > .track { -fx-background-color: rgba(255,255,255,0.20); -fx-background-radius: 999; -fx-background-insets: 0; }
-.contracts-root .progress-light > .bar { -fx-background-color: #C4AF84; -fx-background-radius: 999; -fx-background-insets: 0; -fx-padding: 3; }
-.contracts-root .progress-dark > .track { -fx-background-color: #E3E6DA; -fx-background-radius: 999; -fx-background-insets: 0; }
+.contracts-root .progress-light > .bar { -fx-background-color: -color-detail; -fx-background-radius: 999; -fx-background-insets: 0; -fx-padding: 3; }
+.contracts-root .progress-dark > .track { -fx-background-color: -color-content; -fx-background-radius: 999; -fx-background-insets: 0; }
 .contracts-root .progress-dark > .bar { -fx-background-color: -eden-moss; -fx-background-radius: 999; -fx-background-insets: 0; -fx-padding: 3; }
 
 /* ---------- Tabla "Contratos registrados" (pantalla 08) ---------- */
@@ -201,12 +201,12 @@
     -fx-background-color: transparent; -fx-background-insets: 0; -fx-padding: 0; -fx-border-width: 0;
 }
 .sales-list .list-cell {
-    -fx-background-color: transparent; -fx-padding: 0; -fx-border-color: transparent transparent #E6E8DE transparent;
+    -fx-background-color: transparent; -fx-padding: 0; -fx-border-color: transparent transparent -color-panel transparent;
     -fx-border-width: 0 0 1 0;
 }
 .sales-list .list-cell:empty { -fx-border-width: 0; }
-.sales-list .list-cell:filled:hover { -fx-background-color: rgba(226,230,221,0.45); }
-.sales-list .list-cell:filled:selected { -fx-background-color: rgba(226,230,221,0.7); }
+.sales-list .list-cell:filled:hover { -fx-background-color: -color-surface-a45; }
+.sales-list .list-cell:filled:selected { -fx-background-color: -color-surface-a70; }
 .sale-row { -fx-padding: 12 16; -fx-alignment: center-left; -fx-min-height: 76; }
 .sale-number {
     -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif; -fx-font-size: 22px; -fx-text-fill: -eden-text;
@@ -215,12 +215,12 @@
 .sale-subtitle { -fx-text-fill: -eden-muted; -fx-font-size: 12.5px; }
 .sale-text { -fx-text-fill: -eden-text; -fx-font-size: 13.5px; }
 .sale-balance { -fx-text-fill: -eden-text; -fx-font-size: 14px; -fx-font-weight: bold; }
-.sale-balance.pending { -fx-text-fill: #6E6232; }
+.sale-balance.pending { -fx-text-fill: -color-warning-deep; }
 .row-button {
     -fx-background-color: -eden-tint; -fx-text-fill: -eden-text; -fx-background-radius: 999;
     -fx-padding: 8 16; -fx-font-size: 13px; -fx-cursor: hand;
 }
-.row-button:hover { -fx-background-color: #D5DACB; }
+.row-button:hover { -fx-background-color: -color-line; }
 .row-button:disabled { -fx-opacity: 0.45; }
 .empty-table { -fx-text-fill: -eden-muted; -fx-font-size: 14px; -fx-padding: 24 16; }
 
@@ -245,13 +245,13 @@
     -fx-background-color: transparent; -fx-text-fill: -eden-muted; -fx-font-size: 12px; -fx-padding: 2 8;
     -fx-cursor: hand; -fx-background-radius: 8;
 }
-.chip-remove:hover { -fx-background-color: #D5DACB; }
+.chip-remove:hover { -fx-background-color: -color-line; }
 .small-dark-button {
-    -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; -fx-font-weight: bold; -fx-font-size: 12.5px;
+    -fx-background-color: -eden-forest; -fx-text-fill: -color-paper; -fx-font-weight: bold; -fx-font-size: 12.5px;
     -fx-background-radius: 10; -fx-padding: 8 14; -fx-cursor: hand;
 }
 .small-dark-button:hover { -fx-background-color: -eden-moss; }
 .form-segmented { -fx-background-color: -eden-tint; }
 
 /* Casillas del formulario de contrato (velación en casa, adecuación del lote) */
-.form-check { -fx-text-fill: #182F25; -fx-font-weight: bold; }
+.form-check { -fx-text-fill: -color-primary; -fx-font-weight: bold; }
