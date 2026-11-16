@@ -19,6 +19,7 @@ public enum AppModule {
     CLIENTES("Clientes", SALESPERSON, SECRETARY),
     DIFUNTOS("Difuntos", SECRETARY, CEMETERY_ADMIN),
     PLANES("Planes exequiales", SALESPERSON, SECRETARY),
+    MENSAJES_BOT("Mensajes del bot", SECRETARY),
     CEMENTERIO("Cementerio y bóvedas", CEMETERY_ADMIN),
     SALAS("Salas de velación", SECRETARY),
     CONTRATOS("Contratos y ventas", SALESPERSON, SECRETARY),
