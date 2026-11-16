@@ -27,6 +27,7 @@ import com.example.funerariamc.persistence.FuneralPlanRepository.UsedServiceRow;
 import com.example.funerariamc.persistence.PlanPaymentRepository;
 import com.example.funerariamc.persistence.PlanPaymentRepository.MonthTotal;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Example;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -47,6 +48,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 
@@ -65,10 +67,8 @@ public class FuneralPlanService {
     public static final int GRID_MONTHS = 12;
     /** Valor máximo de numeric(10,2), igual que funeral_plan.monthly_fee. */
     public static final BigDecimal MAX_AMOUNT = new BigDecimal("99999999.99");
-
     private static final Locale ES = Locale.forLanguageTag("es-CO");
     private static final DateTimeFormatter MONTH = DateTimeFormatter.ofPattern("MMMM yyyy", ES);
-
     private final FuneralPlanRepository planRepository;
     private final BeneficiaryRepository beneficiaryRepository;
     private final PlanPaymentRepository paymentRepository;
@@ -78,6 +78,7 @@ public class FuneralPlanService {
     private final AccessLogService accessLogService;
     private final SessionContext sessionContext;
     private final Clock clock;
+    private final ApplicationEventPublisher eventPublisher;
 
     // ---------- lo que recibe la pantalla ----------
 
@@ -223,10 +224,21 @@ public class FuneralPlanService {
                               FinancialTransactionRepository transactionRepository,
                               ClientRepository clientRepository,
                               PlanParameters parameters, AccessLogService accessLogService,
-                              SessionContext sessionContext) {
+                              SessionContext sessionContext, ApplicationEventPublisher eventPublisher) {
         this(planRepository, beneficiaryRepository, paymentRepository, transactionRepository,
                 clientRepository, parameters, accessLogService, sessionContext,
-                Clock.system(AccessLogService.APP_ZONE));
+                Clock.system(AccessLogService.APP_ZONE), eventPublisher);
+    }
+
+    /** Conserva la firma anterior para consumidores que construyen el servicio explícitamente. */
+    public FuneralPlanService(FuneralPlanRepository planRepository, BeneficiaryRepository beneficiaryRepository,
+                              PlanPaymentRepository paymentRepository,
+                              FinancialTransactionRepository transactionRepository,
+                              ClientRepository clientRepository, PlanParameters parameters,
+                              AccessLogService accessLogService, SessionContext sessionContext) {
+        this(planRepository, beneficiaryRepository, paymentRepository, transactionRepository,
+                clientRepository, parameters, accessLogService, sessionContext,
+                Clock.system(AccessLogService.APP_ZONE), event -> {});
     }
 
     /** Las pruebas fijan la fecha de hoy con un Clock. */
@@ -235,6 +247,14 @@ public class FuneralPlanService {
                        ClientRepository clientRepository,
                        PlanParameters parameters, AccessLogService accessLogService, SessionContext sessionContext,
                        Clock clock) {
+        this(planRepository, beneficiaryRepository, paymentRepository, transactionRepository,
+                clientRepository, parameters, accessLogService, sessionContext, clock, event -> {});
+    }
+
+    FuneralPlanService(FuneralPlanRepository planRepository, BeneficiaryRepository beneficiaryRepository,
+                       PlanPaymentRepository paymentRepository, FinancialTransactionRepository transactionRepository,
+                       ClientRepository clientRepository, PlanParameters parameters, AccessLogService accessLogService,
+                       SessionContext sessionContext, Clock clock, ApplicationEventPublisher eventPublisher) {
         this.planRepository = planRepository;
         this.beneficiaryRepository = beneficiaryRepository;
         this.paymentRepository = paymentRepository;
@@ -244,6 +264,7 @@ public class FuneralPlanService {
         this.accessLogService = accessLogService;
         this.sessionContext = sessionContext;
         this.clock = clock;
+        this.eventPublisher = Objects.requireNonNull(eventPublisher);
     }
 
     // ---------- consultas ----------
@@ -410,6 +431,24 @@ public class FuneralPlanService {
     @Transactional(readOnly = true)
     public PlanDetail detail(Long planId) {
         requireAccess();
+        return buildDetail(planId);
+    }
+
+    /**
+     * Plan ACTIVO del titular para el bot de Telegram. No pide sesión de empleado: el bot
+     * solo lo llama después de que el titular validó su cédula con el código del correo.
+     */
+    @Transactional(readOnly = true)
+    public Optional<PlanDetail> holderPlan(Long clientId) {
+        if (clientId == null) {
+            return Optional.empty();
+        }
+        return planRepository.findByClientIdAndStatus(clientId, PlanStatus.ACTIVE).stream()
+                .findFirst()
+                .map(plan -> buildDetail(plan.getId()));
+    }
+
+    private PlanDetail buildDetail(Long planId) {
         LocalDate today = today();
         FuneralPlan plan = getPlan(planId);
         Client holder = plan.getClient();
@@ -556,6 +595,8 @@ public class FuneralPlanService {
         plan.setStatus(PlanStatus.ACTIVE);
         FuneralPlan saved = planRepository.save(plan);
         accessLogService.record(actorId, AccessLogService.PLAN_REGISTERED + code(saved.getId()));
+        // El correo de bienvenida sale después de guardar, en otro hilo (PlanNotificationService).
+        eventPublisher.publishEvent(new PlanRegisteredEvent(saved.getId()));
         return saved;
     }
 
