@@ -4,6 +4,7 @@ import com.example.funerariamc.utils.enums.DocumentType;
 import com.example.funerariamc.service.AccessLogService;
 import com.example.funerariamc.service.AppModule;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
@@ -266,7 +267,36 @@ public final class AccessLogLabels {
             return parts.length < 2 ? "Exportación del panel de análisis"
                     : "Exportación del panel de análisis del " + parts[0] + " al " + parts[1];
         }
+        if (action.startsWith(AccessLogService.BRANDING_UPDATED)) {
+            return brandingLabel(action.substring(AccessLogService.BRANDING_UPDATED.length()));
+        }
         return null;
+    }
+
+    /** "name 'A' -> 'B'; logo uploaded; colors ..." -> "Cambio de la identidad de la funeraria: nombre, logo y colores". */
+    private static String brandingLabel(String detail) {
+        List<String> changed = new ArrayList<>();
+        if (detail.contains("name ")) {
+            changed.add("nombre");
+        }
+        if (detail.contains("tagline")) {
+            changed.add("frase");
+        }
+        if (detail.contains("logo")) {
+            changed.add("logo");
+        }
+        if (detail.contains("band image") || detail.contains("menu image")) {
+            changed.add("imágenes");
+        }
+        if (detail.contains("colors ")) {
+            changed.add("colores");
+        }
+        if (changed.isEmpty()) {
+            return "Cambio de la identidad de la funeraria";
+        }
+        String last = changed.remove(changed.size() - 1);
+        return "Cambio de la identidad de la funeraria: "
+                + (changed.isEmpty() ? last : String.join(", ", changed) + " y " + last);
     }
 
     /** Funerarias aliadas: guardan el NIT y, en los pagos, el contrato o el egreso y el valor. Null si no es de la red. */
