@@ -31,6 +31,7 @@ public final class ModuleIcons {
             Map.entry("CREMACIONES", "M12 3c3 4 5 6 5 10a5 5 0 0 1-10 0c0-2 1-3.5 2-5 .5 2 1.5 3 3 3-1-3 0-6 0-8z"),
             Map.entry("FINANZAS", "M3 6h18v13h-18z M16 12.5h2M3 10h18"),
             Map.entry("RED_ALIADAS", "M9.8 5a2.2 2.2 0 1 0 4.4 0a2.2 2.2 0 1 0 -4.4 0 M2.8 19a2.2 2.2 0 1 0 4.4 0a2.2 2.2 0 1 0 -4.4 0 M16.8 19a2.2 2.2 0 1 0 4.4 0a2.2 2.2 0 1 0 -4.4 0 M12 7.2v4.3M12 11.5 6.5 17.3M12 11.5l5.5 5.8"),
+            Map.entry("MENSAJES_BOT", "M4 5h16v11H9l-5 4z M8 9.5h8M8 12.5h5"),
             Map.entry("PARAMETROS", "M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12 M14 6a2 2 0 1 0 4 0a2 2 0 1 0 -4 0 M8 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0 M16 18a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"),
             Map.entry("INICIO", "M3 3h7v9h-7z M14 3h7v5h-7z M14 12h7v9h-7z M3 16h7v5h-7z"),
             Map.entry("ANALISIS", "M4 20V10M10 20V4M16 20v-7M22 20H2"),
