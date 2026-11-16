@@ -24,6 +24,8 @@ import java.util.Objects;
 @Service
 public class AccessLogService {
 
+    public static final String BRANDING_UPDATED = "BRANDING_UPDATED: ";
+
     public static final String LOGIN_SUCCESS = "LOGIN_SUCCESS";
     public static final String LOGIN_FAILED_WRONG_PASSWORD = "LOGIN_FAILED: WRONG_PASSWORD";
     public static final String LOGIN_FAILED_DISABLED = "LOGIN_FAILED: ACCOUNT_DISABLED";

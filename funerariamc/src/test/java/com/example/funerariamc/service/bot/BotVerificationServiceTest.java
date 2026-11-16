@@ -4,6 +4,7 @@ import com.example.funerariamc.model.Client;
 import com.example.funerariamc.model.ClientVerificationCode;
 import com.example.funerariamc.persistence.ClientVerificationCodeRepository;
 import com.example.funerariamc.service.notification.EmailNotificationSender;
+import com.example.funerariamc.service.BrandingService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -123,6 +124,16 @@ class BotVerificationServiceTest {
     void malformedEmailHasASafeFallback() {
         assertEquals("su correo registrado", BotVerificationService.maskEmail("@example.test"));
         assertEquals("su correo registrado", BotVerificationService.maskEmail("name@"));
+    }
+
+    @Test
+    void verificationEmailUsesTheConfiguredBrand() {
+        BrandingService branding = mock(BrandingService.class);
+        when(branding.fullName()).thenReturn("Funeraria Jardines de Paz");
+        service = new BotVerificationService(codes, email, encoder, 10, 5, clock, branding);
+        service.sendCode("555", client);
+        verify(email).send(eq("maria@example.test"),
+                eq("Código para consultar su plan · Funeraria Jardines de Paz"), contains("Funeraria Jardines de Paz"));
     }
 
     private ClientVerificationCode pending(LocalDateTime expires) {

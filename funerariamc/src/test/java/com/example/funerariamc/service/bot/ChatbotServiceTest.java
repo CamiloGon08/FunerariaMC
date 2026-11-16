@@ -8,6 +8,7 @@ import com.example.funerariamc.service.FuneralPlanService.PaymentInfo;
 import com.example.funerariamc.service.FuneralPlanService.PlanCard;
 import com.example.funerariamc.service.FuneralPlanService.PlanDetail;
 import com.example.funerariamc.service.SystemParameterService;
+import com.example.funerariamc.service.BrandingService;
 import com.example.funerariamc.exception.InvalidDataException;
 import com.example.funerariamc.utils.enums.BotTopic;
 import com.example.funerariamc.utils.enums.PlanPaymentStatus;
@@ -64,6 +65,16 @@ class ChatbotServiceTest {
         assertEquals(BotTopic.IDENTIFICATION, answer.replies().get(0).topic());
         assertTrue(answer.replies().get(0).text().contains("cédula"));
         verifyNoInteractions(clients);
+    }
+
+    @Test
+    void greetingAndOfficeContactUseTheConfiguredBrand() {
+        BrandingService branding = mock(BrandingService.class);
+        when(branding.fullName()).thenReturn("Funeraria Jardines de Paz");
+        bot = new ChatbotService(clients, plans, verification, parameters, clock, branding);
+        assertTrue(bot.handle(CHAT, "Hola").replies().get(0).text().contains("Funeraria Jardines de Paz"));
+        openMenu();
+        assertTrue(bot.handle(CHAT, "5").replies().get(0).text().contains("Funeraria Jardines de Paz"));
     }
 
     @Test
