@@ -22,6 +22,7 @@ import com.example.funerariamc.service.ContractService.SaleView;
 import com.example.funerariamc.service.SalePaymentData;
 import com.example.funerariamc.ui.DetailCache;
 import com.example.funerariamc.ui.RefreshableView;
+import com.example.funerariamc.ui.FormShell;
 import javafx.animation.FadeTransition;
 import javafx.animation.ParallelTransition;
 import javafx.animation.PauseTransition;
@@ -717,6 +718,7 @@ public class ContractController implements RefreshableView {
         bindItemSearch(productSearch, product);
         TextField quantity = new TextField("1");
         Button addProduct = new Button("Agregar");
+        addProduct.setMinWidth(Region.USE_PREF_SIZE);
         addProduct.getStyleClass().add("small-dark-button");
         List<ContractData.ItemLine> products = new ArrayList<>();
         List<String> productNames = new ArrayList<>();
@@ -729,7 +731,10 @@ public class ContractController implements RefreshableView {
         Label quoteHint = note("");
         VBox quoteBox = new VBox(6);
         quoteBox.getStyleClass().add("quote-box");
-        Label quoteTotal = label("Total: —", "quote-total");
+        // Sin conceptos calculados no se muestra el recuadro vacío
+        quoteBox.visibleProperty().bind(javafx.beans.binding.Bindings.isNotEmpty(quoteBox.getChildren()));
+        quoteBox.managedProperty().bind(quoteBox.visibleProperty());
+        Label quoteTotal = label("—", "form-summary-value");
 
         Form form = new Form()
                 .section("Tipo de venta", 1)
@@ -766,9 +771,6 @@ public class ContractController implements RefreshableView {
                 .field("CANTIDAD", new HBox(8, quantity, addProduct))
                 .note(productList)
                 .note(productError)
-                .section("Resumen y pago", 1)
-                .note(quoteBox)
-                .note(quoteHint)
                 .section("Abono", 3)
                 .field("ABONO INICIAL *", initial)
                 .note(note("Con plan se cobra solo el excedente del ataúd frente al que cubre el plan y el "
@@ -834,8 +836,8 @@ public class ContractController implements RefreshableView {
             try {
                 current = data.apply(false);
             } catch (BusinessException ex) {
-                quoteBox.getChildren().setAll(quoteTotal);
-                quoteTotal.setText("Total: —");
+                quoteBox.getChildren().clear();
+                quoteTotal.setText("—");
                 quoteHint.setText(ex.getMessage());
                 return;
             }
@@ -846,8 +848,8 @@ public class ContractController implements RefreshableView {
                 }
             }, failure -> {
                 if (request == quoteRequest[0]) {
-                    quoteBox.getChildren().setAll(quoteTotal);
-                    quoteTotal.setText("Total: —");
+                    quoteBox.getChildren().clear();
+                    quoteTotal.setText("—");
                     quoteHint.setText(message(failure, "No se pudo calcular el total."));
                 }
             });
@@ -947,6 +949,18 @@ public class ContractController implements RefreshableView {
         requote.run();
 
         Dialog<ButtonType> dialog = formDialog("Nuevo contrato", "Los campos con * son obligatorios.", form, 900);
+        FormShell.page(dialog, "Contratos y ventas");
+        FormShell.money(base, initial);
+        // Resumen siempre visible a la derecha: conceptos calculados y el total en la tarjeta oscura
+        VBox totalCard = new VBox(label("TOTAL", "form-summary-title"), quoteTotal);
+        totalCard.getStyleClass().add("form-total");
+        VBox summary = new VBox(12, label("Resumen y pago", "form-side-title"), quoteHint, totalCard, quoteBox);
+        FormShell.steps(dialog, summary,
+                new FormShell.Step("Tipo de venta", "Tipo de venta"),
+                new FormShell.Step("Cliente y difunto", "Cliente y difunto"),
+                new FormShell.Step("Servicio", "Servicio"),
+                new FormShell.Step("Sala y cementerio", "Sala de velación", "Cementerio"),
+                new FormShell.Step("Productos y pago", "Productos", "Abono"));
         runForm(dialog, form, "Registrar", () -> contractService.register(data.apply(true)), saleId -> {
             showToast("Venta N.° %04d registrada.".formatted(saleId));
             loadOverview(saleId);
@@ -955,7 +969,7 @@ public class ContractController implements RefreshableView {
 
     private static void showQuote(Quote quote, VBox box, Label total) {
         box.getChildren().setAll(linesGrid(quote.lines(), quote.total()));
-        total.setText("Total: " + pesos(quote.total()));
+        total.setText(pesos(quote.total()));
     }
 
     // ---------- Abonar, Anular y Preparación ----------
@@ -976,6 +990,8 @@ public class ContractController implements RefreshableView {
 .note(note("El abono no puede ser mayor que el saldo. Se registra como ingreso en Finanzas."));
         Dialog<ButtonType> dialog = formDialog("Abonar a la venta N.° " + r.number(), r.title() + " · " + r.subtitle(),
                 form, 760);
+        FormShell.window(dialog, "Contratos y ventas");
+        FormShell.money(amount);
         runForm(dialog, form, "Registrar abono", () -> {
             contractService.registerPayment(new SalePaymentData(r.saleId(),
                     parseAmount(amount.getText(), "El valor del abono"), description.getText()));
@@ -1031,6 +1047,7 @@ public class ContractController implements RefreshableView {
                 .field("HORA *", time)
 .note(note("La preparación la registra el administrador o la secretaria."));
         Dialog<ButtonType> dialog = formDialog("Registrar preparación", "Los campos con * son obligatorios.", form, 760);
+        FormShell.window(dialog, "Contratos y ventas");
         runForm(dialog, form, "Registrar preparación", () -> {
             contractService.registerPreparation(c.id(), idOf(thanatopractor.getValue()),
                     at(date.getValue(), time.getValue()));
