@@ -989,4 +989,64 @@ class FuneralPlanServiceTest {
         plan.setStatus(PlanStatus.ACTIVE);
         return plan;
     }
+
+    @Test
+    void registrationPublishesOnlyTheSavedPlanId() {
+        var events = mock(org.springframework.context.ApplicationEventPublisher.class);
+        FuneralPlanService eventService = withEvents(events);
+        when(clients.findById(40L)).thenReturn(Optional.of(client(40L, "49786112", ClientType.NATURAL)));
+
+        FuneralPlan saved = eventService.register(new PlanData(40L, "Plan Normal", new BigDecimal("52000"), TODAY));
+
+        verify(events).publishEvent(new PlanRegisteredEvent(saved.getId()));
+    }
+
+    @Test
+    void failedAuditDoesNotPublishARegistrationEvent() {
+        var events = mock(org.springframework.context.ApplicationEventPublisher.class);
+        FuneralPlanService eventService = withEvents(events);
+        when(clients.findById(40L)).thenReturn(Optional.of(client(40L, "49786112", ClientType.NATURAL)));
+        doThrow(new InvalidDataException("Auditoría no disponible")).when(accessLog).record(anyLong(), anyString());
+
+        assertThrows(InvalidDataException.class, () -> eventService.register(
+                new PlanData(40L, "Plan Normal", new BigDecimal("52000"), TODAY)));
+
+        verifyNoInteractions(events);
+    }
+
+    @Test
+    void holderPlanReadsTheActiveHoldersPlanWithoutAnEmployeeSession() {
+        session.clear();
+        FuneralPlan active = plan(412L, client(40L, "49786112", ClientType.NATURAL), TODAY.minusMonths(2));
+        when(plans.findByClientIdAndStatus(40L, PlanStatus.ACTIVE)).thenReturn(List.of(active));
+        when(plans.findDetailById(412L)).thenReturn(Optional.of(active));
+
+        var detail = service.holderPlan(40L).orElseThrow();
+
+        assertEquals(412L, detail.card().id());
+        assertEquals(40L, detail.card().clientId());
+        verify(plans).findByClientIdAndStatus(40L, PlanStatus.ACTIVE);
+        verifyNoInteractions(accessLog);
+    }
+
+    @Test
+    void missingHolderDoesNotReturnAnotherClientsPlan() {
+        session.clear();
+        assertTrue(service.holderPlan(null).isEmpty());
+        assertTrue(service.holderPlan(41L).isEmpty());
+        verify(plans, never()).findDetailById(any());
+        verifyNoInteractions(beneficiaries, payments, clients, accessLog);
+    }
+
+    @Test
+    void employeeDetailStillRequiresAnAuthenticatedSession() {
+        session.clear();
+        assertThrows(UnauthorizedActionException.class, () -> service.detail(412L));
+        verifyNoInteractions(plans, beneficiaries, payments);
+    }
+
+    private FuneralPlanService withEvents(org.springframework.context.ApplicationEventPublisher events) {
+        return new FuneralPlanService(plans, beneficiaries, payments, transactions, clients, parameters,
+                accessLog, session, Clock.fixed(TODAY.atTime(10, 0).atZone(BOGOTA).toInstant(), BOGOTA), events);
+    }
 }

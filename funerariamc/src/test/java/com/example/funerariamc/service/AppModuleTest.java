@@ -33,7 +33,7 @@ class AppModuleTest {
                 Arguments.of(RoleNames.SALESPERSON, EnumSet.of(AppModule.CLIENTES,
                         AppModule.PLANES, AppModule.CONTRATOS)),
                 Arguments.of(RoleNames.SECRETARY, EnumSet.of(AppModule.CLIENTES,
-                        AppModule.DIFUNTOS, AppModule.PLANES, AppModule.SALAS,
+                        AppModule.DIFUNTOS, AppModule.PLANES, AppModule.MENSAJES_BOT, AppModule.SALAS,
                         AppModule.CONTRATOS, AppModule.TRANSPORTE, AppModule.FINANZAS))
         );
     }

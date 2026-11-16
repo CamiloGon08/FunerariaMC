@@ -1,0 +1,157 @@
+/*
+ * Mensajes del bot: banda verde con indicadores, buscador con filtros, lista de conversaciones y el chat
+ * con burbujas. Se carga junto con personal.css y usa los colores de app.css. Los colores verdes van bajo
+ * .bot-root, así no depende de otro módulo para verse bien.
+ */
+.bot-root {
+    -eden-forest: #1E3A2E;
+    -eden-deep: #0F1F17;
+    -eden-moss: #3E5A3F;
+    -eden-sage: #6B7F67;
+    -eden-linen: #C7CBB8;
+    -eden-card: #FAFBF7;
+    -eden-tint: #EEF0E6;
+    -eden-line: #E6E8DE;
+    -eden-text: #1E2A22;
+    -eden-muted: #6A7366;
+    -eden-warn: #6E6A45;
+    -eden-warn-bg: #EDEBDD;
+    -eden-alert: #8A4B3C;
+    -eden-alert-bg: #F0E3DC;
+    -eden-khaki: #C4AF84;
+}
+
+/* ---------- Banda superior ---------- */
+.bot-root .hero-band {
+    -fx-background-color: linear-gradient(to right, #1E3A2E 0%, #3E5A3F 62%, #6B7F67 100%);
+    -fx-background-radius: 26;
+    -fx-padding: 22 26 24 26;
+    -fx-effect: dropshadow(gaussian, rgba(15,31,23,0.22), 24, 0, 0, 8);
+}
+.bot-root .hero-kpi {
+    -fx-background-color: rgba(255,255,255,0.07);
+    -fx-border-color: rgba(255,255,255,0.20); -fx-border-width: 1;
+    -fx-background-radius: 16; -fx-border-radius: 16;
+    -fx-padding: 14 18 14 18; -fx-spacing: 2;
+}
+.bot-root .hero-kpi-caption { -fx-text-fill: rgba(244,245,238,0.88); -fx-font-size: 11px; -fx-font-weight: bold; }
+.bot-root .hero-kpi-value {
+    -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif;
+    -fx-text-fill: #F4F5EE; -fx-font-size: 30px;
+}
+.bot-root .hero-kpi-detail { -fx-text-fill: rgba(244,245,238,0.72); -fx-font-size: 12.5px; }
+
+/* ---------- Barra de búsqueda y filtros ---------- */
+.bot-root .filter-card {
+    -fx-background-color: -eden-card; -fx-border-color: transparent;
+    -fx-background-radius: 18; -fx-border-radius: 18; -fx-padding: 10 12; -fx-spacing: 10;
+    -fx-alignment: center-left;
+}
+.bot-root .search-box { -fx-background-color: -eden-tint; -fx-background-radius: 12; }
+.bot-root .segmented {
+    -fx-background-color: -eden-tint; -fx-background-radius: 12;
+    -fx-padding: 3; -fx-spacing: 2; -fx-alignment: center-left;
+}
+.bot-root .segment {
+    -fx-background-color: transparent; -fx-text-fill: -eden-text;
+    -fx-background-radius: 10; -fx-padding: 7 14; -fx-font-weight: bold; -fx-font-size: 12.5px; -fx-cursor: hand;
+}
+.bot-root .segment:hover { -fx-background-color: rgba(199,203,184,0.45); }
+.bot-root .segment:selected { -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; }
+.bot-root .secondary-button {
+    -fx-background-color: -eden-card; -fx-text-fill: -eden-text; -fx-border-color: -eden-linen;
+    -fx-background-radius: 12; -fx-border-radius: 12; -fx-padding: 8 14; -fx-cursor: hand;
+}
+.bot-root .secondary-button:hover { -fx-background-color: -eden-tint; }
+
+/* Estado del bot en este equipo */
+.bot-root .bot-status { -fx-background-radius: 999; -fx-padding: 6 12; -fx-font-size: 12px; -fx-font-weight: bold; }
+.bot-root .bot-status.on { -fx-background-color: -eden-tint; -fx-text-fill: -eden-moss; }
+.bot-root .bot-status.warn { -fx-background-color: -eden-warn-bg; -fx-text-fill: -eden-warn; }
+.bot-root .bot-status.off { -fx-background-color: -eden-alert-bg; -fx-text-fill: -eden-alert; }
+
+/* ---------- Tarjetas ---------- */
+.bot-root .table-card {
+    -fx-background-color: -eden-card; -fx-border-color: transparent;
+    -fx-background-radius: 22; -fx-border-radius: 22; -fx-padding: 18 18 14 18;
+}
+.bot-root .card-title {
+    -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif;
+    -fx-font-size: 18px; -fx-text-fill: -eden-text;
+}
+.bot-root .card-subtitle { -fx-text-fill: -eden-muted; -fx-font-size: 12.5px; }
+.bot-root .empty-board { -fx-text-fill: -eden-muted; -fx-font-size: 14px; -fx-padding: 24 6; }
+
+/* ---------- Lista de conversaciones ---------- */
+.bot-root .conversation-list, .bot-root .conversation-list > .virtual-flow > .clipped-container > .sheet {
+    -fx-background-color: transparent; -fx-background-insets: 0; -fx-padding: 0;
+}
+.bot-root .conversation-list .list-cell {
+    -fx-background-color: transparent; -fx-padding: 3 4 3 0;
+}
+.bot-root .conversation-row {
+    -fx-background-color: transparent; -fx-background-radius: 14; -fx-padding: 10 12; -fx-spacing: 12;
+    -fx-alignment: center-left; -fx-cursor: hand;
+}
+.bot-root .conversation-row:hover { -fx-background-color: -eden-tint; }
+.bot-root .list-cell:selected .conversation-row { -fx-background-color: #E2E6DD; }
+.bot-root .avatar {
+    -fx-background-color: -eden-moss; -fx-background-radius: 999;
+    -fx-min-width: 40; -fx-min-height: 40; -fx-max-width: 40; -fx-max-height: 40; -fx-alignment: center;
+}
+.bot-root .avatar.mail { -fx-background-color: -eden-khaki; }
+.bot-root .avatar.unknown { -fx-background-color: -eden-linen; }
+.bot-root .avatar-text { -fx-text-fill: #F4F5EE; -fx-font-weight: bold; -fx-font-size: 13.5px; }
+.bot-root .avatar.mail .avatar-text, .bot-root .avatar.unknown .avatar-text { -fx-text-fill: -eden-deep; }
+.bot-root .row-title { -fx-text-fill: -eden-text; -fx-font-weight: bold; -fx-font-size: 14px; }
+.bot-root .row-time { -fx-text-fill: -eden-muted; -fx-font-size: 12px; }
+.bot-root .row-preview { -fx-text-fill: #4A524B; -fx-font-size: 13px; }
+.bot-root .row-tag { -fx-background-radius: 999; -fx-padding: 2 8; -fx-font-size: 11px; -fx-font-weight: bold; }
+.bot-root .row-tag.mail { -fx-background-color: -eden-warn-bg; -fx-text-fill: -eden-warn; }
+.bot-root .row-tag.failed { -fx-background-color: -eden-alert-bg; -fx-text-fill: -eden-alert; }
+.bot-root .row-tag.ok { -fx-background-color: -eden-tint; -fx-text-fill: -eden-moss; }
+
+/* ---------- Chat ---------- */
+.bot-root .chat-card { -fx-padding: 0; }
+.bot-root .chat-head { -fx-padding: 16 22; -fx-border-color: transparent transparent -eden-line transparent; -fx-border-width: 0 0 1 0; }
+.bot-root .chat-avatar {
+    -fx-background-color: -eden-tint; -fx-background-radius: 999;
+    -fx-min-width: 44; -fx-min-height: 44; -fx-max-width: 44; -fx-max-height: 44;
+}
+.bot-root .chat-title {
+    -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif;
+    -fx-font-size: 19px; -fx-text-fill: -eden-text;
+}
+.bot-root .chat-subtitle { -fx-text-fill: -eden-muted; -fx-font-size: 13px; }
+.bot-root .read-only-chip {
+    -fx-background-color: -eden-tint; -fx-text-fill: -eden-forest; -fx-background-radius: 999;
+    -fx-padding: 6 12; -fx-font-size: 12px; -fx-font-weight: bold;
+}
+.bot-root .thread-scroll, .bot-root .thread-scroll > .viewport {
+    -fx-background-color: #F1EFE9; -fx-background: #F1EFE9; -fx-background-insets: 0; -fx-padding: 0;
+}
+.bot-root .thread-scroll > .scroll-bar:vertical { -fx-background-color: transparent; -fx-pref-width: 10; }
+.bot-root .thread-scroll > .scroll-bar:vertical .thumb { -fx-background-color: #B9C0B0; -fx-background-radius: 999; }
+.bot-root .thread-box { -fx-padding: 18 22; }
+.bot-root .thread-empty { -fx-text-fill: -eden-muted; -fx-font-size: 14px; }
+.bot-root .day-chip {
+    -fx-background-color: #E2E0D8; -fx-text-fill: #3F4740; -fx-background-radius: 999;
+    -fx-padding: 4 12; -fx-font-size: 11.5px;
+}
+.bot-root .bubble { -fx-padding: 11 14; -fx-spacing: 5; }
+.bot-root .bubble.bot {
+    -fx-background-color: #FFFFFF; -fx-border-color: #DCD8CF; -fx-border-width: 1;
+    -fx-background-radius: 4 16 16 16; -fx-border-radius: 4 16 16 16;
+}
+.bot-root .bubble.holder { -fx-background-color: #465E47; -fx-background-radius: 16 4 16 16; }
+.bot-root .bubble.failed { -fx-border-color: -eden-alert; -fx-border-width: 1.4; }
+.bot-root .bubble-topic { -fx-text-fill: -eden-moss; -fx-font-size: 10.5px; -fx-font-weight: bold; }
+.bot-root .bubble.holder .bubble-topic { -fx-text-fill: #D5DBD0; }
+.bot-root .bubble-text { -fx-text-fill: #1F2A22; -fx-font-size: 13.5px; -fx-line-spacing: 2; }
+.bot-root .bubble.holder .bubble-text { -fx-text-fill: #F4F1EC; }
+.bot-root .bubble-meta { -fx-text-fill: #5C645D; -fx-font-size: 11px; }
+.bot-root .bubble.holder .bubble-meta { -fx-text-fill: #D5DBD0; }
+.bot-root .bubble-meta.failed { -fx-text-fill: -eden-alert; -fx-font-weight: bold; }
+.bot-root .chat-foot { -fx-background-color: #E2E6DD; -fx-background-radius: 0 0 22 22; -fx-padding: 12 22; }
+.bot-root .chat-foot-text { -fx-text-fill: #1F2A22; -fx-font-size: 12.5px; }
+.bot-root .note-icon { -fx-fill: transparent; -fx-stroke: -eden-moss; -fx-stroke-width: 1.6; -fx-stroke-line-cap: round; }

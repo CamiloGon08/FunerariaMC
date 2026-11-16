@@ -47,4 +47,45 @@ class EmailNotificationSenderTest {
         verify(mail).send(message.capture());
         assertNull(message.getValue().getFrom());
     }
+
+    @Test
+    void supportsACustomSubjectWhilePreservingThePlainBody() {
+        EmailNotificationSender sender = new EmailNotificationSender(mail, "sender@example.test");
+        sender.send("recipient@example.test", "Verification code", "Your code is 123456");
+        ArgumentCaptor<SimpleMailMessage> sent = ArgumentCaptor.forClass(SimpleMailMessage.class);
+        verify(mail).send(sent.capture());
+        assertEquals("Verification code", sent.getValue().getSubject());
+        assertEquals("Your code is 123456", sent.getValue().getText());
+    }
+
+    @Test
+    void htmlMailContainsPlainAndHtmlAlternativesAndAnInlineImage() throws Exception {
+        var message = new jakarta.mail.internet.MimeMessage((jakarta.mail.Session) null);
+        when(mail.createMimeMessage()).thenReturn(message);
+        EmailNotificationSender sender = new EmailNotificationSender(mail, "sender@example.test");
+
+        sender.sendHtml("recipient@example.test", "Welcome", "Plain body", "<b>Hello</b><img src='cid:brand'>",
+                new org.springframework.core.io.ByteArrayResource(new byte[]{1, 2, 3}), "brand");
+
+        verify(mail).send(message);
+        assertEquals("Welcome", message.getSubject());
+        assertEquals("recipient@example.test", message.getAllRecipients()[0].toString());
+        message.saveChanges();
+        var bytes = new java.io.ByteArrayOutputStream();
+        message.writeTo(bytes);
+        String mime = bytes.toString(java.nio.charset.StandardCharsets.UTF_8);
+        assertTrue(mime.contains("multipart/alternative"), mime);
+        assertTrue(mime.contains("Plain body"), mime);
+        assertTrue(mime.contains("<b>Hello</b>"), mime);
+        assertTrue(mime.contains("Content-ID: <brand>"), mime);
+    }
+
+    @Test
+    void malformedHtmlRecipientFailsBeforeSending() {
+        when(mail.createMimeMessage()).thenReturn(new jakarta.mail.internet.MimeMessage((jakarta.mail.Session) null));
+        EmailNotificationSender sender = new EmailNotificationSender(mail, "sender@example.test");
+        assertThrows(MailSendException.class,
+                () -> sender.sendHtml("not an address", "Subject", "Plain", "<p>Hello</p>", null, null));
+        verify(mail, never()).send(any(jakarta.mail.internet.MimeMessage.class));
+    }
 }

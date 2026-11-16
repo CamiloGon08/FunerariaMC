@@ -1,5 +1,6 @@
 package com.example.funerariamc.service;
 
+import com.example.funerariamc.service.bot.ChatbotService;
 import com.example.funerariamc.utils.enums.ParameterCategory;
 
 import java.util.List;
@@ -102,7 +103,16 @@ public final class ParameterCatalog {
                     ParameterCategory.COMMISSION, "COP", Kind.AMOUNT),
             new Definition(EmployeeService.DOC_EXPIRY_WARNING_DAYS, "Aviso de documentos por vencer",
                     "Días antes del vencimiento de licencias y documentos de vehículos en que se avisa.",
-                    ParameterCategory.TRANSPORT, "días", Kind.WHOLE));
+                    ParameterCategory.TRANSPORT, "días", Kind.WHOLE),
+            new Definition(ChatbotService.FUNERAL_HOME_ADDRESS, "Dirección de la sede",
+                    "Dirección que el bot de Telegram muestra en la opción Contacto.",
+                    ParameterCategory.GENERAL, null, Kind.TEXT),
+            new Definition(ChatbotService.FUNERAL_HOME_PHONE, "Teléfono de la sede",
+                    "Teléfono que el bot de Telegram muestra en la opción Contacto.",
+                    ParameterCategory.GENERAL, null, Kind.TEXT),
+            new Definition(ChatbotService.FUNERAL_HOME_HOURS, "Horario de atención",
+                    "Horario que el bot de Telegram muestra en la opción Contacto.",
+                    ParameterCategory.GENERAL, null, Kind.TEXT));
 
     private ParameterCatalog() {
     }

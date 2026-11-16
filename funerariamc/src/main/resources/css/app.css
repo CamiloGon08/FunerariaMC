@@ -168,6 +168,15 @@
 .side-scroll .scroll-bar .increment-arrow, .side-scroll .scroll-bar .decrement-arrow { -fx-shape: " "; -fx-padding: 0; }
 .sidebar-decor { -fx-opacity: 0.30; } /* intensidad de la foto del lirio detrás de los módulos */
 
+/* Lirio difuminado a la derecha de la banda verde de cada módulo. La imagen ya trae la transparencia
+   y los bordes desvanecidos, así no se sale de las esquinas redondeadas. Cada módulo pone su color. */
+.hero-band {
+    -fx-background-image: url("../images/lirio-banda.png");
+    -fx-background-repeat: no-repeat;
+    -fx-background-position: right center;
+    -fx-background-size: auto 100%;
+}
+
 /* Ítems del menú: círculo de 40 px contraído, píldora de 240 px expandido */
 .nav-pill {
     -fx-background-color: transparent; /* sin caja: el lirio de fondo se ve entre los ítems */ -fx-background-radius: 12;
@@ -457,6 +466,19 @@
 .page-scroll > .scroll-bar:vertical { -fx-background-color: transparent; -fx-pref-width: 10; -fx-padding: 0 0 0 2; }
 .page-scroll > .scroll-bar:vertical .thumb { -fx-background-color: #B9C0B0; -fx-background-radius: 999; }
 .page-scroll > .scroll-bar:vertical .thumb:hover { -fx-background-color: #9DA897; }
+
+/* Marco de cada módulo (MainController) y pantallas que se desplazan completas (Responsive): la barra
+   horizontal solo aparece si la ventana es más angosta que lo mínimo que necesita el módulo. */
+.module-frame, .module-frame > .viewport { -fx-background-color: transparent; -fx-background: transparent; -fx-background-insets: 0; -fx-padding: 0; }
+.module-frame > .scroll-bar:horizontal,
+.page-scroll > .scroll-bar:horizontal { -fx-background-color: transparent; -fx-pref-height: 10; -fx-padding: 2 0 0 0; }
+.module-frame > .scroll-bar:horizontal .thumb,
+.page-scroll > .scroll-bar:horizontal .thumb { -fx-background-color: #B9C0B0; -fx-background-radius: 999; }
+.module-frame > .scroll-bar:horizontal .thumb:hover,
+.page-scroll > .scroll-bar:horizontal .thumb:hover { -fx-background-color: #9DA897; }
+.module-frame > .scroll-bar .increment-arrow, .module-frame > .scroll-bar .decrement-arrow,
+.page-scroll > .scroll-bar:horizontal .increment-arrow, .page-scroll > .scroll-bar:horizontal .decrement-arrow { -fx-shape: " "; -fx-padding: 0; }
+.module-frame > .corner, .page-scroll > .corner { -fx-background-color: transparent; }
 /* Listas largas dentro de la pantalla (contratos, movimientos): barra visible para bajar entre filas */
 .page-content .list-view .scroll-bar:vertical { -fx-pref-width: 10; }
 .page-content .list-view .scroll-bar:vertical .thumb { -fx-background-color: #B9C0B0; -fx-background-radius: 999; }
