@@ -17,6 +17,7 @@ import com.example.funerariamc.service.ReportService.MonthBalance;
 import com.example.funerariamc.service.ReportService.Slice;
 import com.example.funerariamc.service.ReportService.Summary;
 import com.example.funerariamc.ui.RefreshableView;
+import com.example.funerariamc.ui.FormShell;
 import javafx.animation.FadeTransition;
 import javafx.animation.KeyFrame;
 import javafx.animation.PauseTransition;
@@ -96,7 +97,8 @@ public class FinancesController implements RefreshableView {
     private static final Locale ES = Locale.forLanguageTag("es-CO");
     private static final DateTimeFormatter DATE_HOUR = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-    private static final String[] SLICE_COLORS = {"#1E3A2E", "#C4AF84", "#3E5A3F", "#9FB09A", "#6E6A45", "#D9D2BC"};
+    private static final String[] SLICE_COLORS = {"-color-forest", "-color-detail", "-color-moss", "-color-sage-mid",
+            "-color-warning", "-color-gold-pale"};
 
     /** Anchos de las tablas; la descripción o el nombre toman el espacio que sobra. */
     private static final double W_DATE = 140;
@@ -579,7 +581,7 @@ public class FinancesController implements RefreshableView {
                 Tooltip.install(b, tip);
             }
         }
-        HBox legend = new HBox(16, legendItem("#1E3A2E", "Ingresos"), legendItem("#C4AF84", "Egresos"));
+        HBox legend = new HBox(16, legendItem("-color-forest", "Ingresos"), legendItem("-color-detail", "Egresos"));
         legend.setAlignment(Pos.CENTER_RIGHT);
         Region gap = new Region();
         HBox.setHgrow(gap, Priority.ALWAYS);
@@ -987,6 +989,8 @@ public class FinancesController implements RefreshableView {
         form.note(saleHint);
         form.note(note("Se guarda con la fecha y hora de ahora. Un movimiento nunca se borra: si hay un error se anula."));
         Dialog<ButtonType> dialog = formDialog("Registrar movimiento", "Los campos con * son obligatorios.", form, 640);
+        FormShell.panel(dialog, "Finanzas");
+        FormShell.money(amount);
         runForm(dialog, form, "Registrar", () -> {
             BigDecimal value = parseAmount(amount.getText(), "El monto");
             if (value == null) {
