@@ -121,21 +121,38 @@ public class AnalyticsService {
     private final AccessLogService accessLogService;
     private final SessionContext sessionContext;
     private final Clock clock;
+    private final BrandingService brandingService;
 
     @Autowired
     public AnalyticsService(SaleRepository saleRepository, ServiceContractRepository contractRepository,
                             WakeRoomRepository roomRepository, VaultRepository vaultRepository,
                             StaffOptionRepository staffRepository, FinancialTransactionRepository transactionRepository,
-                            AccessLogService accessLogService, SessionContext sessionContext) {
+                            AccessLogService accessLogService, SessionContext sessionContext, BrandingService brandingService) {
         this(saleRepository, contractRepository, roomRepository, vaultRepository, staffRepository,
-                transactionRepository, accessLogService, sessionContext, Clock.system(AccessLogService.APP_ZONE));
+                transactionRepository, accessLogService, sessionContext, Clock.system(AccessLogService.APP_ZONE), brandingService);
     }
 
-    /** Las pruebas fijan la fecha de hoy con un Clock. */
+    public AnalyticsService(SaleRepository saleRepository, ServiceContractRepository contractRepository,
+                            WakeRoomRepository roomRepository, VaultRepository vaultRepository,
+                            StaffOptionRepository staffRepository, FinancialTransactionRepository transactionRepository,
+                            AccessLogService accessLogService, SessionContext sessionContext) {
+        this(saleRepository, contractRepository, roomRepository, vaultRepository, staffRepository,
+                transactionRepository, accessLogService, sessionContext, Clock.system(AccessLogService.APP_ZONE), null);
+    }
+
     AnalyticsService(SaleRepository saleRepository, ServiceContractRepository contractRepository,
                      WakeRoomRepository roomRepository, VaultRepository vaultRepository,
                      StaffOptionRepository staffRepository, FinancialTransactionRepository transactionRepository,
                      AccessLogService accessLogService, SessionContext sessionContext, Clock clock) {
+        this(saleRepository, contractRepository, roomRepository, vaultRepository, staffRepository,
+                transactionRepository, accessLogService, sessionContext, clock, null);
+    }
+
+    AnalyticsService(SaleRepository saleRepository, ServiceContractRepository contractRepository,
+                     WakeRoomRepository roomRepository, VaultRepository vaultRepository,
+                     StaffOptionRepository staffRepository, FinancialTransactionRepository transactionRepository,
+                     AccessLogService accessLogService, SessionContext sessionContext, Clock clock,
+                     BrandingService brandingService) {
         this.saleRepository = saleRepository;
         this.contractRepository = contractRepository;
         this.roomRepository = roomRepository;
@@ -145,6 +162,7 @@ public class AnalyticsService {
         this.accessLogService = accessLogService;
         this.sessionContext = sessionContext;
         this.clock = clock;
+        this.brandingService = brandingService;
     }
 
     public LocalDate today() {
@@ -369,7 +387,7 @@ public class AnalyticsService {
         try {
             temp = Files.createTempFile(target.toAbsolutePath().getParent(), "funeraria-", ".pdf");
             try (OutputStream out = Files.newOutputStream(temp)) {
-                writePdf(overview, out);
+                writePdf(overview, out, BrandingService.fullNameOf(brandingService));
             }
             Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException | RuntimeException failure) {
@@ -393,6 +411,11 @@ public class AnalyticsService {
     }
 
     static void writePdf(Overview o, OutputStream out) {
+        writePdf(o, out, BrandingService.defaults().fullName());
+    }
+
+    /** PDF del panel con el nombre de la funeraria en el título. */
+    static void writePdf(Overview o, OutputStream out, String funeralHome) {
         Document document = new Document(PageSize.A4, 36, 36, 40, 40);
         PdfWriter.getInstance(document, out);
         document.open();
@@ -405,7 +428,7 @@ public class AnalyticsService {
         Font bold = new Font(Font.HELVETICA, 9, Font.BOLD, Color.BLACK);
         Kpis k = o.kpis();
 
-        document.add(new Paragraph("Funeraria El Edén · Panel de análisis", title));
+        document.add(new Paragraph(funeralHome + " · Panel de análisis", title));
         document.add(new Paragraph("Período: " + o.periodLabel() + " (" + o.period().from().format(DATE) + " a "
                 + o.period().to().format(DATE) + "). Generado el " + o.generatedAt().format(DATE_HOUR)
                 + ". Solo lectura: las ventas anuladas no cuentan.", small));
