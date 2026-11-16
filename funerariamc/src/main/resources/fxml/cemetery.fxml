@@ -89,7 +89,7 @@
                 <HBox spacing="16" fillHeight="false">
                     <!-- Muro del pabellón (plano) o lista de bóvedas -->
                     <VBox styleClass="table-card" HBox.hgrow="ALWAYS" minWidth="0">
-                        <HBox alignment="TOP_LEFT" spacing="12">
+                        <HBox alignment="TOP_LEFT" spacing="12" styleClass="wrap-row">
                             <VBox spacing="2" HBox.hgrow="ALWAYS">
                                 <Label fx:id="wallTitle" text="Pabellón" styleClass="card-title"/>
                                 <Label fx:id="wallSubtitle" styleClass="card-subtitle" wrapText="true"/>
