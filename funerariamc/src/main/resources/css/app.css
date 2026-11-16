@@ -1,20 +1,85 @@
 
 
 .root {
-    -color-primary:     #182F25; /* Verde bosque: menú, panel de marca, texto principal */
-    -color-primary-mid: #2C4535; /* Bosque medio: píldoras del menú y bordes de tabla */
-    -color-secondary:   #5E6660; /* Gris verdoso: texto secundario, bordes de campos */
-    -color-border:      #A9AFA8; /* Niebla: divisores y deshabilitados */
-    -color-surface:     #E2E6DD; /* Salvia clara: chips, filas alternas, buscador */
-    -color-background:  #F4F1EC; /* Marfil: fondo principal */
-    -color-card:        #FAF9F6; /* Tarjeta: paneles e indicadores */
-    -color-accent:      #465E47; /* Verde musgo: botón principal, títulos, ítem activo */
-    -color-accent-dark: #2C4535; /* Bosque medio: botón presionado */
-    -color-detail:      #C4AF84; /* Caqui dorado: filetes, íconos y texto sobre verde */
-    -color-gold-text:   #8C7648; /* Oro oscuro: dorado legible sobre marfil */
-    -color-olive:       #676B48; /* Oliva: gráficos secundarios */
-    -color-error:       #9E3B32; /* Terracota: mensajes de error */
-    -color-error-bg:    #F1E4E1;
+    /* Paleta de la marca. Estos son los valores de El Edén; si la funeraria cambia sus colores en
+       Parámetros, BrandTheme pone encima los tonos calculados desde sus 3 colores. */
+    -color-forest-deep:     #0F1F17; /* Bosque profundo: final del degradado del menú */
+    -color-primary:         #182F25; /* Verde bosque: panel de marca y texto principal */
+    -color-forest:          #1E3A2E; /* Verde bosque claro: menú, banda superior (color principal de la marca) */
+    -color-primary-mid:     #2C4535; /* Bosque medio: píldoras del menú, bordes de tabla, botón presionado */
+    -color-ink:             #1E2A22; /* Tinta: texto oscuro sobre fondos claros */
+    -color-moss:            #3E5A3F; /* Musgo: botones principales y títulos (color de acento de la marca) */
+    -color-accent:          #465E47; /* Verde musgo: ítem activo y enlaces */
+    -color-sage-dark:       #6B7F67; /* Salvia oscura: degradado de la banda y gráficos */
+    -color-olive:           #676B48; /* Oliva: gráficos secundarios */
+    -color-sage-mid:        #9DA897; /* Salvia media: bordes y gráficos suaves */
+    -color-sage-light:      #B8CBBA; /* Salvia clara: detalles del lirio */
+    -color-sage-pale:       #C9D5CA; /* Salvia pálida: detalles del lirio */
+    -color-text-strong:     #4A524B; /* Texto secundario fuerte */
+    -color-secondary:       #5E6660; /* Gris verdoso: texto secundario y bordes de campos */
+    -color-text-muted:      #6A7366; /* Texto apagado: subtítulos y ayudas */
+    -color-text-faint:      #8A917F; /* Texto tenue */
+    -color-border:          #A9AFA8; /* Niebla: divisores y deshabilitados */
+    -color-mist:            #B9C0B0; /* Bruma: bordes de campos y barras de desplazamiento */
+    -color-linen:           #C7CBB8; /* Lino: ítem activo del menú */
+    -color-line:            #D5DACB; /* Línea: bordes de tarjetas */
+    -color-surface:         #E2E6DD; /* Salvia clara: chips, filas alternas, buscador */
+    -color-content:         #E3E6DA; /* Fondo del área de contenido */
+    -color-panel:           #E6E8DE; /* Panel: separadores y fondos de tablas */
+    -color-soft:            #EEF0E6; /* Fondo suave: filas y chips */
+    -color-paper:           #F4F5EE; /* Papel: tarjetas y texto claro sobre verde */
+    -color-paper-white:     #FAFBF7; /* Papel blanco: tarjetas destacadas */
+    -color-detail:          #C4AF84; /* Caqui dorado: filetes, íconos y texto sobre verde (color de detalle de la marca) */
+    -color-gold-deep:       #8A6D3B; /* Oro profundo: enlaces del login */
+    -color-gold-text:       #8C7648; /* Oro oscuro: dorado legible sobre marfil */
+    -color-gold-mid:        #A07E45; /* Oro medio: detalles del lirio */
+    -color-gold-muted:      #A99A6B; /* Oro apagado: bordes dorados */
+    -color-gold-pale:       #CFC9A8; /* Oro pálido */
+    -color-gold-light:      #E9DDB0; /* Oro claro: resaltados */
+    -color-gold-wash:       #F1EAD9; /* Lavado dorado: fondos de avisos dorados */
+    -color-background:      #F4F1EC; /* Marfil: fondo principal */
+    -color-card:            #FAF9F6; /* Tarjeta: paneles e indicadores */
+    -color-ivory-input:     #FBFAF4; /* Marfil de los campos del login */
+    -color-ivory-login:     #F6F3E8; /* Marfil del fondo del login */
+    -color-ivory-mute:      #ECEAE6; /* Marfil apagado */
+    -color-ivory-line:      #DCD8C8; /* Borde marfil de los campos del login */
+    -color-alert:           #8A4B3C; /* Alerta: texto de estados en mora o vencidos */
+    -color-alert-bg:        #F0E3DC; /* Fondo de alerta */
+    -color-alert-soft:      #F0C9BD; /* Alerta suave */
+    -color-error:           #9E3B32; /* Terracota: mensajes de error */
+    -color-error-bg:        #F1E4E1; /* Fondo de error */
+    -color-warning:         #6E6A45; /* Aviso: texto de estados por vencer */
+    -color-warning-deep:    #6E6232; /* Aviso fuerte */
+    -color-warning-bg:      #EDEBDD; /* Fondo de aviso */
+    -color-success-bg:      #CFE3C4; /* Fondo de éxito */
+    -color-success-soft:    #DCE5D6; /* Éxito suave */
+    /* Transparencias de los mismos colores (sombras y textos sobre verde) */
+    -color-shadow-05:       rgba(15,31,23,0.05);
+    -color-shadow-06:       rgba(15,31,23,0.06);
+    -color-shadow-10:       rgba(15,31,23,0.1);
+    -color-shadow-16:       rgba(15,31,23,0.16);
+    -color-shadow-22:       rgba(15,31,23,0.22);
+    -color-shadow-25:       rgba(15,31,23,0.25);
+    -color-shadow-32:       rgba(15,31,23,0.32);
+    -color-shadow-45:       rgba(15,31,23,0.45);
+    -color-primary-a06:     rgba(24,47,37,0.06);
+    -color-primary-a15:     rgba(24,47,37,0.15);
+    -color-primary-a18:     rgba(24,47,37,0.18);
+    -color-primary-a25:     rgba(24,47,37,0.25);
+    -color-linen-a06:       rgba(199,203,184,0.06);
+    -color-linen-a12:       rgba(199,203,184,0.12);
+    -color-linen-a22:       rgba(199,203,184,0.22);
+    -color-linen-a45:       rgba(199,203,184,0.45);
+    -color-surface-a45:     rgba(226,230,221,0.45);
+    -color-surface-a70:     rgba(226,230,221,0.7);
+    -color-paper-a50:       rgba(244,245,238,0.5);
+    -color-paper-a72:       rgba(244,245,238,0.72);
+    -color-paper-a75:       rgba(244,245,238,0.75);
+    -color-paper-a85:       rgba(244,245,238,0.85);
+    -color-paper-a88:       rgba(244,245,238,0.88);
+    -color-detail-a50:      rgba(196,175,132,0.5);
+    -color-card-a60:        rgba(250,249,246,0.6);
+    -color-paper-white-a94: rgba(250,251,247,0.94);
 
     -font-display: "Montserrat SemiBold", "Segoe UI", sans-serif;
     -font-body:    "Montserrat", "Segoe UI", sans-serif;
@@ -29,35 +94,44 @@
 }
 
 /* ---------- Login ---------- */
-.login-root { -fx-background-color: #F6F3E8; }
+.login-root { -fx-background-color: -color-ivory-login; }
 /* Foto del lirio (imagen con el borde curvo dorado); se escala con el alto de la ventana */
 .login-photo {
     -fx-background-image: url("../images/login-lirio.png");
     -fx-background-size: auto 100%; -fx-background-repeat: no-repeat; -fx-background-position: left top;
 }
+/* Otra funeraria (otro logo u otros colores): en vez de la foto del lirio de El Edén, un panel con su color */
+.brand-custom .login-photo {
+    -fx-background-image: null;
+    -fx-background-color: linear-gradient(to bottom right, -color-forest 0%, -color-primary 55%, -color-forest-deep 100%);
+    -fx-background-radius: 0 56 56 0;
+    -fx-border-color: -color-detail; -fx-border-width: 0 2 0 0; -fx-border-radius: 0 56 56 0;
+    -fx-pref-width: 548; -fx-max-width: 548;
+}
+.brand-custom .eden-leaves { visibility: hidden; } /* hojas verdes de las esquinas */
 .login-brand { -fx-padding: 34 40 30 40; -fx-spacing: 14; }
 /* Logo (LilyLogo): los colores del lirio salen de estas clases */
-.lily-leaves { -fx-fill: #8FA88F; }
-.lily-petals { -fx-fill: #F4F1EC; -fx-stroke: #B8CBBA; -fx-stroke-width: 0.6; -fx-stroke-line-join: round; }
-.lily-veins { -fx-fill: transparent; -fx-stroke: #C9D5CA; -fx-stroke-width: 0.5; -fx-stroke-line-cap: round; }
-.lily-stamens { -fx-fill: transparent; -fx-stroke: #C4AF84; -fx-stroke-width: 0.7; -fx-stroke-line-cap: round; }
-.lily-anthers { -fx-fill: #A07E45; }
-.brand-sub { -fx-text-fill: #C4AF84; -fx-font-size: 10px; -fx-font-weight: bold; }
+.lily-leaves { -fx-fill: -color-sage-mid; }
+.lily-petals { -fx-fill: -color-background; -fx-stroke: -color-sage-light; -fx-stroke-width: 0.6; -fx-stroke-line-join: round; }
+.lily-veins { -fx-fill: transparent; -fx-stroke: -color-sage-pale; -fx-stroke-width: 0.5; -fx-stroke-line-cap: round; }
+.lily-stamens { -fx-fill: transparent; -fx-stroke: -color-detail; -fx-stroke-width: 0.7; -fx-stroke-line-cap: round; }
+.lily-anthers { -fx-fill: -color-gold-mid; }
+.brand-sub { -fx-text-fill: -color-detail; -fx-font-size: 10px; -fx-font-weight: bold; }
 .brand-name {
     -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif;
-    -fx-font-size: 26px; -fx-font-weight: bold; -fx-text-fill: #F4F1EC;
+    -fx-font-size: 26px; -fx-font-weight: bold; -fx-text-fill: -color-background;
 }
 .brand-tagline { -fx-text-fill: -color-border; -fx-font-size: 13px; -fx-line-spacing: 3; }
 .brand-quote {
     -fx-font-family: "Montserrat"; -fx-font-weight: normal; -fx-font-style: italic; -fx-font-size: 23px; -fx-line-spacing: 2;
-    -fx-text-fill: #F4F1EC; -fx-effect: dropshadow(gaussian, rgba(10,25,15,0.45), 12, 0, 0, 1);
+    -fx-text-fill: -color-background; -fx-effect: dropshadow(gaussian, -color-shadow-45, 12, 0, 0, 1);
 }
 .brand-place { -fx-text-fill: -color-border; -fx-font-size: 11px; }
 .brand-values { -fx-spacing: 16; }
 .brand-value { -fx-spacing: 8; -fx-min-width: 116; }
-.brand-value-text { -fx-text-fill: #EEF0E6; -fx-font-size: 10.5px; -fx-text-alignment: center; }
-.brand-value-rule { -fx-background-color: rgba(196,175,132,0.45); -fx-min-width: 1; -fx-max-width: 1; -fx-pref-height: 46; }
-.brand-icon { -fx-fill: transparent; -fx-stroke: #EEF0E6; -fx-stroke-width: 1.4; -fx-stroke-line-cap: round; -fx-stroke-line-join: round; }
+.brand-value-text { -fx-text-fill: -color-soft; -fx-font-size: 10.5px; -fx-text-alignment: center; }
+.brand-value-rule { -fx-background-color: -color-detail-a50; -fx-min-width: 1; -fx-max-width: 1; -fx-pref-height: 46; }
+.brand-icon { -fx-fill: transparent; -fx-stroke: -color-soft; -fx-stroke-width: 1.4; -fx-stroke-line-cap: round; -fx-stroke-line-join: round; }
 .eyebrow { -fx-text-fill: -color-secondary; -fx-font-size: 12px; -fx-font-weight: bold; }
 .link { -fx-text-fill: -color-accent; -fx-font-weight: bold; -fx-underline: true; -fx-border-color: transparent; -fx-padding: 0; }
 .link:visited { -fx-text-fill: -color-accent; }
@@ -67,30 +141,30 @@
 .login-form { -fx-padding: 0; -fx-spacing: 9; -fx-background-color: transparent; }
 .login-title {
     -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif;
-    -fx-font-size: 36px; -fx-font-weight: bold; -fx-text-fill: #182F25; -fx-padding: 10 0 0 0;
+    -fx-font-size: 36px; -fx-font-weight: bold; -fx-text-fill: -color-primary; -fx-padding: 10 0 0 0;
 }
-.login-subtitle { -fx-text-fill: #6B6F66; -fx-padding: 0 0 12 0; }
+.login-subtitle { -fx-text-fill: -color-text-muted; -fx-padding: 0 0 12 0; }
 /* Campos de login, recuperar y cambiar contraseña: caja redondeada */
 .login-form .text-field, .login-form .password-field {
-    -fx-background-color: #FBFAF4; -fx-background-insets: 0; -fx-background-radius: 10;
-    -fx-border-color: #DCD8C8; -fx-border-width: 1; -fx-border-radius: 10; -fx-padding: 11 14 11 14; -fx-font-size: 13px;
+    -fx-background-color: -color-ivory-input; -fx-background-insets: 0; -fx-background-radius: 10;
+    -fx-border-color: -color-ivory-line; -fx-border-width: 1; -fx-border-radius: 10; -fx-padding: 11 14 11 14; -fx-font-size: 13px;
 }
-.login-form .text-field:focused, .login-form .password-field:focused { -fx-border-color: #465E47; -fx-border-width: 1.5; }
+.login-form .text-field:focused, .login-form .password-field:focused { -fx-border-color: -color-accent; -fx-border-width: 1.5; }
 /* Con ícono a la izquierda (login) */
 .login-field .text-field, .login-field .password-field,
 .login-field.password-box .text-field, .login-field.password-box .password-field {
-    -fx-background-color: #FBFAF4; -fx-background-insets: 0; -fx-background-radius: 10;
-    -fx-border-color: #DCD8C8; -fx-border-width: 1; -fx-border-radius: 10;
+    -fx-background-color: -color-ivory-input; -fx-background-insets: 0; -fx-background-radius: 10;
+    -fx-border-color: -color-ivory-line; -fx-border-width: 1; -fx-border-radius: 10;
     -fx-padding: 11 40 11 40; -fx-font-size: 13px;
 }
-.login-field .text-field:focused, .login-field .password-field:focused { -fx-border-color: #465E47; -fx-border-width: 1.5; }
-.field-icon { -fx-fill: transparent; -fx-stroke: #465E47; -fx-stroke-width: 1.5; -fx-stroke-line-cap: round; -fx-stroke-line-join: round; -fx-translate-x: 14; -fx-scale-x: 0.75; -fx-scale-y: 0.75; }
+.login-field .text-field:focused, .login-field .password-field:focused { -fx-border-color: -color-accent; -fx-border-width: 1.5; }
+.field-icon { -fx-fill: transparent; -fx-stroke: -color-accent; -fx-stroke-width: 1.5; -fx-stroke-line-cap: round; -fx-stroke-line-join: round; -fx-translate-x: 14; -fx-scale-x: 0.75; -fx-scale-y: 0.75; }
 .login-field .eye-toggle { -fx-translate-x: -8; }
-.login-link { -fx-text-fill: #8A6D3B; -fx-font-weight: normal; -fx-font-size: 12px; }
-.login-link:visited { -fx-text-fill: #8A6D3B; }
-.login-root .login-button { -fx-background-color: #182F25; -fx-background-radius: 999; -fx-padding: 13 18; }
-.login-root .login-button:hover { -fx-background-color: #234235; }
-.login-root .field-label { -fx-text-fill: #182F25; -fx-font-size: 12.5px; }
+.login-link { -fx-text-fill: -color-gold-deep; -fx-font-weight: normal; -fx-font-size: 12px; }
+.login-link:visited { -fx-text-fill: -color-gold-deep; }
+.login-root .login-button { -fx-background-color: -color-primary; -fx-background-radius: 999; -fx-padding: 13 18; }
+.login-root .login-button:hover { -fx-background-color: -color-primary-mid; }
+.login-root .field-label { -fx-text-fill: -color-primary; -fx-font-size: 12.5px; }
 .field-label {
     -fx-text-fill: -color-secondary; -fx-font-size: 12px; -fx-font-weight: bold;
     -fx-padding: 6 0 0 0;
@@ -122,7 +196,7 @@
     -fx-padding: 11 18; -fx-background-radius: 10; -fx-cursor: hand;
 }
 .primary-button:hover { -fx-background-color: derive(-color-accent, 12%); }
-.primary-button:pressed { -fx-background-color: -color-accent-dark; }
+.primary-button:pressed { -fx-background-color: -color-primary-mid; }
 .primary-button:disabled { -fx-background-color: -color-border; -fx-opacity: 1; }
 
 .secondary-button {
@@ -136,11 +210,11 @@
 /* ---------- Menú lateral flotante ---------- */
 /* Paleta verde oscura (nov 2026): menú en degradado bosque profundo, ítem activo en lino
    y fondo general salvia claro. El contenido de los módulos sigue en tarjetas claras. */
-.shell { -fx-background-color: #E3E6DA; }
+.shell { -fx-background-color: -color-content; }
 .sidebar {
-    -fx-background-color: linear-gradient(to bottom, #1E3A2E 0%, #15291F 55%, #0F1F17 100%);
+    -fx-background-color: linear-gradient(to bottom, -color-forest 0%, -color-primary 55%, -color-forest-deep 100%);
     -fx-background-radius: 24;
-    -fx-effect: dropshadow(gaussian, rgba(15,31,23,0.35), 32, 0.1, 0, 14);
+    -fx-effect: dropshadow(gaussian, -color-shadow-32, 32, 0.1, 0, 14);
     -fx-padding: 20 0 20 0;
 }
 .sidebar-brand { -fx-padding: 0 14 16 14; }
@@ -153,17 +227,17 @@
 .sidebar-sub { -fx-text-fill: -color-detail; -fx-font-size: 9px; -fx-font-weight: bold; }
 .sidebar.animating { -fx-effect: null; }
 .sidebar-collapse {
-    -fx-background-color: rgba(199,203,184,0.12); -fx-background-radius: 15; -fx-text-fill: -color-background;
+    -fx-background-color: -color-linen-a12; -fx-background-radius: 15; -fx-text-fill: -color-background;
     -fx-font-size: 16px; -fx-min-width: 30; -fx-min-height: 30; -fx-max-width: 30; -fx-max-height: 30; -fx-padding: 0; -fx-cursor: hand;
 }
-.sidebar-collapse:hover { -fx-background-color: rgba(199,203,184,0.24); }
-.sidebar-rule { -fx-background-color: rgba(199,203,184,0.22); -fx-min-height: 1; -fx-max-height: 1; -fx-max-width: 32; }
+.sidebar-collapse:hover { -fx-background-color: -color-linen-a22; }
+.sidebar-rule { -fx-background-color: -color-linen-a22; -fx-min-height: 1; -fx-max-height: 1; -fx-max-width: 32; }
 .sidebar.expanded .sidebar-rule { -fx-max-width: 216; }
 .side-scroll, .side-scroll > .viewport, .side-menu { -fx-background-color: transparent; -fx-background-insets: 0; -fx-border-width: 0; -fx-padding: 0; }
 .side-menu { -fx-padding: 14 0 14 0; }
 /* Con Finanzas desplegado el menú puede pasar del alto de la ventana: barra fina caqui */
 .side-scroll .scroll-bar:vertical { -fx-background-color: transparent; -fx-pref-width: 6; -fx-padding: 0; }
-.side-scroll .scroll-bar:vertical .thumb { -fx-background-color: rgba(196,175,132,0.55); -fx-background-radius: 999; }
+.side-scroll .scroll-bar:vertical .thumb { -fx-background-color: -color-detail-a50; -fx-background-radius: 999; }
 .side-scroll .scroll-bar .increment-button, .side-scroll .scroll-bar .decrement-button { -fx-padding: 0; }
 .side-scroll .scroll-bar .increment-arrow, .side-scroll .scroll-bar .decrement-arrow { -fx-shape: " "; -fx-padding: 0; }
 .sidebar-decor { -fx-opacity: 0.30; } /* intensidad de la foto del lirio detrás de los módulos */
@@ -177,10 +251,13 @@
     -fx-background-size: auto 100%;
 }
 
+/* La funeraria quitó la imagen de las bandas (la imagen propia la pone BrandTheme con su propia hoja) */
+.brand-no-band .hero-band { -fx-background-image: null; }
+
 /* Ítems del menú: círculo de 40 px contraído, píldora de 240 px expandido */
 .nav-pill {
     -fx-background-color: transparent; /* sin caja: el lirio de fondo se ve entre los ítems */ -fx-background-radius: 12;
-    -fx-text-fill: #DDE1D3; -fx-font-size: 12.5px;
+    -fx-text-fill: -color-content; -fx-font-size: 12.5px;
     -fx-graphic-text-gap: 11; -fx-alignment: center-left; -fx-padding: 0 12 0 12; -fx-cursor: hand;
     -fx-min-height: 34; -fx-pref-height: 34; -fx-max-height: 34;
     -fx-min-width: 36; -fx-pref-width: 216; -fx-max-width: 216;
@@ -193,36 +270,36 @@
     -fx-min-width: 36; -fx-pref-width: 36; -fx-max-width: 36;
     -fx-min-height: 36; -fx-pref-height: 36; -fx-max-height: 36;
 }
-.nav-pill:hover { -fx-background-color: rgba(199,203,184,0.12); }
+.nav-pill:hover { -fx-background-color: -color-linen-a12; }
 /* Ítem activo: píldora lino con texto e ícono en bosque profundo */
 .nav-pill.active {
-    -fx-background-color: #C7CBB8; -fx-text-fill: #0F1F17; -fx-font-weight: bold;
+    -fx-background-color: -color-linen; -fx-text-fill: -color-forest-deep; -fx-font-weight: bold;
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 12, 0, 0, 4);
 }
-.nav-pill.active .nav-icon { -fx-stroke: #0F1F17; }
+.nav-pill.active .nav-icon { -fx-stroke: -color-forest-deep; }
 .nav-icon {
-    -fx-fill: transparent; -fx-stroke: #C7CBB8; -fx-stroke-width: 1.6;
+    -fx-fill: transparent; -fx-stroke: -color-linen; -fx-stroke-width: 1.6;
     -fx-stroke-line-cap: round; -fx-stroke-line-join: round;
 }
 
 /* Grupo desplegable Finanzas: flecha a la derecha que gira al abrir y subítems con sangría */
 .nav-chevron { -fx-translate-x: -14; -fx-opacity: 0.8; }
-.nav-chevron .nav-icon { -fx-stroke: #C7CBB8; }
+.nav-chevron .nav-icon { -fx-stroke: -color-linen; }
 .sidebar.pills-collapsed .nav-chevron { -fx-opacity: 0; }
-.nav-pill.open { -fx-background-color: rgba(199,203,184,0.10); }
+.nav-pill.open { -fx-background-color: -color-linen-a12; }
 .nav-sub-items { -fx-padding: 0 0 2 0; }
 .nav-sub-pill {
     -fx-background-color: transparent; -fx-background-radius: 10;
-    -fx-text-fill: #CED3C4; -fx-font-size: 12.5px;
+    -fx-text-fill: -color-line; -fx-font-size: 12.5px;
     -fx-graphic-text-gap: 10; -fx-alignment: center-left; -fx-padding: 0 12 0 12; -fx-cursor: hand;
     -fx-min-height: 32; -fx-pref-height: 32; -fx-max-height: 32;
     -fx-min-width: 36; -fx-pref-width: 192; -fx-max-width: 192;
     -fx-text-overrun: clip;
 }
-.nav-sub-pill .nav-icon { -fx-stroke: #A9B3A3; }
-.nav-sub-pill:hover { -fx-background-color: rgba(199,203,184,0.12); }
-.nav-sub-pill.active { -fx-background-color: #C7CBB8; -fx-font-weight: bold; -fx-text-fill: #0F1F17; }
-.nav-sub-pill.active .nav-icon { -fx-stroke: #0F1F17; }
+.nav-sub-pill .nav-icon { -fx-stroke: -color-sage-mid; }
+.nav-sub-pill:hover { -fx-background-color: -color-linen-a12; }
+.nav-sub-pill.active { -fx-background-color: -color-linen; -fx-font-weight: bold; -fx-text-fill: -color-forest-deep; }
+.nav-sub-pill.active .nav-icon { -fx-stroke: -color-forest-deep; }
 
 /* Fila elegida de cualquier tabla: Modena pinta el texto con -fx-selection-bar-text (blanco)
    y sobre la salvia no se leía. Con estas variables el texto sigue en verde bosque. */
@@ -235,20 +312,20 @@
 .sidebar-profile { -fx-padding: 8 0 0 0; }
 .sidebar.expanded .sidebar-profile {
     -fx-alignment: center-left; -fx-padding: 12 14;
-    -fx-background-color: rgba(199,203,184,0.06); -fx-background-radius: 16;
-    -fx-border-color: rgba(199,203,184,0.18); -fx-border-radius: 16; -fx-border-width: 1;
+    -fx-background-color: -color-linen-a06; -fx-background-radius: 16;
+    -fx-border-color: -color-linen-a22; -fx-border-radius: 16; -fx-border-width: 1;
 }
 .sidebar-avatar {
-    -fx-background-color: #6B7F67; -fx-background-radius: 22; -fx-text-fill: #F4F5EE;
+    -fx-background-color: -color-sage-dark; -fx-background-radius: 22; -fx-text-fill: -color-paper;
     -fx-font-size: 16px; -fx-font-weight: bold; -fx-padding: 0; -fx-cursor: hand;
     -fx-min-width: 44; -fx-min-height: 44; -fx-max-width: 44; -fx-max-height: 44;
 }
-.user-name { -fx-text-fill: #EEF0E6; -fx-font-weight: bold; }
-.user-role { -fx-text-fill: #C4AF84; -fx-font-size: 11px; }
+.user-name { -fx-text-fill: -color-soft; -fx-font-weight: bold; }
+.user-role { -fx-text-fill: -color-detail; -fx-font-size: 11px; }
 
 /* Tooltip del menú contraído (colores literales: el popup no hereda las variables de .root) */
 .tooltip {
-    -fx-background-color: #C4AF84; -fx-background-radius: 12; -fx-text-fill: #182F25;
+    -fx-background-color: -color-detail; -fx-background-radius: 12; -fx-text-fill: -color-primary;
     -fx-font-size: 13px; -fx-font-weight: bold; -fx-padding: 8 14 8 14;
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.18), 14, 0, 0, 6);
 }
@@ -265,21 +342,21 @@
     -fx-background-radius: 999; -fx-text-fill: -color-primary; -fx-padding: 8 16 8 16; -fx-cursor: hand;
 }
 .pill-button:hover { -fx-background-color: -color-surface; }
-.session-dot { -fx-fill: #6B7F67; }
+.session-dot { -fx-fill: -color-sage-dark; }
 
 /* Encabezado dentro de la banda verde de un módulo (MainController.placeHeader) */
-.content-header.on-hero .content-title { -fx-text-fill: #F4F5EE; -fx-font-size: 32px; }
-.content-header.on-hero .content-subtitle { -fx-text-fill: rgba(244,245,238,0.78); }
+.content-header.on-hero .content-title { -fx-text-fill: -color-paper; -fx-font-size: 32px; }
+.content-header.on-hero .content-subtitle { -fx-text-fill: -color-paper-a75; }
 .content-header.on-hero .session-badge {
-    -fx-background-color: rgba(255,255,255,0.10); -fx-text-fill: #E4E7DC; -fx-font-weight: normal;
+    -fx-background-color: rgba(255,255,255,0.10); -fx-text-fill: -color-content; -fx-font-weight: normal;
 }
-.content-header.on-hero .session-dot { -fx-fill: #A9C29F; }
-.content-header.on-hero .pill-button { -fx-border-color: rgba(244,245,238,0.55); -fx-text-fill: #F4F5EE; }
+.content-header.on-hero .session-dot { -fx-fill: -color-sage-mid; }
+.content-header.on-hero .pill-button { -fx-border-color: -color-paper-a50; -fx-text-fill: -color-paper; }
 .content-header.on-hero .pill-button:hover { -fx-background-color: rgba(255,255,255,0.12); }
 
 /* ---------- Carga de pantallas: esqueleto de los indicadores mientras llegan los datos ---------- */
 .skeleton, .hero-kpi .skeleton, .kpi-card .skeleton {
-    -fx-text-fill: transparent; -fx-background-color: #E4E6DF; -fx-background-radius: 8;
+    -fx-text-fill: transparent; -fx-background-color: -color-panel; -fx-background-radius: 8;
     -fx-min-width: 96; -fx-pref-width: 96;
 }
 .hero-kpi .skeleton { -fx-background-color: rgba(255,255,255,0.18); }
@@ -300,7 +377,7 @@
 .table-view .column-header-background { -fx-background-color: -color-primary; }
 .table-view .column-header {
     -fx-background-color: transparent;
-    -fx-border-color: transparent #29402F transparent transparent;
+    -fx-border-color: transparent -color-primary-mid transparent transparent;
     -fx-padding: 6 8;
 }
 .table-view .column-header .label { -fx-text-fill: -color-background; -fx-font-weight: bold; -fx-alignment: center-left; }
@@ -412,11 +489,11 @@
     -fx-border-color: -color-surface; -fx-border-width: 1;
     -fx-padding: 14 14 10 14;
     -fx-background-insets: 0;
-    -fx-effect: dropshadow(gaussian, rgba(24,47,37,0.16), 24, 0, 0, 6);
+    -fx-effect: dropshadow(gaussian, -color-primary-a15, 24, 0, 0, 6);
 }
 .date-picker-popup > .month-year-pane {
     /* Franja superior verde pastel (derivada del musgo) que llega a los bordes de la tarjeta */
-    -fx-background-color: #DCE5D6;
+    -fx-background-color: -color-success-soft;
     -fx-background-insets: -14 -14 0 -14;
     -fx-background-radius: 16 16 0 0;
     -fx-padding: 0 0 12 0;
@@ -464,8 +541,8 @@
 .page-scroll .page-content .scroll-content,
 .page-scroll .page-content .card-scroll-content { -fx-padding: 0; }
 .page-scroll > .scroll-bar:vertical { -fx-background-color: transparent; -fx-pref-width: 10; -fx-padding: 0 0 0 2; }
-.page-scroll > .scroll-bar:vertical .thumb { -fx-background-color: #B9C0B0; -fx-background-radius: 999; }
-.page-scroll > .scroll-bar:vertical .thumb:hover { -fx-background-color: #9DA897; }
+.page-scroll > .scroll-bar:vertical .thumb { -fx-background-color: -color-mist; -fx-background-radius: 999; }
+.page-scroll > .scroll-bar:vertical .thumb:hover { -fx-background-color: -color-sage-mid; }
 
 /* Marco de cada módulo (MainController) y pantallas que se desplazan completas (Responsive): la barra
    horizontal solo aparece si la ventana es más angosta que lo mínimo que necesita el módulo. */
@@ -473,12 +550,12 @@
 .module-frame > .scroll-bar:horizontal,
 .page-scroll > .scroll-bar:horizontal { -fx-background-color: transparent; -fx-pref-height: 10; -fx-padding: 2 0 0 0; }
 .module-frame > .scroll-bar:horizontal .thumb,
-.page-scroll > .scroll-bar:horizontal .thumb { -fx-background-color: #B9C0B0; -fx-background-radius: 999; }
+.page-scroll > .scroll-bar:horizontal .thumb { -fx-background-color: -color-mist; -fx-background-radius: 999; }
 .module-frame > .scroll-bar:horizontal .thumb:hover,
-.page-scroll > .scroll-bar:horizontal .thumb:hover { -fx-background-color: #9DA897; }
+.page-scroll > .scroll-bar:horizontal .thumb:hover { -fx-background-color: -color-sage-mid; }
 .module-frame > .scroll-bar .increment-arrow, .module-frame > .scroll-bar .decrement-arrow,
 .page-scroll > .scroll-bar:horizontal .increment-arrow, .page-scroll > .scroll-bar:horizontal .decrement-arrow { -fx-shape: " "; -fx-padding: 0; }
 .module-frame > .corner, .page-scroll > .corner { -fx-background-color: transparent; }
 /* Listas largas dentro de la pantalla (contratos, movimientos): barra visible para bajar entre filas */
 .page-content .list-view .scroll-bar:vertical { -fx-pref-width: 10; }
-.page-content .list-view .scroll-bar:vertical .thumb { -fx-background-color: #B9C0B0; -fx-background-radius: 999; }
+.page-content .list-view .scroll-bar:vertical .thumb { -fx-background-color: -color-mist; -fx-background-radius: 999; }
