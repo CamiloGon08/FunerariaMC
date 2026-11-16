@@ -82,12 +82,10 @@ public class MainController {
     private VBox centerBox;
     @FXML
     private HBox headerBar;
-
     /** Id del espacio para el encabezado dentro de la banda verde de un módulo. */
     private static final String HERO_HEADER_SLOT = "heroHeaderSlot";
     /** Clase que pone el encabezado en colores claros cuando está sobre la banda verde. */
     private static final String ON_HERO = "on-hero";
-
     private SidebarAnimator sidebarAnimator;
     /** Primer ítem del menú: vuelve al saludo de inicio. */
     private Button homePill;
@@ -218,6 +216,8 @@ public class MainController {
                     "Servicio en curso, documentos y destino final. Toque una tarjeta o fila para ver el expediente", FxmlViewLoader.DECEASED)),
             Map.entry(AppModule.PLANES, new ModuleScreen("Planes exequiales",
                     "Afiliados, beneficiarios y cuotas. Toque un plan para ver beneficiarios, pagos y servicios usados", FxmlViewLoader.FUNERAL_PLANS)),
+            Map.entry(AppModule.MENSAJES_BOT, new ModuleScreen(AppModule.MENSAJES_BOT.getLabel(),
+                    "Lo que el bot de Telegram respondió a cada titular y los correos de bienvenida. Solo lectura", FxmlViewLoader.BOT_MESSAGES)),
             Map.entry(AppModule.CEMENTERIO, new ModuleScreen(AppModule.CEMENTERIO.getLabel(),
                     "Muro de bóvedas por pabellón. Toque una bóveda para ver quién reposa, la familia y el arriendo", FxmlViewLoader.CEMETERY)),
             Map.entry(AppModule.SALAS, new ModuleScreen("Salas de velación",
