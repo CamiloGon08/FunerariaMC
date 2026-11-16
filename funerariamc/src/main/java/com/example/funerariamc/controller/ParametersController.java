@@ -2,11 +2,18 @@ package com.example.funerariamc.controller;
 
 import com.example.funerariamc.exception.BusinessException;
 import com.example.funerariamc.utils.enums.ParameterCategory;
+import com.example.funerariamc.service.BrandPalette;
+import com.example.funerariamc.service.BrandingData;
+import com.example.funerariamc.service.BrandingService;
+import com.example.funerariamc.service.BrandingService.BrandView;
 import com.example.funerariamc.service.ParameterCatalog;
 import com.example.funerariamc.service.ParameterData;
 import com.example.funerariamc.service.SystemParameterService;
 import com.example.funerariamc.service.SystemParameterService.ParameterView;
+import com.example.funerariamc.ui.BrandTheme;
+import com.example.funerariamc.ui.LilyLogo;
 import com.example.funerariamc.ui.RefreshableView;
+import com.example.funerariamc.ui.FormShell;
 import javafx.animation.FadeTransition;
 import javafx.animation.PauseTransition;
 import javafx.animation.SequentialTransition;
@@ -21,6 +28,7 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.ColorPicker;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.DialogPane;
@@ -29,6 +37,8 @@ import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
@@ -37,14 +47,20 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
 import javafx.scene.shape.SVGPath;
+import javafx.stage.FileChooser;
 import javafx.stage.Window;
 import javafx.util.Duration;
 import javafx.util.StringConverter;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.IOException;
 import java.math.BigDecimal;
+import java.nio.file.Files;
 import java.text.NumberFormat;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -64,6 +80,7 @@ import java.util.function.Consumer;
  * Cancelar / Guardar cambio; antes de guardar se pide confirmación con el valor anterior y el nuevo.
  * Los parámetros que el sistema necesita y todavía no tienen valor aparecen como "Sin definir".
  * La consulta corre en otro hilo; el filtro y la búsqueda son en memoria.
+ * Arriba va la tarjeta "Identidad de la funeraria" (nombre, frase, logo y colores de la interfaz).
  */
 @Component
 @Scope("prototype")
@@ -74,8 +91,16 @@ public class ParametersController implements RefreshableView {
     private static final DateTimeFormatter DATE_HOUR = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     /** Ancho mínimo de una tarjeta; con espacio suficiente se ponen dos por fila. */
     private static final double TWO_COLUMNS_FROM = 820;
+    /** Palabras que muestran la tarjeta de identidad al buscar. */
+    private static final String BRAND_WORDS = "identidad marca logo nombre colores frase funeraria";
+    /** Combinaciones de ejemplo para empezar; la funeraria puede elegir cualquier color. */
+    private static final String[][] BRAND_PRESETS = {
+            {"El Edén", BrandPalette.DEFAULT_PRIMARY, BrandPalette.DEFAULT_ACCENT, BrandPalette.DEFAULT_DETAIL},
+            {"Azul sereno", "#1B2A3D", "#3D5A80", "#C9A96E"},
+            {"Vino", "#3A1F24", "#6B2E3A", "#B08D57"}};
 
     private final SystemParameterService parameterService;
+    private final BrandingService brandingService;
 
     @FXML
     private StackPane root;
@@ -123,8 +148,9 @@ public class ParametersController implements RefreshableView {
     private int generation;
     private SequentialTransition toastMotion;
 
-    public ParametersController(SystemParameterService parameterService) {
+    public ParametersController(SystemParameterService parameterService, BrandingService brandingService) {
         this.parameterService = parameterService;
+        this.brandingService = brandingService;
     }
 
     @Override
@@ -155,6 +181,12 @@ public class ParametersController implements RefreshableView {
         });
         toast.setOpacity(0);
         toast.setMouseTransparent(true);
+        // Si la marca cambia (desde aquí o al restaurarla) la tarjeta se vuelve a dibujar
+        BrandTheme.brandProperty().addListener((obs, old, brand) -> {
+            if (loaded) {
+                draw();
+            }
+        });
         load(null);
     }
 
@@ -266,6 +298,14 @@ public class ParametersController implements RefreshableView {
             groups.computeIfAbsent(view.category(), c -> new ArrayList<>()).add(view);
         }
         List<Node> children = new ArrayList<>();
+        if (category == null && !onlyUndefined && (query.isEmpty() || BRAND_WORDS.contains(query)
+                || normalize(BrandTheme.brand().fullName()).contains(query))) {
+            HBox head = new HBox(label("Identidad de la funeraria", "section-name"),
+                    label("nombre, logo y colores", "section-count"));
+            head.getStyleClass().add("section-head");
+            children.add(head);
+            children.add(brandCard());
+        }
         boolean twoColumns = sections.getWidth() == 0 || sections.getWidth() >= TWO_COLUMNS_FROM;
         for (Map.Entry<ParameterCategory, List<ParameterView>> group : groups.entrySet()) {
             int count = group.getValue().size();
@@ -275,7 +315,7 @@ public class ParametersController implements RefreshableView {
             children.add(head);
             children.add(cardGrid(group.getValue(), twoColumns));
         }
-        if (children.isEmpty()) {
+        if (children.isEmpty() || (children.size() == 2 && all.isEmpty())) {
             children.add(emptyLabel(all.isEmpty() ? "Todavía no hay parámetros registrados."
                     : "No hay parámetros que coincidan con la búsqueda."));
         }
@@ -473,6 +513,7 @@ public class ParametersController implements RefreshableView {
         form.note(note("El nombre va en mayúsculas y sin espacios. Un parámetro nuevo no cambia ningún cálculo"
                 + " hasta que el sistema lo use; los que el sistema ya usa aparecen en la lista como \"Sin definir\"."));
         Dialog<ButtonType> dialog = formDialog("Nuevo parámetro", "Los campos con * son obligatorios.", form, 640);
+        FormShell.panel(dialog, "Parámetros del sistema");
         runForm(dialog, form, "Crear parámetro", () -> {
             String key = name.getText() == null ? "" : name.getText().trim().toUpperCase(Locale.ROOT);
             if (!key.isEmpty() && parameterService.exists(key)) {
@@ -495,6 +536,368 @@ public class ParametersController implements RefreshableView {
                 startEditing(existing);
             }
         });
+    }
+
+
+    // ---------- identidad de la funeraria ----------
+
+    /** Tarjeta con el logo, el nombre, la frase y los 3 colores; "Editar identidad" abre el formulario. */
+    private Node brandCard() {
+        BrandView brand = BrandTheme.brand();
+        LilyLogo logo = new LilyLogo();
+        logo.setSize(64);
+        Label name = label(brand.fullName(), "param-value");
+        name.setWrapText(true);
+        Label tagline = label(brand.tagline() == null ? "Sin frase" : "“" + brand.tagline() + "”", "param-desc");
+        tagline.setWrapText(true);
+        HBox swatches = new HBox(14, swatch("Principal", brand.primaryColor()), swatch("Acento", brand.accentColor()),
+                swatch("Detalle", brand.detailColor()));
+        swatches.setAlignment(Pos.CENTER_LEFT);
+        VBox text = new VBox(4, name, tagline, swatches);
+        VBox.setMargin(swatches, new Insets(8, 0, 0, 0));
+        HBox.setHgrow(text, Priority.ALWAYS);
+        Button edit = new Button("Editar identidad");
+        edit.getStyleClass().add("edit-button");
+        edit.setMinWidth(Region.USE_PREF_SIZE);
+        edit.setOnAction(e -> onEditBrand());
+        Button restore = new Button("Restaurar El Edén");
+        restore.getStyleClass().add("edit-button");
+        restore.setMinWidth(Region.USE_PREF_SIZE);
+        restore.setDisable(brand.edenLook() && brand.showBandImage() && brand.showMenuImage()
+                && brand.bandImage() == null && brand.menuImage() == null
+                && BrandingService.DEFAULT_NAME.equals(brand.commercialName())
+                && BrandingService.DEFAULT_TAGLINE.equals(brand.tagline()));
+        restore.setOnAction(e -> onRestoreBrand(restore));
+        VBox buttons = new VBox(8, edit, restore);
+        buttons.setAlignment(Pos.CENTER_RIGHT);
+        edit.setMaxWidth(Double.MAX_VALUE);
+        restore.setMaxWidth(Double.MAX_VALUE);
+        HBox row = new HBox(18, logo, text, buttons);
+        row.setAlignment(Pos.CENTER_LEFT);
+        String meta = brand.updatedAt() == null ? "Marca con la que viene el sistema"
+                : "Modificado " + DATE_HOUR.format(brand.updatedAt())
+                + (brand.updatedBy() == null ? "" : " · " + brand.updatedBy());
+        Label description = label("Se ve en el inicio de sesión, el menú, las bandas de cada módulo, los correos, los"
+                + " reportes y el bot de Telegram. Queda guardada en la base de datos: se ve igual en cada ingreso y en"
+                + " todos los equipos. Solo el Administrador Maestro la puede cambiar.", "param-desc");
+        description.setWrapText(true);
+        VBox card = new VBox(10, row, description, label(meta, "param-meta"));
+        card.getStyleClass().addAll("param-card", "brand-card");
+        return card;
+    }
+
+    /** Vuelve a la marca El Edén (nombre, frase, emblema, lirios y colores) después de confirmar. */
+    private void onRestoreBrand(Button restore) {
+        boolean sure = confirm("¿Restaurar la identidad de El Edén?",
+                "El nombre, la frase, el logo, las imágenes de las bandas y del menú y los colores vuelven a los de"
+                        + " Funeraria El Edén. El cambio queda en la bitácora.", "Restaurar El Edén");
+        if (!sure) {
+            return;
+        }
+        restore.setDisable(true);
+        async("branding-restore", brandingService::restoreDefaults,
+                brand -> showToast("Se restauró la identidad de El Edén."),
+                failure -> {
+                    restore.setDisable(false);
+                    showError(message(failure, "No se pudo restaurar. Revise la conexión e intente de nuevo."));
+                });
+    }
+
+    /**
+     * Fila para elegir la imagen de las bandas o del menú: el lirio de El Edén, una imagen propia o ninguna.
+     * Muestra cómo queda y guarda la imagen nueva elegida del disco.
+     */
+    private static final class ImageChoiceRow {
+        private final ComboBox<BrandingData.ImageChoice> choice = new ComboBox<>();
+        private final ImageView preview = new ImageView();
+        private final Label info = new Label();
+        private final Image eden;
+        private final byte[] stored;
+        private byte[] picked;
+        final HBox node;
+
+        ImageChoiceRow(Image eden, byte[] stored, boolean show) {
+            this.eden = eden;
+            this.stored = stored;
+            choice.getItems().setAll(BrandingData.ImageChoice.values());
+            choice.getStyleClass().add("form-combo");
+            choice.setConverter(new StringConverter<>() {
+                @Override
+                public String toString(BrandingData.ImageChoice c) {
+                    if (c == null) {
+                        return "";
+                    }
+                    return switch (c) {
+                        case EDEN -> "Lirio de El Edén";
+                        case CUSTOM -> "Imagen propia";
+                        case NONE -> "Sin imagen";
+                    };
+                }
+
+                @Override
+                public BrandingData.ImageChoice fromString(String s) {
+                    return null;
+                }
+            });
+            choice.setValue(!show ? BrandingData.ImageChoice.NONE
+                    : stored != null && stored.length > 0 ? BrandingData.ImageChoice.CUSTOM : BrandingData.ImageChoice.EDEN);
+            preview.setFitWidth(120);
+            preview.setFitHeight(56);
+            preview.setPreserveRatio(true);
+            info.getStyleClass().add("param-meta");
+            info.setWrapText(true);
+            Button choose = new Button("Elegir imagen…");
+            choose.getStyleClass().add("edit-button");
+            choose.setMinWidth(Region.USE_PREF_SIZE);
+            choose.setOnAction(e -> {
+                FileChooser chooser = new FileChooser();
+                chooser.setTitle("Elegir imagen");
+                chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Imágenes PNG o JPG", "*.png", "*.jpg", "*.jpeg"));
+                File file = chooser.showOpenDialog(choose.getScene().getWindow());
+                if (file == null) {
+                    return;
+                }
+                try {
+                    byte[] bytes = Files.readAllBytes(file.toPath());
+                    if (bytes.length > BrandingService.MAX_LOGO_BYTES) {
+                        info.setText("Esa imagen pesa más de 1 MB. Elija una más liviana.");
+                        return;
+                    }
+                    picked = bytes;
+                    choice.setValue(BrandingData.ImageChoice.CUSTOM);
+                    refresh();
+                    info.setText("Imagen nueva: " + file.getName());
+                } catch (IOException failure) {
+                    info.setText("No se pudo leer el archivo.");
+                }
+            });
+            choice.valueProperty().addListener((obs, old, value) -> refresh());
+            VBox text = new VBox(6, choice, info);
+            HBox.setHgrow(text, Priority.ALWAYS);
+            StackPane frame = new StackPane(preview);
+            frame.getStyleClass().add("brand-image-frame");
+            frame.setMinSize(132, 64);
+            frame.setMaxSize(132, 64);
+            node = new HBox(14, frame, text, choose);
+            node.setAlignment(Pos.CENTER_LEFT);
+            refresh();
+        }
+
+        private void refresh() {
+            BrandingData.ImageChoice value = choice.getValue();
+            byte[] custom = picked != null ? picked : stored;
+            if (value == BrandingData.ImageChoice.NONE) {
+                preview.setImage(null);
+                info.setText("No se pone ninguna imagen.");
+            } else if (value == BrandingData.ImageChoice.CUSTOM && custom != null && custom.length > 0) {
+                preview.setImage(new Image(new ByteArrayInputStream(custom)));
+                if (picked == null) {
+                    info.setText("Imagen propia guardada.");
+                }
+            } else if (value == BrandingData.ImageChoice.CUSTOM) {
+                preview.setImage(null);
+                info.setText("Elija la imagen con el botón. PNG o JPG de hasta 1 MB.");
+            } else {
+                preview.setImage(eden);
+                info.setText("El lirio con el que viene el sistema.");
+            }
+        }
+
+        BrandingData.ImageChoice value() {
+            return choice.getValue();
+        }
+
+        byte[] picked() {
+            return choice.getValue() == BrandingData.ImageChoice.CUSTOM ? picked : null;
+        }
+    }
+
+    private static HBox swatch(String caption, String hex) {
+        Region color = new Region();
+        color.getStyleClass().add("brand-swatch");
+        color.setStyle("-fx-background-color: " + hex + ";");
+        color.setMinSize(22, 22);
+        color.setMaxSize(22, 22);
+        VBox text = new VBox(label(caption, "param-code"), label(hex, "param-meta"));
+        HBox box = new HBox(8, color, text);
+        box.setAlignment(Pos.CENTER_LEFT);
+        return box;
+    }
+
+    /** Formulario de la identidad: nombre, frase, logo y los 3 colores con una vista previa que cambia al escribir. */
+    private void onEditBrand() {
+        BrandView brand = BrandTheme.brand();
+        TextField name = new TextField(brand.commercialName());
+        name.setPromptText("Ej.: El Edén");
+        TextField tagline = new TextField(brand.tagline() == null ? "" : brand.tagline());
+        tagline.setPromptText("Opcional");
+        ColorPicker primary = colorPicker(brand.primaryColor());
+        ColorPicker accent = colorPicker(brand.accentColor());
+        ColorPicker detail = colorPicker(brand.detailColor());
+
+        // Logo: el actual, uno nuevo elegido del disco o el emblema del lirio
+        byte[][] newLogo = new byte[1][];
+        boolean[] removeLogo = new boolean[1];
+        ImageView logoView = new ImageView(BrandTheme.logoProperty().get() != null ? BrandTheme.logoProperty().get()
+                : LilyLogo.emblemImage());
+        logoView.setFitWidth(64);
+        logoView.setFitHeight(64);
+        logoView.setPreserveRatio(true);
+        Label logoInfo = label(brand.hasCustomLogo() ? "Logo propio de la funeraria." : "Emblema del lirio (El Edén).",
+                "param-desc");
+        logoInfo.setWrapText(true);
+        Label logoHint = label("PNG o JPG de hasta 1 MB. Mejor cuadrado y con fondo transparente.", "param-meta");
+        logoHint.setWrapText(true);
+        Button choose = new Button("Elegir imagen…");
+        choose.getStyleClass().add("edit-button");
+        Button emblem = new Button("Usar el emblema");
+        emblem.getStyleClass().add("edit-button");
+        choose.setOnAction(e -> {
+            FileChooser chooser = new FileChooser();
+            chooser.setTitle("Elegir el logo de la funeraria");
+            chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Imágenes PNG o JPG", "*.png", "*.jpg", "*.jpeg"));
+            File file = chooser.showOpenDialog(choose.getScene().getWindow());
+            if (file == null) {
+                return;
+            }
+            try {
+                byte[] bytes = Files.readAllBytes(file.toPath());
+                if (bytes.length > BrandingService.MAX_LOGO_BYTES) {
+                    logoInfo.setText("Esa imagen pesa más de 1 MB. Elija una más liviana.");
+                    return;
+                }
+                newLogo[0] = bytes;
+                removeLogo[0] = false;
+                logoView.setImage(new Image(new ByteArrayInputStream(bytes)));
+                logoInfo.setText("Logo nuevo: " + file.getName());
+            } catch (IOException failure) {
+                logoInfo.setText("No se pudo leer el archivo.");
+            }
+        });
+        emblem.setOnAction(e -> {
+            newLogo[0] = null;
+            removeLogo[0] = true;
+            logoView.setImage(LilyLogo.emblemImage());
+            logoInfo.setText("Se usará el emblema del lirio (El Edén).");
+        });
+        VBox logoText = new VBox(4, logoInfo, logoHint);
+        HBox.setHgrow(logoText, Priority.ALWAYS);
+        choose.setMinWidth(Region.USE_PREF_SIZE);
+        emblem.setMinWidth(Region.USE_PREF_SIZE);
+        HBox logoButtons = new HBox(8, choose, emblem);
+        logoButtons.setAlignment(Pos.CENTER_RIGHT);
+        HBox logoRow = new HBox(16, logoView, logoText, logoButtons);
+        logoRow.setAlignment(Pos.CENTER_LEFT);
+        logoRow.getStyleClass().add("brand-logo-row");
+
+        // Combinaciones de ejemplo y vuelta a El Edén
+        HBox presets = new HBox(8);
+        presets.setAlignment(Pos.CENTER_LEFT);
+        for (String[] preset : BRAND_PRESETS) {
+            Button button = new Button(preset[0]);
+            button.getStyleClass().add("brand-preset");
+            HBox dots = new HBox(-6);
+            for (int i = 1; i <= 3; i++) {
+                Region dot = new Region();
+                dot.getStyleClass().add("brand-preset-dot");
+                dot.setStyle("-fx-background-color: " + preset[i] + ";");
+                dots.getChildren().add(dot);
+            }
+            button.setGraphic(dots);
+            button.setOnAction(e -> {
+                primary.setValue(Color.web(preset[1]));
+                accent.setValue(Color.web(preset[2]));
+                detail.setValue(Color.web(preset[3]));
+            });
+            presets.getChildren().add(button);
+        }
+
+        // Vista previa: menú con el nombre y un botón, con los colores que se están eligiendo
+        Label previewSub = label("F U N E R A R I A", "brand-preview-sub");
+        Label previewName = label("", "brand-preview-name");
+        Label previewButton = label("Guardar", "brand-preview-button");
+        Label previewLink = label("¿Olvidó su contraseña?", "brand-preview-link");
+        VBox previewMenu = new VBox(2, previewSub, previewName);
+        previewMenu.getStyleClass().add("brand-preview-menu");
+        previewMenu.setMinWidth(210);
+        VBox previewBody = new VBox(10, previewButton, previewLink);
+        previewBody.getStyleClass().add("brand-preview-body");
+        previewBody.setAlignment(Pos.CENTER_LEFT);
+        HBox.setHgrow(previewBody, Priority.ALWAYS);
+        HBox preview = new HBox(previewMenu, previewBody);
+        preview.getStyleClass().add("brand-preview");
+        Label readability = label("", "param-error");
+        readability.setWrapText(true);
+        readability.managedProperty().bind(readability.textProperty().isNotEmpty());
+        readability.visibleProperty().bind(readability.managedProperty());
+        Runnable updatePreview = () -> {
+            BrandPalette palette = BrandPalette.of(hex(primary.getValue()), hex(accent.getValue()), hex(detail.getValue()));
+            String typed = name.getText() == null || name.getText().isBlank() ? "Nombre" : name.getText().strip();
+            previewName.setText(typed);
+            previewMenu.setStyle("-fx-background-color: linear-gradient(to bottom, " + palette.get("-color-forest")
+                    + ", " + palette.get("-color-forest-deep") + ");");
+            previewSub.setStyle("-fx-text-fill: " + palette.get("-color-detail") + ";");
+            previewName.setStyle("-fx-text-fill: " + palette.get("-color-background") + ";");
+            previewBody.setStyle("-fx-background-color: " + palette.get("-color-content") + ";");
+            previewButton.setStyle("-fx-background-color: " + palette.get("-color-accent") + "; -fx-text-fill: "
+                    + palette.get("-color-background") + ";");
+            previewLink.setStyle("-fx-text-fill: " + palette.get("-color-gold-deep") + ";");
+            readability.setText(String.join(" ", palette.readabilityProblems()));
+        };
+        name.textProperty().addListener((obs, old, text) -> updatePreview.run());
+        primary.valueProperty().addListener((obs, old, value) -> updatePreview.run());
+        accent.valueProperty().addListener((obs, old, value) -> updatePreview.run());
+        detail.valueProperty().addListener((obs, old, value) -> updatePreview.run());
+        updatePreview.run();
+
+        Form form = new Form();
+        form.section("Nombre", 2)
+                .field("NOMBRE COMERCIAL *", name)
+                .field("FRASE", tagline);
+        form.note(note("Escriba el nombre sin la palabra \"Funeraria\": el sistema la pone delante en los correos,"
+                + " los reportes y el título de la ventana."));
+        form.section("Logo", 1)
+                .field("LOGO", logoRow);
+        ImageChoiceRow band = new ImageChoiceRow(new Image(Objects.requireNonNull(
+                ParametersController.class.getResource("/images/lirio-banda.png")).toExternalForm()),
+                brand.bandImage(), brand.showBandImage());
+        ImageChoiceRow menu = new ImageChoiceRow(new Image(Objects.requireNonNull(
+                ParametersController.class.getResource("/images/lirio-fondo.png")).toExternalForm()),
+                brand.menuImage(), brand.showMenuImage());
+        form.section("Imágenes", 1)
+                .field("BANDA SUPERIOR DE CADA MÓDULO", band.node)
+                .field("FONDO DEL MENÚ LATERAL", menu.node);
+        form.note(note("La imagen de las bandas va a la derecha, sobre el color principal: funciona mejor una imagen"
+                + " horizontal con fondo transparente o que se desvanezca en los bordes."));
+        form.section("Colores", 3)
+                .field("COLOR PRINCIPAL *", primary)
+                .field("COLOR DE ACENTO *", accent)
+                .field("COLOR DE DETALLE *", detail);
+        form.note(new VBox(8, label("Empezar desde una combinación (puede elegir cualquier color):", "param-meta"), presets));
+        form.section("Vista previa", 1)
+                .field("ASÍ SE VERÁ", new VBox(8, preview, readability));
+        form.note(note("El principal pinta el menú y el panel del login; el de acento, los botones y los títulos;"
+                + " el de detalle, los filetes y los textos dorados. Los demás tonos se calculan solos. Los colores de"
+                + " error, aviso y éxito no cambian. Si un color deja un texto ilegible no se puede guardar."
+                + " Cada cambio queda en la bitácora."));
+        Dialog<ButtonType> dialog = formDialog("Identidad de la funeraria", "Los campos con * son obligatorios.", form, 760);
+        runForm(dialog, form, "Guardar identidad",
+                () -> brandingService.save(new BrandingData(name.getText(), tagline.getText(), newLogo[0], removeLogo[0],
+                        hex(primary.getValue()), hex(accent.getValue()), hex(detail.getValue()),
+                        band.value(), band.picked(), menu.value(), menu.picked())),
+                saved -> showToast("Identidad guardada. Los colores ya cambiaron en todas las ventanas."));
+    }
+
+    private static ColorPicker colorPicker(String hex) {
+        ColorPicker picker = new ColorPicker(Color.web(hex));
+        picker.getStyleClass().add("brand-color-picker");
+        return picker;
+    }
+
+    /** Color de JavaFX a #RRGGBB. */
+    static String hex(Color color) {
+        return String.format(Locale.ROOT, "#%02X%02X%02X", (int) Math.round(color.getRed() * 255),
+                (int) Math.round(color.getGreen() * 255), (int) Math.round(color.getBlue() * 255));
     }
 
     // ---------- textos ----------
@@ -701,6 +1104,8 @@ public class ParametersController implements RefreshableView {
         note.setGraphic(icon);
         note.setGraphicTextGap(10);
         note.setMaxWidth(Double.MAX_VALUE);
+        // Alto según el texto: así el aviso se lee completo y no termina en "…"
+        note.setMinHeight(Region.USE_PREF_SIZE);
         return note;
     }
 
