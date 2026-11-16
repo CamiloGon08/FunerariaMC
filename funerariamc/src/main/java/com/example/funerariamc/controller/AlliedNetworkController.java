@@ -16,6 +16,7 @@ import com.example.funerariamc.service.AlliedNetworkService.PaymentRow;
 import com.example.funerariamc.service.AlliedPaymentData;
 import com.example.funerariamc.service.SaleParameters;
 import com.example.funerariamc.ui.RefreshableView;
+import com.example.funerariamc.ui.FormShell;
 import javafx.animation.FadeTransition;
 import javafx.animation.ParallelTransition;
 import javafx.animation.PauseTransition;
@@ -603,6 +604,7 @@ public class AlliedNetworkController implements RefreshableView {
                 + (h == null ? " La funeraria queda activa y disponible para registrarle pagos." : "")));
         Dialog<ButtonType> dialog = formDialog(h == null ? "Nueva funeraria aliada" : "Editar funeraria aliada",
                 "Los campos con * son obligatorios.", form, 760);
+        FormShell.panel(dialog, "Red de funerarias aliadas");
         runForm(dialog, form, h == null ? "Registrar" : "Guardar cambios", () -> {
             AlliedHomeData data = new AlliedHomeData(name.getText(), nit.getText(), phone.getText(), city.getText(),
                     email.getText(), since.getValue(), address.getText());
@@ -663,6 +665,8 @@ public class AlliedNetworkController implements RefreshableView {
         form.note(note("El pago queda pendiente. Cuando se le pague a la funeraria, márquelo como pagado en su"
                 + " detalle: ahí se registra el egreso en Finanzas."));
         Dialog<ButtonType> dialog = formDialog("Registrar pago", "Los campos con * son obligatorios.", form, 700);
+        FormShell.panel(dialog, "Red de funerarias aliadas");
+        FormShell.money(amount);
         runForm(dialog, form, "Registrar pago", () -> {
             BigDecimal value = parseAmount(amount.getText(), "El monto");
             if (value == null) {
@@ -689,6 +693,7 @@ public class AlliedNetworkController implements RefreshableView {
         form.note(note("Se registra un egreso en Finanzas con la fecha y hora de ahora. Si después hay un error,"
                 + " anule el pago aquí y el egreso también se anula."));
         Dialog<ButtonType> dialog = formDialog("Marcar como pagado", "Los campos con * son obligatorios.", form, 620);
+        FormShell.window(dialog, "Red de funerarias aliadas");
         runForm(dialog, form, "Marcar pagado", () -> {
             if (method.getValue() == null) {
                 throw new InvalidDataException("Elija si se pagó por transferencia o por consignación.");
@@ -790,6 +795,8 @@ public class AlliedNetworkController implements RefreshableView {
         form.section("Pagos anteriores", 1);
         form.note(history);
         Dialog<ButtonType> dialog = formDialog("Pagar cuota del Remanso", "Los campos con * son obligatorios.", form, 700);
+        FormShell.panel(dialog, "Red de funerarias aliadas");
+        FormShell.money(amount);
         runForm(dialog, form, "Registrar pago", () -> {
             BigDecimal value = parseAmount(amount.getText(), "El valor");
             return service.payNetworkFee(frequency.getValue(), from.getValue(), value, method.getValue());
