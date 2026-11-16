@@ -6,6 +6,7 @@ import com.example.funerariamc.utils.enums.EmployeePosition;
 import com.example.funerariamc.service.RoleNames;
 import com.example.funerariamc.service.UserAccountService;
 import com.example.funerariamc.service.UserAccountService.AccountCredentials;
+import com.example.funerariamc.ui.FormShell;
 import javafx.event.ActionEvent;
 import javafx.scene.Node;
 import javafx.scene.control.Alert;
@@ -63,6 +64,7 @@ final class AccountDialogs {
         EmployeeController.styleDialog(dialog);
         Button createButton = (Button) dialog.getDialogPane().lookupButton(create);
         createButton.getStyleClass().add("primary-dialog-button");
+        FormShell.window(dialog, "Seguridad: personal y cuentas");
 
         AccountCredentials[] result = new AccountCredentials[1];
         // Si el servicio rechaza el usuario, el diálogo queda abierto con el mensaje.
