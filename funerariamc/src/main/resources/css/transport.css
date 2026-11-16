@@ -14,7 +14,7 @@
     -fx-background-radius: 10; -fx-padding: 7 14; -fx-font-weight: bold; -fx-font-size: 12.5px;
     -fx-cursor: hand;
 }
-.segment:hover { -fx-background-color: rgba(250,249,246,0.6); }
+.segment:hover { -fx-background-color: -color-card-a60; }
 .segment:selected { -fx-background-color: -color-accent; -fx-text-fill: -color-background; }
 .segment-caption { -fx-text-fill: -color-secondary; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 0 4 0 8; }
 
@@ -22,7 +22,7 @@
 .toast {
     -fx-background-color: -color-primary; -fx-text-fill: -color-background;
     -fx-background-radius: 12; -fx-padding: 12 18; -fx-font-size: 13.5px; -fx-font-weight: bold;
-    -fx-effect: dropshadow(gaussian, rgba(24,47,37,0.25), 18, 0, 0, 6);
+    -fx-effect: dropshadow(gaussian, -color-primary-a25, 18, 0, 0, 6);
 }
 
 .drawer-secondary { -fx-background-color: transparent; -fx-text-fill: -color-primary; -fx-border-color: -color-border; }
@@ -76,27 +76,27 @@
    Banda verde con el título y los indicadores, tarjetas claras sobre fondo salvia,
    selección en bosque profundo y estados suaves. Todo va bajo .transport-root para no tocar otros módulos. */
 .transport-root {
-    -eden-forest: #1E3A2E;
-    -eden-deep: #0F1F17;
-    -eden-moss: #3E5A3F;
-    -eden-sage: #6B7F67;
-    -eden-linen: #C7CBB8;
-    -eden-card: #FAFBF7;
-    -eden-tint: #EEF0E6;
-    -eden-text: #1E2A22;
-    -eden-muted: #6A7366;
-    -eden-warn: #6E6A45;
-    -eden-warn-bg: #EDEBDD;
-    -eden-alert: #8A4B3C;
-    -eden-alert-bg: #F0E3DC;
+    -eden-forest: -color-forest;
+    -eden-deep: -color-forest-deep;
+    -eden-moss: -color-moss;
+    -eden-sage: -color-sage-dark;
+    -eden-linen: -color-linen;
+    -eden-card: -color-paper-white;
+    -eden-tint: -color-soft;
+    -eden-text: -color-ink;
+    -eden-muted: -color-text-muted;
+    -eden-warn: -color-warning;
+    -eden-warn-bg: -color-warning-bg;
+    -eden-alert: -color-alert;
+    -eden-alert-bg: -color-alert-bg;
 }
 
 /* Banda superior */
 .transport-root .hero-band {
-    -fx-background-color: linear-gradient(to right, #1E3A2E 0%, #3E5A3F 62%, #6B7F67 100%);
+    -fx-background-color: linear-gradient(to right, -color-forest 0%, -color-moss 62%, -color-sage-dark 100%);
     -fx-background-radius: 26;
     -fx-padding: 22 26 24 26;
-    -fx-effect: dropshadow(gaussian, rgba(15,31,23,0.22), 24, 0, 0, 8);
+    -fx-effect: dropshadow(gaussian, -color-shadow-22, 24, 0, 0, 8);
 }
 .transport-root .hero-kpi {
     -fx-background-color: rgba(255,255,255,0.07);
@@ -104,12 +104,12 @@
     -fx-background-radius: 16; -fx-border-radius: 16;
     -fx-padding: 14 18 14 18; -fx-spacing: 2;
 }
-.transport-root .hero-kpi-caption { -fx-text-fill: rgba(244,245,238,0.88); -fx-font-size: 11px; -fx-font-weight: bold; }
+.transport-root .hero-kpi-caption { -fx-text-fill: -color-paper-a88; -fx-font-size: 11px; -fx-font-weight: bold; }
 .transport-root .hero-kpi-value {
     -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif;
-    -fx-text-fill: #F4F5EE; -fx-font-size: 30px;
+    -fx-text-fill: -color-paper; -fx-font-size: 30px;
 }
-.transport-root .hero-kpi-detail { -fx-text-fill: rgba(244,245,238,0.72); -fx-font-size: 12.5px; }
+.transport-root .hero-kpi-detail { -fx-text-fill: -color-paper-a72; -fx-font-size: 12.5px; }
 /* Tarjeta destacada de la banda: fondo lino claro y texto oscuro, como en la captura aprobada */
 
 /* Barra de búsqueda y filtros */
@@ -121,8 +121,8 @@
 .transport-root .search-box { -fx-background-color: -eden-tint; -fx-background-radius: 12; }
 .transport-root .segmented { -fx-background-color: -eden-tint; }
 .transport-root .segment { -fx-text-fill: -eden-text; }
-.transport-root .segment:hover { -fx-background-color: rgba(199,203,184,0.45); }
-.transport-root .segment:selected { -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; }
+.transport-root .segment:hover { -fx-background-color: -color-linen-a45; }
+.transport-root .segment:selected { -fx-background-color: -eden-forest; -fx-text-fill: -color-paper; }
 .transport-root .segment-caption { -fx-text-fill: -eden-muted; }
 .transport-root .chip-combo { -fx-background-color: -eden-card; -fx-border-color: -eden-linen; -fx-background-radius: 12; -fx-border-radius: 12; -fx-padding: 4 8; }
 .transport-root .primary-button { -fx-background-color: -eden-forest; -fx-background-radius: 12; }
@@ -142,38 +142,38 @@
 
 /* Estados suaves con punto */
 .transport-root .state-chip { -fx-background-radius: 999; -fx-padding: 5 12; -fx-font-size: 12px; -fx-font-weight: bold; }
-.transport-root .state-dark { -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; }
+.transport-root .state-dark { -fx-background-color: -eden-forest; -fx-text-fill: -color-paper; }
 .transport-root .state-ok { -fx-background-color: -eden-tint; -fx-text-fill: -eden-moss; }
 .transport-root .state-warn { -fx-background-color: -eden-warn-bg; -fx-text-fill: -eden-warn; }
 .transport-root .state-alert { -fx-background-color: -eden-alert-bg; -fx-text-fill: -eden-alert; }
 
 /* Panel lateral y aviso */
-.transport-root .drawer-veil { -fx-background-color: rgba(15,31,23,0.32); }
-.transport-root .drawer { -fx-background-color: #F4F5EF; -fx-background-radius: 22 0 0 22; }
-.transport-root .drawer-primary { -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; }
+.transport-root .drawer-veil { -fx-background-color: -color-shadow-32; }
+.transport-root .drawer { -fx-background-color: -color-paper; -fx-background-radius: 22 0 0 22; }
+.transport-root .drawer-primary { -fx-background-color: -eden-forest; -fx-text-fill: -color-paper; }
 .transport-root .drawer-primary:hover { -fx-background-color: -eden-moss; }
 .transport-root .drawer-danger { -fx-background-color: transparent; -fx-text-fill: -eden-alert; -fx-border-color: -eden-alert; }
 .transport-root .drawer-danger:hover { -fx-background-color: -eden-alert-bg; }
-.transport-root .toast { -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; }
+.transport-root .toast { -fx-background-color: -eden-forest; -fx-text-fill: -color-paper; }
 .transport-root .drawer-head {
-    -fx-background-color: linear-gradient(to right, #1E3A2E 0%, #3E5A3F 100%);
+    -fx-background-color: linear-gradient(to right, -color-forest 0%, -color-moss 100%);
     -fx-background-radius: 22 0 0 0; -fx-padding: 22 24 18 24; -fx-spacing: 8;
 }
-.transport-root .drawer-head-caption { -fx-text-fill: rgba(244,245,238,0.75); -fx-font-size: 11px; -fx-font-weight: bold; }
+.transport-root .drawer-head-caption { -fx-text-fill: -color-paper-a75; -fx-font-size: 11px; -fx-font-weight: bold; }
 .transport-root .drawer-head-name {
     -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif;
-    -fx-text-fill: #F4F5EE; -fx-font-size: 34px;
+    -fx-text-fill: -color-paper; -fx-font-size: 34px;
 }
-.transport-root .drawer-head-text { -fx-text-fill: rgba(244,245,238,0.85); -fx-font-size: 12.5px; }
-.transport-root .drawer-head-strong { -fx-text-fill: #F4F5EE; -fx-font-size: 12.5px; -fx-font-weight: bold; }
+.transport-root .drawer-head-text { -fx-text-fill: -color-paper-a85; -fx-font-size: 12.5px; }
+.transport-root .drawer-head-strong { -fx-text-fill: -color-paper; -fx-font-size: 12.5px; -fx-font-weight: bold; }
 .transport-root .drawer-close-light {
-    -fx-background-color: transparent; -fx-text-fill: #F4F5EE; -fx-border-color: rgba(244,245,238,0.5);
+    -fx-background-color: transparent; -fx-text-fill: -color-paper; -fx-border-color: -color-paper-a50;
     -fx-background-radius: 999; -fx-border-radius: 999; -fx-padding: 4 10; -fx-cursor: hand;
 }
 .transport-root .drawer-close-light:hover { -fx-background-color: rgba(255,255,255,0.12); }
 .transport-root .drawer-section {
     -fx-background-color: -eden-card; -fx-background-radius: 14; -fx-padding: 14 16; -fx-spacing: 10;
-    -fx-border-color: #E6E8DE; -fx-border-radius: 14;
+    -fx-border-color: -color-panel; -fx-border-radius: 14;
 }
 .transport-root .drawer-section-title { -fx-text-fill: -color-gold-text; -fx-font-size: 11px; -fx-font-weight: bold; }
 .transport-root .field-caption { -fx-text-fill: -eden-muted; -fx-font-size: 11.5px; }
@@ -188,8 +188,8 @@
     -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif; -fx-font-size: 17px; -fx-text-fill: -eden-moss;
 }
 .transport-root .progress-light > .track { -fx-background-color: rgba(255,255,255,0.20); -fx-background-radius: 999; -fx-background-insets: 0; }
-.transport-root .progress-light > .bar { -fx-background-color: #C4AF84; -fx-background-radius: 999; -fx-background-insets: 0; -fx-padding: 3; }
-.transport-root .progress-dark > .track { -fx-background-color: #E3E6DA; -fx-background-radius: 999; -fx-background-insets: 0; }
+.transport-root .progress-light > .bar { -fx-background-color: -color-detail; -fx-background-radius: 999; -fx-background-insets: 0; -fx-padding: 3; }
+.transport-root .progress-dark > .track { -fx-background-color: -color-content; -fx-background-radius: 999; -fx-background-insets: 0; }
 .transport-root .progress-dark > .bar { -fx-background-color: -eden-moss; -fx-background-radius: 999; -fx-background-insets: 0; -fx-padding: 3; }
 
 
@@ -209,10 +209,10 @@
 .transport-root .head-cell { -fx-text-fill: -eden-muted; -fx-font-size: 11px; -fx-font-weight: bold; }
 .t-row {
     -fx-padding: 12 16; -fx-alignment: center-left; -fx-min-height: 58;
-    -fx-border-color: transparent transparent #E6E8DE transparent; -fx-border-width: 0 0 1 0;
+    -fx-border-color: transparent transparent -color-panel transparent; -fx-border-width: 0 0 1 0;
     -fx-background-radius: 10;
 }
-.t-row:hover { -fx-background-color: rgba(226,230,221,0.45); -fx-cursor: hand; }
+.t-row:hover { -fx-background-color: -color-surface-a45; -fx-cursor: hand; }
 .t-strong { -fx-text-fill: -eden-text; -fx-font-size: 14px; -fx-font-weight: bold; }
 .t-text { -fx-text-fill: -eden-text; -fx-font-size: 13.5px; }
 .t-muted { -fx-text-fill: -eden-muted; -fx-font-size: 12.5px; }
@@ -222,7 +222,7 @@
     -fx-background-color: -eden-tint; -fx-text-fill: -eden-text; -fx-background-radius: 999;
     -fx-padding: 7 14; -fx-font-size: 12.5px; -fx-cursor: hand;
 }
-.row-button:hover { -fx-background-color: #D5DACB; }
+.row-button:hover { -fx-background-color: -color-line; }
 .row-button:disabled { -fx-opacity: 0.45; }
 .empty-table { -fx-text-fill: -eden-muted; -fx-font-size: 14px; -fx-padding: 20 16; }
 .card-scroll, .card-scroll > .viewport { -fx-background-color: transparent; -fx-background-insets: 0; -fx-padding: 0; }
@@ -233,17 +233,17 @@
 
 /* Barras de vigencia de documentos */
 .doc-bar { -fx-pref-height: 6; -fx-max-height: 6; -fx-min-height: 6; }
-.doc-bar > .track { -fx-background-color: #E3E6DA; -fx-background-radius: 999; -fx-background-insets: 0; }
+.doc-bar > .track { -fx-background-color: -color-content; -fx-background-radius: 999; -fx-background-insets: 0; }
 .doc-bar > .bar { -fx-background-color: -eden-moss; -fx-background-radius: 999; -fx-background-insets: 0; -fx-padding: 3; }
-.doc-bar.warn > .bar { -fx-background-color: #A99A6B; }
+.doc-bar.warn > .bar { -fx-background-color: -color-gold-muted; }
 .doc-bar.alert > .bar { -fx-background-color: -eden-alert; }
 
 /* ---------- Tarjetas de vehículos (23.1) ---------- */
 .vehicle-card {
     -fx-background-color: -eden-card; -fx-background-radius: 22; -fx-border-radius: 22;
     -fx-padding: 18 20 16 20; -fx-spacing: 10;
-    -fx-border-color: #E6E8DE; -fx-border-width: 1;
-    -fx-effect: dropshadow(gaussian, rgba(15,31,23,0.06), 12, 0, 0, 3);
+    -fx-border-color: -color-panel; -fx-border-width: 1;
+    -fx-effect: dropshadow(gaussian, -color-shadow-06, 12, 0, 0, 3);
 }
 .vehicle-card:hover { -fx-border-color: -eden-sage; }
 .vehicle-card.blocked { -fx-border-color: -eden-alert; -fx-border-width: 1.5; }
@@ -268,62 +268,62 @@
     -fx-background-color: -eden-card; -fx-background-radius: 22; -fx-padding: 20 22 18 22; -fx-spacing: 12;
 }
 .route-canvas {
-    -fx-background-color: #EEF0E6; -fx-background-radius: 16; -fx-padding: 26 26 22 26;
-    -fx-border-color: #E3E6DA; -fx-border-radius: 16;
+    -fx-background-color: -color-soft; -fx-background-radius: 16; -fx-padding: 26 26 22 26;
+    -fx-border-color: -color-content; -fx-border-radius: 16;
 }
 .route-hint { -fx-text-fill: -eden-muted; -fx-font-size: 12px; }
-.stop-dot { -fx-fill: #F4F5EE; -fx-stroke: #9AA493; -fx-stroke-width: 2.5; }
+.stop-dot { -fx-fill: -color-paper; -fx-stroke: -color-sage-mid; -fx-stroke-width: 2.5; }
 .stop-dot.done { -fx-fill: -eden-forest; -fx-stroke: -eden-forest; }
-.stop-dot.current { -fx-fill: #F4F5EE; -fx-stroke: #A99A6B; -fx-stroke-width: 4; }
-.stop-line { -fx-background-color: #C7CBB8; -fx-min-height: 4; -fx-max-height: 4; -fx-background-radius: 2; }
+.stop-dot.current { -fx-fill: -color-paper; -fx-stroke: -color-gold-muted; -fx-stroke-width: 4; }
+.stop-line { -fx-background-color: -color-linen; -fx-min-height: 4; -fx-max-height: 4; -fx-background-radius: 2; }
 .stop-line.done { -fx-background-color: -eden-forest; }
 .stop-place { -fx-text-fill: -eden-text; -fx-font-size: 12.5px; -fx-font-weight: bold; -fx-text-alignment: center; }
 .stop-time { -fx-text-fill: -eden-muted; -fx-font-size: 11.5px; -fx-text-alignment: center; }
 .vehicle-marker {
-    -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; -fx-background-radius: 999;
+    -fx-background-color: -eden-forest; -fx-text-fill: -color-paper; -fx-background-radius: 999;
     -fx-padding: 3 10; -fx-font-size: 11.5px; -fx-font-weight: bold;
 }
 
 /* ---------- Panel oscuro del traslado elegido ---------- */
 .detail-card {
-    -fx-background-color: linear-gradient(to bottom, #1E3A2E 0%, #0F1F17 100%);
+    -fx-background-color: linear-gradient(to bottom, -color-forest 0%, -color-forest-deep 100%);
     -fx-background-radius: 22; -fx-padding: 20 22 18 22; -fx-spacing: 12;
 }
 .detail-plate {
     -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif;
-    -fx-font-size: 34px; -fx-text-fill: #F4F5EE;
+    -fx-font-size: 34px; -fx-text-fill: -color-paper;
 }
-.detail-sub { -fx-text-fill: rgba(244,245,238,0.75); -fx-font-size: 12.5px; }
+.detail-sub { -fx-text-fill: -color-paper-a75; -fx-font-size: 12.5px; }
 .detail-info {
     -fx-background-color: rgba(255,255,255,0.07); -fx-background-radius: 14; -fx-padding: 12 16; -fx-vgap: 8; -fx-hgap: 12;
 }
-.detail-key { -fx-text-fill: rgba(244,245,238,0.7); -fx-font-size: 12.5px; }
-.detail-value { -fx-text-fill: #F4F5EE; -fx-font-size: 12.5px; -fx-font-weight: bold; }
-.detail-section { -fx-text-fill: rgba(244,245,238,0.85); -fx-font-size: 11px; -fx-font-weight: bold; }
-.detail-chip { -fx-background-color: #ECEEE6; -fx-text-fill: #1E2A22; -fx-background-radius: 999; -fx-padding: 4 10; -fx-font-size: 11.5px; -fx-font-weight: bold; }
-.timeline-box { -fx-background-color: #FAFBF7; -fx-background-radius: 14; -fx-padding: 14 16; -fx-spacing: 12; }
-.tl-dot { -fx-fill: transparent; -fx-stroke: #9AA493; -fx-stroke-width: 2; }
-.tl-dot.done { -fx-fill: #1E3A2E; -fx-stroke: #1E3A2E; }
-.tl-dot.current { -fx-fill: transparent; -fx-stroke: #1E3A2E; -fx-stroke-width: 3; }
-.tl-title { -fx-text-fill: #1E2A22; -fx-font-size: 13.5px; -fx-font-weight: bold; }
-.tl-sub { -fx-text-fill: #6A7366; -fx-font-size: 12px; }
-.tl-time { -fx-text-fill: #6A7366; -fx-font-size: 12px; }
+.detail-key { -fx-text-fill: -color-paper-a72; -fx-font-size: 12.5px; }
+.detail-value { -fx-text-fill: -color-paper; -fx-font-size: 12.5px; -fx-font-weight: bold; }
+.detail-section { -fx-text-fill: -color-paper-a85; -fx-font-size: 11px; -fx-font-weight: bold; }
+.detail-chip { -fx-background-color: -color-soft; -fx-text-fill: -color-ink; -fx-background-radius: 999; -fx-padding: 4 10; -fx-font-size: 11.5px; -fx-font-weight: bold; }
+.timeline-box { -fx-background-color: -color-paper-white; -fx-background-radius: 14; -fx-padding: 14 16; -fx-spacing: 12; }
+.tl-dot { -fx-fill: transparent; -fx-stroke: -color-sage-mid; -fx-stroke-width: 2; }
+.tl-dot.done { -fx-fill: -color-forest; -fx-stroke: -color-forest; }
+.tl-dot.current { -fx-fill: transparent; -fx-stroke: -color-forest; -fx-stroke-width: 3; }
+.tl-title { -fx-text-fill: -color-ink; -fx-font-size: 13.5px; -fx-font-weight: bold; }
+.tl-sub { -fx-text-fill: -color-text-muted; -fx-font-size: 12px; }
+.tl-time { -fx-text-fill: -color-text-muted; -fx-font-size: 12px; }
 .detail-button {
-    -fx-background-color: #ECEEE6; -fx-text-fill: #1E2A22; -fx-background-radius: 12; -fx-font-weight: bold;
+    -fx-background-color: -color-soft; -fx-text-fill: -color-ink; -fx-background-radius: 12; -fx-font-weight: bold;
     -fx-padding: 9 14; -fx-cursor: hand;
 }
-.detail-button:hover { -fx-background-color: #FFFFFF; }
-.detail-button.ghost { -fx-background-color: transparent; -fx-text-fill: #F4F5EE; -fx-border-color: rgba(244,245,238,0.45); -fx-border-radius: 12; }
+.detail-button:hover { -fx-background-color: white; }
+.detail-button.ghost { -fx-background-color: transparent; -fx-text-fill: -color-paper; -fx-border-color: -color-paper-a50; -fx-border-radius: 12; }
 .detail-button.ghost:hover { -fx-background-color: rgba(255,255,255,0.10); }
 .detail-button:disabled { -fx-opacity: 0.5; }
 
 /* ---------- Pestaña Traslados (23.3) ---------- */
 .transfer-item {
     -fx-background-color: -eden-card; -fx-background-radius: 16; -fx-border-radius: 16;
-    -fx-border-color: #E6E8DE; -fx-padding: 12 14; -fx-spacing: 3; -fx-cursor: hand;
+    -fx-border-color: -color-panel; -fx-padding: 12 14; -fx-spacing: 3; -fx-cursor: hand;
 }
 .transfer-item:hover { -fx-border-color: -eden-sage; }
-.transfer-item.selected { -fx-border-color: #C4AF84; -fx-border-width: 2; }
+.transfer-item.selected { -fx-border-color: -color-detail; -fx-border-width: 2; }
 .transfer-time {
     -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif; -fx-font-size: 22px; -fx-text-fill: -eden-text;
 }
@@ -338,9 +338,9 @@
     -fx-background-color: -eden-tint; -fx-text-fill: -eden-text; -fx-background-radius: 999;
     -fx-padding: 6 10; -fx-cursor: hand;
 }
-.chip-remove:hover { -fx-background-color: #D5DACB; }
+.chip-remove:hover { -fx-background-color: -color-line; }
 .small-dark-button {
-    -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; -fx-font-weight: bold; -fx-font-size: 12.5px;
+    -fx-background-color: -eden-forest; -fx-text-fill: -color-paper; -fx-font-weight: bold; -fx-font-size: 12.5px;
     -fx-background-radius: 10; -fx-padding: 8 14; -fx-cursor: hand;
 }
 .small-dark-button:hover { -fx-background-color: -eden-moss; }
@@ -348,8 +348,8 @@
     -fx-background-color: -eden-tint; -fx-text-fill: -eden-text; -fx-background-radius: 10;
     -fx-padding: 9 14; -fx-cursor: hand; -fx-font-size: 13px;
 }
-.file-button:hover { -fx-background-color: #D5DACB; }
-.blocked-option { -fx-text-fill: #9AA493; }
+.file-button:hover { -fx-background-color: -color-line; }
+.blocked-option { -fx-text-fill: -color-sage-mid; }
 
 /* Mapa del traslado (WebView con Leaflet) dentro del espacio de la ruta */
 .transport-root .route-map {
