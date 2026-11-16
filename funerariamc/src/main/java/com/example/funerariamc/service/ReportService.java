@@ -157,6 +157,13 @@ public class ReportService {
     private final AccessLogService accessLogService;
     private final SessionContext sessionContext;
     private final Clock clock;
+    private BrandingService brandingService;
+
+    /** Nombre de la funeraria para los mensajes; Spring lo pone al arrancar (las pruebas usan El Edén). */
+    @Autowired(required = false)
+    void setBrandingService(BrandingService brandingService) {
+        this.brandingService = brandingService;
+    }
 
     @Autowired
     public ReportService(FinancialTransactionRepository transactionRepository, SaleRepository saleRepository,
@@ -361,9 +368,9 @@ public class ReportService {
             temp = Files.createTempFile(folder, "funeraria-", "." + format.getExtension());
             try (OutputStream out = Files.newOutputStream(temp)) {
                 if (format == Format.PDF) {
-                    writePdf(summary, out);
+                    writePdf(summary, out, BrandingService.fullNameOf(brandingService));
                 } else {
-                    writeExcel(summary, out);
+                    writeExcel(summary, out, BrandingService.fullNameOf(brandingService));
                 }
             }
             Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING);
@@ -389,6 +396,11 @@ public class ReportService {
     }
 
     static void writePdf(Summary s, OutputStream out) {
+        writePdf(s, out, BrandingService.defaults().fullName());
+    }
+
+    /** PDF del resumen con el nombre de la funeraria en el título. */
+    static void writePdf(Summary s, OutputStream out, String funeralHome) {
         Document document = new Document(PageSize.A4, 36, 36, 40, 40);
         PdfWriter.getInstance(document, out);
         document.open();
@@ -400,7 +412,7 @@ public class ReportService {
         Font body = new Font(Font.HELVETICA, 9, Font.NORMAL, Color.BLACK);
         Font bold = new Font(Font.HELVETICA, 9, Font.BOLD, Color.BLACK);
 
-        document.add(new Paragraph("Funeraria El Edén · Resumen financiero", title));
+        document.add(new Paragraph(funeralHome + " · Resumen financiero", title));
         document.add(new Paragraph("Período: " + s.periodLabel() + " (" + s.period().from().format(DATE) + " a "
                 + s.period().to().format(DATE) + "). Generado el " + s.generatedAt().format(DATE_HOUR)
                 + ". Los movimientos anulados no cuentan en los totales.", small));
@@ -526,6 +538,11 @@ public class ReportService {
     }
 
     static void writeExcel(Summary s, OutputStream out) throws IOException {
+        writeExcel(s, out, BrandingService.defaults().fullName());
+    }
+
+    /** Excel del resumen con el nombre de la funeraria en el título. */
+    static void writeExcel(Summary s, OutputStream out, String funeralHome) throws IOException {
         try (XSSFWorkbook book = new XSSFWorkbook()) {
             DataFormat format = book.createDataFormat();
             CellStyle header = book.createCellStyle();
@@ -541,7 +558,7 @@ public class ReportService {
             date.setDataFormat(format.getFormat("dd/mm/yyyy hh:mm"));
 
             Sheet balance = book.createSheet("Balance");
-            text(balance, 0, "Funeraria El Edén · Resumen financiero");
+            text(balance, 0, funeralHome + " · Resumen financiero");
             text(balance, 1, "Período: " + s.periodLabel() + " (" + s.period().from().format(DATE) + " a "
                     + s.period().to().format(DATE) + "). Los movimientos anulados no cuentan.");
             head(balance, 3, header, "Concepto", "Período", "Período anterior");
