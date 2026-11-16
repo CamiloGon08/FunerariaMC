@@ -25,6 +25,7 @@ import com.example.funerariamc.service.CremationStockService.ProviderStock;
 import com.example.funerariamc.service.CremationStockService.Purchase;
 import com.example.funerariamc.service.CremationStockService.Stock;
 import com.example.funerariamc.ui.RefreshableView;
+import com.example.funerariamc.ui.FormShell;
 import javafx.animation.FadeTransition;
 import javafx.animation.KeyFrame;
 import javafx.animation.ParallelTransition;
@@ -683,6 +684,7 @@ public class CremationController implements RefreshableView {
                         + "La fecha y la hora no pueden ser anteriores a la actual."))
                 .note(noProvidersNote(code));
         Dialog<ButtonType> dialog = formDialog("Programar lote", "Los campos con * son obligatorios.", form, 640);
+        FormShell.panel(dialog, "Cremaciones");
         runForm(dialog, form, "Programar lote",
                 () -> cremationService.schedule(new CremationBatchData(codeOf(code), at(date.getValue(), time.getValue()))),
                 saved -> {
@@ -722,6 +724,7 @@ public class CremationController implements RefreshableView {
                         + "hora no pueden ser anteriores a la actual. El cambio queda en la bitácora."));
         Dialog<ButtonType> dialog = formDialog("Reprogramar lote " + b.code(), "Los campos con * son obligatorios.",
                 form, 640);
+        FormShell.window(dialog, "Cremaciones");
         runForm(dialog, form, "Reprogramar", () -> {
             cremationService.reschedule(b.id(), new CremationBatchData(codeOf(code), at(date.getValue(), time.getValue())));
             return b.id();
@@ -793,6 +796,7 @@ public class CremationController implements RefreshableView {
 
         Dialog<ButtonType> dialog = formDialog("Agregar difunto al lote " + b.code(),
                 "Los campos con * son obligatorios.", form, 820);
+        FormShell.panel(dialog, "Cremaciones");
         runForm(dialog, form, "Agregar al lote", () -> {
             Candidate c = deceased.getValue();
             boolean asksPreparation = prepDateField.isVisible();
@@ -863,6 +867,7 @@ public class CremationController implements RefreshableView {
                 .note(note("Cuando todos los difuntos del lote tienen certificado, el lote queda «Realizado». "
                         + "La entrega de las cenizas no se registra en el sistema."));
         Dialog<ButtonType> dialog = formDialog("Registrar certificado", "Los campos con * son obligatorios.", form, 760);
+        FormShell.panel(dialog, "Cremaciones");
         runForm(dialog, form, "Registrar certificado", () -> {
             cremationService.registerCertificate(new CremationCertificateData(item.cremationId(), number.getText(),
                     at(date.getValue(), time.getValue())));
@@ -1066,6 +1071,7 @@ public class CremationController implements RefreshableView {
                         + "disponibles llegan al mínimo, la pantalla avisa para solicitar otra compra."));
         Dialog<ButtonType> dialog = formDialog(existing == null ? "Nuevo proveedor" : "Editar proveedor " + existing.code(),
                 "Los campos con * son obligatorios.", form, 700);
+        FormShell.panel(dialog, "Cremaciones");
         runForm(dialog, form, "Guardar", () -> stockService.saveProvider(new CremationProviderData(
                 existing == null ? null : existing.id(), code.getText(), name.getText(), integer(minimum.getText()),
                 active.isSelected())), saved -> {
@@ -1118,6 +1124,8 @@ public class CremationController implements RefreshableView {
         }
         Dialog<ButtonType> dialog = formDialog("Solicitar compra de cremaciones", "Los campos con * son obligatorios.",
                 form, 860);
+        FormShell.panel(dialog, "Cremaciones");
+        FormShell.money(price);
         runForm(dialog, form, "Solicitar compra", () -> stockService.requestPurchase(new CremationPurchaseData(
                 provider.getValue() == null ? null : provider.getValue().id(), integer(quantity.getText()),
                 money(price.getText()))), saved -> {
