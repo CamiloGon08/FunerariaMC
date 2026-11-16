@@ -1,6 +1,8 @@
 package com.example.funerariamc.config;
 
 import com.example.funerariamc.FunerariamcApplication;
+import com.example.funerariamc.service.BrandingService;
+import com.example.funerariamc.ui.BrandTheme;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.scene.Scene;
@@ -26,8 +28,10 @@ public class JavaFxApplication extends Application {
 
     @Override
     public void start(Stage stage) {
+        // La marca (nombre, logo y colores) se carga antes del login para que se vea desde la primera pantalla
+        BrandTheme.install(context.getBean(BrandingService.class));
         FxmlViewLoader viewLoader = context.getBean(FxmlViewLoader.class);
-        stage.setTitle(FxmlViewLoader.LOGIN_TITLE);
+        stage.setTitle(BrandTheme.title(FxmlViewLoader.LOGIN_TITLE));
         stage.setScene(new Scene(viewLoader.load(FxmlViewLoader.LOGIN)));
         stage.centerOnScreen();
         stage.show();
