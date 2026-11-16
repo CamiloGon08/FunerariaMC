@@ -17,6 +17,7 @@ import com.example.funerariamc.service.ClientOverviewService.SaleInfo;
 import com.example.funerariamc.service.ClientService;
 import com.example.funerariamc.service.ClientService.BalanceFilter;
 import com.example.funerariamc.ui.RefreshableView;
+import com.example.funerariamc.ui.FormShell;
 import javafx.animation.FadeTransition;
 import javafx.animation.ParallelTransition;
 import javafx.animation.PauseTransition;
@@ -639,6 +640,7 @@ public class ClientController implements RefreshableView {
         stage.setTitle("Clientes");
         stage.setScene(new Scene(view.root()));
         view.controller().init(client, mode, saved -> reload());
+        FormShell.stage(stage, "Clientes", FormShell.Kind.PANEL);
         stage.showAndWait();
     }
 
