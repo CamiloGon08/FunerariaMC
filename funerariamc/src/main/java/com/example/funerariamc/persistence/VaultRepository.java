@@ -100,7 +100,11 @@ public interface VaultRepository extends JpaRepository<Vault, Long> {
     @Query("select v.code from Vault v where v.cemetery.id = :cemeteryId")
     List<String> findCodesByCemeteryId(@Param("cemeteryId") Long cemeteryId);
 
-    /** Registra muchas bóvedas de un cementerio en una sola sentencia.*/
+    /**
+     * Registra muchas bóvedas de un cementerio en una sola sentencia (un solo viaje a la base de datos).
+     * Guardarlas una por una tomaba un viaje por bóveda: con un pabellón de 150 bóvedas, varios segundos.
+     * {@code codes} son los códigos separados por coma, por ejemplo "A1-01,A1-02".
+     */
     @Modifying
     @Query(value = """
             insert into vault (cemetery_id, code, status)
