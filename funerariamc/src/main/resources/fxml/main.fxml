@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import com.example.funerariamc.ui.BrandText?>
 <?import com.example.funerariamc.ui.LilyLogo?>
 <?import com.example.funerariamc.ui.SidebarDecor?>
 <?import javafx.geometry.Insets?>
@@ -32,7 +33,7 @@
                 </Button>
                 <VBox fx:id="brandText" HBox.hgrow="ALWAYS">
                     <Label text="F U N E R A R I A" styleClass="sidebar-sub"/>
-                    <Label text="El Edén" styleClass="sidebar-name"/>
+                    <BrandText styleClass="sidebar-name" wrapText="true" minHeight="-Infinity"/>
                 </VBox>
                 <Button fx:id="collapseButton" text="‹" styleClass="sidebar-collapse" onAction="#onToggleSidebar"/>
             </HBox>
