@@ -14,14 +14,13 @@ import com.example.funerariamc.service.InventoryService.ItemView;
 import com.example.funerariamc.service.InventoryService.Kpis;
 import com.example.funerariamc.service.InventoryService.MovementResult;
 import com.example.funerariamc.service.InventoryService.Overview;
+import com.example.funerariamc.ui.DetailShell;
 import com.example.funerariamc.ui.DetailCache;
 import com.example.funerariamc.ui.RefreshableView;
 import com.example.funerariamc.ui.FormShell;
 import javafx.animation.FadeTransition;
-import javafx.animation.ParallelTransition;
 import javafx.animation.PauseTransition;
 import javafx.animation.SequentialTransition;
-import javafx.animation.TranslateTransition;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.collections.FXCollections;
@@ -88,7 +87,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
- * Pantalla de Inventario (pantalla 22 de Figma, paleta verde oscura): indicadores, buscador,
+ * Pantalla de Inventario: indicadores, buscador,
  * vista Tarjetas / Tabla, filtro por categoría o "Bajo mínimo", tarjetas con foto, stock, mínimo y
  * precio, aviso de reposición, panel lateral con el historial y los
  * diálogos Nuevo / Editar artículo y Movimiento (entrada o salida).
@@ -101,7 +100,8 @@ public class InventoryController implements RefreshableView {
 
     private static final Locale ES = Locale.forLanguageTag("es-CO");
     private static final DateTimeFormatter DATE_HOUR = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
-    private static final double DRAWER_WIDTH = 480;
+    /** Ancho de la foto dentro del panel de detalle (el panel menos sus márgenes). */
+    private static final double PANEL_PHOTO_WIDTH = 480;
     /** Tarjetas que se dibujan de una vez; las demás se agregan al acercarse al final. */
     private static final int BATCH = 40;
     private static final double CARD_MIN_WIDTH = 250;
@@ -198,12 +198,6 @@ public class InventoryController implements RefreshableView {
     @FXML
     private VBox drawer;
     @FXML
-    private VBox drawerHead;
-    @FXML
-    private VBox drawerBody;
-    @FXML
-    private HBox drawerActions;
-    @FXML
     private Label toast;
 
     private final ObservableList<ItemRow> tableRows = FXCollections.observableArrayList();
@@ -214,6 +208,7 @@ public class InventoryController implements RefreshableView {
     private boolean loaded;
     /** Artículo abierto en el panel; null si está cerrado. */
     private Long drawerItemId;
+    private DetailShell detail;
     /** Cada carga lleva un número; si llega una respuesta vieja, se descarta. */
     private int generation;
     private SequentialTransition toastMotion;
@@ -269,7 +264,7 @@ public class InventoryController implements RefreshableView {
         itemsList.setMinWidth(0);
         itemsList.setPrefWidth(0); // la tabla toma el ancho disponible, no el de su contenido
 
-        drawer.setTranslateX(DRAWER_WIDTH);
+        detail = DetailShell.install(drawer, veil, DetailShell.Kind.PANEL);
         toast.setOpacity(0);
         toast.setMouseTransparent(true);
 
@@ -729,142 +724,86 @@ public class InventoryController implements RefreshableView {
         ItemView cached = details.get(itemId);
         if (cached != null) {
             fillDrawer(cached);
-        } else {
-            drawerHead.getChildren().setAll(label("Cargando el artículo…", "drawer-head-text"));
-            drawerBody.getChildren().clear();
-            drawerActions.getChildren().clear();
-            details.load(itemId, view -> {
-                if (itemId.equals(drawerItemId)) {
-                    fillDrawer(view);
-                }
-            }, failure -> {
-                if (itemId.equals(drawerItemId)) {
-                    closeDrawer();
-                    showError(message(failure, "No se pudo cargar el detalle del artículo."));
-                }
-            });
+            return;
         }
-        slideDrawerIn();
+        detail.show(itemId, new DetailShell.Hero("Artículo", "Cargando el artículo…").onClose(this::closeDrawer),
+                List.of(), List.of(), null);
+        details.load(itemId, view -> {
+            if (itemId.equals(drawerItemId)) {
+                fillDrawer(view);
+            }
+        }, failure -> {
+            if (itemId.equals(drawerItemId)) {
+                closeDrawer();
+                showError(message(failure, "No se pudo cargar el detalle del artículo."));
+            }
+        });
     }
 
     private void fillDrawer(ItemView v) {
         ItemRow r = v.row();
-        Label caption = label((r.code() + " · " + r.categoryLabel()).toUpperCase(ES), "drawer-head-caption");
-        Button close = new Button("✕");
-        close.getStyleClass().add("drawer-close-light");
-        close.setOnAction(e -> closeDrawer());
-        Pane spacer = new Pane();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-        HBox top = new HBox(caption, spacer, close);
-        top.setAlignment(Pos.CENTER_LEFT);
-        Label name = wrapped(r.name(), "drawer-head-name");
-        Label state = label("", "state-chip");
-        stateChip(state, r);
-        HBox nameRow = new HBox(12, name, state);
-        nameRow.setAlignment(Pos.CENTER_LEFT);
-        Pane s1 = new Pane();
-        HBox.setHgrow(s1, Priority.ALWAYS);
-        HBox money = new HBox(label("Disponible " + r.stock() + " · mínimo " + r.minimum(), "drawer-head-strong"), s1,
-                label(pesos(r.unitPrice()) + " c/u", "drawer-head-text"));
-        drawerHead.getChildren().setAll(top, nameRow, money);
+        // La barra va de 0 a tres veces el mínimo, para que el mínimo quede a un tercio
+        double scale = Math.max(r.stock(), Math.max(1, r.minimum()) * 3.0);
+        DetailShell.Tone tone = r.stock() <= 0 || r.low() ? DetailShell.Tone.ALERT : DetailShell.Tone.NEUTRAL;
+        DetailShell.Hero hero = new DetailShell.Hero(r.code() + " · " + r.categoryLabel(), r.name())
+                .subtitle(pesos(r.unitPrice()) + " c/u")
+                .chips(DetailShell.chip(r.stock() <= 0 ? "● Agotado" : r.low() ? "● Nivel mínimo" : "● Disponible",
+                        tone == DetailShell.Tone.ALERT ? DetailShell.Tone.ALERT : DetailShell.Tone.OK))
+                .extra(DetailShell.progress("Disponible " + r.stock(), "mínimo " + r.minimum(),
+                        Math.max(0, r.stock()) / scale, tone))
+                .navigation(DetailShell.neighbor(filtered, x -> x.id().equals(r.id()), -1, x -> openDrawer(x.id())),
+                        DetailShell.neighbor(filtered, x -> x.id().equals(r.id()), 1, x -> openDrawer(x.id())))
+                .onClose(this::closeDrawer);
 
-        DoubleProperty photoWidth = new SimpleDoubleProperty(DRAWER_WIDTH - 48);
-        StackPane photo = photoPane(r, 210, photoWidth);
+        StackPane photo = photoPane(r, 170, new SimpleDoubleProperty(PANEL_PHOTO_WIDTH));
         photo.getStyleClass().add("drawer-photo");
 
-        GridPane data = grid();
-        field(data, 0, 0, "Cantidad disponible", r.stock() + (r.stock() == 1 ? " unidad" : " unidades"));
-        field(data, 1, 0, "Nivel mínimo", String.valueOf(r.minimum()));
-        field(data, 0, 1, "Precio unitario", pesos(r.unitPrice()));
-        field(data, 1, 1, "Valor en inventario",
-                pesos(r.unitPrice().multiply(BigDecimal.valueOf(Math.max(r.stock(), 0)))));
-        Node stockNote = r.low()
-                ? note("Llegó a su nivel mínimo: registre una entrada cuando lo reponga.")
-                : note("");
-
-        VBox history = new VBox();
-        if (v.history().isEmpty()) {
-            history.getChildren().add(label("Todavía no tiene movimientos.", "field-caption"));
+        List<Node> sections = new ArrayList<>();
+        sections.add(photo);
+        sections.add(DetailShell.section("Existencias", DetailShell.card(DetailShell.fields(
+                "Cantidad disponible", r.stock() + (r.stock() == 1 ? " unidad" : " unidades"),
+                "Nivel mínimo", String.valueOf(r.minimum()),
+                "Precio unitario", pesos(r.unitPrice()),
+                "Valor en inventario", pesos(r.unitPrice().multiply(BigDecimal.valueOf(Math.max(r.stock(), 0))))))));
+        sections.add(DetailShell.section("Historial de movimientos", historyBox(v.history())));
+        if (r.stock() <= 0 || r.low()) {
+            sections.add(DetailShell.nextStep(r.stock() <= 0
+                    ? "Se agotó: registre una entrada cuando lo reponga."
+                    : "Llegó a su nivel mínimo: registre una entrada cuando lo reponga.", DetailShell.Tone.ALERT));
         }
-        for (HistoryEntry h : v.history()) {
-            history.getChildren().add(historyRow(h));
-        }
-        drawerBody.getChildren().setAll(photo,
-                section("EXISTENCIAS", data, stockNote),
-                section("HISTORIAL DE MOVIMIENTOS", history));
-
-        Button move = drawerButton("Registrar movimiento", "drawer-primary");
-        move.setOnAction(e -> openMovementDialog(r));
-        Button edit = drawerButton("Editar", "drawer-secondary");
-        edit.setOnAction(e -> openItemDialog(r));
-        Button photoButton = drawerButton("Cambiar foto", "drawer-secondary");
-        photoButton.setOnAction(e -> changePhoto(r));
-        drawerActions.getChildren().setAll(photoButton, edit, move);
-        show(drawerActions, true);
+        detail.show(r.id(), hero, sections, List.of(
+                DetailShell.secondary("Cambiar foto", () -> changePhoto(r)),
+                DetailShell.secondary("Editar", () -> openItemDialog(r)),
+                DetailShell.primary("Registrar movimiento", () -> openMovementDialog(r))), null);
     }
 
-    private static Node historyRow(HistoryEntry h) {
-        Label qty = label((h.quantity() > 0 ? "+" : "") + h.quantity(), "history-qty");
-        qty.getStyleClass().add(h.quantity() > 0 ? "in" : "out");
-        String main = h.kind() + (h.stockAfter() == null ? "" : " · quedó en " + h.stockAfter());
-        Label title = label(main, "history-main");
-        List<String> parts = new ArrayList<>();
-        if (h.date() != null) {
-            parts.add(DATE_HOUR.format(h.date()));
+    /** Movimientos del artículo: punto verde para entradas, rojo para salidas y la cantidad a la derecha. */
+    private static Node historyBox(List<HistoryEntry> history) {
+        if (history.isEmpty()) {
+            return DetailShell.empty("Todavía no tiene movimientos.");
         }
-        if (h.detail() != null) {
-            parts.add(h.detail());
+        List<DetailShell.Event> events = new ArrayList<>();
+        for (HistoryEntry h : history) {
+            List<String> parts = new ArrayList<>();
+            if (h.date() != null) {
+                parts.add(DATE_HOUR.format(h.date()));
+            }
+            if (h.detail() != null) {
+                parts.add(h.detail());
+            }
+            if (h.by() != null) {
+                parts.add(h.by());
+            }
+            if (h.voided()) {
+                parts.add("devuelta al inventario");
+            }
+            boolean in = h.quantity() > 0;
+            DetailShell.Tone tone = h.voided() ? DetailShell.Tone.NEUTRAL : in ? DetailShell.Tone.OK : DetailShell.Tone.ALERT;
+            events.add(new DetailShell.Event(h.kind() + (h.stockAfter() == null ? "" : " · quedó en " + h.stockAfter()),
+                    String.join(" · ", parts), tone,
+                    DetailShell.chip((in ? "+" : "") + h.quantity(), tone)));
         }
-        if (h.by() != null) {
-            parts.add(h.by());
-        }
-        Label sub = wrapped(String.join(" · ", parts), "history-sub");
-        VBox text = new VBox(2, title, sub);
-        HBox.setHgrow(text, Priority.ALWAYS);
-        HBox row = new HBox(qty, text);
-        row.getStyleClass().add("history-row");
-        if (h.voided()) {
-            qty.getStyleClass().add("history-voided");
-            title.getStyleClass().add("history-voided");
-            sub.setText(sub.getText() + " · devuelta al inventario");
-        }
-        return row;
-    }
-
-    private static VBox section(String title, Node... content) {
-        VBox box = new VBox(10, label(title, "drawer-section-title"));
-        box.getChildren().addAll(content);
-        box.getStyleClass().add("drawer-section");
-        return box;
-    }
-
-    private static GridPane grid() {
-        GridPane grid = new GridPane();
-        grid.setHgap(16);
-        grid.setVgap(10);
-        for (int i = 0; i < 2; i++) {
-            ColumnConstraints column = new ColumnConstraints();
-            column.setPercentWidth(50);
-            grid.getColumnConstraints().add(column);
-        }
-        return grid;
-    }
-
-    private static void field(GridPane grid, int column, int row, String caption, String value) {
-        grid.add(new VBox(2, label(caption, "field-caption"), wrapped(value, "field-value")), column, row);
-    }
-
-    private void slideDrawerIn() {
-        if (drawer.isVisible() && drawer.getTranslateX() == 0) {
-            return;
-        }
-        veil.setVisible(true);
-        drawer.setVisible(true);
-        TranslateTransition slide = new TranslateTransition(Duration.millis(220), drawer);
-        slide.setToX(0);
-        FadeTransition fade = new FadeTransition(Duration.millis(220), veil);
-        fade.setToValue(1);
-        new ParallelTransition(slide, fade).play();
+        return DetailShell.timeline(events);
     }
 
     @FXML
@@ -874,21 +813,7 @@ public class InventoryController implements RefreshableView {
 
     private void closeDrawer() {
         drawerItemId = null;
-        if (!drawer.isVisible()) {
-            return;
-        }
-        TranslateTransition slide = new TranslateTransition(Duration.millis(180), drawer);
-        slide.setToX(DRAWER_WIDTH);
-        FadeTransition fade = new FadeTransition(Duration.millis(180), veil);
-        fade.setToValue(0);
-        ParallelTransition out = new ParallelTransition(slide, fade);
-        out.setOnFinished(event -> {
-            if (drawerItemId == null) {
-                drawer.setVisible(false);
-                veil.setVisible(false);
-            }
-        });
-        out.play();
+        detail.close(null);
     }
 
     // ---------- Nuevo / Editar artículo ----------
@@ -1295,14 +1220,6 @@ public class InventoryController implements RefreshableView {
         icon.setContent("M8 1a7 7 0 1 1 0 14A7 7 0 0 1 8 1z M8 7v4.5 M8 4.6v.2");
         icon.getStyleClass().add("note-icon");
         return icon;
-    }
-
-    private static Button drawerButton(String text, String styleClass) {
-        Button button = new Button(text);
-        button.getStyleClass().addAll("drawer-button", styleClass);
-        button.setMaxWidth(Double.MAX_VALUE);
-        HBox.setHgrow(button, Priority.ALWAYS);
-        return button;
     }
 
     /** Las ventanas cargan app.css, personal.css e inventory.css (formulario El Edén y colores verdes). */
