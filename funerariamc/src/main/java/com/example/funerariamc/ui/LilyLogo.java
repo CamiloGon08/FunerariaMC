@@ -1,10 +1,14 @@
 package com.example.funerariamc.ui;
 
+import javafx.beans.binding.Bindings;
 import javafx.scene.Group;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 
-/** Logo de Funeraria El Edén: emblema del círculo dorado con el lirio (sin letras). */
+/**
+ * Logo de la funeraria: el que subió en Parámetros o, si no hay, el emblema de El Edén
+ * (círculo dorado con el lirio, sin letras). Cambia solo cuando se guarda un logo nuevo.
+ */
 public class LilyLogo extends Group {
 
     private static final double BASE = 64;
@@ -15,7 +19,9 @@ public class LilyLogo extends Group {
 
     public LilyLogo() {
         getStyleClass().add("lily-logo");
-        view.setImage(emblem());
+        view.imageProperty().bind(Bindings.createObjectBinding(
+                () -> BrandTheme.logoProperty().get() != null ? BrandTheme.logoProperty().get() : emblem(),
+                BrandTheme.logoProperty()));
         view.setPreserveRatio(true);
         view.setSmooth(true);
         getChildren().add(view);
@@ -30,6 +36,11 @@ public class LilyLogo extends Group {
 
     public double getSize() {
         return view.getFitWidth();
+    }
+
+    /** Emblema del lirio de El Edén (lo usa el formulario de identidad para volver a él). */
+    public static Image emblemImage() {
+        return emblem();
     }
 
     private static synchronized Image emblem() {

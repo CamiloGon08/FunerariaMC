@@ -1,0 +1,332 @@
+/* Formato común de los formularios de registro (FormShell): ventana pequeña, panel lateral y página.
+   Solo usa las variables de color de app.css, así cambia con la identidad de la funeraria.
+   Todo va bajo .form-shell para no tocar los demás diálogos. */
+
+/* ---------- Marco ---------- */
+.form-shell {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+.form-shell > .content { -fx-padding: 0; }
+.form-shell .form-root,
+.form-shell.form-root {
+    -fx-background-color: -color-paper-white;
+    -fx-background-radius: 20;
+}
+.form-shell.form-window,
+.form-shell.form-panel,
+.form-shell.form-page {
+    -fx-background-color: -color-paper-white;
+    -fx-background-radius: 20;
+    -fx-border-color: -color-line;
+    -fx-border-radius: 20;
+    -fx-border-width: 1;
+}
+
+/* La ventana del formulario es transparente (esquinas redondeadas): con suavizado LCD el texto
+   claro sale teñido de azul, por eso todo el texto usa suavizado en gris. */
+.form-shell .text { -fx-font-smoothing-type: gray; }
+
+/* ---------- Banda superior con el lirio ---------- */
+.form-shell .form-hero-holder {
+    -fx-background-color: linear-gradient(to right, -color-primary 0%, -color-forest 55%, -color-sage-dark 100%);
+    -fx-background-radius: 20 20 0 0;
+}
+.form-shell .form-header.form-hero {
+    -fx-padding: 24 72 22 30;
+    -fx-spacing: 4;
+    -fx-border-width: 0;
+    -fx-background-color: transparent;
+    -fx-background-position: right center;
+    -fx-background-size: auto 100%;
+    -fx-opacity: 1;
+}
+.form-shell .form-eyebrow {
+    -fx-text-fill: -color-detail;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-padding: 0 0 2 0;
+}
+.form-shell .form-hero .form-title {
+    -fx-text-fill: -color-paper;
+    -fx-font-size: 27px;
+}
+.form-shell .form-hero-holder .form-hero .card-subtitle,
+.form-shell .form-hero-holder .form-hero .label {
+    -fx-text-fill: -color-sage-pale;
+}
+.form-shell .form-hero-holder .form-hero .form-title { -fx-text-fill: -color-paper; }
+.form-shell .form-hero-holder .form-hero .form-eyebrow { -fx-text-fill: -color-detail; }
+.form-shell .form-hero .form-title { -fx-text-fill: -color-paper; }
+.form-shell .form-hero .form-eyebrow { -fx-text-fill: -color-detail; }
+.form-shell.form-page .form-hero .form-title { -fx-font-size: 34px; }
+.form-shell.form-page .form-header.form-hero { -fx-padding: 28 90 26 34; }
+
+/* X para cerrar: círculo translúcido arriba a la derecha */
+.form-shell .form-close {
+    -fx-background-color: transparent;
+    -fx-border-color: -color-paper-a50;
+    -fx-border-radius: 999;
+    -fx-background-radius: 999;
+    -fx-min-width: 34; -fx-min-height: 34; -fx-pref-width: 34; -fx-pref-height: 34;
+    -fx-max-width: 34; -fx-max-height: 34;
+    -fx-padding: 0;
+    -fx-cursor: hand;
+    -fx-translate-x: -18;
+    -fx-translate-y: 18;
+}
+.form-shell .form-close:hover { -fx-background-color: -color-linen-a22; }
+.form-shell .form-close-icon {
+    -fx-stroke: -color-paper;
+    -fx-stroke-width: 1.6;
+    -fx-stroke-line-cap: round;
+    -fx-fill: transparent;
+}
+
+/* ---------- Cuerpo ---------- */
+.form-shell .form-body {
+    -fx-background-color: -color-paper-white;
+    -fx-padding: 22 30 22 30;
+}
+.form-shell .form-scroll,
+.form-shell .form-scroll > .viewport { -fx-background-color: -color-paper-white; }
+.form-shell .section-title {
+    -fx-text-fill: -color-ink;
+    -fx-font-size: 11.5px;
+    -fx-font-weight: bold;
+}
+.form-shell .section-rule { -fx-background-color: -color-line; }
+.form-shell .section-legend { -fx-spacing: 14; -fx-alignment: center-left; -fx-padding: 4 0 0 0; }
+.form-shell .field-label,
+.form-shell .form-field > .field-label {
+    -fx-text-fill: -color-text-strong;
+    -fx-font-size: 10.5px;
+    -fx-font-weight: bold;
+    -fx-padding: 0 0 4 0;
+}
+
+/* Campos: caja blanca redondeada; al tener el foco, borde dorado */
+.form-shell .text-field,
+.form-shell .text-area,
+.form-shell .date-picker,
+.form-shell .combo-box,
+.form-shell .form-combo {
+    -fx-background-color: -color-paper-white;
+    -fx-background-radius: 12;
+    -fx-border-color: -color-line;
+    -fx-border-radius: 12;
+    -fx-border-width: 1;
+    -fx-min-height: 44;
+    -fx-font-size: 13.5px;
+    -fx-text-fill: -color-ink;
+    -fx-prompt-text-fill: -color-text-faint;
+}
+.form-shell .text-field,
+.form-shell .text-area .content { -fx-padding: 10 14; }
+.form-shell .date-picker > .text-field,
+.form-shell .combo-box > .text-field,
+.form-shell .form-combo > .text-field {
+    -fx-background-color: transparent;
+    -fx-border-width: 0;
+    -fx-min-height: 0;
+}
+.form-shell .text-area,
+.form-shell .text-area .content { -fx-background-color: -color-paper-white; }
+.form-shell .text-field:focused,
+.form-shell .text-area:focused,
+.form-shell .date-picker:focused,
+.form-shell .combo-box:focused,
+.form-shell .form-combo:focused,
+.form-shell .date-picker:contains-focus,
+.form-shell .combo-box:contains-focus {
+    -fx-border-color: -color-detail;
+    -fx-border-width: 1.5;
+    -fx-effect: dropshadow(gaussian, -color-detail-a50, 6, 0.25, 0, 0);
+}
+.form-shell .date-picker > .text-field:focused,
+.form-shell .combo-box > .text-field:focused,
+.form-shell .form-combo > .text-field:focused { -fx-border-width: 0; -fx-effect: null; }
+.form-shell .combo-box .list-cell { -fx-padding: 0 4 0 14; -fx-text-fill: -color-ink; -fx-background-color: transparent; }
+.form-shell .combo-box > .arrow-button,
+.form-shell .date-picker > .arrow-button { -fx-background-color: transparent; -fx-padding: 0 14 0 8; }
+.form-shell .combo-box > .arrow-button > .arrow { -fx-background-color: -color-text-strong; }
+
+/* Datos que pone el sistema (fecha de registro, vence…): caja salvia sin borde */
+.form-shell .text-field:disabled,
+.form-shell .date-picker:disabled,
+.form-shell .combo-box:disabled,
+.form-shell .text-field:readonly {
+    -fx-opacity: 1;
+    -fx-background-color: -color-soft;
+    -fx-border-color: -color-soft;
+    -fx-text-fill: -color-text-muted;
+}
+.form-shell .combo-box:disabled .list-cell { -fx-text-fill: -color-text-muted; }
+
+/* Un solo recuadro de información: salvia con el ícono */
+.form-shell .note-info {
+    -fx-background-color: -color-surface;
+    -fx-background-radius: 12;
+    -fx-text-fill: -color-ink;
+    -fx-padding: 12 16;
+    -fx-font-size: 13px;
+}
+.form-shell .note-icon { -fx-stroke: -color-text-strong; -fx-fill: transparent; -fx-stroke-width: 1.2; }
+.form-shell .error-label { -fx-text-fill: -color-error; -fx-font-weight: bold; }
+
+/* Tarjeta de resumen con el contexto fijo (venta, plan, lote…) en vez de campos grises */
+.form-summary {
+    -fx-background-color: -color-soft;
+    -fx-background-radius: 14;
+    -fx-padding: 14 18;
+    -fx-spacing: 4;
+}
+.form-summary-title { -fx-text-fill: -color-text-strong; -fx-font-size: 10.5px; -fx-font-weight: bold; }
+.form-summary-value { -fx-text-fill: -color-ink; -fx-font-size: 15px; -fx-font-weight: bold; }
+.form-summary-detail { -fx-text-fill: -color-text-muted; -fx-font-size: 12.5px; }
+.form-total {
+    -fx-background-color: -color-primary;
+    -fx-background-radius: 16;
+    -fx-padding: 18 20;
+    -fx-spacing: 6;
+}
+.form-total .form-summary-title { -fx-text-fill: -color-paper-a75; }
+.form-total .form-summary-value { -fx-text-fill: -color-paper; -fx-font-size: 26px; }
+.form-total .form-summary-detail { -fx-text-fill: -color-paper-a75; }
+
+/* ---------- Botones de abajo ---------- */
+.form-shell > .button-bar {
+    -fx-background-color: -color-paper-white;
+    -fx-background-radius: 0 0 20 20;
+    -fx-border-color: -color-line transparent transparent transparent;
+    -fx-border-width: 1 0 0 0;
+    -fx-padding: 16 28 18 28;
+}
+.form-shell > .button-bar .button,
+.form-shell .form-footer .button {
+    -fx-background-color: -color-paper-white;
+    -fx-text-fill: -color-ink;
+    -fx-border-color: -color-line;
+    -fx-border-width: 1;
+    -fx-background-radius: 12;
+    -fx-border-radius: 12;
+    -fx-padding: 12 22;
+    -fx-font-size: 13.5px;
+    -fx-font-weight: bold;
+    -fx-cursor: hand;
+}
+.form-shell > .button-bar .button:hover,
+.form-shell .form-footer .button:hover { -fx-background-color: -color-soft; }
+.form-shell > .button-bar .button.primary-dialog-button,
+.form-shell .form-footer .button.primary-dialog-button,
+.form-shell .form-footer .button.primary-button {
+    -fx-background-color: -color-primary;
+    -fx-border-color: -color-primary;
+    -fx-text-fill: -color-paper;
+}
+.form-shell > .button-bar .button.primary-dialog-button:hover,
+.form-shell .form-footer .button.primary-dialog-button:hover,
+.form-shell .form-footer .button.primary-button:hover { -fx-background-color: -color-forest; }
+.form-shell > .button-bar .button.danger-button {
+    -fx-background-color: -color-error; -fx-border-color: -color-error; -fx-text-fill: -color-paper;
+}
+.form-shell .form-footer {
+    -fx-background-color: -color-paper-white;
+    -fx-background-radius: 0 0 20 20;
+    -fx-border-color: -color-line transparent transparent transparent;
+    -fx-border-width: 1 0 0 0;
+    -fx-padding: 16 28 18 28;
+    -fx-spacing: 12;
+    -fx-alignment: center-right;
+}
+
+/* Barra de desplazamiento fina */
+.form-shell .scroll-bar:vertical { -fx-background-color: transparent; -fx-pref-width: 8; }
+.form-shell .scroll-bar:vertical .track { -fx-background-color: transparent; }
+.form-shell .scroll-bar:vertical .thumb { -fx-background-color: -color-mist; -fx-background-radius: 999; }
+.form-shell .scroll-bar .increment-button,
+.form-shell .scroll-bar .decrement-button { -fx-padding: 0; }
+.form-shell .scroll-bar .increment-arrow,
+.form-shell .scroll-bar .decrement-arrow { -fx-shape: " "; -fx-padding: 0; }
+
+/* ---------- Página por pasos ---------- */
+.form-shell .form-steps { -fx-spacing: 0; -fx-padding: 18 0 0 0; }
+.form-shell .form-step-dot {
+    -fx-min-width: 28; -fx-min-height: 28; -fx-pref-width: 28; -fx-pref-height: 28;
+    -fx-alignment: center;
+    -fx-background-radius: 999; -fx-border-radius: 999;
+    -fx-border-width: 1.5;
+    -fx-font-size: 12px; -fx-font-weight: bold;
+}
+.form-shell .form-hero-holder .form-hero .form-step-dot.done { -fx-background-color: -color-gold-wash; -fx-border-color: -color-gold-wash; -fx-text-fill: -color-primary; }
+.form-shell .form-hero-holder .form-hero .form-step-dot.current { -fx-background-color: -color-paper; -fx-border-color: -color-paper; -fx-text-fill: -color-primary;
+    -fx-effect: dropshadow(gaussian, -color-paper-a50, 8, 0.5, 0, 0); }
+.form-shell .form-hero-holder .form-hero .form-step-dot.pending { -fx-background-color: transparent; -fx-border-color: -color-sage-light; -fx-text-fill: -color-sage-pale; }
+.form-shell .form-step-line { -fx-min-height: 1.5; -fx-pref-height: 1.5; -fx-max-height: 1.5; -fx-padding: 0 8 0 0; }
+.form-shell .form-step-line.done { -fx-background-color: -color-sage-pale; }
+.form-shell .form-step-line.pending { -fx-background-color: -color-sage-dark; }
+.form-shell .form-hero-holder .form-hero .form-step-name { -fx-text-fill: -color-paper; -fx-font-size: 13px; -fx-font-weight: bold; }
+.form-shell .form-hero-holder .form-hero .form-step-state { -fx-text-fill: -color-sage-pale; -fx-font-size: 12px; }
+.form-shell .form-step { -fx-padding: 0 8 0 0; }
+
+/* Tarjeta de resumen a la derecha de la página */
+.form-shell .form-center { -fx-background-color: -color-paper-white; }
+.form-shell .form-side {
+    -fx-background-color: -color-card;
+    -fx-border-color: -color-line transparent transparent -color-line;
+    -fx-border-width: 0 0 0 1;
+    -fx-padding: 26 26 26 26;
+    -fx-spacing: 12;
+}
+.form-shell .form-side-title {
+    -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif;
+    -fx-font-size: 20px; -fx-text-fill: -color-ink;
+}
+
+/* Diseño propio: tarjeta visual y columna del formulario separadas por una línea */
+.form-shell .form-column-right { -fx-border-color: transparent transparent transparent -color-line; -fx-border-width: 0 0 0 1; }
+.form-shell .form-column-left { -fx-border-color: transparent -color-line transparent transparent; -fx-border-width: 0 1 0 0; }
+.form-shell .form-visual > .viewport { -fx-background-color: -color-card; }
+.form-visual-body { -fx-padding: 24 28; -fx-spacing: 14; -fx-background-color: -color-card; }
+.form-visual-title {
+    -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif;
+    -fx-font-size: 20px; -fx-text-fill: -color-ink;
+}
+.form-visual-hint { -fx-font-size: 12.5px; -fx-text-fill: -color-text-muted; }
+.form-legend-item { -fx-font-size: 12px; -fx-text-fill: -color-text-muted; -fx-graphic-text-gap: 6; }
+
+/* Muro para elegir bóveda: libres con borde punteado, ocupadas en salvia, la elegida en verde oscuro */
+.pick-cell {
+    -fx-min-width: 0; -fx-min-height: 44; -fx-pref-height: 46;
+    -fx-alignment: center;
+    -fx-background-radius: 10; -fx-border-radius: 10;
+    -fx-font-size: 12px; -fx-font-weight: bold;
+}
+.pick-cell.free { -fx-background-color: -color-paper-white; -fx-border-color: -color-gold-muted; -fx-border-style: segments(4, 3); -fx-text-fill: -color-ink; -fx-cursor: hand; }
+.pick-cell.free:hover { -fx-background-color: -color-gold-wash; }
+.pick-cell.taken { -fx-background-color: -color-surface; -fx-border-color: -color-surface; -fx-text-fill: -color-text-faint; }
+.pick-cell.chosen { -fx-background-color: -color-primary; -fx-border-color: -color-detail; -fx-border-width: 2.5; -fx-border-style: solid; -fx-text-fill: -color-paper; }
+.pick-cell.preview { -fx-background-color: -color-paper-white; -fx-border-color: -color-mist; -fx-border-style: segments(3, 3); -fx-text-fill: -color-text-faint; -fx-font-size: 9px; -fx-font-weight: normal; -fx-min-height: 34; -fx-pref-height: 36; }
+.pick-swatch { -fx-min-width: 11; -fx-min-height: 11; -fx-max-width: 11; -fx-max-height: 11; -fx-background-radius: 3; -fx-border-radius: 3; }
+.pick-swatch.free { -fx-border-color: -color-gold-muted; -fx-border-style: segments(2, 2); -fx-background-color: transparent; }
+.pick-swatch.taken { -fx-background-color: -color-surface; }
+.pick-swatch.chosen { -fx-background-color: -color-primary; -fx-border-color: -color-detail; }
+.pick-level { -fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: -color-text-strong; -fx-min-width: 56; }
+
+/* ---------- Agenda de salas (asignar sala) ---------- */
+.agenda-hour { -fx-font-size: 11px; -fx-text-fill: -color-text-muted; }
+.agenda-room { -fx-font-size: 13px; -fx-text-fill: -color-text-strong; -fx-min-width: 110; }
+.agenda-room.mine { -fx-font-weight: bold; }
+.agenda-track { -fx-background-color: -color-surface; -fx-background-radius: 8; -fx-min-height: 30; -fx-max-height: 30; }
+.agenda-track.mine { -fx-background-color: -color-gold-wash; }
+.agenda-bar {
+    -fx-padding: 0 10; -fx-font-size: 11.5px; -fx-font-weight: bold;
+    -fx-background-radius: 8; -fx-border-radius: 8; -fx-text-overrun: ellipsis;
+}
+.agenda-bar.taken { -fx-background-color: -color-primary; -fx-text-fill: -color-paper; }
+.agenda-bar.reserved { -fx-background-color: -color-gold-wash; -fx-border-color: -color-gold-muted; -fx-border-style: segments(4, 3); -fx-text-fill: -color-ink; -fx-font-weight: normal; }
+.agenda-bar.this { -fx-background-color: -color-gold-wash; -fx-border-color: -color-detail; -fx-border-width: 2; -fx-text-fill: -color-ink; -fx-font-weight: normal; }
+.agenda-swatch { -fx-min-width: 11; -fx-min-height: 11; -fx-max-width: 11; -fx-max-height: 11; -fx-background-radius: 3; -fx-border-radius: 3; }
+.agenda-swatch.taken { -fx-background-color: -color-primary; }
+.agenda-swatch.reserved { -fx-background-color: -color-gold-wash; -fx-border-color: -color-gold-muted; }
+.agenda-swatch.this { -fx-background-color: transparent; -fx-border-color: -color-detail; -fx-border-width: 1.5; }
