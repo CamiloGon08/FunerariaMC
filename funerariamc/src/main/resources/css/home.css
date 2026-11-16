@@ -12,7 +12,7 @@
     -fx-background-radius: 10; -fx-padding: 7 14; -fx-font-weight: bold; -fx-font-size: 12.5px;
     -fx-cursor: hand;
 }
-.segment:hover { -fx-background-color: rgba(250,249,246,0.6); }
+.segment:hover { -fx-background-color: -color-card-a60; }
 .segment:selected { -fx-background-color: -color-accent; -fx-text-fill: -color-background; }
 .segment-caption { -fx-text-fill: -color-secondary; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 0 4 0 8; }
 
@@ -20,7 +20,7 @@
 .toast {
     -fx-background-color: -color-primary; -fx-text-fill: -color-background;
     -fx-background-radius: 12; -fx-padding: 12 18; -fx-font-size: 13.5px; -fx-font-weight: bold;
-    -fx-effect: dropshadow(gaussian, rgba(24,47,37,0.25), 18, 0, 0, 6);
+    -fx-effect: dropshadow(gaussian, -color-primary-a25, 18, 0, 0, 6);
 }
 
 .drawer-secondary { -fx-background-color: transparent; -fx-text-fill: -color-primary; -fx-border-color: -color-border; }
@@ -72,27 +72,27 @@
 
 /* ---------- Paleta verde oscura, igual que Cementerio e Inventario ---------- */
 .home-root {
-    -eden-forest: #1E3A2E;
-    -eden-deep: #0F1F17;
-    -eden-moss: #3E5A3F;
-    -eden-sage: #6B7F67;
-    -eden-linen: #C7CBB8;
-    -eden-card: #FAFBF7;
-    -eden-tint: #EEF0E6;
-    -eden-text: #1E2A22;
-    -eden-muted: #6A7366;
-    -eden-warn: #6E6A45;
-    -eden-warn-bg: #EDEBDD;
-    -eden-alert: #8A4B3C;
-    -eden-alert-bg: #F0E3DC;
+    -eden-forest: -color-forest;
+    -eden-deep: -color-forest-deep;
+    -eden-moss: -color-moss;
+    -eden-sage: -color-sage-dark;
+    -eden-linen: -color-linen;
+    -eden-card: -color-paper-white;
+    -eden-tint: -color-soft;
+    -eden-text: -color-ink;
+    -eden-muted: -color-text-muted;
+    -eden-warn: -color-warning;
+    -eden-warn-bg: -color-warning-bg;
+    -eden-alert: -color-alert;
+    -eden-alert-bg: -color-alert-bg;
 }
 
 /* Banda superior */
 .home-root .hero-band {
-    -fx-background-color: linear-gradient(to right, #1E3A2E 0%, #3E5A3F 62%, #6B7F67 100%);
+    -fx-background-color: linear-gradient(to right, -color-forest 0%, -color-moss 62%, -color-sage-dark 100%);
     -fx-background-radius: 26;
     -fx-padding: 22 26 24 26;
-    -fx-effect: dropshadow(gaussian, rgba(15,31,23,0.22), 24, 0, 0, 8);
+    -fx-effect: dropshadow(gaussian, -color-shadow-22, 24, 0, 0, 8);
 }
 .home-root .hero-kpi {
     -fx-background-color: rgba(255,255,255,0.07);
@@ -100,12 +100,12 @@
     -fx-background-radius: 16; -fx-border-radius: 16;
     -fx-padding: 14 18 14 18; -fx-spacing: 2;
 }
-.home-root .hero-kpi-caption { -fx-text-fill: rgba(244,245,238,0.88); -fx-font-size: 11px; -fx-font-weight: bold; }
+.home-root .hero-kpi-caption { -fx-text-fill: -color-paper-a88; -fx-font-size: 11px; -fx-font-weight: bold; }
 .home-root .hero-kpi-value {
     -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif;
-    -fx-text-fill: #F4F5EE; -fx-font-size: 30px;
+    -fx-text-fill: -color-paper; -fx-font-size: 30px;
 }
-.home-root .hero-kpi-detail { -fx-text-fill: rgba(244,245,238,0.72); -fx-font-size: 12.5px; }
+.home-root .hero-kpi-detail { -fx-text-fill: -color-paper-a72; -fx-font-size: 12.5px; }
 /* Tarjeta destacada de la banda: fondo lino claro y texto oscuro, como en la captura aprobada */
 
 /* Barra de búsqueda y filtros */
@@ -117,8 +117,8 @@
 .home-root .search-box { -fx-background-color: -eden-tint; -fx-background-radius: 12; }
 .home-root .segmented { -fx-background-color: -eden-tint; }
 .home-root .segment { -fx-text-fill: -eden-text; }
-.home-root .segment:hover { -fx-background-color: rgba(199,203,184,0.45); }
-.home-root .segment:selected { -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; }
+.home-root .segment:hover { -fx-background-color: -color-linen-a45; }
+.home-root .segment:selected { -fx-background-color: -eden-forest; -fx-text-fill: -color-paper; }
 .home-root .segment-caption { -fx-text-fill: -eden-muted; }
 .home-root .chip-combo { -fx-background-color: -eden-card; -fx-border-color: -eden-linen; -fx-background-radius: 12; -fx-border-radius: 12; -fx-padding: 4 8; }
 .home-root .primary-button { -fx-background-color: -eden-forest; -fx-background-radius: 12; }
@@ -140,7 +140,7 @@
 .home-root .state-chip { -fx-background-radius: 999; -fx-padding: 4 11; -fx-font-size: 11.5px; -fx-font-weight: bold; }
 .home-root .state-ok { -fx-background-color: -eden-tint; -fx-text-fill: -eden-moss; }
 .home-root .state-warn { -fx-background-color: -eden-warn-bg; -fx-text-fill: -eden-warn; }
-.home-root .toast { -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; }
+.home-root .toast { -fx-background-color: -eden-forest; -fx-text-fill: -color-paper; }
 
 /* Vista tabla */
 .home-root .table-head {
@@ -152,17 +152,17 @@
     -fx-background-color: transparent; -fx-background-insets: 0; -fx-padding: 0; -fx-border-width: 0;
 }
 .items-list .list-cell {
-    -fx-background-color: transparent; -fx-padding: 0; -fx-border-color: transparent transparent #E6E8DE transparent;
+    -fx-background-color: transparent; -fx-padding: 0; -fx-border-color: transparent transparent -color-panel transparent;
     -fx-border-width: 0 0 1 0;
 }
 .items-list .list-cell:empty { -fx-border-width: 0; }
-.items-list .list-cell:filled:hover { -fx-background-color: rgba(226,230,221,0.45); }
-.items-list .list-cell:filled:selected { -fx-background-color: rgba(226,230,221,0.7); }
+.items-list .list-cell:filled:hover { -fx-background-color: -color-surface-a45; }
+.items-list .list-cell:filled:selected { -fx-background-color: -color-surface-a70; }
 .item-row { -fx-padding: 10 16; -fx-alignment: center-left; -fx-min-height: 64; -fx-cursor: hand; }
 .item-row-name { -fx-text-fill: -eden-text; -fx-font-size: 14px; -fx-font-weight: bold; }
 .item-row-sub { -fx-text-fill: -eden-muted; -fx-font-size: 12.5px; }
 .item-row-text { -fx-text-fill: -eden-text; -fx-font-size: 13.5px; }
-.item-row-thumb { -fx-background-color: #EEEFE8; -fx-background-radius: 10; }
+.item-row-thumb { -fx-background-color: -color-soft; -fx-background-radius: 10; }
 .home-root .table-card {
     -fx-background-color: -eden-card; -fx-border-color: transparent;
     -fx-background-radius: 22; -fx-border-radius: 22; -fx-padding: 18 20 14 20;
@@ -183,10 +183,10 @@
     -fx-background-color: -eden-tint; -fx-text-fill: -eden-text; -fx-background-radius: 10;
     -fx-font-size: 18px; -fx-padding: 2 12 4 12; -fx-cursor: hand;
 }
-.home-root .period-arrow:hover { -fx-background-color: #D5DACB; }
+.home-root .period-arrow:hover { -fx-background-color: -color-line; }
 .home-root .period-arrow:disabled { -fx-opacity: 0.4; }
 .home-root .period-box {
-    -fx-background-color: -eden-card; -fx-border-color: #DADDD1; -fx-border-radius: 10; -fx-background-radius: 10;
+    -fx-background-color: -eden-card; -fx-border-color: -color-line; -fx-border-radius: 10; -fx-background-radius: 10;
     -fx-padding: 4 14; -fx-spacing: 0; -fx-min-width: 170; -fx-cursor: hand;
 }
 .home-root .period-caption { -fx-text-fill: -eden-muted; -fx-font-size: 9.5px; -fx-font-weight: bold; }
@@ -195,14 +195,14 @@
 .home-root .primary-menu {
     -fx-background-color: -eden-forest; -fx-background-radius: 12; -fx-padding: 6 10;
 }
-.home-root .primary-menu > .label { -fx-text-fill: #F4F5EE; -fx-font-weight: bold; }
+.home-root .primary-menu > .label { -fx-text-fill: -color-paper; -fx-font-weight: bold; }
 .home-root .primary-menu > .arrow-button { -fx-padding: 0 0 0 10; }
-.home-root .primary-menu > .arrow-button > .arrow { -fx-background-color: #F4F5EE; }
+.home-root .primary-menu > .arrow-button > .arrow { -fx-background-color: -color-paper; }
 .home-root .primary-menu:hover { -fx-background-color: -eden-moss; }
 
 /* Indicadores: variación frente al período anterior */
-.home-root .hero-kpi-detail.up { -fx-text-fill: #CFE3C4; }
-.home-root .hero-kpi-detail.down { -fx-text-fill: #F0C9BD; }
+.home-root .hero-kpi-detail.up { -fx-text-fill: -color-success-bg; }
+.home-root .hero-kpi-detail.down { -fx-text-fill: -color-alert-soft; }
 
 /* Tarjetas del resumen */
 .home-root .card-scroll, .home-root .card-scroll > .viewport { -fx-background-color: transparent; -fx-background: transparent; }
@@ -210,7 +210,7 @@
 .home-root .scroll-content { -fx-padding: 0 6 20 0; }
 .home-root .chart-card {
     -fx-background-color: -eden-card; -fx-background-radius: 22; -fx-padding: 18 20 14 20; -fx-spacing: 6;
-    -fx-effect: dropshadow(gaussian, rgba(15,31,23,0.05), 10, 0, 0, 2);
+    -fx-effect: dropshadow(gaussian, -color-shadow-05, 10, 0, 0, 2);
 }
 .home-root .chart-title {
     -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif;
@@ -225,7 +225,7 @@
     -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif; -fx-font-size: 24px; -fx-text-fill: -eden-text;
 }
 .home-root .donut-caption { -fx-text-fill: -eden-muted; -fx-font-size: 11.5px; }
-.home-root .commission-line { -fx-spacing: 4; -fx-padding: 8 0; -fx-border-color: transparent transparent #E6E8DE transparent; -fx-border-width: 0 0 1 0; }
+.home-root .commission-line { -fx-spacing: 4; -fx-padding: 8 0; -fx-border-color: transparent transparent -color-panel transparent; -fx-border-width: 0 0 1 0; }
 .home-root .commission-name { -fx-text-fill: -eden-text; -fx-font-size: 13.5px; -fx-font-weight: bold; }
 .home-root .commission-sub { -fx-text-fill: -eden-muted; -fx-font-size: 11.5px; }
 .home-root .commission-amount { -fx-text-fill: -eden-text; -fx-font-size: 13.5px; -fx-font-weight: bold; }
@@ -238,25 +238,25 @@
 .home-root .chart { -fx-padding: 4 0 0 0; }
 .home-root .chart-plot-background { -fx-background-color: transparent; }
 .home-root .chart-vertical-grid-lines { -fx-stroke: transparent; }
-.home-root .chart-horizontal-grid-lines { -fx-stroke: #E6E8DE; -fx-stroke-dash-array: 2 4; }
+.home-root .chart-horizontal-grid-lines { -fx-stroke: -color-panel; -fx-stroke-dash-array: 2 4; }
 .home-root .chart-alternative-row-fill { -fx-fill: transparent; }
-.home-root .chart-vertical-zero-line, .home-root .chart-horizontal-zero-line { -fx-stroke: #C7CBB8; }
+.home-root .chart-vertical-zero-line, .home-root .chart-horizontal-zero-line { -fx-stroke: -color-linen; }
 .home-root .axis { -fx-tick-label-fill: -eden-muted; -fx-tick-label-font-size: 11px; }
 .home-root .axis:bottom, .home-root .axis:left { -fx-border-color: transparent; }
 .home-root .axis-tick-mark, .home-root .axis-minor-tick-mark { -fx-stroke: transparent; }
-.home-root .flow-chart .default-color0.chart-series-line { -fx-stroke: #1E3A2E; -fx-stroke-width: 2.4px; }
-.home-root .flow-chart .default-color1.chart-series-line { -fx-stroke: #C4AF84; -fx-stroke-width: 2.4px; }
-.home-root .flow-chart .default-color0.chart-line-symbol { -fx-background-color: #1E3A2E, #FAFBF7; -fx-background-insets: 0, 2; -fx-background-radius: 6; -fx-padding: 4.5; }
-.home-root .flow-chart .default-color1.chart-line-symbol { -fx-background-color: #C4AF84, #FAFBF7; -fx-background-insets: 0, 2; -fx-background-radius: 6; -fx-padding: 4.5; }
+.home-root .flow-chart .default-color0.chart-series-line { -fx-stroke: -color-forest; -fx-stroke-width: 2.4px; }
+.home-root .flow-chart .default-color1.chart-series-line { -fx-stroke: -color-detail; -fx-stroke-width: 2.4px; }
+.home-root .flow-chart .default-color0.chart-line-symbol { -fx-background-color: -color-forest, -color-paper-white; -fx-background-insets: 0, 2; -fx-background-radius: 6; -fx-padding: 4.5; }
+.home-root .flow-chart .default-color1.chart-line-symbol { -fx-background-color: -color-detail, -color-paper-white; -fx-background-insets: 0, 2; -fx-background-radius: 6; -fx-padding: 4.5; }
 .home-root .flow-chart .chart-line-symbol:hover { -fx-scale-x: 1.4; -fx-scale-y: 1.4; }
-.home-root .month-chart .chart-bar { -fx-background-color: #6B7F67; -fx-background-radius: 6 6 0 0; }
-.home-root .month-chart .chart-bar.current { -fx-background-color: #1E3A2E; }
-.home-root .month-chart .chart-bar.negative { -fx-background-color: #8A4B3C; -fx-background-radius: 0 0 6 6; }
+.home-root .month-chart .chart-bar { -fx-background-color: -color-sage-dark; -fx-background-radius: 6 6 0 0; }
+.home-root .month-chart .chart-bar.current { -fx-background-color: -color-forest; }
+.home-root .month-chart .chart-bar.negative { -fx-background-color: -color-alert; -fx-background-radius: 0 0 6 6; }
 .home-root .donut-chart .chart-pie-label, .home-root .donut-chart .chart-pie-label-line { -fx-opacity: 0; }
 .home-root .donut-chart { -fx-padding: 0; -fx-legend-visible: false; }
-.home-root .donut-chart .chart-pie { -fx-border-color: #FAFBF7; -fx-border-width: 2; }
+.home-root .donut-chart .chart-pie { -fx-border-color: -color-paper-white; -fx-border-width: 2; }
 .tooltip.chart-tip {
-    -fx-background-color: #0F1F17; -fx-text-fill: #F4F5EE; -fx-font-size: 12.5px; -fx-background-radius: 10;
+    -fx-background-color: -color-forest-deep; -fx-text-fill: -color-paper; -fx-font-size: 12.5px; -fx-background-radius: 10;
     -fx-padding: 8 12;
 }
 
@@ -264,7 +264,7 @@
 .home-root .chip-income { -fx-background-color: -eden-tint; -fx-text-fill: -eden-moss; }
 .home-root .chip-expense { -fx-background-color: -eden-warn-bg; -fx-text-fill: -eden-warn; }
 .home-root .chip-voided { -fx-background-color: -eden-alert-bg; -fx-text-fill: -eden-alert; }
-.home-root .chip-done { -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; }
+.home-root .chip-done { -fx-background-color: -eden-forest; -fx-text-fill: -color-paper; }
 .home-root .amount-income { -fx-text-fill: -eden-moss; -fx-font-size: 13.5px; -fx-font-weight: bold; }
 .home-root .amount-expense { -fx-text-fill: -eden-alert; -fx-font-size: 13.5px; -fx-font-weight: bold; }
 .home-root .row-voided .item-row-name, .home-root .row-voided .amount-income,
@@ -273,13 +273,13 @@
     -fx-background-color: -eden-tint; -fx-text-fill: -eden-text; -fx-background-radius: 999;
     -fx-padding: 6 14; -fx-font-size: 12.5px; -fx-cursor: hand;
 }
-.home-root .row-button:hover { -fx-background-color: #D5DACB; }
-.home-root .row-button.strong { -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; -fx-font-weight: bold; }
+.home-root .row-button:hover { -fx-background-color: -color-line; }
+.home-root .row-button.strong { -fx-background-color: -eden-forest; -fx-text-fill: -color-paper; -fx-font-weight: bold; }
 .home-root .row-button.strong:hover { -fx-background-color: -eden-moss; }
 .home-root .row-button:disabled { -fx-opacity: 0.45; }
 .home-root .row-hint { -fx-text-fill: -eden-muted; -fx-font-size: 11.5px; }
 .home-root .state-chip { -fx-background-radius: 999; -fx-padding: 4 11; -fx-font-size: 11.5px; -fx-font-weight: bold; }
-.home-root .toast { -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; }
+.home-root .toast { -fx-background-color: -eden-forest; -fx-text-fill: -color-paper; }
 .home-root .grid-title {
     -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif;
     -fx-font-size: 28px; -fx-text-fill: -eden-text;
@@ -290,11 +290,11 @@
     -fx-background-color: -eden-card; -fx-border-color: transparent;
     -fx-background-radius: 22; -fx-border-radius: 22; -fx-padding: 18 20 14 20;
 }
-.form-segmented { -fx-background-color: #EEF0E6; }
+.form-segmented { -fx-background-color: -color-soft; }
 
 /* ---------- Inicio ---------- */
 .home-root .live-chip {
-    -fx-background-color: rgba(255,255,255,0.10); -fx-text-fill: #F4F5EE; -fx-background-radius: 999;
+    -fx-background-color: rgba(255,255,255,0.10); -fx-text-fill: -color-paper; -fx-background-radius: 999;
     -fx-padding: 5 12; -fx-font-size: 12px; -fx-font-weight: bold;
 }
 .home-root .room-tile {
@@ -302,30 +302,30 @@
     -fx-min-height: 82;
 }
 .home-root .room-tile.busy { -fx-background-color: -eden-forest; }
-.home-root .room-tile.reserved { -fx-background-color: #F1EBD9; }
+.home-root .room-tile.reserved { -fx-background-color: -color-gold-wash; }
 .home-root .room-name {
     -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif; -fx-font-size: 19px; -fx-text-fill: -eden-text;
 }
 .home-root .room-who { -fx-text-fill: -eden-text; -fx-font-size: 12.5px; -fx-font-weight: bold; }
 .home-root .room-when { -fx-text-fill: -eden-muted; -fx-font-size: 11.5px; }
-.home-root .room-tile.busy .room-name, .home-root .room-tile.busy .room-who { -fx-text-fill: #F4F5EE; }
-.home-root .room-tile.busy .room-when { -fx-text-fill: #C4AF84; }
-.home-root .room-dot { -fx-fill: #B9BDAE; }
-.home-root .room-tile.busy .room-dot, .home-root .room-tile.reserved .room-dot { -fx-fill: #C4AF84; }
+.home-root .room-tile.busy .room-name, .home-root .room-tile.busy .room-who { -fx-text-fill: -color-paper; }
+.home-root .room-tile.busy .room-when { -fx-text-fill: -color-detail; }
+.home-root .room-dot { -fx-fill: -color-mist; }
+.home-root .room-tile.busy .room-dot, .home-root .room-tile.reserved .room-dot { -fx-fill: -color-detail; }
 .home-root .count-badge {
     -fx-background-color: -eden-alert-bg; -fx-text-fill: -eden-alert; -fx-background-radius: 999; -fx-padding: 2 9;
     -fx-font-size: 12px; -fx-font-weight: bold;
 }
 .home-root .alert-box { -fx-background-radius: 12; -fx-padding: 10 14; -fx-spacing: 3; }
 .home-root .alert-box.alert { -fx-background-color: -eden-alert-bg; }
-.home-root .alert-box.warn { -fx-background-color: #F3EEDD; }
+.home-root .alert-box.warn { -fx-background-color: -color-gold-wash; }
 .home-root .alert-title { -fx-font-size: 13px; -fx-font-weight: bold; }
 .home-root .alert-box.alert .alert-title { -fx-text-fill: -eden-alert; }
 .home-root .alert-box.warn .alert-title { -fx-text-fill: -eden-warn; }
 .home-root .alert-text { -fx-text-fill: -eden-text; -fx-font-size: 12.5px; }
-.home-root .chip-active { -fx-background-color: -eden-forest; -fx-text-fill: #F4F5EE; }
+.home-root .chip-active { -fx-background-color: -eden-forest; -fx-text-fill: -color-paper; }
 .home-root .chip-done { -fx-background-color: -eden-tint; -fx-text-fill: -eden-moss; }
-.home-root .chip-waiting { -fx-background-color: #F3EEDD; -fx-text-fill: -eden-warn; }
+.home-root .chip-waiting { -fx-background-color: -color-gold-wash; -fx-text-fill: -eden-warn; }
 .home-root .agenda-hour {
     -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif; -fx-font-size: 18px; -fx-text-fill: -eden-text;
 }
