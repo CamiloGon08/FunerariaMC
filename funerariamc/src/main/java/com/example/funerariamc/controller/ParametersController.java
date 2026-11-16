@@ -1242,7 +1242,10 @@ public class ParametersController implements RefreshableView {
             previewButton.setStyle("-fx-background-color: " + palette.get("-color-accent") + "; -fx-text-fill: "
                     + palette.get("-color-background") + ";");
             previewLink.setStyle("-fx-text-fill: " + palette.get("-color-gold-deep") + ";");
-            readability.setText(String.join(" ", palette.readabilityProblems()));
+            // Los problemas impiden guardar; los avisos solo informan
+            List<String> notes = new ArrayList<>(palette.readabilityProblems());
+            notes.addAll(palette.readabilityWarnings());
+            readability.setText(String.join(" ", notes));
         };
         name.textProperty().addListener((obs, old, text) -> updatePreview.run());
         tagline.textProperty().addListener((obs, old, text) -> updatePreview.run());
