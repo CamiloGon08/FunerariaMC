@@ -15,6 +15,7 @@ import com.example.funerariamc.service.RoleNames;
 import com.example.funerariamc.service.UserAccountService;
 import com.example.funerariamc.service.UserAccountService.AccountCredentials;
 import com.example.funerariamc.service.UserAccountService.AccountSummary;
+import com.example.funerariamc.ui.FormShell;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
@@ -186,6 +187,10 @@ public class EmployeeFormController {
 
     @FXML
     private void initialize() {
+        // Salario y comisión por caso se ven como "$ 1.500.000" mientras se escriben
+        FormShell.money(salaryField, commissionPerCaseField);
+        // Cédula hasta 10 dígitos; extranjería y pasaporte hasta lo que guarda la base
+        FormShell.document(documentField, documentTypeCombo::getValue, 30);
         documentTypeCombo.getItems().addAll(DOCUMENT_TYPES.keySet());
         documentTypeCombo.setConverter(new StringConverter<>() {
             @Override
@@ -499,11 +504,12 @@ public class EmployeeFormController {
         if (value == null) {
             return null; // el servicio dice que es obligatorio
         }
-        String digits = value.replaceAll("[$.,\\s]", "");
-        if (!digits.matches("\\d+")) {
+        // Sin signo ni puntos de miles; la coma es el decimal ("1.800.000,50")
+        String digits = value.replaceAll("[$.\\s]", "");
+        if (!digits.matches("\\d+(,\\d{1,2})?")) {
             throw new NumberFormatException(what + " debe ser un valor en pesos, por ejemplo 1.800.000.");
         }
-        return new BigDecimal(digits);
+        return new BigDecimal(digits.replace(',', '.'));
     }
 
     /** Porcentaje con coma o punto decimal: "5", "5,5" o "5.5". */
