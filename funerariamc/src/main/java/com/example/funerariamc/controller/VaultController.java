@@ -25,6 +25,7 @@ import com.example.funerariamc.service.VaultPosition;
 import com.example.funerariamc.service.VaultState;
 import com.example.funerariamc.ui.DetailCache;
 import com.example.funerariamc.ui.RefreshableView;
+import com.example.funerariamc.ui.FormShell;
 import javafx.animation.FadeTransition;
 import javafx.animation.ParallelTransition;
 import javafx.animation.PauseTransition;
@@ -1088,6 +1089,8 @@ public class VaultController implements RefreshableView {
 
         Dialog<ButtonType> dialog = formDialog("Asignar bóveda",
                 "Los campos con * son obligatorios.", form, 720);
+        FormShell.page(dialog, "Cementerio y bóvedas");
+        FormShell.visual(dialog, pickWall(vaultBox), true, 480);
         runForm(dialog, form, "Asignar bóveda", () -> {
             WallCell vault = vaultBox.getValue();
             return cemeteryService.assign(new AssignVaultData(vault == null ? null : vault.id(),
@@ -1098,6 +1101,70 @@ public class VaultController implements RefreshableView {
             showToast("Bóveda " + (vault == null ? "" : vault.code()) + " asignada.");
             loadScreen(assignedId);
         });
+    }
+
+    /**
+     * Muro del pabellón de la bóveda elegida: se toca una bóveda libre para elegirla. Las ocupadas se
+     * ven en salvia y no se pueden tocar; la elegida, en verde oscuro. Elegir otra bóveda en la lista
+     * también la marca aquí (y cambia de pabellón si hace falta).
+     */
+    private Node pickWall(ComboBox<WallCell> vaultBox) {
+        Label title = label("", "form-visual-title");
+        Label hint = label("Toque una bóveda libre para elegirla", "form-visual-hint");
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        HBox head = new HBox(title, spacer, hint);
+        head.setAlignment(Pos.CENTER_LEFT);
+        GridPane grid = new GridPane();
+        grid.setHgap(6);
+        grid.setVgap(8);
+        grid.setMinWidth(0);
+        hint.setMinWidth(0);
+        HBox legend = new HBox(16, legendItem("free", "Libre"), legendItem("taken", "Ocupada"),
+                legendItem("chosen", "Elegida"));
+        VBox box = new VBox(14, head, grid, legend);
+        box.getStyleClass().add("form-visual-body");
+        Runnable draw = () -> {
+            grid.getChildren().clear();
+            WallCell chosen = vaultBox.getValue();
+            if (chosen == null || overview == null) {
+                title.setText("Muro del pabellón");
+                return;
+            }
+            String pavilion = chosen.position().pavilion();
+            String label = pavilionLabel(pavilion);
+            title.setText("Muro del " + label.substring(0, 1).toLowerCase(Locale.ROOT) + label.substring(1));
+            List<WallCell> cells = overview.pavilions().getOrDefault(pavilion, List.of());
+            int levels = cells.stream().mapToInt(c -> c.position().level()).max().orElse(1);
+            shrinkColumns(grid, cells.stream().mapToInt(c -> c.position().column()).max().orElse(1), 26);
+            for (int level = levels; level >= 1; level--) {
+                grid.add(label("Nivel " + level, "pick-level"), 0, levels - level);
+            }
+            for (WallCell cell : cells) {
+                boolean free = cell.state() == VaultState.AVAILABLE;
+                // En la celda va solo el número de la columna; el código completo sale al pasar el ratón
+                Label tile = new Label(String.format("%02d", cell.position().column()));
+                tile.setTooltip(new javafx.scene.control.Tooltip(cell.code()));
+                tile.setMaxWidth(Double.MAX_VALUE);
+                tile.getStyleClass().addAll("pick-cell", cell.id().equals(chosen.id()) ? "chosen" : free ? "free" : "taken");
+                if (free) {
+                    tile.setOnMouseClicked(e -> vaultBox.getItems().stream()
+                            .filter(c -> c.id().equals(cell.id())).findFirst().ifPresent(vaultBox::setValue));
+                }
+                grid.add(tile, cell.position().column(), levels - cell.position().level());
+            }
+        };
+        vaultBox.valueProperty().addListener((obs, old, value) -> draw.run());
+        draw.run();
+        return box;
+    }
+
+    private static Label legendItem(String state, String text) {
+        Region swatch = new Region();
+        swatch.getStyleClass().addAll("pick-swatch", state);
+        Label item = new Label(text, swatch);
+        item.getStyleClass().add("form-legend-item");
+        return item;
     }
 
     // ---------- Registrar cementerios y bóvedas (Administrador Maestro) ----------
@@ -1114,6 +1181,7 @@ public class VaultController implements RefreshableView {
                 .field("DIRECCIÓN", address)
                 .note(note("Después de guardarlo, agregue sus pabellones con \"+ Agregar bóvedas\"."));
         Dialog<ButtonType> dialog = formDialog("Nuevo cementerio", "Los campos con * son obligatorios.", form, 620);
+        FormShell.panel(dialog, "Cementerio y bóvedas");
         runForm(dialog, form, "Registrar cementerio",
                 () -> cemeteryService.registerCemetery(name.getText(), address.getText()),
                 newId -> {
@@ -1202,6 +1270,9 @@ public class VaultController implements RefreshableView {
         showMode.run();
 
         Dialog<ButtonType> dialog = formDialog("Agregar bóvedas", "Los campos con * son obligatorios.", form, 720);
+        FormShell.page(dialog, "Cementerio y bóvedas");
+        FormShell.visual(dialog, wallPreview(cemeteryBox, pavilion, levels, perLevel, firstLevel, singleCode, single),
+                false, 480);
         runForm(dialog, form, "Crear bóvedas", () -> {
             Long target = idOf(cemeteryBox.getValue());
             return single.isSelected()
@@ -1215,6 +1286,106 @@ public class VaultController implements RefreshableView {
             showToast(batchMessage(batch));
             loadScreen(null);
         });
+    }
+
+    /** Columnas que se dibujan como máximo en la vista previa (el pabellón puede tener más). */
+    private static final int PREVIEW_COLUMNS = 24;
+
+    /**
+     * Vista previa del muro mientras se escriben niveles y bóvedas por nivel: un renglón por nivel,
+     * el más alto arriba, con el código de la primera y la última bóveda de cada nivel.
+     */
+    private Node wallPreview(ComboBox<Option> cemeteryBox, TextField pavilion, TextField levels, TextField perLevel,
+                             TextField firstLevel, TextField singleCode, ToggleButton single) {
+        Label title = label("", "form-visual-title");
+        Label count = label("", "state-chip");
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        HBox head = new HBox(title, spacer, count);
+        head.setAlignment(Pos.CENTER_LEFT);
+        Label where = label("", "form-visual-hint");
+        GridPane grid = new GridPane();
+        grid.setHgap(4);
+        grid.setVgap(8);
+        grid.setMinWidth(0);
+        where.setMinWidth(0);
+        Label more = label("", "form-visual-hint");
+        VBox box = new VBox(10, head, where, grid, more);
+        box.getStyleClass().add("form-visual-body");
+        Runnable draw = () -> {
+            grid.getChildren().clear();
+            String name = pavilion.getText().isBlank() ? "" : pavilion.getText().trim().toUpperCase(Locale.ROOT);
+            title.setText("Vista previa" + (name.isEmpty() ? "" : " · Pabellón " + name));
+            where.setText("Así quedará el muro en " + (cemeteryBox.getValue() == null ? "el cementerio"
+                    : cemeteryBox.getValue().label()) + ".");
+            more.setText("");
+            if (single.isSelected()) {
+                String code = singleCode.getText().isBlank() ? "?" : singleCode.getText().trim().toUpperCase(Locale.ROOT);
+                Label tile = label(code, "pick-cell");
+                tile.getStyleClass().add("free");
+                grid.add(tile, 0, 0);
+                count.setText("+ 1 bóveda");
+                return;
+            }
+            int rows = parse(levels.getText());
+            int columns = parse(perLevel.getText());
+            int first = firstLevel.getText().isBlank() ? 1 : parse(firstLevel.getText());
+            if (rows <= 0 || columns <= 0 || first <= 0 || name.isEmpty()) {
+                count.setText("");
+                return;
+            }
+            count.setText("+ " + count(rows * columns, "bóveda"));
+            int drawn = Math.min(columns, PREVIEW_COLUMNS);
+            shrinkColumns(grid, drawn, 10);
+            grid.getColumnConstraints().add(new ColumnConstraints());
+            for (int row = 0; row < rows; row++) {
+                int level = first + rows - 1 - row;
+                grid.add(label("Nivel " + level, "pick-level"), 0, row);
+                for (int column = 1; column <= drawn; column++) {
+                    Label tile = label("", "pick-cell");
+                    tile.setMaxWidth(Double.MAX_VALUE);
+                    tile.getStyleClass().add("preview");
+                    grid.add(tile, column, row);
+                }
+                // Primer y último código del nivel al final del renglón
+                Label range = label(name + level + "-01 … " + name + level + "-" + String.format("%02d", columns),
+                        "form-visual-hint");
+                range.setMinWidth(Region.USE_PREF_SIZE);
+                grid.add(range, drawn + 1, row);
+            }
+            if (columns > drawn) {
+                more.setText("Se muestran las primeras " + drawn + " columnas de " + columns + ".");
+            }
+        };
+        for (TextField field : List.of(pavilion, levels, perLevel, firstLevel, singleCode)) {
+            field.textProperty().addListener((obs, old, text) -> draw.run());
+        }
+        single.selectedProperty().addListener((obs, old, value) -> draw.run());
+        cemeteryBox.valueProperty().addListener((obs, old, value) -> draw.run());
+        draw.run();
+        return box;
+    }
+
+    /** La primera columna (nivel) toma su ancho; las de bóvedas se reparten el resto sin bajar de {@code min} px. */
+    private static void shrinkColumns(GridPane grid, int columns, double min) {
+        grid.getColumnConstraints().clear();
+        grid.getColumnConstraints().add(new ColumnConstraints());
+        for (int i = 1; i <= columns; i++) {
+            ColumnConstraints column = new ColumnConstraints();
+            column.setHgrow(Priority.ALWAYS);
+            column.setFillWidth(true);
+            column.setMinWidth(min);
+            column.setPrefWidth(min);
+            grid.getColumnConstraints().add(column);
+        }
+    }
+
+    private static int parse(String text) {
+        try {
+            return text.isBlank() ? 0 : Integer.parseInt(text.trim());
+        } catch (NumberFormatException e) {
+            return 0;
+        }
     }
 
     private static TextField numberInput(String value) {
@@ -1355,6 +1526,7 @@ public class VaultController implements RefreshableView {
 
         Dialog<ButtonType> dialog = formDialog("Registrar exhumación",
                 "Los campos con * son obligatorios.", form, 760);
+        FormShell.panel(dialog, "Cementerio y bóvedas");
         runForm(dialog, form, "Registrar exhumación",
                 () -> warning.isVisible() && !confirmUnclaimedDestination(destination.getValue()),
                 () -> cemeteryService.exhume(new ExhumationData(d.id(), date.getValue(), reason.getValue(),
