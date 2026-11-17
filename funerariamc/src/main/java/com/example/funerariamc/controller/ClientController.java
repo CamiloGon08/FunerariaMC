@@ -16,9 +16,12 @@ import com.example.funerariamc.service.ClientOverviewService.PlanInfo;
 import com.example.funerariamc.service.ClientOverviewService.SaleInfo;
 import com.example.funerariamc.service.ClientService;
 import com.example.funerariamc.service.ClientService.BalanceFilter;
+import com.example.funerariamc.service.AppModule;
+import com.example.funerariamc.service.ContractService;
 import com.example.funerariamc.ui.DetailShell;
 import com.example.funerariamc.ui.RefreshableView;
 import com.example.funerariamc.ui.FormShell;
+import com.example.funerariamc.ui.ModuleLink;
 import javafx.animation.PauseTransition;
 import javafx.concurrent.Task;
 import javafx.css.PseudoClass;
@@ -568,7 +571,8 @@ public class ClientController implements RefreshableView {
         FxmlViewLoader.View<ClientFormController> view = viewLoader.loadView(FxmlViewLoader.CLIENT_FORM);
         Stage stage = new Stage();
         stage.initOwner(window());
-        stage.initModality(Modality.WINDOW_MODAL);
+        // Igual que los demás formularios: en Windows, con WINDOW_MODAL el calendario de la ventana transparente no recibía los clics
+        stage.initModality(Modality.APPLICATION_MODAL);
         stage.setTitle("Clientes");
         stage.setScene(new Scene(view.root()));
         view.controller().init(client, mode, saved -> reload());
@@ -576,15 +580,24 @@ public class ClientController implements RefreshableView {
         stage.showAndWait();
     }
 
-    /** Contratos y ventas aún no está: se avisa en vez de abrir una pantalla vacía. */
+    /** Abre Contratos y ventas con el formulario de nueva venta y este cliente ya elegido. */
     private void onNewContract(Client c) {
-        showInfo("Nuevo contrato", "El contrato de " + ClientService.displayName(c)
-                + " se registra en el módulo Contratos y ventas, que llega en un próximo sprint.");
+        openContracts(c, true);
     }
 
+    /** Abre Contratos y ventas mostrando solo las ventas de este cliente que tienen saldo. */
     private void onRegisterPayment(Client c) {
-        showInfo("Registrar abono", "Los abonos de " + ClientService.displayName(c)
-                + " se registran en Contratos y ventas, sobre la venta que tiene saldo. Ese módulo llega en un próximo sprint.");
+        openContracts(c, false);
+    }
+
+    private void openContracts(Client c, boolean newSale) {
+        if (!ModuleLink.canOpen(AppModule.CONTRATOS)) {
+            showInfo("Contratos y ventas", "Su usuario no tiene acceso al módulo Contratos y ventas.");
+            return;
+        }
+        String detail = (c.getClientType() == ClientType.CORPORATE ? "Empresa · " : "") + documentLabel(c);
+        ModuleLink.open(AppModule.CONTRATOS, new ContractController.ClientLink(
+                new ContractService.Option(c.getId(), ClientService.displayName(c), detail), newSale));
     }
 
     // ---------- piezas ----------
