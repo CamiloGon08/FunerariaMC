@@ -174,46 +174,6 @@ public class SystemParameterService {
         return parameter;
     }
 
-    /**
-     * Crea un parámetro nuevo escrito por el administrador. Si ya existe uno con ese nombre no se
-     * duplica: la pantalla ofrece cambiar su valor.
-     */
-    @Transactional
-    public SystemParameter create(ParameterData data) {
-        AppUser actor = requireMaster();
-        if (data == null) {
-            throw new InvalidDataException("Complete los datos del parámetro.");
-        }
-        String key = requiredName(data.name()).toUpperCase(Locale.ROOT);
-        if (!key.matches("[A-Z][A-Z0-9_]{2,49}")) {
-            throw new InvalidDataException("El nombre debe tener entre 3 y 50 caracteres: letras sin tilde, números"
-                    + " y guion bajo, empezando por una letra (por ejemplo, TARIFA_BUS).");
-        }
-        if (parameterRepository.existsByParamName(key)) {
-            throw new InvalidDataException("Ya existe un parámetro con ese nombre. Cambie su valor en lugar de crearlo de nuevo.");
-        }
-        if (data.category() == null) {
-            throw new InvalidDataException("Elija la categoría del parámetro.");
-        }
-        Optional<ParameterCatalog.Definition> definition = ParameterCatalog.find(key);
-        String value = checkedValue(definition.map(item -> item.kind()).orElse(ParameterCatalog.Kind.TEXT),
-                data.value());
-        String description = optional(data.description(), 150, "La descripción");
-        String unit = optional(data.unit(), 10, "La unidad");
-        SystemParameter parameter = new SystemParameter();
-        parameter.setParamName(key);
-        parameter.setParamValue(value);
-        parameter.setDescription(description);
-        parameter.setCategory(data.category());
-        parameter.setUnit(unit);
-        parameter.setUpdatedAt(LocalDateTime.now(AccessLogService.APP_ZONE));
-        parameter.setUpdatedBy(actor);
-        forget(key);
-        SystemParameter saved = parameterRepository.save(parameter);
-        accessLogService.record(actor.getId(), AccessLogService.SYSTEM_PARAMETER_CREATED + changeDetail(key, null, value));
-        return saved;
-    }
-
     /** Valida el valor según su tipo: los números se guardan sin puntos de miles ni signo de pesos. */
     static String checkedValue(ParameterCatalog.Kind kind, String raw) {
         String value = requiredValue(raw);
@@ -293,17 +253,6 @@ public class SystemParameterService {
             return user.getEmployee().getName() + " " + user.getEmployee().getLastname();
         }
         return user.getUsername();
-    }
-
-    private static String optional(String text, int max, String what) {
-        if (text == null || text.isBlank()) {
-            return null;
-        }
-        String clean = text.trim();
-        if (clean.length() > max) {
-            throw new InvalidDataException(what + " admite máximo " + max + " caracteres.");
-        }
-        return clean;
     }
 
     private void forget(String key) {
