@@ -23,6 +23,10 @@ public final class BrandPalette {
     /** Contraste mínimo para texto normal y para filetes o títulos grandes (pautas WCAG). */
     static final double TEXT_CONTRAST = 4.5;
     static final double LARGE_CONTRAST = 3.0;
+    /** Por debajo de este contraste el detalle casi no se ve sobre el principal, sea cual sea el tono. */
+    static final double MIN_DETAIL_CONTRAST = 1.5;
+    /** Grados de matiz por debajo de los cuales dos colores se ven del mismo tono. */
+    static final double SIMILAR_HUE = 30;
 
     private static final Pattern HEX = Pattern.compile("#[0-9A-Fa-f]{6}");
     /** Los fondos claros conservan su claridad; solo cambian de matiz y de saturación. */
@@ -188,7 +192,7 @@ public final class BrandPalette {
 
     /**
      * Problemas de lectura que dejarían estos colores: vacío si se pueden usar. Se revisa el texto
-     * claro del menú, el texto de los botones y los títulos dorados sobre el menú.
+     * claro del menú y el texto de los botones; si alguno no se lee, la marca no se guarda.
      */
     public List<String> readabilityProblems() {
         List<String> problems = new ArrayList<>();
@@ -199,10 +203,26 @@ public final class BrandPalette {
         if (contrast(get("-color-background"), get("-color-accent")) < TEXT_CONTRAST) {
             problems.add("El color de acento es muy claro: el texto de los botones no se leería.");
         }
-        if (contrast(get("-color-detail"), get("-color-forest")) < LARGE_CONTRAST) {
-            problems.add("El color de detalle se confunde con el principal: los títulos dorados del menú no se verían.");
-        }
         return problems;
+    }
+
+    /**
+     * Avisos que no impiden guardar. El color de detalle solo adorna (títulos pequeños, filetes) sobre
+     * el principal: se avisa cuando los dos se parecen de verdad, es decir, casi la misma claridad y
+     * un matiz parecido. Un dorado sobre verde azulado, por ejemplo, se distingue aunque la claridad
+     * sea cercana, porque el tono es muy distinto.
+     */
+    public List<String> readabilityWarnings() {
+        List<String> warnings = new ArrayList<>();
+        String detail = get("-color-detail");
+        String forest = get("-color-forest");
+        double ratio = contrast(detail, forest);
+        double hueGap = Math.abs(hsl(detail)[0] - hsl(forest)[0]);
+        hueGap = Math.min(hueGap, 360 - hueGap);
+        if (ratio < MIN_DETAIL_CONTRAST || (ratio < LARGE_CONTRAST && hueGap < SIMILAR_HUE)) {
+            warnings.add("El color de detalle se parece al principal: los títulos dorados del menú podrían verse poco.");
+        }
+        return warnings;
     }
 
     /** true si el texto es un color #RRGGBB. */
