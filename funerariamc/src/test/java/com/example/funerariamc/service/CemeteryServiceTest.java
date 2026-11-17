@@ -541,12 +541,48 @@ class CemeteryServiceTest {
 
         assertEquals(29, batch.created());
         assertEquals(List.of("A1-02"), batch.skipped());
-        ArgumentCaptor<List<Vault>> captor = ArgumentCaptor.forClass(List.class);
-        verify(vaults).saveAll(captor.capture());
-        List<Vault> created = captor.getValue();
-        assertEquals("A1-01", created.get(0).getCode());
-        assertEquals("A2-15", created.get(created.size() - 1).getCode());
-        assertTrue(created.stream().allMatch(v -> v.getStatus() == VaultStatus.AVAILABLE && v.getCemetery() == cemetery));
+        // Todas se registran en una sola sentencia, DISPONIBLES y en el cementerio elegido
+        ArgumentCaptor<String> codes = ArgumentCaptor.forClass(String.class);
+        verify(vaults).insertCodes(eq(1L), codes.capture(), eq(VaultStatus.AVAILABLE.name()));
+        verify(vaults, never()).saveAll(any());
+        List<String> created = List.of(codes.getValue().split(","));
+        assertEquals(29, created.size());
+        assertEquals("A1-01", created.get(0));
+        assertEquals("A2-15", created.get(created.size() - 1));
+        assertFalse(created.contains("A1-02"));
+    }
+
+    @Test
+    void pavilionWithOnlyExistingVaultsDoesNotInsertAnEmptyBatch() {
+        loginAs(RoleNames.MASTER_ADMIN);
+        when(cemeteries.findById(1L)).thenReturn(Optional.of(new Cemetery(1L, "Jardines", null)));
+        when(vaults.findCodesByCemeteryId(1L)).thenReturn(List.of("A1-01", "A1-02"));
+
+        CemeteryService.VaultBatch batch = service.addPavilion(1L, "A", 1, 2, 1);
+
+        assertEquals(0, batch.created());
+        assertEquals(List.of("A1-01", "A1-02"), batch.skipped());
+        verify(vaults, never()).insertCodes(any(), anyString(), anyString());
+        verify(vaults, never()).saveAll(any());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void manualCodeContainingACommaIsStoredAsOneVault() {
+        loginAs(RoleNames.MASTER_ADMIN);
+        Cemetery cemetery = new Cemetery(1L, "Jardines", null);
+        when(cemeteries.findById(1L)).thenReturn(Optional.of(cemetery));
+        when(vaults.findCodesByCemeteryId(1L)).thenReturn(List.of());
+
+        assertEquals(1, service.addVault(1L, "  a,01  ").created());
+
+        ArgumentCaptor<List<Vault>> saved = ArgumentCaptor.forClass(List.class);
+        verify(vaults).saveAll(saved.capture());
+        assertEquals(1, saved.getValue().size());
+        assertEquals("A,01", saved.getValue().get(0).getCode());
+        assertSame(cemetery, saved.getValue().get(0).getCemetery());
+        assertEquals(VaultStatus.AVAILABLE, saved.getValue().get(0).getStatus());
+        verify(vaults, never()).insertCodes(any(), anyString(), anyString());
     }
 
     @Test
