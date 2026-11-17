@@ -464,7 +464,13 @@ public class CemeteryService {
             vault.setStatus(VaultStatus.AVAILABLE);
             created.add(vault);
         }
-        vaultRepository.saveAll(created);
+        List<String> newCodes = created.stream().map(Vault::getCode).toList();
+        if (newCodes.stream().anyMatch(code -> code.contains(","))) {
+            vaultRepository.saveAll(created); // un código escrito a mano con coma no cabe en la lista separada por comas
+        } else if (!newCodes.isEmpty()) {
+            // Todas en una sola sentencia: guardarlas una por una tomaba un viaje a la base de datos por bóveda
+            vaultRepository.insertCodes(cemetery.getId(), String.join(",", newCodes), VaultStatus.AVAILABLE.name());
+        }
         return new VaultBatch(created.size(), skipped);
     }
 
