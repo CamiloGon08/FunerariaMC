@@ -53,6 +53,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * Módulo Contratos y ventas: tabla filtrable por tipo y estado de pago,
@@ -376,6 +377,72 @@ public class ContractService {
                 .toList();
     }
 
+    /** Difunto para empezar su venta desde el plan exequial; vacío si ya tiene un contrato vigente. */
+    @Transactional(readOnly = true)
+    public Optional<Option> deceasedForSale(Long deceasedId) {
+        requireAccess();
+        if (deceasedId == null
+                || contractRepository.existsByDeceasedIdAndStatusNot(deceasedId, ContractStatus.CANCELLED)) {
+            return Optional.empty();
+        }
+        return contractRepository.findDeceasedWithPlan(deceasedId)
+                .map(d -> new Option(d.getId(), fullName(d.getName(), d.getLastname()),
+                        d.getDocumentNumber() == null ? "Sin documento" : "Doc. " + d.getDocumentNumber()));
+    }
+
+    /**
+     * Plan que cubre al difunto, para llenar solo el contrato: titular, plan y qué cubre.
+     * Primero el plan vinculado en Difuntos; si no tiene, el único plan activo donde su documento es
+     * titular o beneficiario. {@code note} explica al usuario de dónde salió y qué cubre.
+     */
+    public record PlanMatch(Option client, Option plan, String note, boolean inWaiting) {
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<PlanMatch> planOfDeceased(Long deceasedId) {
+        requireAccess();
+        if (deceasedId == null) {
+            return Optional.empty();
+        }
+        Deceased deceased = contractRepository.findDeceasedWithPlan(deceasedId).orElse(null);
+        if (deceased == null) {
+            return Optional.empty();
+        }
+        FuneralPlan plan = deceased.getFuneralPlan();
+        String origin = "vinculado en Difuntos";
+        if (plan == null || plan.getStatus() != PlanStatus.ACTIVE) {
+            String document = deceased.getDocumentNumber();
+            List<FuneralPlan> found = document == null || document.isBlank() ? List.of()
+                    : contractRepository.findActivePlansCovering(document, PlanStatus.ACTIVE);
+            if (found.size() != 1) {
+                return Optional.empty(); // sin plan, o en varios planes: lo elige el usuario
+            }
+            plan = found.get(0);
+            origin = "por su documento";
+        }
+        Client holder = plan.getClient();
+        Option client = new Option(holder.getId(), ClientService.displayName(holder),
+                (holder.getClientType() == ClientType.CORPORATE ? "Empresa · " : "")
+                        + Objects.toString(document(holder.getDocumentType(), holder.getDocumentNumber()), ""));
+        Option option = new Option(plan.getId(), FuneralPlanService.code(plan.getId()) + " · " + plan.getPlanName(),
+                plan.getStartDate() == null ? null : "desde " + plan.getStartDate());
+        FuneralPlanService.PlanCard card = planService.detail(plan.getId()).card();
+        boolean waiting = card != null && card.waitingEnds() != null
+                && deathDate(deceased).isBefore(card.waitingEnds());
+        String coffin = PlanParameters.isPremium(plan.getPlanName())
+                ? "el ataúd del plan premium (más grande) y la sala especial sin recargo"
+                : "el ataúd del plan";
+        String note = "Cubierto por el plan " + option.label() + " de " + client.label() + " (" + origin + "). "
+                + "El plan cubre " + coffin + "; si eligen un ataúd mejor solo se cobra la diferencia."
+                + (waiting ? " Ojo: el plan está en carencia hasta el "
+                + card.waitingEnds().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")) + "." : "");
+        return Optional.of(new PlanMatch(client, option, note, waiting));
+    }
+
+    private LocalDate deathDate(Deceased deceased) {
+        return deceased.getDeathDate() == null ? LocalDate.now(clock) : deceased.getDeathDate();
+    }
+
     /** Planes activos del cliente; el detalle dice si todavía está en carencia. */
     @Transactional(readOnly = true)
     public List<Option> plansOf(Long clientId) {
@@ -433,6 +500,9 @@ public class ContractService {
     public Quote quote(ContractData data) {
         requireAccess();
         validateShape(data);
+        if (data.kind() == SaleKind.PLAN) {
+            validatePlanCovers(data.planId(), findDeceased(data.deceasedId()));
+        }
         List<Line> lines = lines(data);
         return new Quote(lines, sum(lines));
     }
@@ -702,6 +772,7 @@ public class ContractService {
                     .filter(p -> p.getId().equals(data.planId()))
                     .findFirst()
                     .orElseThrow(() -> new InvalidDataException("El plan elegido no es del cliente seleccionado."));
+            validatePlanCovers(plan.getId(), deceased);
         }
         contract.setFuneralPlan(plan);
 
@@ -946,6 +1017,21 @@ public class ContractService {
 
     private Client clientById(Long id) {
         return saleRepository.findClientById(id).orElseThrow(() -> new ResourceNotFoundException("Cliente", id));
+    }
+
+    /**
+     * Con plan, el difunto tiene que estar en ese plan: vinculado en Difuntos, o su documento es el del
+     * titular o el de un beneficiario. Así no se usa el plan de un cliente para alguien que no está afiliado.
+     */
+    private void validatePlanCovers(Long planId, Deceased deceased) {
+        if (deceased.getFuneralPlan() != null && planId.equals(deceased.getFuneralPlan().getId())) {
+            return;
+        }
+        String document = deceased.getDocumentNumber();
+        if (document == null || document.isBlank() || !contractRepository.planCoversDocument(planId, document)) {
+            throw new InvalidDataException("El difunto no está en el plan " + FuneralPlanService.code(planId)
+                    + ": no es el titular ni un beneficiario. Registre la venta como Particular o Contrato · pensión.");
+        }
     }
 
     private Deceased findDeceased(Long id) {
