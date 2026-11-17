@@ -11,6 +11,7 @@ import com.example.funerariamc.model.Thanatopractor;
 import com.example.funerariamc.model.Client;
 import com.example.funerariamc.model.Deceased;
 import com.example.funerariamc.model.FinancialTransaction;
+import com.example.funerariamc.model.FuneralPlan;
 import com.example.funerariamc.model.FuneralSalesperson;
 import com.example.funerariamc.model.InventoryItem;
 import com.example.funerariamc.model.Manager;
@@ -21,6 +22,7 @@ import com.example.funerariamc.model.WakeRoom;
 import com.example.funerariamc.utils.enums.ClientType;
 import com.example.funerariamc.utils.enums.ContractStatus;
 import com.example.funerariamc.utils.enums.EmployeeStatus;
+import com.example.funerariamc.utils.enums.PlanStatus;
 import com.example.funerariamc.utils.enums.SaleStatus;
 import com.example.funerariamc.utils.enums.SaleType;
 import com.example.funerariamc.utils.enums.TransactionStatus;
@@ -95,7 +97,7 @@ class ContractServiceTest {
         when(contracts.findByDeceasedId(any())).thenReturn(Optional.empty());
         when(sales.findClientById(10L)).thenReturn(Optional.of(client(10L, ClientType.NATURAL)));
         when(sales.findClientById(11L)).thenReturn(Optional.of(client(11L, ClientType.CORPORATE)));
-        when(sales.findDeceasedById(20L)).thenReturn(Optional.of(new Deceased()));
+        when(sales.findDeceasedById(20L)).thenReturn(Optional.of(deceasedInPlan9()));
         FuneralSalesperson seller = new FuneralSalesperson();
         seller.setId(3L);
         seller.setStatus(EmployeeStatus.ACTIVE);
@@ -143,6 +145,82 @@ class ContractServiceTest {
         when(parameters.extraBusFee()).thenReturn(new BigDecimal("80000"));
         Quote quote = service.quote(privateService(BigDecimal.ZERO, null, 2, null));
         assertEquals(0, new BigDecimal("160000").compareTo(quote.lines().get(1).subtotal()));
+    }
+
+    @Test
+    void deceasedLinkedToAPlanFillsHolderAndPlan() {
+        // Caso: difunto vinculado al plan PL-0009 de Carmen; PASA si propone a Carmen y ese plan.
+        FuneralPlan plan = plan(9L, "Básico", client(10L, ClientType.NATURAL));
+        Deceased deceased = new Deceased();
+        deceased.setId(20L);
+        deceased.setFuneralPlan(plan);
+        when(contracts.findDeceasedWithPlan(20L)).thenReturn(Optional.of(deceased));
+        FuneralPlanService.PlanDetail detail = mock(FuneralPlanService.PlanDetail.class);
+        when(plans.detail(9L)).thenReturn(detail);
+
+        ContractService.PlanMatch match = service.planOfDeceased(20L).orElseThrow();
+        assertEquals(10L, match.client().id());
+        assertEquals(9L, match.plan().id());
+        assertTrue(match.note().contains("vinculado en Difuntos"));
+        assertFalse(match.inWaiting());
+    }
+
+    @Test
+    void aPlanCannotBeUsedForADeceasedWhoIsNotInIt() {
+        // Caso: el difunto 20 no está vinculado ni es titular o beneficiario del plan PL-0009; PASA si se rechaza.
+        planNamed(PlanParameters.NORMAL_PLAN);
+        Deceased stranger = new Deceased();
+        stranger.setDocumentNumber("1065999999");
+        when(sales.findDeceasedById(20L)).thenReturn(Optional.of(stranger));
+        when(contracts.planCoversDocument(9L, "1065999999")).thenReturn(false);
+
+        InvalidDataException error = assertThrows(InvalidDataException.class,
+                () -> service.quote(new ContractData(SaleKind.PLAN, 10L, 20L, 9L, 3L, BigDecimal.ZERO, null,
+                        null, null, null, null, 0, List.of(), null)));
+        assertTrue(error.getMessage().contains("no es el titular ni un beneficiario"));
+
+        when(contracts.planCoversDocument(9L, "1065999999")).thenReturn(true); // ahora es beneficiario
+        assertEquals(0, BigDecimal.ZERO.compareTo(service.quote(new ContractData(SaleKind.PLAN, 10L, 20L, 9L, 3L,
+                BigDecimal.ZERO, null, null, null, null, null, 0, List.of(), null)).total()));
+    }
+
+    @Test
+    void contractFromThePlanOnlyOpensForADeceasedWithoutAnActiveContract() {
+        // Caso: Ana sin contrato y Luis con contrato vigente; PASA si solo se abre la venta de Ana.
+        Deceased ana = new Deceased();
+        ana.setId(20L);
+        ana.setName("Ana");
+        ana.setLastname("Ruiz");
+        ana.setDocumentNumber("1065");
+        when(contracts.existsByDeceasedIdAndStatusNot(20L, ContractStatus.CANCELLED)).thenReturn(false);
+        when(contracts.findDeceasedWithPlan(20L)).thenReturn(Optional.of(ana));
+        when(contracts.existsByDeceasedIdAndStatusNot(21L, ContractStatus.CANCELLED)).thenReturn(true);
+
+        ContractService.Option option = service.deceasedForSale(20L).orElseThrow();
+        assertEquals(20L, option.id());
+        assertEquals("Doc. 1065", option.detail());
+        assertTrue(service.deceasedForSale(21L).isEmpty());
+        verify(contracts, never()).findDeceasedWithPlan(21L);
+    }
+
+    @Test
+    void deceasedWithoutLinkIsFoundByDocumentOnlyWhenThereIsOnePlan() {
+        // Caso: sin vínculo, el documento está en un plan; luego en dos. PASA si propone el único y no adivina con dos.
+        Deceased deceased = new Deceased();
+        deceased.setId(20L);
+        deceased.setDocumentNumber("1065832417");
+        when(contracts.findDeceasedWithPlan(20L)).thenReturn(Optional.of(deceased));
+        FuneralPlan plan = plan(9L, PlanParameters.PREMIUM_PLAN, client(10L, ClientType.NATURAL));
+        when(contracts.findActivePlansCovering("1065832417", PlanStatus.ACTIVE)).thenReturn(List.of(plan));
+        when(plans.detail(9L)).thenReturn(mock(FuneralPlanService.PlanDetail.class));
+
+        ContractService.PlanMatch match = service.planOfDeceased(20L).orElseThrow();
+        assertTrue(match.note().contains("por su documento"));
+        assertTrue(match.note().contains("premium"));
+
+        when(contracts.findActivePlansCovering("1065832417", PlanStatus.ACTIVE))
+                .thenReturn(List.of(plan, plan(8L, "Básico", client(11L, ClientType.NATURAL))));
+        assertTrue(service.planOfDeceased(20L).isEmpty());
     }
 
     @Test
@@ -473,6 +551,47 @@ class ContractServiceTest {
     }
 
     @Test
+    void uncoveredDeceasedCannotBeRegisteredEvenWithoutRequestingAQuote() {
+        FuneralPlan selected = plan(9L, PlanParameters.NORMAL_PLAN, client(10L, ClientType.NATURAL));
+        when(contracts.findPlansOfClient(10L)).thenReturn(List.of(selected));
+        Deceased stranger = new Deceased();
+        stranger.setDocumentNumber("1065999999");
+        when(sales.findDeceasedById(20L)).thenReturn(Optional.of(stranger));
+        when(contracts.planCoversDocument(9L, "1065999999")).thenReturn(false);
+
+        InvalidDataException error = assertThrows(InvalidDataException.class,
+                () -> service.register(new ContractData(SaleKind.PLAN, 10L, 20L, 9L, 3L, BigDecimal.ZERO, null,
+                        null, null, null, null, 0, List.of(), null)));
+
+        assertTrue(error.getMessage().contains("no es el titular ni un beneficiario"));
+        verify(contracts, never()).save(any());
+        verify(sales, never()).save(any());
+        verify(details, never()).save(any());
+        verify(transactions, never()).save(any());
+        verifyNoInteractions(accessLog);
+    }
+
+    @Test
+    void coveredBeneficiaryCanRegisterAPlanContractWithoutAnExplicitPlanLink() {
+        planNamed(PlanParameters.NORMAL_PLAN);
+        FuneralPlan selected = plan(9L, PlanParameters.NORMAL_PLAN, client(10L, ClientType.NATURAL));
+        when(contracts.findPlansOfClient(10L)).thenReturn(List.of(selected));
+        Deceased beneficiary = new Deceased();
+        beneficiary.setDocumentNumber("1065999999");
+        when(sales.findDeceasedById(20L)).thenReturn(Optional.of(beneficiary));
+        when(contracts.planCoversDocument(9L, "1065999999")).thenReturn(true);
+
+        assertEquals(148L, service.register(new ContractData(SaleKind.PLAN, 10L, 20L, 9L, 3L, BigDecimal.ZERO, null,
+                null, null, null, null, 0, List.of(), null)));
+
+        ArgumentCaptor<ServiceContract> saved = ArgumentCaptor.forClass(ServiceContract.class);
+        verify(contracts).save(saved.capture());
+        assertSame(selected, saved.getValue().getFuneralPlan());
+        assertSame(beneficiary, saved.getValue().getDeceased());
+        verify(plans).validateBenefitsAvailable(9L);
+    }
+
+    @Test
     void registerNumbersTheContractAndSavesTheInitialPayment() {
         when(contracts.findLastSequence("CT-2026-%")).thenReturn(147);
 
@@ -560,6 +679,15 @@ class ContractServiceTest {
         when(plans.detail(9L)).thenReturn(detail);
     }
 
+    /** Difunto vinculado en Difuntos al plan PL-0009, el que usan las ventas con plan. */
+    private static Deceased deceasedInPlan9() {
+        FuneralPlan linked = new FuneralPlan();
+        linked.setId(9L);
+        Deceased deceased = new Deceased();
+        deceased.setFuneralPlan(linked);
+        return deceased;
+    }
+
     private void cashPrice(ContractData.CemeteryCharge charge) {
         if (charge == ContractData.CemeteryCharge.DOUBLE_LOT) {
             when(parameters.doubleLotPrice()).thenReturn(new BigDecimal("1000"));
@@ -620,6 +748,15 @@ class ContractServiceTest {
         client.setLastname(type == ClientType.CORPORATE ? "" : "Villazón");
         client.setClientType(type);
         return client;
+    }
+
+    private static FuneralPlan plan(Long id, String name, Client holder) {
+        FuneralPlan plan = new FuneralPlan();
+        plan.setId(id);
+        plan.setPlanName(name);
+        plan.setStatus(PlanStatus.ACTIVE);
+        plan.setClient(holder);
+        return plan;
     }
 
     private static WakeRoom room(boolean special) {
