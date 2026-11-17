@@ -45,7 +45,7 @@ import java.util.Map;
 
 /**
  * Módulo Salas de velación: tablero de ocupación por día, panel de
- * detalle de la sala (19.1), registro de salas y asignación de la sala a un contrato
+ * detalle de la sala, registro de salas y asignación de la sala a un contrato
  * con su recargo.
  * Lo usan la Secretaría y el Administrador Maestro; registrar salas es solo del
  * Administrador Maestro.
@@ -114,7 +114,7 @@ public class WakeRoomService {
     public record Board(LocalDate date, boolean today, List<RoomCard> rooms, Kpis kpis) {
     }
 
-    /** Panel de detalle de una velación (19.1). Los textos que faltan van en null. */
+    /** Panel de detalle de una velación. Los textos que faltan van en null. */
     public record WakeDetail(Long roomId, int roomNumber, String roomName, boolean special, Integer capacity,
                              RoomState state, Long contractId, String contractNumber,
                              LocalDateTime start, LocalDateTime end, boolean endKnown,
@@ -289,7 +289,7 @@ public class WakeRoomService {
         return result;
     }
 
-    // ---------- panel de detalle (19.1) ----------
+    // ---------- panel de detalle ----------
 
     /** Difunto, familia, servicio y salida de la velación de un contrato, en una transacción. */
     @Transactional(readOnly = true)
