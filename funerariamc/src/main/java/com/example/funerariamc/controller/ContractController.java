@@ -562,27 +562,51 @@ public class ContractController implements RefreshableView {
 
     @FXML
     private void onNewContract() {
-        openNewSale(null);
+        openNewSale(null, null);
     }
 
-    /** Llega desde el plan exequial con el difunto: se abre la venta con él ya elegido. */
+    /**
+     * Salto desde Clientes: con newSale se abre "Nuevo contrato" con el cliente ya elegido;
+     * sin él se muestran las ventas del cliente que tienen saldo, para abonar sobre una de ellas.
+     */
+    public record ClientLink(Option client, boolean newSale) {
+    }
+
+    /**
+     * Llega desde el plan exequial con el difunto (se abre la venta con él ya elegido)
+     * o desde Clientes con el cliente.
+     */
     private void takeLink() {
-        ModuleLink.take(AppModule.CONTRATOS).filter(Long.class::isInstance).map(Long.class::cast)
-                .ifPresent(this::openSaleFor);
+        ModuleLink.take(AppModule.CONTRATOS).ifPresent(payload -> {
+            if (payload instanceof Long deceasedId) {
+                openSaleFor(deceasedId);
+            } else if (payload instanceof ClientLink link && link.newSale()) {
+                openNewSale(null, link.client());
+            } else if (payload instanceof ClientLink link) {
+                showSalesOf(link.client());
+            }
+        });
+    }
+
+    /** Filtra la lista por el nombre del cliente y deja solo las ventas con saldo. */
+    private void showSalesOf(Option client) {
+        allToggle.setSelected(true);
+        paymentCombo.setValue(PaymentState.WITH_BALANCE);
+        searchField.setText(client.label());
     }
 
     private void openSaleFor(Long deceasedId) {
         async("sale-from-plan", () -> contractService.deceasedForSale(deceasedId), found -> {
             if (found.isPresent()) {
-                openNewSale(found.get());
+                openNewSale(found.get(), null);
             } else {
                 showError("Ese difunto ya tiene un contrato vigente. Búsquelo en la lista de contratos.");
             }
         }, failure -> showError(message(failure, "No se pudo abrir el contrato del difunto.")));
     }
 
-    /** presetDeceased va en null si la venta se empieza desde cero. */
-    private void openNewSale(Option presetDeceased) {
+    /** presetDeceased y presetClient van en null si la venta se empieza desde cero. */
+    private void openNewSale(Option presetDeceased, Option presetClient) {
         // Tipo de venta
         ToggleGroup kindGroup = new ToggleGroup();
         HBox kinds = new HBox();
@@ -931,6 +955,10 @@ public class ContractController implements RefreshableView {
         }
         applyKind.run();
         requote.run();
+        if (presetClient != null) {
+            client.getItems().setAll(List.of(presetClient));
+            client.setValue(presetClient); // carga sus planes; si tiene uno solo queda elegido
+        }
         if (presetDeceased != null) {
             deceased.getItems().setAll(List.of(presetDeceased));
             deceased.setValue(presetDeceased); // el plan, el titular y el tipo se llenan solos
