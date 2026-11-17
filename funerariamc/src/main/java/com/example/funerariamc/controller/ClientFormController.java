@@ -7,6 +7,7 @@ import com.example.funerariamc.utils.enums.ClientType;
 import com.example.funerariamc.service.AccessLogService;
 import com.example.funerariamc.service.ClientData;
 import com.example.funerariamc.service.ClientService;
+import com.example.funerariamc.ui.FormShell;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
@@ -105,6 +106,8 @@ public class ClientFormController {
 
     @FXML
     private void initialize() {
+        // Cédula y NIT hasta 10 dígitos; extranjería y pasaporte hasta lo que admite el registro de clientes
+        FormShell.document(documentField, documentTypeCombo::getValue, 11);
         clientTypeCombo.getItems().addAll(ClientType.values());
         clientTypeCombo.setButtonCell(typeCell());
         clientTypeCombo.setCellFactory(list -> typeCell());

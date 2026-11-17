@@ -13,8 +13,7 @@
 <?import javafx.scene.layout.VBox?>
 
 <!--
-  Módulo Transporte, pantallas 23 Monitor, 23.1 Vehículos,
-  23.2 Conductores y 23.3 Traslados de Figma con la paleta verde oscura (captura 10_transporte):
+  Módulo Transporte: monitor, vehículos, conductores y traslados:
   banda verde con el título y 4 indicadores, pestañas y una sola zona de contenido.
   Los espacios #monitorRouteSlot y #transferRouteSlot muestran el mapa (Leaflet + OpenStreetMap,
   ver RouteMapPane); mientras carga, o si no hay clave o internet, muestran la línea de paradas.
@@ -87,7 +86,7 @@
                             </HBox>
                             <StackPane fx:id="monitorRouteSlot" styleClass="route-canvas" minHeight="380"/>
                         </VBox>
-                        <VBox fx:id="monitorDetail" styleClass="detail-card" prefWidth="430" minWidth="380" maxWidth="460"/>
+                        <VBox fx:id="monitorDetail" prefWidth="430" minWidth="380" maxWidth="460"/>
                     </HBox>
                     <VBox styleClass="table-card" spacing="12">
                         <HBox alignment="CENTER_LEFT">
@@ -100,13 +99,13 @@
                     </VBox>
                 </VBox>
 
-                <!-- 23.1 Vehículos -->
+                <!-- Vehículos -->
                 <VBox fx:id="vehiclesPane" spacing="12" visible="false" managed="false">
                     <FlowPane fx:id="vehicleCards" hgap="18" vgap="18"/>
                     <Label fx:id="vehiclesEmpty" styleClass="empty-table" wrapText="true" visible="false" managed="false"/>
                 </VBox>
 
-                <!-- 23.2 Conductores -->
+                <!-- Conductores -->
                 <VBox fx:id="driversPane" spacing="12" visible="false" managed="false">
                     <VBox styleClass="table-card" spacing="12">
                         <VBox spacing="2">
@@ -120,7 +119,7 @@
                            text="Un conductor con la licencia vencida no puede asignarse a un traslado. Los conductores se registran en Seguridad: personal y cuentas."/>
                 </VBox>
 
-                <!-- 23.3 Traslados -->
+                <!-- Traslados -->
                 <VBox fx:id="transfersPane" spacing="16" visible="false" managed="false">
                     <HBox spacing="16">
                         <VBox styleClass="table-card" spacing="10" prefWidth="380" minWidth="340" maxWidth="400">

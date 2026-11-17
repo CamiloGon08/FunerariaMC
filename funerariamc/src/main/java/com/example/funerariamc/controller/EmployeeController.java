@@ -14,15 +14,14 @@ import com.example.funerariamc.service.RoleNames;
 import com.example.funerariamc.service.UserAccountService;
 import com.example.funerariamc.service.UserAccountService.AccountSummary;
 import com.example.funerariamc.ui.RefreshableView;
+import com.example.funerariamc.ui.DetailShell;
 import com.example.funerariamc.ui.FormShell;
-import javafx.animation.FadeTransition;
-import javafx.animation.ParallelTransition;
 import javafx.animation.PauseTransition;
-import javafx.animation.TranslateTransition;
 import javafx.concurrent.Task;
 import javafx.css.PseudoClass;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
@@ -73,7 +72,6 @@ public class EmployeeController implements RefreshableView {
     /** Tarjetas por tanda: 4 filas de 3. Al bajar hasta el final se piden 12 más. */
     private static final int PAGE_SIZE = 12;
     private static final int COLUMNS = 3;
-    private static final double DRAWER_WIDTH = 440;
     private static final PseudoClass INACTIVE = PseudoClass.getPseudoClass("inactive");
 
     /** Áreas de la pantalla: cada chip filtra uno o varios cargos. */
@@ -158,6 +156,7 @@ public class EmployeeController implements RefreshableView {
     private int generation;
     /** Empleado abierto en el panel lateral (null si está cerrado). */
     private Long drawerEmployeeId;
+    private DetailShell detail;
 
     public EmployeeController(EmployeeService employeeService, UserAccountService userAccountService,
                               FxmlViewLoader viewLoader, ReadOnlyWork readOnlyWork) {
@@ -208,7 +207,7 @@ public class EmployeeController implements RefreshableView {
             }
         });
 
-        drawer.setTranslateX(DRAWER_WIDTH);
+        detail = DetailShell.install(drawer, veil, DetailShell.Kind.PANEL);
         reload();
     }
 
@@ -429,17 +428,6 @@ public class EmployeeController implements RefreshableView {
     private void openDrawer(Employee e) {
         drawerEmployeeId = e.getId();
         fillDrawer(e);
-        if (drawer.isVisible()) {
-            return;
-        }
-        veil.setVisible(true);
-        drawer.setVisible(true);
-        TranslateTransition slide = new TranslateTransition(Duration.millis(220), drawer);
-        slide.setToX(0);
-        FadeTransition fade = new FadeTransition(Duration.millis(220), veil);
-        fade.setFromValue(0);
-        fade.setToValue(1);
-        new ParallelTransition(slide, fade).play();
     }
 
     @FXML
@@ -449,137 +437,98 @@ public class EmployeeController implements RefreshableView {
 
     private void closeDrawer() {
         drawerEmployeeId = null;
-        if (!drawer.isVisible()) {
-            return;
-        }
-        TranslateTransition slide = new TranslateTransition(Duration.millis(180), drawer);
-        slide.setToX(DRAWER_WIDTH);
-        FadeTransition fade = new FadeTransition(Duration.millis(180), veil);
-        fade.setToValue(0);
-        ParallelTransition out = new ParallelTransition(slide, fade);
-        out.setOnFinished(event -> {
-            if (drawerEmployeeId == null) {
-                drawer.setVisible(false);
-                veil.setVisible(false);
-            }
-        });
-        out.play();
+        detail.close(null);
     }
 
     private void fillDrawer(Employee e) {
         EmployeePosition position = EmployeePosition.of(e);
         AccountSummary account = accounts.get(e.getId());
 
-        Label caption = new Label("EMPLEADO");
-        caption.getStyleClass().add("kpi-caption");
-        Label subtitle = wrapped(position.getDisplayName(e.getSex()) + " · " + documentLabel(e)
-                + (e.getHireDate() == null ? "" : " · desde " + DATE.format(e.getHireDate())), "card-subtitle");
-        VBox titles = new VBox(2, caption, wrapped(fullName(e), "drawer-name"), subtitle);
-        HBox.setHgrow(titles, Priority.ALWAYS);
-        Button close = new Button("✕");
-        close.getStyleClass().add("drawer-close");
-        close.setOnAction(event -> closeDrawer());
-        HBox header = new HBox(14, avatar(e, "avatar-large"), titles, close);
-        header.setAlignment(Pos.TOP_LEFT);
-
-        HBox pills = new HBox(8, statusPill(e));
+        DetailShell.Hero hero = new DetailShell.Hero("Empleado", fullName(e))
+                .subtitle(position.getDisplayName(e.getSex()) + " · " + documentLabel(e)
+                        + (e.getHireDate() == null ? "" : " · desde " + DATE.format(e.getHireDate())))
+                .leading(DetailShell.initials(fullName(e)))
+                .chips(DetailShell.chip(e.isActive() ? "● Activo" : "● Inactivo",
+                        e.isActive() ? DetailShell.Tone.OK : DetailShell.Tone.NEUTRAL))
+                .navigation(DetailShell.neighbor(employees, x -> x.getId().equals(e.getId()), -1, this::openDrawer),
+                        DetailShell.neighbor(employees, x -> x.getId().equals(e.getId()), 1, this::openDrawer))
+                .onClose(this::closeDrawer);
         if (employeeService.hasExpiredLicense(e)) {
-            pills.getChildren().add(pill("Licencia vencida", "pill-alert"));
+            hero.chips(DetailShell.chip("Licencia vencida", DetailShell.Tone.ALERT));
         } else if (employeeService.hasLicenseExpiringSoon(e)) {
-            pills.getChildren().add(pill("Licencia por vencer", "pill-warning"));
+            hero.chips(DetailShell.chip("Licencia por vencer", DetailShell.Tone.WARN));
         }
 
-        drawerBody.getChildren().setAll(header, pills,
-                section("CONTACTO",
-                        "Teléfono", orDash(e.getPhone()),
-                        "Correo", orDash(e.getEmail()),
-                        "Dirección", orDash(e.getAddress())),
-                section("DATOS LABORALES",
-                        "Cargo", position.getDisplayName(e.getSex()),
-                        "Ingreso", e.getHireDate() == null ? "—" : DATE.format(e.getHireDate()),
-                        "Salario", pesos(e.getSalary())));
-        positionSection(e).ifPresent(drawerBody.getChildren()::add);
-        drawerBody.getChildren().add(accountSection(e, position, account));
+        List<Node> sections = new ArrayList<>();
+        sections.add(DetailShell.section("Contacto", DetailShell.card(DetailShell.rows(
+                "Teléfono", orDash(e.getPhone()),
+                "Correo", orDash(e.getEmail()),
+                "Dirección", orDash(e.getAddress())))));
+        sections.add(DetailShell.section("Datos laborales", DetailShell.card(DetailShell.rows(
+                "Cargo", position.getDisplayName(e.getSex()),
+                "Ingreso", e.getHireDate() == null ? "—" : DATE.format(e.getHireDate()),
+                "Salario", pesos(e.getSalary())))));
+        positionSection(e).ifPresent(sections::add);
+        sections.add(accountSection(e, position, account));
 
-        Button toggle = new Button(e.isActive() ? "Desactivar" : "Activar");
-        toggle.getStyleClass().addAll("drawer-button", e.isActive() ? "drawer-danger" : "drawer-activate");
-        toggle.setOnAction(event -> {
-            if (e.isActive()) {
-                onDeactivate(e);
-            } else {
-                onActivate(e);
-            }
-        });
-        Button edit = new Button("Editar");
-        edit.getStyleClass().addAll("drawer-button", "drawer-primary");
-        edit.setOnAction(event -> openForm(e));
-        for (Button button : List.of(toggle, edit)) {
-            button.setMaxWidth(Double.MAX_VALUE);
-            HBox.setHgrow(button, Priority.ALWAYS);
-        }
-        drawerActions.getChildren().setAll(toggle, edit);
+        Button toggle = e.isActive()
+                ? DetailShell.danger("Desactivar", () -> onDeactivate(e))
+                : DetailShell.secondary("Activar", () -> onActivate(e));
+        Button edit = DetailShell.primary("Editar", () -> openForm(e));
+        detail.show(e.getId(), hero, sections, List.of(toggle, edit), null);
     }
 
     /** Datos propios del cargo: licencia del conductor, certificación del tanatólogo o comisión del vendedor. */
     private Optional<VBox> positionSection(Employee e) {
         if (e instanceof Driver d) {
             String expiry = d.getLicenseExpiryDate() == null ? "—" : DATE.format(d.getLicenseExpiryDate());
-            VBox box = section("LICENCIA DE CONDUCCIÓN",
+            boolean late = employeeService.hasExpiredLicense(e);
+            boolean soon = !late && employeeService.hasLicenseExpiringSoon(e);
+            Object vence = late || soon
+                    ? DetailShell.value(expiry, late ? DetailShell.Tone.ALERT : DetailShell.Tone.WARN) : expiry;
+            return Optional.of(DetailShell.section("Licencia de conducción", DetailShell.card(DetailShell.rows(
                     "Categoría", orDash(d.getLicenseCategory()),
                     "Número", orDash(d.getLicenseNumber()),
-                    "Vence", expiry,
-                    "Archivo", fileName(d.getLicenseFileUrl()));
-            if (employeeService.hasExpiredLicense(e) || employeeService.hasLicenseExpiringSoon(e)) {
-                box.lookupAll(".info-value").stream()
-                        .filter(node -> node instanceof Label label && label.getText().equals(expiry))
-                        .forEach(node -> node.getStyleClass().add("info-warning"));
-            }
-            return Optional.of(box);
+                    "Vence", vence,
+                    "Archivo", fileName(d.getLicenseFileUrl())))));
         }
         if (e instanceof Thanatopractor t) {
-            return Optional.of(section("CERTIFICACIÓN",
+            return Optional.of(DetailShell.section("Certificación", DetailShell.card(DetailShell.rows(
                     "Institución", orDash(t.getTrainingInstitution()),
                     "Fecha", t.getCertificationDate() == null ? "—" : DATE.format(t.getCertificationDate()),
                     "Comisión por caso", pesos(t.getCommissionPerCase()),
-                    "Archivo", fileName(t.getCertificateFileUrl())));
+                    "Archivo", fileName(t.getCertificateFileUrl())))));
         }
         if (e instanceof FuneralSalesperson s) {
-            return Optional.of(section("VENTAS",
-                    "Comisión", s.getCommissionRate() == null ? "—" : plain(s.getCommissionRate()) + " %"));
+            return Optional.of(DetailShell.section("Ventas", DetailShell.card(DetailShell.rows(
+                    "Comisión", s.getCommissionRate() == null ? "—" : plain(s.getCommissionRate()) + " %"))));
         }
         return Optional.empty();
     }
 
     /** La cuenta se crea y se restablece aquí mismo, sin otro módulo. */
     private VBox accountSection(Employee e, EmployeePosition position, AccountSummary account) {
-        Label title = new Label("CUENTA DE ACCESO");
-        title.getStyleClass().add("kpi-caption");
-        VBox box = new VBox(10);
-        box.getStyleClass().add("info-box");
         if (!position.canHaveUserAccount()) {
-            GridPane grid = infoGrid();
-            infoRow(grid, 0, "Cuenta", "No aplica: este cargo no ingresa al sistema");
-            box.getChildren().add(grid);
-        } else if (account == null) {
-            box.getChildren().add(wrapped(e.isActive()
+            return DetailShell.section("Cuenta de acceso", DetailShell.card(DetailShell.rows(
+                    "Cuenta", "No aplica: este cargo no ingresa al sistema")));
+        }
+        if (account == null) {
+            VBox card = DetailShell.card(wrapped(e.isActive()
                     ? "Aún no tiene cuenta. Al crearla se genera una contraseña temporal que "
                     + e.getName() + " cambia en su primer ingreso."
-                    : "Sin cuenta. Active al empleado para poder crearle una.", "account-hint"));
+                    : "Sin cuenta. Active al empleado para poder crearle una.", "detail-empty"));
             if (e.isActive()) {
-                Button create = new Button("Crear cuenta de acceso");
-                create.getStyleClass().add("primary-button");
-                create.setOnAction(event -> onCreateAccount(e));
-                box.getChildren().add(create);
+                Button create = DetailShell.primary("Crear cuenta de acceso", () -> onCreateAccount(e));
+                card.getChildren().add(create);
             }
-        } else {
-            GridPane grid = infoGrid();
-            infoRow(grid, 0, "Usuario", account.username());
-            infoRow(grid, 1, "Rol", RoleNames.displayName(account.roleName(), e.getSex()));
-            infoRow(grid, 2, "Estado", EmployeeFormController.accountState(account));
-            box.getChildren().addAll(grid, wrapped("Para cambiar la contraseña más adelante, el empleado usa "
-                    + "“¿Olvidó su contraseña?” en el inicio de sesión.", "account-hint"));
+            return DetailShell.section("Cuenta de acceso", card);
         }
-        return new VBox(8, title, box);
+        return DetailShell.section("Cuenta de acceso", DetailShell.card(DetailShell.rows(
+                        "Usuario", account.username(),
+                        "Rol", RoleNames.displayName(account.roleName(), e.getSex()),
+                        "Estado", EmployeeFormController.accountState(account)),
+                wrapped("Para cambiar la contraseña más adelante, el empleado usa "
+                        + "“¿Olvidó su contraseña?” en el inicio de sesión.", "detail-empty")));
     }
 
     // ---------- acciones ----------
@@ -730,19 +679,6 @@ public class EmployeeController implements RefreshableView {
         GridPane.setHgrow(val, Priority.ALWAYS);
         grid.add(key, 0, row);
         grid.add(val, 1, row);
-    }
-
-    /** Sección del panel: título y un recuadro con pares etiqueta / valor. */
-    private static VBox section(String title, String... pairs) {
-        Label caption = new Label(title);
-        caption.getStyleClass().add("kpi-caption");
-        GridPane grid = infoGrid();
-        for (int i = 0; i + 1 < pairs.length; i += 2) {
-            infoRow(grid, i / 2, pairs[i], pairs[i + 1]);
-        }
-        VBox box = new VBox(grid);
-        box.getStyleClass().add("info-box");
-        return new VBox(8, caption, box);
     }
 
     private static ListCell<StatusOption> statusCell() {

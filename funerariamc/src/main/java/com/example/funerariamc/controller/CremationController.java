@@ -26,6 +26,7 @@ import com.example.funerariamc.service.CremationStockService.Purchase;
 import com.example.funerariamc.service.CremationStockService.Stock;
 import com.example.funerariamc.ui.RefreshableView;
 import com.example.funerariamc.ui.FormShell;
+import com.example.funerariamc.ui.DetailShell;
 import javafx.animation.FadeTransition;
 import javafx.animation.KeyFrame;
 import javafx.animation.ParallelTransition;
@@ -76,6 +77,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -103,7 +105,6 @@ public class CremationController implements RefreshableView {
     private static final DateTimeFormatter DATE_HOUR = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     private static final DateTimeFormatter DAY_TEXT = DateTimeFormatter.ofPattern("EEEE d 'de' MMMM", ES);
     private static final DateTimeFormatter MONTH = DateTimeFormatter.ofPattern("MMMM", ES);
-    private static final double DRAWER_WIDTH = 500;
     /** Tarjetas de hornos por fila,. */
     private static final int COLUMNS = 3;
     private static final int WEEK_DAYS = 7;
@@ -173,18 +174,14 @@ public class CremationController implements RefreshableView {
     @FXML
     private VBox drawer;
     @FXML
-    private VBox drawerHead;
-    @FXML
-    private VBox drawerBody;
-    @FXML
-    private HBox drawerActions;
-    @FXML
     private Label toast;
 
     private Screen screen;
     private Stock stock;
     private boolean weekRange;
     private Long drawerBatchId;
+    private DetailShell detail;
+    private List<Batch> shownBatches = List.of();
     private int generation;
     private SequentialTransition toastMotion;
     private Timeline minuteRefresh;
@@ -229,7 +226,7 @@ public class CremationController implements RefreshableView {
             furnaceGrid.getColumnConstraints().add(column);
         }
 
-        drawer.setTranslateX(DRAWER_WIDTH);
+        detail = DetailShell.install(drawer, veil, DetailShell.Kind.PANEL);
         toast.setOpacity(0);
         toast.setMouseTransparent(true);
 
@@ -403,6 +400,7 @@ public class CremationController implements RefreshableView {
                 : (CremationBatchStatus) stateGroup.getSelectedToggle().getUserData();
         // Con búsqueda o con "Realizados" se muestra todo lo cargado (abiertos y últimos 30 días).
         boolean everything = !text.isEmpty() || filter == CremationBatchStatus.FINISHED;
+        shownBatches = List.of();
         List<Batch> rows = screen.batches().stream()
                 .filter(b -> filter == null || b.status() == filter)
                 .filter(b -> text.isEmpty() || matches(b, text))
@@ -431,6 +429,7 @@ public class CremationController implements RefreshableView {
             return;
         }
         show(agendaEmpty, false);
+        shownBatches = rows;
         for (Batch batch : rows) {
             agendaRows.getChildren().add(agendaRow(batch, today));
         }
@@ -516,99 +515,139 @@ public class CremationController implements RefreshableView {
     // ---------- panel del lote ----------
 
     private void openDrawer(Long batchId) {
-        find(batchId).ifPresent(batch -> {
-            fillDrawer(batch);
-            slideDrawerIn();
-        });
+        find(batchId).ifPresent(this::fillDrawer);
     }
 
     private void fillDrawer(Batch b) {
         drawerBatchId = b.id();
         LocalDate today = screen.now().toLocalDate();
-        Button close = new Button("✕");
-        close.getStyleClass().add("drawer-close-light");
-        close.setOnAction(e -> closeDrawer());
-        Pane spacer = new Pane();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-        HBox top = new HBox(label("LOTE DE CREMACIÓN", "drawer-head-caption"), spacer, close);
-        top.setAlignment(Pos.CENTER_LEFT);
-        Label chip = stateChip(b);
-        if (b.status() == CremationBatchStatus.IN_PROGRESS) {
-            chip.getStyleClass().setAll("state-chip", "state-ok");
-        }
-        HBox nameRow = new HBox(12, label(b.code(), "drawer-head-name"), chip);
-        nameRow.setAlignment(Pos.CENTER_LEFT);
-        Label where = wrapped("Horno o proveedor " + b.furnaceCode() + " · "
-                + (b.scheduledAt() == null ? "sin fecha" : DATE_HOUR.format(b.scheduledAt())), "drawer-head-strong");
-        drawerHead.getChildren().setAll(top, nameRow, where);
+        List<Batch> shown = shownBatches.isEmpty() ? screen.batches() : shownBatches;
+        DetailShell.Hero hero = new DetailShell.Hero("Lote de cremación", b.code())
+                .subtitle("Horno o proveedor " + b.furnaceCode() + " · "
+                        + (b.scheduledAt() == null ? "sin fecha" : DATE_HOUR.format(b.scheduledAt())))
+                .chips(DetailShell.chip("● " + stateText(b), stateTone(b)))
+                .extra(DetailShell.steps(steps(b)))
+                .navigation(DetailShell.neighbor(shown, x -> x.id().equals(b.id()), -1, x -> fillDrawer(x)),
+                        DetailShell.neighbor(shown, x -> x.id().equals(b.id()), 1, x -> fillDrawer(x)))
+                .onClose(this::closeDrawer);
 
-        VBox members = new VBox(10);
+        List<Node> members = new ArrayList<>();
         if (b.items().isEmpty()) {
-            members.getChildren().add(wrapped("Este lote todavía no tiene difuntos.", "field-caption"));
+            members.add(DetailShell.empty("Este lote todavía no tiene difuntos."));
         }
         for (Item item : b.items()) {
-            members.getChildren().add(memberRow(b, item));
+            members.add(memberCard(b, item));
         }
+        List<Node> sections = new ArrayList<>();
+        sections.add(DetailShell.section("Difuntos en el lote · " + b.items().size(), members.toArray(Node[]::new)));
+        sections.add(DetailShell.nextStep(nextStep(b, today),
+                b.status() == CremationBatchStatus.SCHEDULED && b.blocked() ? DetailShell.Tone.ALERT : DetailShell.Tone.NEUTRAL));
 
-        drawerBody.getChildren().setAll(
-                section("DIFUNTOS EN EL LOTE · " + b.items().size(), members),
-                section("QUÉ SIGUE", note(nextStep(b, today))));
-
-        drawerActions.getChildren().clear();
+        List<Button> buttons = new ArrayList<>();
+        String hint = null;
         if (b.status() == CremationBatchStatus.SCHEDULED) {
-            Button reschedule = drawerButton("Reprogramar", "drawer-secondary");
-            reschedule.setOnAction(e -> openRescheduleDialog(b));
-            Button add = drawerButton("Agregar difunto", "drawer-secondary");
-            add.setOnAction(e -> openAssignDialog(b));
-            Button start = drawerButton("Entregar al horno", "drawer-primary");
+            buttons.add(DetailShell.secondary("Reprogramar", () -> openRescheduleDialog(b)));
+            buttons.add(DetailShell.secondary("Agregar difunto", () -> openAssignDialog(b)));
+            Button start = DetailShell.primary("Entregar al horno", () -> confirmStart(b));
             start.setDisable(b.items().isEmpty() || b.blocked());
-            start.setOnAction(e -> confirmStart(b));
-            drawerActions.getChildren().setAll(reschedule, add, start);
+            buttons.add(start);
+            if (b.items().isEmpty()) {
+                hint = "Entregar al horno: primero agregue los difuntos del lote";
+            } else if (b.blocked()) {
+                hint = "Entregar al horno: falta la orden de entrega de la Fiscalía";
+            }
         } else {
-            Button done = drawerButton("Cerrar", "drawer-secondary");
-            done.setOnAction(e -> closeDrawer());
-            drawerActions.getChildren().setAll(done);
+            buttons.add(DetailShell.secondary("Cerrar", this::closeDrawer));
         }
+        detail.show(b.id(), hero, sections, buttons, hint);
     }
 
-    private VBox memberRow(Batch b, Item item) {
-        VBox row = new VBox(4);
-        row.getStyleClass().add("member-row");
-        row.getChildren().add(wrapped(item.deceasedName(), "member-name"));
-        row.getChildren().add(wrapped(item.deceasedCode()
-                + (item.documentNumber() == null ? " · sin documento" : " · Doc. " + item.documentNumber())
-                + " · " + deathType(item.deathType()), "member-detail"));
-        if (item.deathType() == DeathType.NON_NATURAL) {
-            row.getChildren().add(wrapped(item.authorized()
-                    ? "Orden de entrega de la Fiscalía registrada"
-                    : "Falta la orden de entrega de la Fiscalía", item.authorized() ? "member-ok" : "member-alert"));
-        }
-        row.getChildren().add(wrapped("Tanatólogo: " + orDash(item.thanatopractor()), "member-detail"));
-        if (item.certificatePending()) {
-            row.getChildren().add(wrapped(b.status() == CremationBatchStatus.SCHEDULED
-                    ? "Certificado: se registra cuando el horno termine" : "Certificado pendiente", "member-detail"));
-        } else {
-            row.getChildren().add(wrapped("Certificado " + item.certificateNumber() + " · terminó "
-                    + DATE_HOUR.format(item.completedAt()), "member-ok"));
-        }
+    /** Programado → Al horno → Certificado → Realizado, según el estado del lote. */
+    private static List<DetailShell.Step> steps(Batch b) {
+        String scheduled = b.scheduledAt() == null ? "sin fecha" : DATE_HOUR.format(b.scheduledAt());
+        LocalDateTime finished = b.items().stream().map(Item::completedAt).filter(java.util.Objects::nonNull)
+                .max(LocalDateTime::compareTo).orElse(null);
+        String certificates = b.items().size() == 1 && b.items().get(0).certificateNumber() != null
+                ? b.items().get(0).certificateNumber()
+                : count(b.items().size() - (int) b.pendingCertificates(), "certificado", "certificados");
+        return switch (b.status()) {
+            case SCHEDULED -> List.of(
+                    new DetailShell.Step("Programado", scheduled, DetailShell.StepState.DONE),
+                    b.blocked()
+                            ? new DetailShell.Step("Al horno", "Falta la orden de la Fiscalía", DetailShell.StepState.BLOCKED)
+                            : new DetailShell.Step("Al horno", b.items().isEmpty() ? "Sin difuntos" : "Listo para entregar",
+                            DetailShell.StepState.CURRENT),
+                    new DetailShell.Step("Certificado", "Cuando el horno termine", DetailShell.StepState.PENDING),
+                    new DetailShell.Step("Realizado", "", DetailShell.StepState.PENDING));
+            case IN_PROGRESS -> List.of(
+                    new DetailShell.Step("Programado", scheduled, DetailShell.StepState.DONE),
+                    new DetailShell.Step("Al horno", "", DetailShell.StepState.DONE),
+                    new DetailShell.Step("Certificado", "Faltan " + b.pendingCertificates(), DetailShell.StepState.CURRENT),
+                    new DetailShell.Step("Realizado", "", DetailShell.StepState.PENDING));
+            case FINISHED -> List.of(
+                    new DetailShell.Step("Programado", scheduled, DetailShell.StepState.DONE),
+                    new DetailShell.Step("Al horno", "", DetailShell.StepState.DONE),
+                    new DetailShell.Step("Certificado", certificates, DetailShell.StepState.DONE),
+                    new DetailShell.Step("Realizado", finished == null ? "" : DATE_HOUR.format(finished),
+                            DetailShell.StepState.DONE));
+        };
+    }
 
+    private static String stateText(Batch b) {
+        return switch (b.status()) {
+            case SCHEDULED -> b.blocked() ? "Bloqueado · Fiscalía" : "Programado";
+            case IN_PROGRESS -> b.pendingCertificates() > 0
+                    ? "En curso · " + count((int) b.pendingCertificates(), "certificado", "certificados")
+                    : "En curso";
+            case FINISHED -> "Realizado";
+        };
+    }
+
+    private static DetailShell.Tone stateTone(Batch b) {
+        return switch (b.status()) {
+            case SCHEDULED -> b.blocked() ? DetailShell.Tone.ALERT : DetailShell.Tone.GOLD;
+            case IN_PROGRESS -> DetailShell.Tone.WARN;
+            case FINISHED -> DetailShell.Tone.OK;
+        };
+    }
+
+    /** Tarjeta de un difunto del lote: datos, autorización, tanatólogo, certificado y su acción. */
+    private VBox memberCard(Batch b, Item item) {
+        VBox lines = new VBox(3);
+        Label name = label(item.deceasedName(), "detail-person-name");
+        name.setWrapText(true);
+        lines.getChildren().addAll(name, wrapped(item.deceasedCode()
+                + (item.documentNumber() == null ? " · sin documento" : " · Doc. " + item.documentNumber())
+                + " · " + deathType(item.deathType()), "detail-person-line"));
+        VBox facts = new VBox(3);
+        if (item.deathType() == DeathType.NON_NATURAL) {
+            facts.getChildren().add(item.authorized()
+                    ? DetailShell.value("Orden de entrega de la Fiscalía registrada", DetailShell.Tone.OK)
+                    : DetailShell.value("Falta la orden de entrega de la Fiscalía", DetailShell.Tone.ALERT));
+        }
+        facts.getChildren().add(wrapped("Tanatólogo: " + orDash(item.thanatopractor()), "detail-text"));
+        if (item.certificatePending()) {
+            facts.getChildren().add(wrapped(b.status() == CremationBatchStatus.SCHEDULED
+                    ? "Certificado: se registra cuando el horno termine" : "Certificado pendiente", "detail-text"));
+        } else {
+            facts.getChildren().add(DetailShell.value("Certificado " + item.certificateNumber() + " · terminó "
+                    + DATE_HOUR.format(item.completedAt()), DetailShell.Tone.OK));
+        }
+        lines.getChildren().add(facts);
+        VBox.setMargin(facts, new Insets(4, 0, 0, 0));
         HBox actions = new HBox(8);
         actions.setAlignment(Pos.CENTER_RIGHT);
         if (b.status() == CremationBatchStatus.SCHEDULED) {
-            Button remove = new Button("Quitar del lote");
-            remove.getStyleClass().addAll("link-action", "link-danger");
-            remove.setOnAction(e -> confirmRemove(b, item));
+            Button remove = DetailShell.link("Quitar del lote", () -> confirmRemove(b, item));
+            remove.getStyleClass().add("detail-link-danger");
             actions.getChildren().add(remove);
         } else if (b.status() == CremationBatchStatus.IN_PROGRESS && item.certificatePending()) {
-            Button certificate = new Button("Registrar certificado");
-            certificate.getStyleClass().add("small-dark-button");
-            certificate.setOnAction(e -> openCertificateDialog(b, item));
-            actions.getChildren().add(certificate);
+            actions.getChildren().add(DetailShell.primary("Registrar certificado", () -> openCertificateDialog(b, item)));
         }
         if (!actions.getChildren().isEmpty()) {
-            row.getChildren().add(actions);
+            lines.getChildren().add(actions);
         }
-        return row;
+        return DetailShell.card(lines);
     }
 
     private static String nextStep(Batch b, LocalDate today) {
@@ -626,19 +665,6 @@ public class CremationController implements RefreshableView {
         };
     }
 
-    private void slideDrawerIn() {
-        if (drawer.isVisible() && drawer.getTranslateX() == 0) {
-            return;
-        }
-        veil.setVisible(true);
-        drawer.setVisible(true);
-        TranslateTransition slide = new TranslateTransition(Duration.millis(220), drawer);
-        slide.setToX(0);
-        FadeTransition fade = new FadeTransition(Duration.millis(220), veil);
-        fade.setToValue(1);
-        new ParallelTransition(slide, fade).play();
-    }
-
     @FXML
     private void onCloseDrawer() {
         closeDrawer();
@@ -646,21 +672,7 @@ public class CremationController implements RefreshableView {
 
     private void closeDrawer() {
         drawerBatchId = null;
-        if (!drawer.isVisible()) {
-            return;
-        }
-        TranslateTransition slide = new TranslateTransition(Duration.millis(180), drawer);
-        slide.setToX(DRAWER_WIDTH);
-        FadeTransition fade = new FadeTransition(Duration.millis(180), veil);
-        fade.setToValue(0);
-        ParallelTransition out = new ParallelTransition(slide, fade);
-        out.setOnFinished(event -> {
-            if (drawerBatchId == null) {
-                drawer.setVisible(false);
-                veil.setVisible(false);
-            }
-        });
-        out.play();
+        detail.close(null);
     }
 
     // ---------- diálogos ----------
@@ -691,7 +703,6 @@ public class CremationController implements RefreshableView {
                     showToast("Lote " + saved.code() + " programado.");
                     drawerBatchId = saved.id();
                     load(saved.id());
-                    slideDrawerIn();
                 });
     }
 

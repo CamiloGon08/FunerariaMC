@@ -1,6 +1,5 @@
 /*
- * Módulo Transporte (pantallas 23, 23.1, 23.2 y 23.3 de Figma con la paleta verde oscura aprobada en
- * la captura 10_transporte). Se carga junto con personal.css (tarjetas, panel lateral, diálogos) y
+ * Módulo Transporte: monitor, vehículos, conductores y traslados. Se carga junto con personal.css (tarjetas, panel lateral, diálogos) y
  * usa los colores de app.css. Trae su propio formulario "Personal · El Edén" y los colores verdes
  * bajo .transport-root, así no depende de otro módulo (Contratos, Salas) para verse bien.
  */
@@ -238,7 +237,7 @@
 .doc-bar.warn > .bar { -fx-background-color: -color-gold-muted; }
 .doc-bar.alert > .bar { -fx-background-color: -eden-alert; }
 
-/* ---------- Tarjetas de vehículos (23.1) ---------- */
+/* ---------- Tarjetas de vehículos ---------- */
 .vehicle-card {
     -fx-background-color: -eden-card; -fx-background-radius: 22; -fx-border-radius: 22;
     -fx-padding: 18 20 16 20; -fx-spacing: 10;
@@ -284,40 +283,7 @@
     -fx-padding: 3 10; -fx-font-size: 11.5px; -fx-font-weight: bold;
 }
 
-/* ---------- Panel oscuro del traslado elegido ---------- */
-.detail-card {
-    -fx-background-color: linear-gradient(to bottom, -color-forest 0%, -color-forest-deep 100%);
-    -fx-background-radius: 22; -fx-padding: 20 22 18 22; -fx-spacing: 12;
-}
-.detail-plate {
-    -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif;
-    -fx-font-size: 34px; -fx-text-fill: -color-paper;
-}
-.detail-sub { -fx-text-fill: -color-paper-a75; -fx-font-size: 12.5px; }
-.detail-info {
-    -fx-background-color: rgba(255,255,255,0.07); -fx-background-radius: 14; -fx-padding: 12 16; -fx-vgap: 8; -fx-hgap: 12;
-}
-.detail-key { -fx-text-fill: -color-paper-a72; -fx-font-size: 12.5px; }
-.detail-value { -fx-text-fill: -color-paper; -fx-font-size: 12.5px; -fx-font-weight: bold; }
-.detail-section { -fx-text-fill: -color-paper-a85; -fx-font-size: 11px; -fx-font-weight: bold; }
-.detail-chip { -fx-background-color: -color-soft; -fx-text-fill: -color-ink; -fx-background-radius: 999; -fx-padding: 4 10; -fx-font-size: 11.5px; -fx-font-weight: bold; }
-.timeline-box { -fx-background-color: -color-paper-white; -fx-background-radius: 14; -fx-padding: 14 16; -fx-spacing: 12; }
-.tl-dot { -fx-fill: transparent; -fx-stroke: -color-sage-mid; -fx-stroke-width: 2; }
-.tl-dot.done { -fx-fill: -color-forest; -fx-stroke: -color-forest; }
-.tl-dot.current { -fx-fill: transparent; -fx-stroke: -color-forest; -fx-stroke-width: 3; }
-.tl-title { -fx-text-fill: -color-ink; -fx-font-size: 13.5px; -fx-font-weight: bold; }
-.tl-sub { -fx-text-fill: -color-text-muted; -fx-font-size: 12px; }
-.tl-time { -fx-text-fill: -color-text-muted; -fx-font-size: 12px; }
-.detail-button {
-    -fx-background-color: -color-soft; -fx-text-fill: -color-ink; -fx-background-radius: 12; -fx-font-weight: bold;
-    -fx-padding: 9 14; -fx-cursor: hand;
-}
-.detail-button:hover { -fx-background-color: white; }
-.detail-button.ghost { -fx-background-color: transparent; -fx-text-fill: -color-paper; -fx-border-color: -color-paper-a50; -fx-border-radius: 12; }
-.detail-button.ghost:hover { -fx-background-color: rgba(255,255,255,0.10); }
-.detail-button:disabled { -fx-opacity: 0.5; }
-
-/* ---------- Pestaña Traslados (23.3) ---------- */
+/* ---------- Pestaña Traslados ---------- */
 .transfer-item {
     -fx-background-color: -eden-card; -fx-background-radius: 16; -fx-border-radius: 16;
     -fx-border-color: -color-panel; -fx-padding: 12 14; -fx-spacing: 3; -fx-cursor: hand;
