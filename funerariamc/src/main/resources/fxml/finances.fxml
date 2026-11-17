@@ -89,8 +89,8 @@
                 <Region HBox.hgrow="ALWAYS"/>
                 <MenuButton fx:id="exportButton" text="Exportar" styleClass="primary-menu" minWidth="-Infinity">
                     <items>
-                        <MenuItem text="Resumen en PDF" onAction="#onExportPdf"/>
-                        <MenuItem text="Resumen en Excel" onAction="#onExportExcel"/>
+                        <MenuItem text="Resumen en PDF" onAction="#onExportPdf"><graphic><SVGPath content="M3 1 H10 L14 5 V15 H3 Z" styleClass="menu-icon"/></graphic></MenuItem>
+                        <MenuItem text="Resumen en Excel" onAction="#onExportExcel"><graphic><SVGPath content="M3 1 H10 L14 5 V15 H3 Z" styleClass="menu-icon"/></graphic></MenuItem>
                     </items>
                 </MenuButton>
             </HBox>

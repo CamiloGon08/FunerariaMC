@@ -28,6 +28,7 @@ import com.example.funerariamc.service.TransportService.VehicleState;
 import com.example.funerariamc.service.VehicleData;
 import com.example.funerariamc.ui.RefreshableView;
 import com.example.funerariamc.ui.BrandTheme;
+import com.example.funerariamc.ui.DetailShell;
 import com.example.funerariamc.ui.FormShell;
 import javafx.animation.Animation;
 import javafx.animation.FadeTransition;
@@ -391,7 +392,7 @@ public class TransportController implements RefreshableView {
         }
     }
 
-    // ---------- 23 Monitor ----------
+    // ---------- Monitor ----------
 
     private void paintMonitor() {
         Transfer active = monitorTransfer();
@@ -442,66 +443,62 @@ public class TransportController implements RefreshableView {
                         .findFirst().orElse(null));
     }
 
-    /** Panel oscuro: vehículo principal, conductor, contrato, llegada estimada y recorrido. */
+    /** Tarjeta del traslado elegido: vehículo, estado, paradas, conductor, contrato y acciones. */
     private void paintDetailCard(Transfer t) {
-        monitorDetail.getChildren().clear();
         if (t == null) {
-            monitorDetail.getChildren().addAll(label("Sin traslados activos", "detail-plate"),
-                    wrapped("Cuando un traslado salga aparecerá aquí con su conductor, su contrato y el recorrido.",
-                            "detail-sub"));
+            DetailShell.fill(monitorDetail, new DetailShell.Hero("Monitor", "Sin traslados activos"),
+                    List.of(DetailShell.empty("Cuando un traslado salga aparecerá aquí con su conductor,"
+                            + " su contrato y el recorrido.")), List.of());
             return;
         }
         Unit main = mainUnit(t);
-        Label chip = label("●  " + statusLabel(t.status()), "detail-chip");
-        Pane spacer = new Pane();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-        HBox top = new HBox(label(main.plate(), "detail-plate"), spacer, chip);
-        top.setAlignment(Pos.CENTER_LEFT);
-        Label sub = label(typeName(main.type()) + (t.units().size() > 1
-                ? " · cortejo con " + plural(t.units().size() - 1, "vehículo más", "vehículos más") : ""), "detail-sub");
-
-        GridPane info = new GridPane();
-        info.getStyleClass().add("detail-info");
-        ColumnConstraints left = new ColumnConstraints();
-        ColumnConstraints right = new ColumnConstraints();
-        right.setHgrow(Priority.ALWAYS);
-        right.setHalignment(javafx.geometry.HPos.RIGHT);
-        info.getColumnConstraints().addAll(left, right);
         Stop next = t.nextStop();
-        info.addRow(0, label("Conductor", "detail-key"), label(main.driverName(), "detail-value"));
-        info.addRow(1, label("Contrato", "detail-key"), label(t.contractNumber() + " · " + t.deceasedName(), "detail-value"));
-        info.addRow(2, label(t.status() == TransportStatus.SCHEDULED ? "Salida" : "Próxima parada", "detail-key"),
-                label(t.status() == TransportStatus.SCHEDULED ? when(t.scheduledAt())
-                        : next == null ? "Llegó a todas las paradas"
-                        : next.placeName() + (next.plannedAt() == null ? "" : " · " + HOUR.format(next.plannedAt())),
-                        "detail-value"));
-
-        VBox timeline = new VBox(12);
-        timeline.getStyleClass().add("timeline-box");
-        if (t.stops().isEmpty()) {
-            timeline.getChildren().add(wrapped("Sin paradas registradas.", "tl-sub"));
-        }
+        DetailShell.Tone tone = switch (t.status()) {
+            case IN_PROGRESS -> DetailShell.Tone.OK;
+            case SCHEDULED -> DetailShell.Tone.GOLD;
+            default -> DetailShell.Tone.NEUTRAL;
+        };
+        List<DetailShell.Step> steps = new ArrayList<>();
         for (Stop s : t.stops()) {
             boolean done = s.arrivedAt() != null;
             boolean current = !done && t.status() == TransportStatus.IN_PROGRESS && s.equals(next);
-            Circle dot = new Circle(6);
-            dot.getStyleClass().addAll("tl-dot", done ? "done" : current ? "current" : "pending");
-            VBox text = new VBox(1, label(stopTitle(s), "tl-title"),
-                    label(orDash(s.address()) + (current ? " · en camino" : ""), "tl-sub"));
-            Pane gap = new Pane();
-            HBox.setHgrow(gap, Priority.ALWAYS);
-            Label time = label(done ? HOUR.format(s.arrivedAt()) : s.plannedAt() == null ? "—"
-                    : HOUR.format(s.plannedAt()), "tl-time");
-            HBox line = new HBox(12, dot, text, gap, time);
-            line.setAlignment(Pos.TOP_LEFT);
-            HBox.setMargin(dot, new Insets(4, 0, 0, 0));
-            timeline.getChildren().add(line);
+            String hour = done ? HOUR.format(s.arrivedAt()) : s.plannedAt() == null ? "" : HOUR.format(s.plannedAt());
+            String detail = (hour.isEmpty() ? "" : hour + " · ") + orDash(s.address()) + (current ? " · en camino" : "");
+            steps.add(new DetailShell.Step(stopTitle(s), detail,
+                    done ? DetailShell.StepState.DONE : current ? DetailShell.StepState.CURRENT : DetailShell.StepState.PENDING));
         }
-        monitorDetail.getChildren().addAll(top, sub, info, label("RECORRIDO", "detail-section"), timeline,
-                actionsBar(t, true));
+        DetailShell.Hero hero = new DetailShell.Hero(typeName(main.type()), main.plate())
+                .subtitle(t.units().size() > 1
+                        ? "Cortejo con " + plural(t.units().size() - 1, "vehículo más", "vehículos más") : null)
+                .chips(DetailShell.chip("● " + statusLabel(t.status()), tone));
+        if (!steps.isEmpty()) {
+            hero.extra(DetailShell.steps(steps));
+        }
+        String nextText = t.status() == TransportStatus.SCHEDULED ? when(t.scheduledAt())
+                : next == null ? "Llegó a todas las paradas"
+                : next.placeName() + (next.plannedAt() == null ? "" : " · " + HOUR.format(next.plannedAt()));
+        List<Node> sections = new ArrayList<>();
+        sections.add(DetailShell.card(DetailShell.rows(
+                "Conductor", main.driverName(),
+                "Contrato", t.contractNumber() + " · " + t.deceasedName(),
+                t.status() == TransportStatus.SCHEDULED ? "Salida" : "Próxima parada", nextText)));
+        if (t.stops().isEmpty()) {
+            sections.add(DetailShell.empty("Sin paradas registradas."));
+        }
+        // Primero las acciones secundarias (cerrar, cancelar) y a la derecha la principal.
+        List<Button> buttons = new ArrayList<>();
+        for (Node node : actionsBar(t, true).getChildren()) {
+            Button button = (Button) node;
+            if (button.getStyleClass().contains("detail-secondary")) {
+                buttons.add(0, button);
+            } else {
+                buttons.add(button);
+            }
+        }
+        DetailShell.fill(monitorDetail, hero, sections, buttons);
     }
 
-    // ---------- 23.1 Vehículos ----------
+    // ---------- Vehículos ----------
 
     private void paintVehicles() {
         List<Node> cards = new ArrayList<>();
@@ -604,7 +601,7 @@ public class TransportController implements RefreshableView {
         }
     }
 
-    // ---------- 23.2 Conductores ----------
+    // ---------- Conductores ----------
 
     private void paintDrivers() {
         List<DriverCard> drivers = screen.drivers();
@@ -648,7 +645,7 @@ public class TransportController implements RefreshableView {
         driverRows.getChildren().setAll(rows);
     }
 
-    // ---------- 23.3 Traslados ----------
+    // ---------- Traslados ----------
 
     private void paintTransfers() {
         List<Transfer> list = transfersFor(dayFilter);
@@ -919,10 +916,7 @@ public class TransportController implements RefreshableView {
     private static Button actionButton(String text, boolean dark, boolean secondary) {
         Button button = new Button(text);
         if (dark) {
-            button.getStyleClass().add("detail-button");
-            if (secondary) {
-                button.getStyleClass().add("ghost");
-            }
+            button.getStyleClass().addAll("detail-button", secondary ? "detail-secondary" : "detail-primary");
         } else {
             button.getStyleClass().add(secondary ? "row-button" : "small-dark-button");
         }

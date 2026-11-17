@@ -46,14 +46,13 @@
                 </HBox>
             </VBox>
 
-            <!-- Buscador, categorías y Nuevo parámetro -->
+            <!-- Buscador y categorías -->
             <HBox styleClass="filter-card">
                 <HBox styleClass="search-box" HBox.hgrow="ALWAYS" minWidth="180">
                     <SVGPath content="M7 1.5a5.5 5.5 0 1 1 0 11a5.5 5.5 0 0 1 0-11z M11.2 11.2 L15 15" styleClass="search-icon"/>
                     <TextField fx:id="searchField" promptText="Buscar parámetro" HBox.hgrow="ALWAYS"/>
                 </HBox>
                 <HBox fx:id="categoryBar" styleClass="segmented" minWidth="-Infinity"/>
-                <Button text="+  Nuevo parámetro" onAction="#onNewParameter" styleClass="primary-button" minWidth="-Infinity"/>
             </HBox>
 
             <!-- Aviso: cómo se guardan los cambios, o cuántos parámetros faltan por definir -->

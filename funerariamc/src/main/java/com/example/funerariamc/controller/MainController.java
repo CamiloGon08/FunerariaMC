@@ -11,6 +11,7 @@ import com.example.funerariamc.service.AuthService;
 import com.example.funerariamc.service.RoleNames;
 import com.example.funerariamc.service.SessionContext;
 import com.example.funerariamc.ui.ModuleIcons;
+import com.example.funerariamc.ui.ModuleLink;
 import com.example.funerariamc.ui.RefreshableView;
 import com.example.funerariamc.ui.Responsive;
 import com.example.funerariamc.ui.Reveal;
@@ -104,6 +105,8 @@ public class MainController {
     private VBox financeItems;
     /** Pantallas ya abiertas en esta sesión; al cerrar sesión se descartan con este controlador. */
     private final Map<AppModule, FxmlViewLoader.View<Object>> openViews = new EnumMap<>(AppModule.class);
+    /** Botón del menú de cada módulo, para marcarlo cuando otro módulo salta a él. */
+    private final Map<AppModule, Button> pills = new EnumMap<>(AppModule.class);
     private final Set<Node> revealed = new HashSet<>();
     private static final DateTimeFormatter HOME_DATE =
             DateTimeFormatter.ofPattern("EEEE d 'de' MMMM · HH:mm", Locale.forLanguageTag("es-CO"));
@@ -153,6 +156,9 @@ public class MainController {
                 menuBox.getChildren().add(modulePill(module, module.getLabel(), ModuleIcons.of(module), "nav-pill"));
             }
         }
+        // Un módulo puede abrir otro con un dato, por ejemplo del plan a Contratos con el difunto
+        ModuleLink.register(module -> openModule(module, pills.get(module)),
+                module -> pills.containsKey(module) && authService.canAccess(module));
         sidebarAnimator.showExpanded();
         watchWindowSize();
         onHome();
@@ -194,6 +200,7 @@ public class MainController {
         button.getStyleClass().add(styleClass);
         button.setOnAction(e -> onModuleSelected(module, button));
         sidebarAnimator.register(button, text);
+        pills.put(module, button);
         return button;
     }
 
@@ -494,6 +501,7 @@ public class MainController {
 
     @FXML
     private void onLogout() {
+        ModuleLink.clear();
         authService.logout();
         viewLoader.switchScene(contentPane, FxmlViewLoader.LOGIN, FxmlViewLoader.LOGIN_TITLE);
     }

@@ -24,13 +24,11 @@ import com.example.funerariamc.service.DeceasedService.Segment;
 import com.example.funerariamc.service.DeceasedService.Stage;
 import com.example.funerariamc.service.DeceasedService.TimelineStep;
 import com.example.funerariamc.service.FileStorageService;
+import com.example.funerariamc.ui.DetailShell;
 import com.example.funerariamc.ui.DetailCache;
 import com.example.funerariamc.ui.RefreshableView;
 import com.example.funerariamc.ui.FormShell;
-import javafx.animation.FadeTransition;
-import javafx.animation.ParallelTransition;
 import javafx.animation.PauseTransition;
-import javafx.animation.TranslateTransition;
 import javafx.beans.binding.Bindings;
 import javafx.beans.value.ObservableBooleanValue;
 import javafx.concurrent.Task;
@@ -102,7 +100,6 @@ public class DeceasedController implements RefreshableView {
     private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm");
     private static final Locale ES = Locale.forLanguageTag("es-CO");
     private static final DateTimeFormatter MONTH = DateTimeFormatter.ofPattern("MMMM yyyy", ES);
-    private static final double DRAWER_WIDTH = 460;
     /** Tarjetas de "En servicio ahora" visibles a la vez; el resto se ve en el registro. */
     private static final int MAX_SERVICE_CARDS = 4;
     private static final String[] STEPS = {"Ingreso", "Prep.", "Velación", "Destino"};
@@ -181,16 +178,13 @@ public class DeceasedController implements RefreshableView {
     private VBox drawer;
     @FXML
     private Region veil;
-    @FXML
-    private VBox drawerBody;
-    @FXML
-    private HBox drawerActions;
 
     private Overview overview;
     /** Difunto del panel abierto; null si está cerrado. */
     private Long drawerDeceasedId;
-    /** Animación del panel en curso (abrir o cerrar); null si está quieto. */
-    private ParallelTransition drawerMotion;
+    /** Difuntos que se ven en el registro, en su orden: las flechas del expediente pasan por ellos. */
+    private List<DeceasedItem> shownItems = List.of();
+    private DetailShell detail;
 
     public DeceasedController(DeceasedService deceasedService, DeathCertificateService certificateService) {
         this.deceasedService = deceasedService;
@@ -243,7 +237,7 @@ public class DeceasedController implements RefreshableView {
         searchField.textProperty().addListener((obs, old, text) -> searchDelay.playFromStart());
 
         buildLegend();
-        drawer.setTranslateX(DRAWER_WIDTH);
+        detail = DetailShell.install(drawer, veil, DetailShell.Kind.MODAL);
         loadOverview(null);
     }
 
@@ -486,6 +480,7 @@ public class DeceasedController implements RefreshableView {
                 : (Segment) segmentGroup.getSelectedToggle().getUserData();
         List<DeceasedItem> items = DeceasedService.filter(overview.items(),
                 new Filter(segment, deathTypeFilter.getValue(), monthFilter.getValue(), searchField.getText()));
+        shownItems = items;
         registryBox.getChildren().setAll(items.stream().map(this::registryRow).toList());
         countLabel.setText(count(items.size(), "difunto") + (items.size() > 8 ? " · desplace para ver más" : ""));
         boolean empty = items.isEmpty();
@@ -591,70 +586,42 @@ public class DeceasedController implements RefreshableView {
     // ---------- expediente ----------
 
     /**
-     * Abre el panel al instante: con el expediente si ya está guardado, o con el nombre de la fila y
-     * "Cargando expediente…" mientras llega. Si el panel ya muestra ese difunto (recarga después de
-     * guardar), conserva lo que se ve hasta que llegue lo nuevo.
+     * Abre el expediente al instante: con los datos si ya están guardados, o con el nombre de la fila y
+     * "Cargando expediente…" mientras llegan. Si ya muestra ese difunto (recarga después de guardar),
+     * conserva lo que se ve hasta que llegue lo nuevo.
      */
     private void openDrawer(Long deceasedId) {
-        boolean sameOpen = drawer.isVisible() && deceasedId.equals(drawerDeceasedId);
+        boolean sameOpen = detail.isOpen() && deceasedId.equals(drawerDeceasedId);
         drawerDeceasedId = deceasedId;
         DeceasedDetail cached = details.get(deceasedId);
         if (cached != null) {
             fillDrawer(cached);
-        } else {
-            if (!sameOpen) {
-                fillDrawerLoading(deceasedId);
-            }
-            details.load(deceasedId, detail -> {
-                if (deceasedId.equals(drawerDeceasedId)) {
-                    fillDrawer(detail);
-                }
-            }, error -> {
-                if (deceasedId.equals(drawerDeceasedId)) {
-                    closeDrawer();
-                    showError(error instanceof BusinessException business ? business.getMessage()
-                            : "No se pudo cargar el expediente.");
-                }
-            });
+            return;
         }
-        slideIn();
+        if (!sameOpen) {
+            fillDrawerLoading(deceasedId);
+        }
+        details.load(deceasedId, data -> {
+            if (deceasedId.equals(drawerDeceasedId)) {
+                fillDrawer(data);
+            }
+        }, error -> {
+            if (deceasedId.equals(drawerDeceasedId)) {
+                closeDrawer();
+                showError(error instanceof BusinessException business ? business.getMessage()
+                        : "No se pudo cargar el expediente.");
+            }
+        });
     }
 
     private void fillDrawerLoading(Long deceasedId) {
-        DeceasedItem item = overview == null ? null : overview.items().stream()
-                .filter(i -> deceasedId.equals(i.id())).findFirst().orElse(null);
-        Label caption = new Label("EXPEDIENTE" + (item == null ? "" : " · "
-                + (item.contractNumber() == null ? item.code() : item.contractNumber())));
-        caption.getStyleClass().add("kpi-caption");
-        VBox titles = new VBox(2, caption, wrapped(item == null ? "Difunto" : item.fullName(), "drawer-name"));
-        HBox.setHgrow(titles, Priority.ALWAYS);
-        Button close = new Button("✕");
-        close.getStyleClass().add("drawer-close");
-        close.setOnAction(event -> closeDrawer());
-        HBox header = new HBox(14, titles, close);
-        header.setAlignment(Pos.TOP_LEFT);
-        drawerBody.getChildren().setAll(header, wrapped("Cargando expediente…", "card-subtitle"));
-        drawerActions.getChildren().clear();
-    }
-
-    private void slideIn() {
-        if (drawer.isVisible() && drawer.getTranslateX() == 0 && drawerMotion == null) {
-            return;
-        }
-        if (drawerMotion != null) {
-            drawerMotion.stop(); // si se estaba cerrando, vuelve a abrir desde donde iba
-        }
-        boolean hidden = !drawer.isVisible();
-        veil.setVisible(true);
-        drawer.setVisible(true);
-        TranslateTransition slide = new TranslateTransition(Duration.millis(220), drawer);
-        slide.setToX(0);
-        FadeTransition fade = new FadeTransition(Duration.millis(220), veil);
-        fade.setFromValue(hidden ? 0 : veil.getOpacity());
-        fade.setToValue(1);
-        drawerMotion = new ParallelTransition(slide, fade);
-        drawerMotion.setOnFinished(event -> drawerMotion = null);
-        drawerMotion.play();
+        DeceasedItem item = find(deceasedId);
+        DetailShell.Hero hero = new DetailShell.Hero("Expediente" + (item == null ? "" : " · "
+                + (item.contractNumber() == null ? item.code() : item.contractNumber())),
+                item == null ? "Difunto" : item.fullName())
+                .leading(crossBadge())
+                .onClose(this::closeDrawer);
+        detail.show(deceasedId, hero, List.of(DetailShell.empty("Cargando expediente…")), List.of(), null);
     }
 
     @FXML
@@ -664,38 +631,22 @@ public class DeceasedController implements RefreshableView {
 
     private void closeDrawer() {
         drawerDeceasedId = null;
-        if (!drawer.isVisible()) {
-            return;
-        }
-        TranslateTransition slide = new TranslateTransition(Duration.millis(180), drawer);
-        slide.setToX(DRAWER_WIDTH);
-        FadeTransition fade = new FadeTransition(Duration.millis(180), veil);
-        fade.setToValue(0);
-        if (drawerMotion != null) {
-            drawerMotion.stop();
-        }
-        ParallelTransition out = new ParallelTransition(slide, fade);
-        drawerMotion = out;
-        out.setOnFinished(event -> {
-            drawerMotion = null;
-            if (drawerDeceasedId == null) {
-                drawer.setVisible(false);
-                veil.setVisible(false);
-            }
-        });
-        out.play();
+        detail.close(null);
+    }
+
+    /** Ícono de la cruz en el recuadro de la banda. */
+    private static StackPane crossBadge() {
+        SVGPath cross = new SVGPath();
+        cross.setContent("M10 2v20M4 8h12");
+        cross.getStyleClass().add("detail-badge-icon");
+        StackPane badge = new StackPane(cross);
+        badge.getStyleClass().add("detail-icon-badge");
+        badge.setMinSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
+        return badge;
     }
 
     private void fillDrawer(DeceasedDetail d) {
         DeceasedItem item = d.item();
-        SVGPath cross = new SVGPath();
-        cross.setContent("M10 2v20M4 8h12");
-        cross.getStyleClass().add("cross");
-        StackPane badge = new StackPane(cross);
-        badge.getStyleClass().add("file-badge");
-
-        Label caption = new Label("EXPEDIENTE · " + (item.contractNumber() == null ? item.code() : item.contractNumber()));
-        caption.getStyleClass().add("kpi-caption");
         List<String> facts = new ArrayList<>();
         facts.add(item.unidentified() ? "Sin identificar" : "CC " + orDash(item.documentNumber()));
         // Sin fecha de nacimiento solo se muestra la de defunción (no un «?»)
@@ -705,86 +656,74 @@ public class DeceasedController implements RefreshableView {
         if (item.age() != null) {
             facts.add(item.age() + " años");
         }
-        VBox titles = new VBox(2, caption, wrapped(item.fullName(), "drawer-name"),
-                wrapped(String.join(" · ", facts), "card-subtitle"));
-        HBox.setHgrow(titles, Priority.ALWAYS);
-        Button close = new Button("✕");
-        close.getStyleClass().add("drawer-close");
-        close.setOnAction(event -> closeDrawer());
-        HBox header = new HBox(14, badge, titles, close);
-        header.setAlignment(Pos.TOP_LEFT);
-
-        FlowPane pills = new FlowPane(pill(item.stage().getLabel(), "status-active"));
-        pills.getStyleClass().add("chip-flow");
+        PlanCoverage plan = d.plan();
+        DetailShell.Hero hero = new DetailShell.Hero("Expediente · "
+                + (item.contractNumber() == null ? item.code() : item.contractNumber()), item.fullName())
+                .subtitle(String.join(" · ", facts))
+                .leading(crossBadge())
+                .chips(DetailShell.chip(item.stage().getLabel(), DetailShell.Tone.NEUTRAL))
+                .navigation(DetailShell.neighbor(shownItems, x -> x.id().equals(item.id()), -1, x -> openDrawer(x.id())),
+                        DetailShell.neighbor(shownItems, x -> x.id().equals(item.id()), 1, x -> openDrawer(x.id())))
+                .onClose(this::closeDrawer);
         if (item.deathType() != null) {
             String type = "Muerte " + item.deathType().getDisplayName().toLowerCase(ES)
                     + (item.externalCause() == null ? "" : " · " + CAUSES.get(item.externalCause()).toLowerCase(ES));
-            pills.getChildren().add(pill(type, item.deathType() == DeathType.NON_NATURAL ? "pill-alert" : "pill-warning"));
+            hero.chips(DetailShell.chip(type, item.deathType() == DeathType.NON_NATURAL
+                    ? DetailShell.Tone.ALERT : DetailShell.Tone.NEUTRAL));
         }
-        PlanCoverage plan = d.plan();
-        pills.getChildren().add(plan == null ? pill("Particular", "pill-neutral")
-                : pill(plan.planName() + (plan.covered() ? " · cubierto" : " · en carencia"), "pill-neutral"));
+        hero.chips(plan == null ? DetailShell.chip("Particular", DetailShell.Tone.NEUTRAL)
+                : DetailShell.chip(plan.planName() + (plan.covered() ? " · cubierto" : " · en carencia"),
+                        plan.covered() ? DetailShell.Tone.OK : DetailShell.Tone.WARN));
+        hero.extra(steps(d.timeline()));
 
-        drawerBody.getChildren().setAll(header, pills);
-        if (item.blocksCremation()) {
-            drawerBody.getChildren().add(band("Falta la orden de entrega del cuerpo: la cremación no puede hacerse "
-                    + "hasta subirla.", "band-alert"));
-        }
-        drawerBody.getChildren().addAll(
-                titled("RECORRIDO DEL SERVICIO", timeline(d.timeline())),
-                titled("RESPONSABLE Y PLAN", responsibleBox(d)),
-                titled("DOCUMENTOS", documentsBox(d)));
+        List<Node> left = new ArrayList<>();
+        left.add(DetailShell.section("Responsable y plan", responsibleBox(d)));
         if (plan != null && !d.otherBeneficiaries().isEmpty()) {
-            FlowPane chips = new FlowPane();
-            chips.getStyleClass().add("chip-flow");
-            d.otherBeneficiaries().forEach(name -> chips.getChildren().add(pill(name, "status-active")));
-            drawerBody.getChildren().add(titled("OTROS BENEFICIARIOS DEL PLAN " + plan.code(), chips));
+            FlowPane chips = new FlowPane(6, 6);
+            d.otherBeneficiaries().forEach(name -> chips.getChildren().add(DetailShell.chip(name, DetailShell.Tone.NEUTRAL)));
+            left.add(DetailShell.section("Otros beneficiarios del plan " + plan.code(), DetailShell.card(chips)));
         }
+        List<Node> right = new ArrayList<>(documentsSection(d));
+        List<Node> sections = new ArrayList<>();
+        if (item.blocksCremation()) {
+            sections.add(DetailShell.nextStep("Falta la orden de entrega del cuerpo: la cremación no puede hacerse "
+                    + "hasta subirla.", DetailShell.Tone.ALERT));
+        }
+        sections.add(DetailShell.columns(left, right));
 
-        drawerActions.getChildren().clear();
-        Button link = drawerButton(plan == null ? "Vincular plan" : "Cambiar plan", "drawer-secondary");
+        Button link = DetailShell.secondary(plan == null ? "Vincular plan" : "Cambiar plan", () -> openLinkPlanDialog(d));
         link.setDisable(item.contractNumber() != null || item.unidentified());
-        link.setOnAction(e -> openLinkPlanDialog(d));
-        Button upload = drawerButton("Subir documento", "drawer-primary");
-        upload.setOnAction(e -> openDocumentDialog(item.id(), item.fullName(),
+        Button upload = DetailShell.primary("Subir documento", () -> openDocumentDialog(item.id(), item.fullName(),
                 item.missing().isEmpty() ? null : item.missing().get(0)));
-        drawerActions.getChildren().addAll(link, upload);
+        detail.show(item.id(), hero, sections, List.of(link, upload), null);
     }
 
-    private VBox timeline(List<TimelineStep> steps) {
-        VBox box = new VBox(12);
-        box.getStyleClass().add("timeline-box");
-        for (TimelineStep step : steps) {
-            Circle dot = new Circle(5);
-            dot.getStyleClass().add("timeline-dot");
-            Label title = wrapped(step.title(), "timeline-title");
-            if (!step.done()) {
-                dot.getStyleClass().add("pending");
-                title.getStyleClass().add("pending");
+    /** Recorrido del servicio en la banda: lo hecho con ✓, el primer paso sin hacer es el actual. */
+    private static HBox steps(List<TimelineStep> timeline) {
+        List<DetailShell.Step> steps = new ArrayList<>();
+        boolean currentSet = false;
+        for (TimelineStep step : timeline) {
+            DetailShell.StepState state;
+            if (step.done()) {
+                state = DetailShell.StepState.DONE;
+            } else if (!currentSet) {
+                state = DetailShell.StepState.CURRENT;
+                currentSet = true;
+            } else {
+                state = DetailShell.StepState.PENDING;
             }
             String when = step.at() == null ? "" : DAY_TIME.format(step.at()) + " · ";
-            Label detail = wrapped(when + orDash(step.detail()), "timeline-date");
-            StackPane dotBox = new StackPane(dot);
-            dotBox.setPadding(new Insets(4, 0, 0, 2));
-            HBox row = new HBox(dotBox, new VBox(1, title, detail));
-            row.getStyleClass().add("timeline-row");
-            box.getChildren().add(row);
+            steps.add(new DetailShell.Step(step.title(), when + orDash(step.detail()), state));
         }
-        return box;
+        return DetailShell.steps(steps);
     }
 
     private VBox responsibleBox(DeceasedDetail d) {
-        VBox box = new VBox(10);
-        box.getStyleClass().add("timeline-box");
         String responsible = d.item().responsible();
+        Node person;
         if (responsible == null) {
-            box.getChildren().add(wrapped("Sin cliente responsable registrado.", "card-subtitle"));
+            person = DetailShell.item(null, "Sin cliente responsable registrado", null, null);
         } else {
-            Label initials = new Label(initials(responsible));
-            initials.getStyleClass().add("avatar-text");
-            StackPane avatar = new StackPane(initials);
-            avatar.getStyleClass().add("avatar");
-            avatar.setMinSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
             List<String> contact = new ArrayList<>();
             if (d.responsibleDocument() != null) {
                 contact.add("CC " + d.responsibleDocument());
@@ -792,68 +731,67 @@ public class DeceasedController implements RefreshableView {
             if (d.responsiblePhone() != null && !d.responsiblePhone().isBlank()) {
                 contact.add(d.responsiblePhone());
             }
-            HBox person = new HBox(12, avatar, new VBox(2, wrapped(responsible, "attention-name"),
-                    wrapped(String.join(" · ", contact), "card-subtitle")));
-            person.setAlignment(Pos.CENTER_LEFT);
-            box.getChildren().add(person);
+            person = DetailShell.person(DetailShell.initials(responsible), responsible, String.join(" · ", contact), null);
         }
-        GridPane grid = new GridPane();
-        grid.setHgap(12);
-        grid.setVgap(8);
         PlanCoverage plan = d.plan();
-        if (plan == null) {
-            infoRow(grid, 0, "Plan exequial", "Particular (sin plan)");
-        } else {
-            infoRow(grid, 0, "Plan exequial", plan.code() + " · " + plan.planName() + " · "
-                    + plan.relationship().toLowerCase(ES));
-            infoRow(grid, 1, "Titular del plan", plan.holder());
-            infoRow(grid, 2, "Carencia", plan.waitingEnds() == null ? "Sin fecha de inicio"
-                    : (plan.covered() ? "Cumplida el " : "Termina el ") + DATE.format(plan.waitingEnds()));
-        }
-        infoRow(grid, plan == null ? 1 : 3, "Contrato de servicio",
-                d.item().contractNumber() == null ? "Pendiente en Contratos y ventas" : d.item().contractNumber());
-        box.getChildren().add(grid);
-        return box;
+        String contract = d.item().contractNumber() == null ? "Pendiente en Contratos y ventas" : d.item().contractNumber();
+        GridPane rows = plan == null
+                ? DetailShell.rows("Plan exequial", "Particular (sin plan)", "Contrato de servicio", contract)
+                : DetailShell.rows(
+                        "Plan exequial", plan.code() + " · " + plan.planName() + " · " + plan.relationship().toLowerCase(ES),
+                        "Titular del plan", plan.holder(),
+                        "Carencia", plan.waitingEnds() == null ? "Sin fecha de inicio"
+                                : (plan.covered() ? "Cumplida el " : "Termina el ") + DATE.format(plan.waitingEnds()),
+                        "Contrato de servicio", contract);
+        return DetailShell.list(person, rows);
     }
 
-    private VBox documentsBox(DeceasedDetail d) {
-        VBox box = new VBox(10);
-        box.getStyleClass().add("timeline-box");
+    /** Documentos del expediente con su estado; el título lleva la cuenta (completos, no aplica, pendientes). */
+    private List<Node> documentsSection(DeceasedDetail d) {
         List<DocumentType> required = DeathCertificateService.requiredDocuments(d.item().deathType());
+        List<Node> rows = new ArrayList<>();
+        int complete = 0;
+        int notApplicable = 0;
+        int pending = 0;
         for (DocumentType type : DocumentType.values()) {
             DocumentInfo doc = d.documents().stream().filter(x -> x.type() == type).findFirst().orElse(null);
             boolean needed = required.contains(type);
             // El registro en la notaría lo tramita la funeraria después; no bloquea, pero se puede subir.
             boolean notary = type == DocumentType.CIVIL_DEATH_REGISTRY;
-            Label check = new Label(doc != null ? "✓" : needed ? "!" : "–");
-            check.getStyleClass().addAll("doc-check", doc != null ? "ok" : needed ? "missing" : "na");
-            String detail;
+            DetailShell.Mark mark;
+            String line;
+            Node aside = null;
             if (doc != null) {
-                detail = "N.º " + orDash(doc.documentNumber()) + " · " + orDash(doc.issuingAuthority())
+                complete++;
+                mark = DetailShell.Mark.DONE;
+                line = "N.º " + orDash(doc.documentNumber()) + " · " + orDash(doc.issuingAuthority())
                         + (doc.issueDate() == null ? "" : " · " + DATE.format(doc.issueDate()));
-            } else {
-                detail = notary ? "Por registrar la muerte en la notaría"
-                        : needed ? "Pendiente de subir" : "No aplica · muerte natural";
-            }
-            VBox text = new VBox(1, wrapped(type.getDisplayName(), "attention-name"),
-                    wrapped(detail, doc == null && needed ? "attention-detail-overdue" : "card-subtitle"));
-            HBox.setHgrow(text, Priority.ALWAYS);
-            HBox row = new HBox(check, text);
-            row.getStyleClass().add("doc-row");
-            if (doc != null) {
-                Button see = new Button("Ver");
-                see.getStyleClass().add("text-action");
-                see.setOnAction(e -> openFile(doc.fileUrl()));
-                row.getChildren().add(see);
+                aside = DetailShell.link("Ver", () -> openFile(doc.fileUrl()));
             } else if (needed || notary) {
-                Button upload = new Button("Subir");
-                upload.getStyleClass().add("text-action");
-                upload.setOnAction(e -> openDocumentDialog(d.item().id(), d.item().fullName(), type));
-                row.getChildren().add(upload);
+                pending++;
+                mark = needed && d.item().blocksCremation() && type == DocumentType.BODY_RELEASE_ORDER
+                        ? DetailShell.Mark.MISSING : DetailShell.Mark.PENDING;
+                line = notary ? "Por registrar la muerte en la notaría" : "Pendiente";
+                aside = DetailShell.link("Subir", () -> openDocumentDialog(d.item().id(), d.item().fullName(), type));
+            } else {
+                notApplicable++;
+                mark = DetailShell.Mark.NOT_APPLICABLE;
+                line = "No aplica · muerte natural";
             }
-            box.getChildren().add(row);
+            rows.add(DetailShell.item(DetailShell.mark(mark), type.getDisplayName(), line, aside));
         }
-        return box;
+        List<String> counts = new ArrayList<>();
+        if (complete > 0) {
+            counts.add(count(complete, "completo"));
+        }
+        if (notApplicable > 0) {
+            counts.add(notApplicable + " no aplica");
+        }
+        if (pending > 0) {
+            counts.add(count(pending, "pendiente"));
+        }
+        return List.of(DetailShell.section("Documentos", String.join(" · ", counts),
+                DetailShell.list(rows.toArray(Node[]::new))));
     }
 
     /** Abre el archivo guardado con el programa del sistema (visor de PDF o imágenes). */
@@ -885,6 +823,7 @@ public class DeceasedController implements RefreshableView {
         lastname.setPromptText("Apellidos");
         TextField document = new TextField();
         document.setPromptText("Solo números, 5 a 11 dígitos");
+        FormShell.document(document, null, 11);
         DatePicker birth = new DatePicker();
         DatePicker death = new DatePicker(LocalDate.now(AccessLogService.APP_ZONE));
 
@@ -1169,13 +1108,6 @@ public class DeceasedController implements RefreshableView {
         return pill;
     }
 
-    private static Label band(String text, String styleClass) {
-        Label band = wrapped(text, "band");
-        band.getStyleClass().add(styleClass);
-        band.setMaxWidth(Double.MAX_VALUE);
-        return band;
-    }
-
     private static Label label(String text, String styleClass) {
         Label label = new Label(text);
         label.getStyleClass().add(styleClass);
@@ -1186,33 +1118,6 @@ public class DeceasedController implements RefreshableView {
         Label label = label(text, styleClass);
         label.setWrapText(true);
         return label;
-    }
-
-    private static VBox titled(String title, Node content) {
-        Label caption = new Label(title);
-        caption.getStyleClass().add("kpi-caption");
-        return new VBox(8, caption, content);
-    }
-
-    private static void infoRow(GridPane grid, int row, String label, String value) {
-        Label key = new Label(label);
-        key.getStyleClass().add("info-key");
-        key.setMinWidth(Region.USE_PREF_SIZE);
-        Label val = wrapped(value, "info-value");
-        val.setMaxWidth(Double.MAX_VALUE);
-        val.setAlignment(Pos.CENTER_RIGHT);
-        val.setTextAlignment(javafx.scene.text.TextAlignment.RIGHT);
-        GridPane.setHgrow(val, Priority.ALWAYS);
-        grid.add(key, 0, row);
-        grid.add(val, 1, row);
-    }
-
-    private static Button drawerButton(String text, String styleClass) {
-        Button button = new Button(text);
-        button.getStyleClass().addAll("drawer-button", styleClass);
-        button.setMaxWidth(Double.MAX_VALUE);
-        HBox.setHgrow(button, Priority.ALWAYS);
-        return button;
     }
 
     /**
@@ -1470,16 +1375,6 @@ public class DeceasedController implements RefreshableView {
 
     private static String count(long amount, String singular, String plural) {
         return amount + " " + (amount == 1 ? singular : plural);
-    }
-
-    private static String initials(String name) {
-        StringBuilder result = new StringBuilder();
-        for (String part : name.trim().split("\\s+")) {
-            if (!part.isEmpty() && result.length() < 2) {
-                result.append(Character.toUpperCase(part.charAt(0)));
-            }
-        }
-        return result.toString();
     }
 
     private static String capitalize(String text) {

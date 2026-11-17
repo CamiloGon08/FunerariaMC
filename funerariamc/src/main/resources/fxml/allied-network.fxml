@@ -94,11 +94,10 @@
     <Region fx:id="veil" styleClass="drawer-veil" visible="false" onMouseClicked="#onCloseDrawer"/>
     <VBox fx:id="drawer" styleClass="drawer" StackPane.alignment="CENTER_RIGHT" visible="false"
           minWidth="460" prefWidth="460" maxWidth="460">
-        <VBox fx:id="drawerHead" styleClass="drawer-head"/>
-        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="drawer-scroll" VBox.vgrow="ALWAYS">
-            <VBox fx:id="drawerBody" spacing="10" styleClass="drawer-body"/>
+        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" VBox.vgrow="ALWAYS">
+            <VBox/>
         </ScrollPane>
-        <HBox fx:id="drawerActions" spacing="10" styleClass="drawer-footer"/>
+        <HBox/>
     </VBox>
 
     <!-- Aviso corto al guardar; se desvanece solo -->

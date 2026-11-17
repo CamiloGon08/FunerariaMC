@@ -7,7 +7,6 @@ import com.example.funerariamc.service.BrandingData;
 import com.example.funerariamc.service.BrandingService;
 import com.example.funerariamc.service.BrandingService.BrandView;
 import com.example.funerariamc.service.ParameterCatalog;
-import com.example.funerariamc.service.ParameterData;
 import com.example.funerariamc.service.SystemParameterService;
 import com.example.funerariamc.service.SystemParameterService.ParameterView;
 import com.example.funerariamc.ui.BrandTheme;
@@ -477,68 +476,6 @@ public class ParametersController implements RefreshableView {
         });
     }
 
-    /** Nuevo parámetro: si el nombre ya existe, ofrece cambiar el valor del existente. */
-    @FXML
-    private void onNewParameter() {
-        Form form = new Form();
-        TextField name = new TextField();
-        name.setPromptText("Ej.: TARIFA_BUS");
-        TextField value = new TextField();
-        TextField unit = new TextField();
-        unit.setPromptText("Ej.: días, COP, %");
-        TextField description = new TextField();
-        description.setPromptText("Para qué sirve");
-        ComboBox<ParameterCategory> category = new ComboBox<>();
-        category.getItems().setAll(ParameterCategory.values());
-        category.setValue(ParameterCategory.GENERAL);
-        category.getStyleClass().add("form-combo");
-        category.setConverter(new StringConverter<>() {
-            @Override
-            public String toString(ParameterCategory c) {
-                return c == null ? "" : c.getDisplayName();
-            }
-
-            @Override
-            public ParameterCategory fromString(String s) {
-                return null;
-            }
-        });
-        form.section("Parámetro", 2)
-                .field("NOMBRE *", name)
-                .field("CATEGORÍA *", category)
-                .field("VALOR *", value)
-                .field("UNIDAD", unit);
-        form.section("Descripción", 1)
-                .field("DESCRIPCIÓN", description);
-        form.note(note("El nombre va en mayúsculas y sin espacios. Un parámetro nuevo no cambia ningún cálculo"
-                + " hasta que el sistema lo use; los que el sistema ya usa aparecen en la lista como \"Sin definir\"."));
-        Dialog<ButtonType> dialog = formDialog("Nuevo parámetro", "Los campos con * son obligatorios.", form, 640);
-        FormShell.panel(dialog, "Parámetros del sistema");
-        runForm(dialog, form, "Crear parámetro", () -> {
-            String key = name.getText() == null ? "" : name.getText().trim().toUpperCase(Locale.ROOT);
-            if (!key.isEmpty() && parameterService.exists(key)) {
-                return key; // ya existe: se ofrece cambiar su valor
-            }
-            parameterService.create(new ParameterData(name.getText(), value.getText(), description.getText(),
-                    category.getValue(), unit.getText()));
-            return null;
-        }, existing -> {
-            if (existing == null) {
-                load("Parámetro creado.");
-                return;
-            }
-            boolean update = confirm("Ya existe un parámetro llamado " + existing + ".",
-                    "No se crea un duplicado. ¿Quiere cambiar el valor del que ya existe?", "Cambiar su valor");
-            if (update) {
-                searchField.setText("");
-                onlyUndefined = false;
-                categoryGroup.getToggles().get(0).setSelected(true);
-                startEditing(existing);
-            }
-        });
-    }
-
-
     // ---------- identidad de la funeraria ----------
 
     /** Tarjeta con el logo, el nombre, la frase y los 3 colores; "Editar identidad" abre el formulario. */
@@ -872,7 +809,10 @@ public class ParametersController implements RefreshableView {
             previewButton.setStyle("-fx-background-color: " + palette.get("-color-accent") + "; -fx-text-fill: "
                     + palette.get("-color-background") + ";");
             previewLink.setStyle("-fx-text-fill: " + palette.get("-color-gold-deep") + ";");
-            readability.setText(String.join(" ", palette.readabilityProblems()));
+            // Los problemas impiden guardar; los avisos solo informan
+            List<String> notes = new ArrayList<>(palette.readabilityProblems());
+            notes.addAll(palette.readabilityWarnings());
+            readability.setText(String.join(" ", notes));
         };
         name.textProperty().addListener((obs, old, text) -> updatePreview.run());
         tagline.textProperty().addListener((obs, old, text) -> updatePreview.run());

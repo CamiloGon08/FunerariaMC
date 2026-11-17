@@ -16,8 +16,7 @@
 <?import javafx.scene.shape.SVGPath?>
 
 <!--
-  Módulo Contratos y ventas, pantalla 08 de Figma con la paleta verde
-  oscura (captura 08_contratos): banda verde con el título y 4 indicadores, buscador, filtro por
+  Módulo Contratos y ventas: banda verde con el título y 4 indicadores, buscador, filtro por
   tipo y por pago, tabla "Contratos registrados" con barra visible y panel lateral "Ver".
   Se muestra dentro del contentPane de main.fxml. El menú la guarda abierta (RefreshableView).
 -->
@@ -98,7 +97,6 @@
     <Region fx:id="veil" styleClass="drawer-veil" visible="false" onMouseClicked="#onCloseDrawer"/>
     <VBox fx:id="drawer" styleClass="drawer" StackPane.alignment="CENTER_RIGHT"
           prefWidth="500" maxWidth="500" visible="false">
-        <VBox fx:id="drawerHead" styleClass="drawer-head"/>
         <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="card-scroll" VBox.vgrow="ALWAYS">
             <VBox fx:id="drawerBody" spacing="12" styleClass="drawer-body"/>
         </ScrollPane>

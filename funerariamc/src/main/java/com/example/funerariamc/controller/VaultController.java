@@ -23,14 +23,13 @@ import com.example.funerariamc.service.CemeteryService.WallCell;
 import com.example.funerariamc.service.ExhumationData;
 import com.example.funerariamc.service.VaultPosition;
 import com.example.funerariamc.service.VaultState;
+import com.example.funerariamc.ui.DetailShell;
 import com.example.funerariamc.ui.DetailCache;
 import com.example.funerariamc.ui.RefreshableView;
 import com.example.funerariamc.ui.FormShell;
 import javafx.animation.FadeTransition;
-import javafx.animation.ParallelTransition;
 import javafx.animation.PauseTransition;
 import javafx.animation.SequentialTransition;
-import javafx.animation.TranslateTransition;
 import javafx.beans.binding.Bindings;
 import javafx.concurrent.Task;
 import javafx.css.PseudoClass;
@@ -62,7 +61,6 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
-import javafx.scene.shape.Circle;
 import javafx.scene.shape.SVGPath;
 import javafx.stage.FileChooser;
 import javafx.stage.Window;
@@ -105,7 +103,6 @@ import java.util.function.Function;
 public class VaultController implements RefreshableView {
 
     static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-    private static final double DRAWER_WIDTH = 460;
     /** Bóvedas de "Requieren atención" cuyo panel se adelanta apenas carga el muro. */
     private static final int PREFETCH_ATTENTION = 3;
     private static final PseudoClass SELECTED = PseudoClass.getPseudoClass("selected");
@@ -203,10 +200,6 @@ public class VaultController implements RefreshableView {
     @FXML
     private Region veil;
     @FXML
-    private VBox drawerBody;
-    @FXML
-    private HBox drawerActions;
-    @FXML
     private Label toast;
 
     private Long cemeteryId;
@@ -215,6 +208,7 @@ public class VaultController implements RefreshableView {
     private Long selectedVaultId;
     /** Bóveda del panel abierto; null si está cerrado. */
     private Long drawerVaultId;
+    private DetailShell detail;
     /** Descarta respuestas viejas si el usuario cambió de cementerio mientras cargaba. */
     private int generation;
     /** Evita que al llenar las pestañas se dispare otra carga. */
@@ -267,7 +261,7 @@ public class VaultController implements RefreshableView {
         show(addCemeteryButton, canRegister);
         show(addVaultsButton, canRegister);
 
-        drawer.setTranslateX(DRAWER_WIDTH);
+        detail = DetailShell.install(drawer, veil, DetailShell.Kind.PANEL);
         toast.setOpacity(0);
         toast.setMouseTransparent(true);
         countLabel.setText("Cargando bóvedas…");
@@ -768,45 +762,29 @@ public class VaultController implements RefreshableView {
         VaultDetail cached = details.get(vaultId);
         if (cached != null) {
             fillDrawer(cached);
-        } else {
-            showDrawerLoading(vaultId);
-            details.load(vaultId, detail -> {
-                if (vaultId.equals(drawerVaultId)) {
-                    fillDrawer(detail);
-                }
-            }, failure -> {
-                if (vaultId.equals(drawerVaultId)) {
-                    closeDrawer();
-                    showError(failure instanceof BusinessException business ? business.getMessage()
-                            : "No se pudo cargar la bóveda.");
-                }
-            });
+            return;
         }
-        slideDrawerIn();
+        showDrawerLoading(vaultId);
+        details.load(vaultId, data -> {
+            if (vaultId.equals(drawerVaultId)) {
+                fillDrawer(data);
+            }
+        }, failure -> {
+            if (vaultId.equals(drawerVaultId)) {
+                closeDrawer();
+                showError(failure instanceof BusinessException business ? business.getMessage()
+                        : "No se pudo cargar la bóveda.");
+            }
+        });
     }
 
     /** Mientras llega el detalle se muestra el código de la bóveda y un aviso de carga. */
     private void showDrawerLoading(Long vaultId) {
         String code = overview == null ? "" : overview.pavilions().values().stream().flatMap(List::stream)
                 .filter(c -> c.id().equals(vaultId)).map(WallCell::code).findFirst().orElse("");
-        Label caption = new Label("BÓVEDA");
-        caption.getStyleClass().add("kpi-caption");
-        drawerBody.getChildren().setAll(new HBox(new VBox(2, caption, wrapped(code, "drawer-name"))),
-                wrapped("Cargando quién reposa, el titular y el arriendo…", "card-subtitle"));
-        drawerActions.getChildren().clear();
-    }
-
-    private void slideDrawerIn() {
-        if (drawer.isVisible() && drawer.getTranslateX() == 0) {
-            return;
-        }
-        veil.setVisible(true);
-        drawer.setVisible(true);
-        TranslateTransition slide = new TranslateTransition(Duration.millis(220), drawer);
-        slide.setToX(0);
-        FadeTransition fade = new FadeTransition(Duration.millis(220), veil);
-        fade.setToValue(1);
-        new ParallelTransition(slide, fade).play();
+        DetailShell.Hero hero = new DetailShell.Hero("Bóveda", code).onClose(this::closeDrawer);
+        detail.show(vaultId, hero, List.of(DetailShell.empty("Cargando quién reposa, el titular y el arriendo…")),
+                List.of(), null);
     }
 
     @FXML
@@ -816,109 +794,100 @@ public class VaultController implements RefreshableView {
 
     private void closeDrawer() {
         drawerVaultId = null;
-        if (!drawer.isVisible()) {
-            return;
-        }
-        TranslateTransition slide = new TranslateTransition(Duration.millis(180), drawer);
-        slide.setToX(DRAWER_WIDTH);
-        FadeTransition fade = new FadeTransition(Duration.millis(180), veil);
-        fade.setToValue(0);
-        ParallelTransition out = new ParallelTransition(slide, fade);
-        out.setOnFinished(event -> {
-            if (drawerVaultId == null) {
-                drawer.setVisible(false);
-                veil.setVisible(false);
-            }
-        });
-        out.play();
+        detail.close(null);
     }
 
     private void fillDrawer(VaultDetail d) {
         LocalDate today = LocalDate.now(AccessLogService.APP_ZONE);
         VaultPosition position = d.position();
-
-        Label badgeCode = new Label(d.code());
-        badgeCode.getStyleClass().add("vault-badge-code");
-        Label badgeLevel = new Label(position == null ? "" : "Nivel " + position.level());
-        badgeLevel.getStyleClass().add("vault-badge-level");
-        VBox badge = new VBox(badgeCode, badgeLevel);
-        badge.getStyleClass().add("vault-badge");
-
-        Label caption = new Label("BÓVEDA");
-        caption.getStyleClass().add("kpi-caption");
         String place = position == null ? d.cemeteryName()
                 : d.cemeteryName() + " · nivel " + position.level() + ", columna " + position.column();
-        VBox titles = new VBox(2, caption,
-                wrapped(d.code() + (position == null ? "" : " · " + pavilionLabel(position.pavilion())), "drawer-name"),
-                wrapped(place, "card-subtitle"));
-        HBox.setHgrow(titles, Priority.ALWAYS);
-        Button close = new Button("✕");
-        close.getStyleClass().add("drawer-close");
-        close.setOnAction(event -> closeDrawer());
-        HBox header = new HBox(14, badge, titles, close);
-        header.setAlignment(Pos.TOP_LEFT);
+        List<WallCell> cells = currentCells();
+        DetailShell.Hero hero = new DetailShell.Hero("Bóveda",
+                d.code() + (position == null ? "" : " · " + pavilionLabel(position.pavilion())))
+                .subtitle(place)
+                .leading(DetailShell.badge(d.code(), position == null ? "" : "Nivel " + position.level()))
+                .chips(chips(d, today).toArray(Node[]::new))
+                .navigation(DetailShell.neighbor(cells, c -> c.id().equals(d.id()), -1, c -> openDrawer(c.id())),
+                        DetailShell.neighbor(cells, c -> c.id().equals(d.id()), 1, c -> openDrawer(c.id())))
+                .onClose(this::closeDrawer);
+        if (position != null && cells.stream().anyMatch(c -> c.id().equals(d.id()))) {
+            hero.extra(DetailShell.miniWall(cells.stream().filter(c -> c.position() != null)
+                            .map(c -> new int[] {c.position().level(), c.position().column()}).toList(),
+                    new int[] {position.level(), position.column()}));
+        }
+        if (!d.isAvailable() && d.leaseStart() != null && d.leaseEnd() != null) {
+            long total = Math.max(1, ChronoUnit.DAYS.between(d.leaseStart(), d.leaseEnd()));
+            long passed = Math.max(0, ChronoUnit.DAYS.between(d.leaseStart(), today));
+            long years = Math.max(1, Period.between(d.leaseStart(), d.leaseEnd()).getYears());
+            hero.extra(DetailShell.progress("Arriendo", duration(d.leaseStart(), today) + " de " + count(years, "año"),
+                    passed / (double) total, d.state() == VaultState.OVERDUE ? DetailShell.Tone.ALERT
+                            : d.state() == VaultState.EXPIRING ? DetailShell.Tone.GOLD : DetailShell.Tone.NEUTRAL));
+        }
 
-        drawerBody.getChildren().setAll(header, pills(d, today));
+        List<Node> sections = new ArrayList<>();
+        if (!d.isAvailable()) {
+            sections.add(DetailShell.section("Quién reposa", DetailShell.card(deceasedRow(d))));
+            sections.add(DetailShell.section("Familia vinculada · titular del arriendo", DetailShell.card(holderRow(d))));
+            sections.add(DetailShell.section("Arriendo", leaseBox(d)));
+            sections.add(DetailShell.section("Avisos de arriendo", noticesBox(d.notices())));
+        }
+        sections.add(DetailShell.section("Historial de la bóveda", timeline(d.history())));
+        String hint = null;
+        List<Button> buttons;
         if (d.isAvailable()) {
-            drawerBody.getChildren().add(band("Bóveda libre: se puede asignar a un titular y un difunto.",
-                    "band-info"));
+            sections.add(DetailShell.nextStep("Bóveda libre: se puede asignar a un titular y un difunto.",
+                    DetailShell.Tone.NEUTRAL));
+            buttons = List.of(DetailShell.primary("Asignar esta bóveda", () -> openAssignDialog(d.id())));
         } else {
-            drawerBody.getChildren().addAll(
-                    titled("QUIÉN REPOSA", deceasedBox(d)),
-                    titled("FAMILIA VINCULADA · TITULAR DEL ARRIENDO", holderBox(d)),
-                    titled("ARRIENDO", leaseBox(d, today)));
             if (!d.canExhume() && d.exhumationAllowedFrom() != null) {
-                drawerBody.getChildren().add(band("La exhumación procede desde el "
-                        + DATE.format(d.exhumationAllowedFrom()) + ", al cumplir 4 años de arriendo.", "band-info"));
+                sections.add(DetailShell.nextStep("La exhumación procede desde el "
+                        + DATE.format(d.exhumationAllowedFrom()) + ", al cumplir 4 años de arriendo.",
+                        DetailShell.Tone.NEUTRAL));
+                hint = "Registrar exhumación: disponible desde el " + DATE.format(d.exhumationAllowedFrom());
+            } else if (d.state() == VaultState.OVERDUE) {
+                sections.add(DetailShell.nextStep("El arriendo está vencido: renuévelo o registre la exhumación.",
+                        DetailShell.Tone.ALERT));
             }
-            drawerBody.getChildren().add(titled("AVISOS DE ARRIENDO", noticesBox(d.notices())));
-        }
-        drawerBody.getChildren().add(titled("HISTORIAL DE LA BÓVEDA", timeline(d.history())));
-
-        drawerActions.getChildren().clear();
-        if (d.isAvailable()) {
-            Button assign = drawerButton("Asignar esta bóveda", "drawer-primary");
-            assign.setOnAction(e -> openAssignDialog(d.id()));
-            drawerActions.getChildren().add(assign);
-        } else {
-            Button exhume = drawerButton("Registrar exhumación", "drawer-secondary");
+            Button exhume = DetailShell.secondary("Registrar exhumación", () -> openExhumationDialog(d));
             exhume.setDisable(!d.canExhume());
-            exhume.setOnAction(e -> openExhumationDialog(d));
-            Button renew = drawerButton("Renovar arriendo", "drawer-primary");
-            renew.setOnAction(e -> onRenew(d));
-            drawerActions.getChildren().addAll(exhume, renew);
+            buttons = List.of(exhume, DetailShell.primary("Renovar arriendo", () -> onRenew(d)));
         }
+        detail.show(d.id(), hero, sections, buttons, hint);
     }
 
-    private HBox pills(VaultDetail d, LocalDate today) {
-        HBox pills = new HBox(8, statePill(d.state()));
+    private List<Label> chips(VaultDetail d, LocalDate today) {
+        List<Label> chips = new ArrayList<>();
+        chips.add(DetailShell.chip("● " + d.state().getLabel(), switch (d.state()) {
+            case AVAILABLE, OCCUPIED -> DetailShell.Tone.OK;
+            case EXPIRING -> DetailShell.Tone.WARN;
+            case OVERDUE -> DetailShell.Tone.ALERT;
+        }));
         if (d.leaseEnd() != null) {
             long days = ChronoUnit.DAYS.between(today, d.leaseEnd());
             switch (d.state()) {
-                case OVERDUE -> pills.getChildren().addAll(pill("Arriendo vencido", "pill-alert"),
-                        pill("Hace " + duration(d.leaseEnd(), today), "pill-neutral"));
-                case EXPIRING -> pills.getChildren().addAll(pill("Por vencer", "pill-warning"),
-                        pill(days == 0 ? "Vence hoy" : "Faltan " + count(days, "día"), "pill-neutral"));
-                default -> pills.getChildren().addAll(pill("Arriendo al día", "pill-role"),
-                        pill(duration(today, d.leaseEnd()) + " restantes", "pill-neutral"));
+                case OVERDUE -> {
+                    chips.add(DetailShell.chip("Arriendo vencido", DetailShell.Tone.ALERT));
+                    chips.add(DetailShell.chip("Hace " + duration(d.leaseEnd(), today), DetailShell.Tone.NEUTRAL));
+                }
+                case EXPIRING -> {
+                    chips.add(DetailShell.chip("Por vencer", DetailShell.Tone.WARN));
+                    chips.add(DetailShell.chip(days == 0 ? "Vence hoy" : "Faltan " + count(days, "día"), DetailShell.Tone.NEUTRAL));
+                }
+                default -> {
+                    chips.add(DetailShell.chip("Arriendo al día", DetailShell.Tone.OK));
+                    chips.add(DetailShell.chip(duration(today, d.leaseEnd()) + " restantes", DetailShell.Tone.NEUTRAL));
+                }
             }
         }
-        return pills;
+        return chips;
     }
 
-    private HBox deceasedBox(VaultDetail d) {
-        SVGPath cross = new SVGPath();
-        cross.setContent("M10 3v18M5 8h10");
-        cross.getStyleClass().add("cross");
-        StackPane icon = new StackPane(cross);
-        icon.getStyleClass().add("cross-icon");
+    private HBox deceasedRow(VaultDetail d) {
         String buried = d.leaseStart() == null ? "" : "inhumado el " + DATE.format(d.leaseStart());
         String years = lifeYears(d.deceasedBirth(), d.deceasedDeath());
         String line = years.isEmpty() ? buried : buried.isEmpty() ? years : years + " · " + buried;
-        VBox text = new VBox(2, wrapped(orDash(d.deceasedName()), "person-name"), wrapped(line, "card-subtitle"));
-        HBox box = new HBox(icon, text);
-        box.getStyleClass().add("person-box");
-        return box;
+        return DetailShell.item(DetailShell.icon("M10 3v18M5 8h10"), orDash(d.deceasedName()), line, null);
     }
 
     /** "1948 – 2026"; sin fecha de nacimiento solo el año de la defunción, sin "?" (como en Difuntos). */
@@ -932,17 +901,10 @@ public class VaultController implements RefreshableView {
         return birth == null ? "" : "Nació en " + birth.getYear();
     }
 
-    private HBox holderBox(VaultDetail d) {
+    private HBox holderRow(VaultDetail d) {
         if (d.clientName() == null) {
-            HBox box = new HBox(wrapped("La bóveda no tiene titular registrado.", "card-subtitle"));
-            box.getStyleClass().add("person-box");
-            return box;
+            return DetailShell.item(null, "La bóveda no tiene titular registrado.", null, null);
         }
-        Label initials = new Label(initials(d.clientName()));
-        initials.getStyleClass().add("avatar-text");
-        StackPane avatar = new StackPane(initials);
-        avatar.getStyleClass().add("avatar");
-        avatar.setMinSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
         List<String> contact = new ArrayList<>();
         if (d.clientDocument() != null) {
             contact.add(d.clientDocument());
@@ -950,83 +912,46 @@ public class VaultController implements RefreshableView {
         if (d.clientPhone() != null && !d.clientPhone().isBlank()) {
             contact.add(d.clientPhone());
         }
-        VBox text = new VBox(2, wrapped(d.clientName(), "attention-name"), wrapped(String.join(" · ", contact), "card-subtitle"));
         if (d.clientEmail() != null && !d.clientEmail().isBlank()) {
-            text.getChildren().add(wrapped(d.clientEmail(), "card-subtitle"));
+            contact.add(d.clientEmail());
         }
-        HBox box = new HBox(avatar, text);
-        box.getStyleClass().add("person-box");
-        return box;
+        return DetailShell.person(DetailShell.initials(d.clientName()), d.clientName(), String.join(" · ", contact), null);
     }
 
-    private VBox leaseBox(VaultDetail d, LocalDate today) {
-        GridPane grid = new GridPane();
-        grid.setHgap(12);
-        grid.setVgap(8);
-        infoRow(grid, 0, "Inicio", d.leaseStart() == null ? "—" : DATE.format(d.leaseStart()));
-        infoRow(grid, 1, "Vence", d.leaseEnd() == null ? "—" : DATE.format(d.leaseEnd()));
-        infoRow(grid, 2, "Contrato", d.contractNumber() == null ? "Sin contrato de servicio"
-                : d.contractNumber() + " · incluido en el servicio");
-        VBox box = new VBox(8, grid);
-        if (d.leaseStart() != null && d.leaseEnd() != null) {
-            long total = Math.max(1, ChronoUnit.DAYS.between(d.leaseStart(), d.leaseEnd()));
-            long passed = Math.max(0, ChronoUnit.DAYS.between(d.leaseStart(), today));
-            ProgressBar bar = new ProgressBar(Math.min(1, passed / (double) total));
-            bar.setMaxWidth(Double.MAX_VALUE);
-            bar.getStyleClass().add("lease-bar");
-            if (d.state() == VaultState.OVERDUE) {
-                bar.getStyleClass().add("overdue");
-            }
-            long years = Math.max(1, Period.between(d.leaseStart(), d.leaseEnd()).getYears());
-            box.getChildren().addAll(bar, wrapped("Han pasado " + duration(d.leaseStart(), today) + " de "
-                    + count(years, "año"), "card-subtitle"));
-        }
-        box.getStyleClass().add("info-box");
-        return box;
+    private VBox leaseBox(VaultDetail d) {
+        return DetailShell.card(DetailShell.rows(
+                "Inicio", d.leaseStart() == null ? "—" : DATE.format(d.leaseStart()),
+                "Vence", d.leaseEnd() == null ? "—" : DetailShell.value(DATE.format(d.leaseEnd()),
+                        d.state() == VaultState.OVERDUE ? DetailShell.Tone.ALERT
+                                : d.state() == VaultState.EXPIRING ? DetailShell.Tone.WARN : null),
+                "Contrato", d.contractNumber() == null ? "Sin contrato de servicio"
+                        : d.contractNumber() + " · incluido en el servicio"));
     }
 
     private VBox noticesBox(List<Notice> notices) {
-        VBox box = new VBox(6);
-        box.getStyleClass().add("info-box");
         if (notices.isEmpty()) {
-            box.getChildren().add(wrapped("Aún no se han enviado avisos de vencimiento ni de mora.", "card-subtitle"));
-            return box;
+            return DetailShell.empty("Aún no se han enviado avisos de vencimiento ni de mora.");
         }
+        List<Node> rows = new ArrayList<>();
         for (Notice notice : notices) {
             String type = notice.type() == NotificationType.OVERDUE_NOTICE ? "Aviso de mora" : "Recordatorio";
             String channel = notice.channel() == NotificationChannel.TELEGRAM ? "Telegram" : "correo";
-            String status = notice.status() == NotificationStatus.SENT ? "enviado"
-                    : notice.status() == NotificationStatus.FAILED ? "fallido" : "pendiente";
-            Label line = wrapped(type + " por " + channel + " · " + status + " · " + DATE.format(notice.scheduledDate()),
-                    notice.status() == NotificationStatus.FAILED ? "cell-warning" : "info-key");
-            box.getChildren().add(line);
+            boolean failed = notice.status() == NotificationStatus.FAILED;
+            String status = notice.status() == NotificationStatus.SENT ? "Enviado" : failed ? "Fallido" : "Pendiente";
+            rows.add(DetailShell.item(null, type + " por " + channel, DATE.format(notice.scheduledDate()),
+                    DetailShell.chip(status, failed ? DetailShell.Tone.ALERT
+                            : notice.status() == NotificationStatus.SENT ? DetailShell.Tone.OK : DetailShell.Tone.NEUTRAL)));
         }
-        return box;
+        return DetailShell.list(rows.toArray(Node[]::new));
     }
 
-    private VBox timeline(List<HistoryEvent> events) {
-        VBox box = new VBox(12);
+    private Node timeline(List<HistoryEvent> events) {
         if (events.isEmpty()) {
-            box.getChildren().add(wrapped("Sin inhumaciones ni exhumaciones registradas.", "card-subtitle"));
-            return box;
+            return DetailShell.empty("Sin inhumaciones ni exhumaciones registradas.");
         }
-        for (HistoryEvent event : events) {
-            Circle dot = new Circle(5);
-            dot.getStyleClass().add("timeline-dot");
-            Label title = wrapped(event.text(), "timeline-title");
-            if (!event.current()) {
-                dot.getStyleClass().add("past");
-                title.getStyleClass().add("past");
-            }
-            Label date = new Label(event.date() == null ? "" : DATE.format(event.date()));
-            date.getStyleClass().add("timeline-date");
-            StackPane dotBox = new StackPane(dot);
-            dotBox.setPadding(new Insets(4, 0, 0, 2));
-            HBox row = new HBox(dotBox, new VBox(1, title, date));
-            row.getStyleClass().add("timeline-row");
-            box.getChildren().add(row);
-        }
-        return box;
+        return DetailShell.timeline(events.stream().map(e -> new DetailShell.Event(e.text(),
+                e.date() == null ? "" : DATE.format(e.date()),
+                e.current() ? DetailShell.Tone.OK : DetailShell.Tone.NEUTRAL)).toList());
     }
 
     // ---------- acciones ----------
@@ -1450,13 +1375,13 @@ public class VaultController implements RefreshableView {
         if (alert.showAndWait().filter(renew::equals).isEmpty()) {
             return;
         }
-        drawerActions.setDisable(true);
+        detail.setBusy(true);
         async("vault-renew", () -> cemeteryService.renewLease(d.id()), newEnd -> {
-            drawerActions.setDisable(false);
+            detail.setBusy(false);
             showToast("Arriendo de " + d.code() + " renovado hasta el " + DATE.format(newEnd) + ".");
             loadScreen(d.id());
         }, failure -> {
-            drawerActions.setDisable(false);
+            detail.setBusy(false);
             showError(failure instanceof BusinessException business ? business.getMessage()
                     : "No se pudo renovar el arriendo. Intente de nuevo.");
         });
@@ -1851,13 +1776,6 @@ public class VaultController implements RefreshableView {
         return pill;
     }
 
-    private static Label band(String text, String styleClass) {
-        Label band = wrapped(text, "band");
-        band.getStyleClass().add(styleClass);
-        band.setMaxWidth(Double.MAX_VALUE);
-        return band;
-    }
-
     private static Label label(String text, String styleClass) {
         Label label = new Label(text);
         label.getStyleClass().add(styleClass);
@@ -1868,33 +1786,6 @@ public class VaultController implements RefreshableView {
         Label label = label(text, styleClass);
         label.setWrapText(true);
         return label;
-    }
-
-    private static VBox titled(String title, Node content) {
-        Label caption = new Label(title);
-        caption.getStyleClass().add("kpi-caption");
-        return new VBox(8, caption, content);
-    }
-
-    private static void infoRow(GridPane grid, int row, String label, String value) {
-        Label key = new Label(label);
-        key.getStyleClass().add("info-key");
-        key.setMinWidth(Region.USE_PREF_SIZE);
-        Label val = wrapped(value, "info-value");
-        val.setMaxWidth(Double.MAX_VALUE);
-        val.setAlignment(Pos.CENTER_RIGHT);
-        val.setTextAlignment(javafx.scene.text.TextAlignment.RIGHT);
-        GridPane.setHgrow(val, Priority.ALWAYS);
-        grid.add(key, 0, row);
-        grid.add(val, 1, row);
-    }
-
-    private static Button drawerButton(String text, String styleClass) {
-        Button button = new Button(text);
-        button.getStyleClass().addAll("drawer-button", styleClass);
-        button.setMaxWidth(Double.MAX_VALUE);
-        HBox.setHgrow(button, Priority.ALWAYS);
-        return button;
     }
 
     private static TextField searchInput(String prompt) {
@@ -2008,16 +1899,6 @@ public class VaultController implements RefreshableView {
 
     private static String count(long amount, String singular, String plural) {
         return amount + " " + (amount == 1 ? singular : plural);
-    }
-
-    private static String initials(String name) {
-        StringBuilder result = new StringBuilder();
-        for (String part : name.trim().split("\\s+")) {
-            if (!part.isEmpty() && result.length() < 2) {
-                result.append(Character.toUpperCase(part.charAt(0)));
-            }
-        }
-        return result.toString();
     }
 
     private static String capitalize(String text) {
