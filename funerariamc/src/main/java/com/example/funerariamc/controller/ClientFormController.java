@@ -108,6 +108,8 @@ public class ClientFormController {
     private void initialize() {
         // Cédula y NIT hasta 10 dígitos; extranjería y pasaporte hasta lo que admite el registro de clientes
         FormShell.document(documentField, documentTypeCombo::getValue, 11);
+        // Teléfono: solo números, máximo 10 dígitos
+        FormShell.phone(phoneField);
         clientTypeCombo.getItems().addAll(ClientType.values());
         clientTypeCombo.setButtonCell(typeCell());
         clientTypeCombo.setCellFactory(list -> typeCell());
