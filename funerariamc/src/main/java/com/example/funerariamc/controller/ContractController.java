@@ -790,8 +790,8 @@ public class ContractController implements RefreshableView {
                     service ? idOf(deceased.getValue()) : null,
                     kind == SaleKind.PLAN ? idOf(plan.getValue()) : null,
                     service ? idOf(salesperson.getValue()) : null,
-                    base.isDisabled() ? null : parseAmount(base.getText(), "La cuota base"),
-                    wages.isDisabled() ? null : parseDecimal(wages.getText(), "Los salarios mínimos"),
+                    base.isDisable() ? null : parseAmount(base.getText(), "La cuota base"),
+                    wages.isDisable() ? null : parseDecimal(wages.getText(), "Los salarios mínimos"),
                     withRoom ? room.getValue().id() : null,
                     withRoom ? at(startDate.getValue(), startTime.getValue()) : null,
                     withRoom ? at(endDate.getValue(), endTime.getValue()) : null,
@@ -1196,7 +1196,10 @@ public class ContractController implements RefreshableView {
                 okButton.setDisable(false);
                 cancelButton.setDisable(false);
                 form.body.setDisable(false);
-                form.error.setText(message(failure, "No se pudo guardar. Revise la conexión e intente de nuevo."));
+                String why = message(failure, "No se pudo guardar. Revise la conexión e intente de nuevo.");
+                form.error.setText(why);
+                failure.printStackTrace();
+                new Alert(Alert.AlertType.ERROR, why).showAndWait();
             });
         });
         dialog.setOnCloseRequest(event -> {
