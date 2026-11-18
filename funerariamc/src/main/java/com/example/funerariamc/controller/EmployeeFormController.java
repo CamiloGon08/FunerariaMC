@@ -191,6 +191,8 @@ public class EmployeeFormController {
         FormShell.money(salaryField, commissionPerCaseField);
         // Cédula hasta 10 dígitos; extranjería y pasaporte hasta lo que guarda la base
         FormShell.document(documentField, documentTypeCombo::getValue, 30);
+        // Teléfono: solo números, máximo 10 dígitos
+        FormShell.phone(phoneField);
         documentTypeCombo.getItems().addAll(DOCUMENT_TYPES.keySet());
         documentTypeCombo.setConverter(new StringConverter<>() {
             @Override
