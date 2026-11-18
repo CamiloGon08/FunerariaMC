@@ -123,16 +123,51 @@ public final class FormShell {
                 warning.hide();
                 return change;
             }
-            warning.setText(problem);
-            javafx.geometry.Bounds b = field.localToScreen(field.getBoundsInLocal());
-            if (b != null && field.getScene() != null) {
-                warning.show(field, b.getMinX(), b.getMaxY() + 4);
-                javafx.animation.PauseTransition hide = new javafx.animation.PauseTransition(javafx.util.Duration.seconds(2.5));
-                hide.setOnFinished(e -> warning.hide());
-                hide.play();
-            }
+            showWarning(field, warning, problem);
             return null;
         }));
+        hideWhenLeaving(field, warning);
+    }
+
+    /**
+     * Campo de teléfono: solo números y máximo 10 dígitos (celular 10, fijo 7). Si se pasa o se escribe
+     * una letra, no deja escribirla y lo avisa debajo del campo, igual que el número de documento.
+     * Los espacios, guiones y paréntesis que se escriban o peguen no cuentan como dígitos.
+     */
+    public static void phone(TextField... fields) {
+        for (TextField field : fields) {
+            Tooltip warning = new Tooltip();
+            warning.getStyleClass().add("field-warning");
+            String current = field.getText();
+            field.setTextFormatter(new TextFormatter<String>(change -> {
+                String clean = change.getControlNewText().replaceAll("[\\s()-]", "");
+                String problem = !clean.matches("\\d*") ? "El teléfono solo lleva números."
+                        : clean.length() > 10 ? "El teléfono tiene máximo 10 dígitos." : null;
+                if (problem == null) {
+                    warning.hide();
+                    return change;
+                }
+                showWarning(field, warning, problem);
+                return null;
+            }));
+            hideWhenLeaving(field, warning);
+            field.setText(current == null ? "" : current);
+        }
+    }
+
+    /** Muestra el aviso debajo del campo por dos segundos y medio. */
+    private static void showWarning(TextField field, Tooltip warning, String problem) {
+        warning.setText(problem);
+        javafx.geometry.Bounds b = field.localToScreen(field.getBoundsInLocal());
+        if (b != null && field.getScene() != null) {
+            warning.show(field, b.getMinX(), b.getMaxY() + 4);
+            javafx.animation.PauseTransition hide = new javafx.animation.PauseTransition(javafx.util.Duration.seconds(2.5));
+            hide.setOnFinished(e -> warning.hide());
+            hide.play();
+        }
+    }
+
+    private static void hideWhenLeaving(TextField field, Tooltip warning) {
         field.focusedProperty().addListener((obs, was, focused) -> {
             if (!focused) {
                 warning.hide();
@@ -251,18 +286,9 @@ public final class FormShell {
             if (shown != null) {
                 shown.handle(e);
             }
-            Window window = pane.getScene().getWindow();
-            Runnable arrange = () -> {
-                place(window, pane, owner, kind);
-                if (kind == Kind.WINDOW) {
-                    fitWindow(pane, owner);
-                }
-            };
-            // Con showAndWait la ventana a veces se muestra antes de tener tamaño (NaN): se acomoda cuando ya lo tiene
-            if (Double.isNaN(window.getWidth()) || Double.isNaN(window.getHeight())) {
-                Platform.runLater(arrange);
-            } else {
-                arrange.run();
+            place(pane.getScene().getWindow(), pane, owner, kind);
+            if (kind == Kind.WINDOW) {
+                fitWindow(pane, owner);
             }
         });
         EventHandler<DialogEvent> hidden = dialog.getOnHidden();
@@ -784,11 +810,8 @@ public final class FormShell {
         double sh = scene.getHeight();
         switch (kind) {
             case WINDOW -> {
-                double w = Math.min(sized(window.getWidth(), content.getWidth(), content.prefWidth(-1)), sw - 2 * MARGIN);
-                double h = Math.min(sized(window.getHeight(), content.getHeight(), content.prefHeight(w)), sh - 2 * MARGIN);
-                if (w <= 0 || h <= 0) {
-                    return; // todavía sin medidas: la ventana se acomoda sola al terminar de mostrarse
-                }
+                double w = Math.min(window.getWidth(), sw - 2 * MARGIN);
+                double h = Math.min(window.getHeight(), sh - 2 * MARGIN);
                 window.setWidth(w);
                 window.setHeight(h);
                 window.setX(sx + (sw - w) / 2);
@@ -837,11 +860,7 @@ public final class FormShell {
             }
             fitting[0] = true;
             try {
-                // A veces la ventana aún no tiene ancho (NaN) al mostrarse: con NaN el cálculo del alto no termina y la app se congela
-                double width = sized(window.getWidth(), pane.getWidth(), pane.prefWidth(-1));
-                if (width <= 0) {
-                    return;
-                }
+                double width = window.getWidth();
                 double viewport = scroll.getViewportBounds().getWidth();
                 scroll.setPrefViewportHeight(body.prefHeight(viewport > 0 ? viewport : -1));
                 pane.setMinHeight(Region.USE_COMPUTED_SIZE);
@@ -875,16 +894,6 @@ public final class FormShell {
                 });
             }
         });
-    }
-
-    /** La primera medida válida (mayor que cero y no NaN); 0 si ninguna lo es. */
-    private static double sized(double... values) {
-        for (double value : values) {
-            if (!Double.isNaN(value) && value > 0) {
-                return value;
-            }
-        }
-        return 0;
     }
 
     /** El desplazamiento que envuelve el cuerpo del formulario (null si no hay). */
