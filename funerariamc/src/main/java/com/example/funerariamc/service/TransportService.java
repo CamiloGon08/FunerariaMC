@@ -291,6 +291,23 @@ public class TransportService {
         return new Screen(today, now, kpis(cards), cards, driverCards, transfers, canManageVehicles());
     }
 
+    /**
+     * Traslados de un día cualquiera (Traslados > Otro día), con sus paradas. Se excluyen los
+     * cancelados y no se agregan los que van en ruta desde otro día.
+     */
+    @Transactional(readOnly = true)
+    public List<Transfer> transfersOn(LocalDate day) {
+        requireAccess();
+        if (day == null) {
+            throw new InvalidDataException("Elija el día que quiere consultar.");
+        }
+        // El último parámetro trae también los que están "en ruta"; al pasar CANCELLED, que ya se excluye,
+        // solo quedan los programados para ese día.
+        List<TransferRow> rows = transportRepository.findTransfers(day.atStartOfDay(), day.plusDays(1).atStartOfDay(),
+                TransportStatus.CANCELLED, TransportStatus.CANCELLED);
+        return group(rows, stopsOf(rows.stream().map(row -> row.getId()).toList()));
+    }
+
     /** Agrupa las filas por contrato y hora de salida: un traslado con todos sus vehículos. */
     static List<Transfer> group(List<TransferRow> rows, Map<Long, List<Stop>> stops) {
         Map<String, List<TransferRow>> groups = new LinkedHashMap<>();

@@ -16,6 +16,15 @@
 .segment:hover { -fx-background-color: -color-card-a60; }
 .segment:selected { -fx-background-color: -color-accent; -fx-text-fill: -color-background; }
 .segment-caption { -fx-text-fill: -color-secondary; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 0 4 0 8; }
+/* Calendario de Traslados > Otro día, dentro de la barra de filtros */
+.day-picker { -fx-background-color: transparent; -fx-padding: 0 0 0 4; }
+.day-picker > .text-field {
+    -fx-background-color: -color-card; -fx-background-radius: 10; -fx-border-color: -color-border;
+    -fx-border-radius: 10; -fx-text-fill: -color-primary; -fx-font-size: 12.5px; -fx-padding: 6 10;
+    -fx-prompt-text-fill: -color-secondary; -fx-cursor: hand;
+}
+.day-picker > .arrow-button { -fx-background-color: transparent; -fx-cursor: hand; }
+.day-picker > .arrow-button > .arrow { -fx-background-color: -color-primary; }
 
 /* ---------- Aviso corto al guardar ---------- */
 .toast {
