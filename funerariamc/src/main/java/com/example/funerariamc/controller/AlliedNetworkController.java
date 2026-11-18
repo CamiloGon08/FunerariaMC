@@ -17,11 +17,10 @@ import com.example.funerariamc.service.AlliedPaymentData;
 import com.example.funerariamc.service.SaleParameters;
 import com.example.funerariamc.ui.RefreshableView;
 import com.example.funerariamc.ui.FormShell;
+import com.example.funerariamc.ui.DetailShell;
 import javafx.animation.FadeTransition;
-import javafx.animation.ParallelTransition;
 import javafx.animation.PauseTransition;
 import javafx.animation.SequentialTransition;
-import javafx.animation.TranslateTransition;
 import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -89,7 +88,6 @@ public class AlliedNetworkController implements RefreshableView {
     private static final DateTimeFormatter LONG_DAY = DateTimeFormatter.ofPattern("d MMM yyyy", ES);
     private static final String ALL_CITIES = "Todas";
     private final SaleParameters saleParameters;
-    private static final double DRAWER_WIDTH = 460;
     private static final double CARD_GAP = 16;
 
     private final AlliedNetworkService service;
@@ -116,13 +114,12 @@ public class AlliedNetworkController implements RefreshableView {
     @FXML private Label emptyLabel;
     @FXML private Region veil;
     @FXML private VBox drawer;
-    @FXML private VBox drawerHead;
-    @FXML private VBox drawerBody;
-    @FXML private HBox drawerActions;
     @FXML private Label toast;
 
     private List<HomeCard> homes = List.of();
     private Long drawerHomeId;
+    private DetailShell detail;
+    private List<HomeCard> shownHomes = List.of();
     private int generation;
     private SequentialTransition toastMotion;
     private final PauseTransition searchDelay = new PauseTransition(Duration.millis(200));
@@ -167,7 +164,7 @@ public class AlliedNetworkController implements RefreshableView {
         // Tres tarjetas por fila; dos si la ventana es angosta.
         cardsScroll.viewportBoundsProperty().addListener((obs, old, bounds) -> resizeCards());
 
-        drawer.setTranslateX(DRAWER_WIDTH);
+        detail = DetailShell.install(drawer, veil, DetailShell.Kind.PANEL);
         toast.setOpacity(0);
         toast.setMouseTransparent(true);
         load();
@@ -247,6 +244,7 @@ public class AlliedNetworkController implements RefreshableView {
                         || (state == balanceState && h.state() == HomeState.WITH_BALANCE)
                         || (state == inactiveState && h.state() == HomeState.INACTIVE))
                 .toList();
+        shownHomes = shown;
         List<Node> cards = new ArrayList<>();
         for (HomeCard h : shown) {
             cards.add(card(h));
@@ -377,14 +375,14 @@ public class AlliedNetworkController implements RefreshableView {
         boolean switching = !homeId.equals(drawerHomeId);
         drawerHomeId = homeId;
         if (switching) {
-            drawerHead.getChildren().setAll(label("Cargando…", "drawer-sub"));
-            drawerBody.getChildren().clear();
-            drawerActions.getChildren().clear();
+            String name = homes.stream().filter(h -> h.id().equals(homeId)).map(HomeCard::name).findFirst().orElse("");
+            detail.show(homeId, new DetailShell.Hero("Funeraria aliada", name).onClose(this::closeDrawer),
+                    List.of(DetailShell.empty("Cargando el convenio y los pagos…")), List.of(), null);
         }
         markSelected();
-        async("allied-detail", () -> service.detail(homeId), detail -> {
+        async("allied-detail", () -> service.detail(homeId), loaded -> {
             if (homeId.equals(drawerHomeId)) {
-                fillDrawer(detail);
+                fillDrawer(loaded);
             }
         }, failure -> {
             if (homeId.equals(drawerHomeId)) {
@@ -392,7 +390,6 @@ public class AlliedNetworkController implements RefreshableView {
                 showError(message(failure, "No se pudo cargar el detalle de la funeraria."));
             }
         });
-        slideDrawerIn();
     }
 
     private void markSelected() {
@@ -404,116 +401,86 @@ public class AlliedNetworkController implements RefreshableView {
 
     private void fillDrawer(HomeDetail d) {
         HomeCard h = d.home();
-        Button close = new Button("✕");
-        close.getStyleClass().add("drawer-close");
-        close.setOnAction(e -> closeDrawer());
+        String place = (h.city() == null ? "" : h.city() + " · ") + "NIT " + h.nit();
+        List<HomeCard> list = shownHomes.isEmpty() ? homes : shownHomes;
+        DetailShell.Hero hero = new DetailShell.Hero("Funeraria aliada", h.name())
+                .leading(DetailShell.initials(h.name()))
+                .subtitle(place)
+                .chips(h.state() == HomeState.WITH_BALANCE ? DetailShell.chip("● Con saldo", DetailShell.Tone.WARN) : null,
+                        DetailShell.chip(h.active() ? "● Convenio activo" : "Convenio inactivo",
+                                h.active() ? DetailShell.Tone.OK : DetailShell.Tone.NEUTRAL))
+                .navigation(DetailShell.neighbor(list, x -> x.id().equals(h.id()), -1, x -> openDrawer(x.id())),
+                        DetailShell.neighbor(list, x -> x.id().equals(h.id()), 1, x -> openDrawer(x.id())))
+                .onClose(this::closeDrawer);
+
+        List<Node> sections = new ArrayList<>();
+        sections.add(DetailShell.section("Convenio", DetailShell.card(DetailShell.rows(
+                "Convenio desde", h.agreementStart() == null ? "—" : clean(h.agreementStart().format(LONG_DAY)),
+                "Teléfono", h.phone(),
+                "Correo", h.email() == null ? "—" : h.email(),
+                "Servicios prestados en " + d.year(), String.valueOf(d.servicesThisYear())))));
+
+        List<DetailShell.Event> events = new ArrayList<>();
+        for (PaymentRow p : d.payments()) {
+            events.add(paymentEvent(h, p));
+        }
+        sections.add(DetailShell.section("Pagos por servicios prestados", events.isEmpty()
+                ? DetailShell.empty("Aún no hay pagos registrados a esta funeraria.")
+                : DetailShell.timeline(events)));
+
+        Label balance = DetailShell.value(pesos(h.pending()),
+                h.pending().signum() > 0 ? DetailShell.Tone.ALERT : DetailShell.Tone.OK);
+        balance.getStyleClass().add("detail-big");
         Region gap = new Region();
         HBox.setHgrow(gap, Priority.ALWAYS);
-        HBox top = new HBox(label("FUNERARIA ALIADA", "drawer-caption"), gap, close);
-        top.setAlignment(Pos.TOP_LEFT);
-        Label name = label(h.name(), "drawer-name");
-        name.setWrapText(true);
-        String place = (h.city() == null ? "" : h.city() + " · ") + "NIT " + h.nit();
-        Label agreement = label(h.active() ? "Convenio activo" : "Convenio inactivo", "state-chip");
-        agreement.getStyleClass().add(h.active() ? "state-ok" : "state-muted");
-        HBox chips = new HBox(8);
-        if (h.state() == HomeState.WITH_BALANCE) {
-            chips.getChildren().add(stateChip(HomeState.WITH_BALANCE));
-        }
-        chips.getChildren().add(agreement);
-        drawerHead.getChildren().setAll(top, name, label(place, "drawer-sub"), chips);
-
-        VBox convenio = new VBox(8);
-        convenio.getStyleClass().add("drawer-box");
-        convenio.getChildren().addAll(
-                pair("Convenio desde", h.agreementStart() == null ? "—" : clean(h.agreementStart().format(LONG_DAY))),
-                pair("Teléfono", h.phone()),
-                pair("Correo", h.email() == null ? "—" : h.email()),
-                pair("Servicios prestados en " + d.year(), String.valueOf(d.servicesThisYear())));
-
-        VBox payments = new VBox(0);
-        if (d.payments().isEmpty()) {
-            payments.getChildren().add(label("Aún no hay pagos registrados a esta funeraria.", "payment-sub"));
-        }
-        for (PaymentRow p : d.payments()) {
-            payments.getChildren().add(paymentRow(h, p));
-        }
-
-        Label balance = label(pesos(h.pending()), "balance-value");
-        if (h.pending().signum() > 0) {
-            balance.getStyleClass().add("alert");
-        }
-        Region gap2 = new Region();
-        HBox.setHgrow(gap2, Priority.ALWAYS);
-        HBox balanceBox = new HBox(new VBox(2, label("SALDO POR PAGAR", "drawer-caption"), balance), gap2,
+        HBox balanceBox = new HBox(new VBox(2, label("SALDO POR PAGAR", "detail-field-key"), balance), gap,
                 label(h.pendingCount() == 0 ? "sin pagos abiertos"
-                        : h.pendingCount() + (h.pendingCount() == 1 ? " pago abierto" : " pagos abiertos"), "payment-sub"));
-        balanceBox.getStyleClass().add("balance-box");
+                        : h.pendingCount() + (h.pendingCount() == 1 ? " pago abierto" : " pagos abiertos"),
+                        "detail-person-line"));
+        balanceBox.setAlignment(Pos.CENTER_LEFT);
+        sections.add(DetailShell.card(balanceBox));
 
-        drawerBody.getChildren().setAll(label("CONVENIO", "drawer-section-title"), convenio,
-                label("PAGOS POR SERVICIOS PRESTADOS", "drawer-section-title"), payments, balanceBox);
-
-        Button toggle = new Button(h.active() ? "Desactivar" : "Activar");
-        toggle.getStyleClass().add("drawer-button");
-        if (h.active()) {
-            toggle.getStyleClass().add("danger");
-        }
-        toggle.setOnAction(e -> toggleActive(h));
-        Button edit = new Button("Editar");
-        edit.getStyleClass().add("drawer-button");
-        edit.setOnAction(e -> editHome(h));
-        Button pay = new Button("Registrar pago");
-        pay.getStyleClass().addAll("drawer-button", "strong");
+        Button toggle = h.active() ? DetailShell.danger("Desactivar", () -> toggleActive(h))
+                : DetailShell.secondary("Activar", () -> toggleActive(h));
+        Button edit = DetailShell.secondary("Editar", () -> editHome(h));
+        Button pay = DetailShell.primary("Registrar pago", () -> registerPayment(h));
         pay.setDisable(!h.active());
-        pay.setOnAction(e -> registerPayment(h));
-        for (Button b : List.of(toggle, edit, pay)) {
-            HBox.setHgrow(b, Priority.ALWAYS);
-            b.setMaxWidth(Double.MAX_VALUE);
-        }
-        drawerActions.getChildren().setAll(toggle, edit, pay);
+        detail.show(h.id(), hero, sections, List.of(toggle, edit, pay),
+                h.active() ? null : "Registrar pago: active el convenio primero");
     }
 
-    private Node paymentRow(HomeCard h, PaymentRow p) {
-        Label amount = label(pesos(p.amount()), "payment-amount");
-        if (p.status() == AlliedPaymentStatus.VOIDED) {
-            amount.getStyleClass().add("voided");
-        }
-        String service = "Servicio " + (p.serviceDate() == null ? "" : clean(p.serviceDate().format(SHORT_DAY)))
+    /** Un pago a la aliada en el historial: valor, servicio, estado y sus enlaces (marcar pagado, anular). */
+    private DetailShell.Event paymentEvent(HomeCard h, PaymentRow p) {
+        String service = "Servicio" + (p.serviceDate() == null ? "" : " " + clean(p.serviceDate().format(SHORT_DAY)))
                 + (p.contractNumber() == null ? "" : " · " + p.contractNumber())
                 + (p.deceasedName() == null || p.deceasedName().isBlank() ? "" : " · " + p.deceasedName());
-        Label sub = label(service, "payment-sub");
-        sub.setWrapText(true);
-        VBox text = new VBox(2, amount, sub);
         if (p.status() == AlliedPaymentStatus.PAID && p.paidAt() != null) {
-            text.getChildren().add(label("Pagado el " + p.paidAt().format(DAY) + " · egreso " + p.movementCode(), "payment-sub"));
+            service += "\nPagado el " + p.paidAt().format(DAY) + " · egreso " + p.movementCode();
         }
+        DetailShell.Tone tone = switch (p.status()) {
+            case PENDING -> DetailShell.Tone.ALERT;
+            case PAID -> DetailShell.Tone.OK;
+            case VOIDED -> DetailShell.Tone.NEUTRAL;
+        };
+        Label chip = DetailShell.chip(p.status().getDisplayName(), switch (p.status()) {
+            case PENDING -> DetailShell.Tone.WARN;
+            case PAID -> DetailShell.Tone.OK;
+            case VOIDED -> DetailShell.Tone.NEUTRAL;
+        });
         HBox links = new HBox(4);
+        links.setAlignment(Pos.CENTER_RIGHT);
         if (p.status() == AlliedPaymentStatus.PENDING) {
-            Button paid = new Button("Marcar pagado");
-            paid.getStyleClass().add("link-button");
-            paid.setOnAction(e -> markPaid(h, p));
-            links.getChildren().add(paid);
+            links.getChildren().add(DetailShell.link("Marcar pagado", () -> markPaid(h, p)));
         }
         if (p.status() != AlliedPaymentStatus.VOIDED) {
-            Button voidIt = new Button("Anular");
-            voidIt.getStyleClass().addAll("link-button", "danger");
-            voidIt.setOnAction(e -> voidPayment(h, p));
+            Button voidIt = DetailShell.link("Anular", () -> voidPayment(h, p));
+            voidIt.getStyleClass().add("detail-link-danger");
             links.getChildren().add(voidIt);
         }
-        text.getChildren().add(links);
-        text.setMinWidth(0);
-        HBox.setHgrow(text, Priority.ALWAYS);
-        Label chip = label(p.status().getDisplayName(), "state-chip");
-        chip.getStyleClass().add(switch (p.status()) {
-            case PENDING -> "state-warn";
-            case PAID -> "state-paid";
-            case VOIDED -> "state-muted";
-        });
-        chip.setMinWidth(Region.USE_PREF_SIZE);
-        HBox row = new HBox(10, text, chip);
-        row.getStyleClass().add("payment-row");
-        row.setAlignment(Pos.TOP_LEFT);
-        return row;
+        VBox aside = new VBox(4, chip, links);
+        aside.setAlignment(Pos.TOP_RIGHT);
+        aside.setMinWidth(Region.USE_PREF_SIZE);
+        return new DetailShell.Event(pesos(p.amount()), service, tone, aside);
     }
 
     private static Node pair(String caption, String value) {
@@ -524,19 +491,6 @@ public class AlliedNetworkController implements RefreshableView {
         return new HBox(10, label(caption, "info-caption"), gap, v);
     }
 
-    private void slideDrawerIn() {
-        if (drawer.isVisible() && drawer.getTranslateX() == 0) {
-            return;
-        }
-        veil.setVisible(true);
-        drawer.setVisible(true);
-        TranslateTransition slide = new TranslateTransition(Duration.millis(220), drawer);
-        slide.setToX(0);
-        FadeTransition fade = new FadeTransition(Duration.millis(220), veil);
-        fade.setToValue(1);
-        new ParallelTransition(slide, fade).play();
-    }
-
     @FXML
     private void onCloseDrawer() {
         closeDrawer();
@@ -545,21 +499,7 @@ public class AlliedNetworkController implements RefreshableView {
     private void closeDrawer() {
         drawerHomeId = null;
         markSelected();
-        if (!drawer.isVisible()) {
-            return;
-        }
-        TranslateTransition slide = new TranslateTransition(Duration.millis(180), drawer);
-        slide.setToX(DRAWER_WIDTH);
-        FadeTransition fade = new FadeTransition(Duration.millis(180), veil);
-        fade.setToValue(0);
-        ParallelTransition out = new ParallelTransition(slide, fade);
-        out.setOnFinished(event -> {
-            if (drawerHomeId == null) {
-                drawer.setVisible(false);
-                veil.setVisible(false);
-            }
-        });
-        out.play();
+        detail.close(null);
     }
 
     // ---------- acciones ----------

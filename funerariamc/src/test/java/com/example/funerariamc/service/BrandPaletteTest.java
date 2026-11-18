@@ -58,8 +58,24 @@ class BrandPaletteTest {
     @Test
     void lightColorsAreRejectedBecauseTextWouldNotBeReadable() {
         BrandPalette light = BrandPalette.of("#E8E4D8", "#F0E6C8", "#FFFFFF");
-        assertEquals(3, light.readabilityProblems().size());
+        assertEquals(2, light.readabilityProblems().size());
         assertTrue(BrandPalette.defaults().readabilityProblems().isEmpty());
+        assertTrue(BrandPalette.defaults().readabilityWarnings().isEmpty());
+    }
+
+    @Test
+    void goldOnTealIsAcceptedBecauseTheHueIsDifferent() {
+        // Claridad cercana pero tono muy distinto: se distingue y no se avisa ni se bloquea
+        BrandPalette teal = BrandPalette.of("#336666", "#3D5A80", "#CC9933");
+        assertTrue(teal.readabilityProblems().isEmpty());
+        assertTrue(teal.readabilityWarnings().isEmpty());
+    }
+
+    @Test
+    void detailAlmostEqualToPrimaryOnlyWarns() {
+        BrandPalette same = BrandPalette.of("#1E3A2E", "#465E47", "#2A4A3A");
+        assertTrue(same.readabilityProblems().isEmpty());
+        assertEquals(1, same.readabilityWarnings().size());
     }
 
     @Test

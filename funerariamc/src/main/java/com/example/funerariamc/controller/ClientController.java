@@ -16,12 +16,13 @@ import com.example.funerariamc.service.ClientOverviewService.PlanInfo;
 import com.example.funerariamc.service.ClientOverviewService.SaleInfo;
 import com.example.funerariamc.service.ClientService;
 import com.example.funerariamc.service.ClientService.BalanceFilter;
+import com.example.funerariamc.service.AppModule;
+import com.example.funerariamc.service.ContractService;
+import com.example.funerariamc.ui.DetailShell;
 import com.example.funerariamc.ui.RefreshableView;
 import com.example.funerariamc.ui.FormShell;
-import javafx.animation.FadeTransition;
-import javafx.animation.ParallelTransition;
+import com.example.funerariamc.ui.ModuleLink;
 import javafx.animation.PauseTransition;
-import javafx.animation.TranslateTransition;
 import javafx.concurrent.Task;
 import javafx.css.PseudoClass;
 import javafx.fxml.FXML;
@@ -62,9 +63,9 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Pantalla de Clientes (propuesta P-11 / P-11.1): tarjetas por titular con su plan exequial,
- * contratos y saldo pendiente; filtros por tipo y saldo; indicadores y un panel lateral con
- * contacto, beneficiarios (carencia RN-08), contratos y ventas, y difuntos atendidos (HU-01).
+ * Pantalla de Clientes: tarjetas por titular con su plan exequial, contratos y saldo pendiente;
+ * filtros por tipo y saldo; indicadores y un panel lateral con contacto, beneficiarios (con su
+ * carencia), contratos y ventas, y difuntos atendidos.
  * Un cliente no se elimina: tiene planes, contratos y ventas asociados.
  */
 @Component
@@ -74,7 +75,6 @@ public class ClientController implements RefreshableView {
     /** Tarjetas por tanda: 4 filas de 3. Al bajar hasta el final se piden 12 más. */
     private static final int PAGE_SIZE = 12;
     private static final int COLUMNS = 3;
-    private static final double DRAWER_WIDTH = 460;
     private static final PseudoClass SELECTED = PseudoClass.getPseudoClass("selected");
     private static final DateTimeFormatter DATE = EmployeeController.DATE;
 
@@ -127,10 +127,6 @@ public class ClientController implements RefreshableView {
     private Region veil;
     @FXML
     private VBox drawer;
-    @FXML
-    private VBox drawerBody;
-    @FXML
-    private HBox drawerActions;
 
     /** Clientes ya cargados (en el orden de las tarjetas) y su resumen. */
     private final List<Client> clients = new ArrayList<>();
@@ -142,6 +138,7 @@ public class ClientController implements RefreshableView {
     private int generation;
     /** Cliente abierto en el panel lateral (null si está cerrado). */
     private Long drawerClientId;
+    private DetailShell detail;
 
     public ClientController(ClientService clientService, ClientOverviewService overviewService,
                             FxmlViewLoader viewLoader, ReadOnlyWork readOnlyWork) {
@@ -183,7 +180,7 @@ public class ClientController implements RefreshableView {
             }
         });
 
-        drawer.setTranslateX(DRAWER_WIDTH);
+        detail = DetailShell.install(drawer, veil, DetailShell.Kind.PANEL);
         reload();
     }
 
@@ -403,23 +400,12 @@ public class ClientController implements RefreshableView {
         cards.forEach((id, card) -> card.pseudoClassStateChanged(SELECTED, id.equals(drawerClientId)));
     }
 
-    // ---------- panel lateral (P-11.1) ----------
+    // ---------- panel lateral ----------
 
     private void openDrawer(Client c) {
         drawerClientId = c.getId();
         markSelectedCard();
         loadDrawer(c);
-        if (drawer.isVisible()) {
-            return;
-        }
-        veil.setVisible(true);
-        drawer.setVisible(true);
-        TranslateTransition slide = new TranslateTransition(Duration.millis(220), drawer);
-        slide.setToX(0);
-        FadeTransition fade = new FadeTransition(Duration.millis(220), veil);
-        fade.setFromValue(0);
-        fade.setToValue(1);
-        new ParallelTransition(slide, fade).play();
     }
 
     @FXML
@@ -430,27 +416,13 @@ public class ClientController implements RefreshableView {
     private void closeDrawer() {
         drawerClientId = null;
         markSelectedCard();
-        if (!drawer.isVisible()) {
-            return;
-        }
-        TranslateTransition slide = new TranslateTransition(Duration.millis(180), drawer);
-        slide.setToX(DRAWER_WIDTH);
-        FadeTransition fade = new FadeTransition(Duration.millis(180), veil);
-        fade.setToValue(0);
-        ParallelTransition out = new ParallelTransition(slide, fade);
-        out.setOnFinished(event -> {
-            if (drawerClientId == null) {
-                drawer.setVisible(false);
-                veil.setVisible(false);
-            }
-        });
-        out.play();
+        detail.close(null);
     }
 
-    /** Dibuja de una vez el encabezado y el contacto; beneficiarios, ventas y difuntos llegan del servicio. */
+    /** Dibuja de una vez la banda y el contacto; beneficiarios, ventas y difuntos llegan del servicio. */
     private void loadDrawer(Client c) {
-        drawerBody.getChildren().setAll(drawerHeader(c), contactSection(c), wrapped("Cargando plan, contratos y ventas…", "account-hint"));
-        drawerActions.getChildren().setAll(drawerButtons(c));
+        detail.show(c.getId(), hero(c, null), List.of(contactSection(c),
+                DetailShell.empty("Cargando plan, contratos y ventas…")), drawerButtons(c), null);
         Long id = c.getId();
         Task<ClientDetail> task = new Task<>() {
             @Override
@@ -465,132 +437,109 @@ public class ClientController implements RefreshableView {
         });
         task.setOnFailed(e -> {
             if (id.equals(drawerClientId)) {
-                drawerBody.getChildren().set(2, wrapped(task.getException() instanceof BusinessException business
-                        ? business.getMessage()
-                        : "No se pudo cargar el detalle del cliente. Intente de nuevo.", "account-hint"));
+                detail.show(id, hero(c, null), List.of(contactSection(c),
+                        DetailShell.empty(task.getException() instanceof BusinessException business
+                                ? business.getMessage()
+                                : "No se pudo cargar el detalle del cliente. Intente de nuevo.")),
+                        drawerButtons(c), null);
             }
         });
         start(task, "client-detail-loader");
     }
 
-    private void fillDrawer(ClientDetail detail) {
-        Client c = detail.client();
-        ClientSummary summary = detail.summary();
-
-        HBox pills = new HBox(8);
-        PlanInfo plan = summary.plan();
-        if (plan != null && plan.isActive()) {
-            pills.getChildren().add(pill("●  Plan activo", "status-active"));
-        } else {
-            pills.getChildren().add(pill(plan == null ? "Sin plan exequial" : "Plan " + planStatusLabel(plan).toLowerCase(),
-                    "status-inactive"));
-        }
-        pills.getChildren().add(summary.hasBalance()
-                ? pill("●  Saldo pendiente", "pill-warning")
-                : pill("●  Al día", "status-active"));
-
-        drawerBody.getChildren().setAll(drawerHeader(c), pills, contactSection(c),
-                planSection(c, plan, detail.beneficiaries()), salesSection(detail.sales()),
-                deceasedSection(detail.deceased()));
+    private void fillDrawer(ClientDetail data) {
+        Client c = data.client();
+        PlanInfo plan = data.summary().plan();
+        detail.show(c.getId(), hero(c, data.summary()), List.of(contactSection(c),
+                planSection(c, plan, data.beneficiaries()), salesSection(data.sales()),
+                deceasedSection(data.deceased())), drawerButtons(c), null);
     }
 
-    private HBox drawerHeader(Client c) {
+    /** Banda verde: tipo de titular, iniciales, documento y, cuando ya llegó el resumen, plan y saldo. */
+    private DetailShell.Hero hero(Client c, ClientSummary summary) {
         boolean corporate = c.getClientType() != null && c.getClientType().isCorporate();
-        Label caption = new Label(corporate ? "EMPRESA TITULAR" : "CLIENTE TITULAR");
-        caption.getStyleClass().add("kpi-caption");
         String type = c.getClientType() == null ? "" : c.getClientType().getDescription() + " · ";
         String since = c.getRegistrationDate() == null ? "" : " · desde " + DATE.format(c.getRegistrationDate());
-        VBox titles = new VBox(2, caption, wrapped(ClientService.displayName(c), "drawer-name"),
-                wrapped(type + documentLabel(c) + since, "card-subtitle"));
-        HBox.setHgrow(titles, Priority.ALWAYS);
-        Button close = new Button("✕");
-        close.getStyleClass().add("drawer-close");
-        close.setOnAction(event -> closeDrawer());
-        HBox header = new HBox(14, avatar(c, "avatar-large"), titles, close);
-        header.setAlignment(Pos.TOP_LEFT);
-        return header;
+        String name = ClientService.displayName(c);
+        DetailShell.Hero hero = new DetailShell.Hero(corporate ? "Empresa titular" : "Cliente titular", name)
+                .subtitle(type + documentLabel(c) + since)
+                .leading(DetailShell.initials(name))
+                .navigation(DetailShell.neighbor(clients, x -> x.getId().equals(c.getId()), -1, this::openDrawer),
+                        DetailShell.neighbor(clients, x -> x.getId().equals(c.getId()), 1, this::openDrawer))
+                .onClose(this::closeDrawer);
+        if (summary != null) {
+            PlanInfo plan = summary.plan();
+            hero.chips(plan != null && plan.isActive()
+                    ? DetailShell.chip("● Plan activo", DetailShell.Tone.OK)
+                    : DetailShell.chip(plan == null ? "Sin plan exequial" : "Plan " + planStatusLabel(plan).toLowerCase(),
+                            DetailShell.Tone.NEUTRAL));
+            hero.chips(summary.hasBalance()
+                    ? DetailShell.chip("● Saldo pendiente", DetailShell.Tone.WARN)
+                    : DetailShell.chip("● Al día", DetailShell.Tone.OK));
+        }
+        return hero;
     }
 
     private static VBox contactSection(Client c) {
-        return section("CONTACTO",
+        return DetailShell.section("Contacto", DetailShell.card(DetailShell.rows(
                 "Teléfono", formatPhone(c.getPhone()),
                 "Correo", orDash(c.getEmail()),
-                "Dirección", orDash(c.getAddress()));
+                "Dirección", orDash(c.getAddress()))));
     }
 
-    /** Beneficiarios del plan con su carencia (RN-08): "Cubierto" o "Carencia hasta 15/01/2027". */
+    /** Beneficiarios del plan con su carencia: "Cubierto" o "Carencia hasta 15/01/2027". */
     private static VBox planSection(Client c, PlanInfo plan, List<BeneficiaryInfo> beneficiaries) {
-        VBox box = new VBox(8);
-        box.getStyleClass().add("info-box");
         if (plan == null) {
-            box.getChildren().add(wrapped("No tiene plan exequial. Se afilia desde el módulo Planes exequiales.",
-                    "account-hint"));
-            return titled("PLAN EXEQUIAL", box);
+            return DetailShell.section("Plan exequial",
+                    DetailShell.empty("No tiene plan exequial. Se afilia desde el módulo Planes exequiales."));
         }
-        boolean corporate = c.getClientType() != null && c.getClientType().isCorporate();
-        LocalDate today = ClientOverviewService.today();
+        String title = "Plan exequial " + plan.code() + " · " + plan.name();
         if (beneficiaries.isEmpty()) {
-            box.getChildren().add(wrapped(corporate ? "El plan aún no tiene afiliados." : "El plan aún no tiene beneficiarios.",
-                    "account-hint"));
+            boolean corporate = c.getClientType() != null && c.getClientType().isCorporate();
+            return DetailShell.section(title, DetailShell.empty(corporate
+                    ? "El plan aún no tiene afiliados." : "El plan aún no tiene beneficiarios."));
         }
-        GridPane grid = infoGrid();
-        for (int i = 0; i < beneficiaries.size(); i++) {
-            BeneficiaryInfo b = beneficiaries.get(i);
+        LocalDate today = ClientOverviewService.today();
+        List<Object> pairs = new ArrayList<>();
+        for (BeneficiaryInfo b : beneficiaries) {
             String who = b.relationship() == null || b.relationship().isBlank()
                     ? b.fullName() : b.fullName() + " · " + b.relationship();
+            boolean covered = plan.isActive() && plan.isCovered(today);
             String coverage = !plan.isActive() ? "Plan " + planStatusLabel(plan).toLowerCase()
                     : plan.isCovered(today) ? "Cubierto"
                     : plan.waitingEnds() == null ? "Sin fecha de inicio"
                     : "Carencia hasta " + DATE.format(plan.waitingEnds());
-            Label name = wrapped(who, "beneficiary-name");
-            Label state = new Label(coverage);
-            state.setMinWidth(Region.USE_PREF_SIZE);
-            state.getStyleClass().addAll("beneficiary-state", plan.isActive() && plan.isCovered(today)
-                    ? "state-covered" : "state-waiting");
-            GridPane.setHgrow(name, Priority.ALWAYS);
-            grid.add(name, 0, i);
-            grid.add(state, 1, i);
+            pairs.add(who);
+            pairs.add(covered ? coverage : DetailShell.value(coverage, DetailShell.Tone.WARN));
         }
-        if (!beneficiaries.isEmpty()) {
-            box.getChildren().add(grid);
-        }
-        String title = "PLAN EXEQUIAL " + plan.code() + " · " + plan.name().toUpperCase();
-        return titled(title, box);
+        return DetailShell.section(title, DetailShell.card(DetailShell.rows(pairs.toArray())));
     }
 
     /** Contratos y ventas con su saldo (abonos anulados no cuentan). */
     private static VBox salesSection(List<SaleInfo> sales) {
-        VBox list = new VBox(10);
         if (sales.isEmpty()) {
-            list.getChildren().add(wrapped("Aún no tiene contratos ni ventas.", "account-hint"));
+            return DetailShell.section("Contratos y ventas", DetailShell.empty("Aún no tiene contratos ni ventas."));
         }
+        List<DetailShell.Event> events = new ArrayList<>();
         for (SaleInfo sale : sales) {
-            Label title = wrapped(sale.code() + " · " + saleTitle(sale.type()), "sale-title");
             String date = sale.date() == null ? "" : " · " + DATE.format(sale.date());
-            Label subtitle = new Label(saleSubtitle(sale.type()) + date);
-            subtitle.getStyleClass().add("sale-subtitle");
-            VBox texts = new VBox(2, title, subtitle);
-            HBox.setHgrow(texts, Priority.ALWAYS);
             boolean owes = sale.balance().signum() > 0;
-            Label state = new Label(owes ? "Saldo " + pesos(sale.balance()) : "Pagado");
-            state.setMinWidth(Region.USE_PREF_SIZE);
-            state.getStyleClass().addAll("sale-state", owes ? "sale-due" : "sale-paid");
-            HBox row = new HBox(10, texts, state);
-            row.setAlignment(Pos.CENTER_LEFT);
-            list.getChildren().add(row);
+            events.add(new DetailShell.Event(sale.code() + " · " + saleTitle(sale.type()),
+                    saleSubtitle(sale.type()) + date,
+                    owes ? DetailShell.Tone.ALERT : DetailShell.Tone.OK,
+                    owes ? DetailShell.chip("Saldo " + pesos(sale.balance()), DetailShell.Tone.ALERT)
+                            : DetailShell.chip("Pagado", DetailShell.Tone.OK)));
         }
-        return titled("CONTRATOS Y VENTAS", list);
+        return DetailShell.section("Contratos y ventas", DetailShell.timeline(events));
     }
 
     private static VBox deceasedSection(List<DeceasedInfo> deceased) {
-        VBox box = new VBox(8);
-        box.getStyleClass().add("info-box");
         if (deceased.isEmpty()) {
-            box.getChildren().add(wrapped("No hay difuntos atendidos con sus contratos.", "account-hint"));
+            return DetailShell.section("Difuntos atendidos",
+                    DetailShell.empty("No hay difuntos atendidos con sus contratos."));
         }
-        GridPane grid = infoGrid();
-        for (int i = 0; i < deceased.size(); i++) {
-            DeceasedInfo d = deceased.get(i);
+        List<Object> pairs = new ArrayList<>();
+        for (DeceasedInfo d : deceased) {
             String where;
             if (d.wakeRoom() != null && d.wakeStartAt() != null) {
                 where = "Velación " + d.wakeRoom() + " · " + DATE.format(d.wakeStartAt());
@@ -599,30 +548,16 @@ public class ClientController implements RefreshableView {
             } else {
                 where = "Contrato " + d.contractNumber();
             }
-            infoRow(grid, i, d.fullName(), where);
+            pairs.add(d.fullName());
+            pairs.add(where);
         }
-        if (!deceased.isEmpty()) {
-            box.getChildren().add(grid);
-        }
-        return titled("DIFUNTOS ATENDIDOS", box);
+        return DetailShell.section("Difuntos atendidos", DetailShell.card(DetailShell.rows(pairs.toArray())));
     }
 
     private List<Button> drawerButtons(Client c) {
-        Button edit = new Button("Editar");
-        edit.getStyleClass().addAll("drawer-button", "drawer-outline");
-        edit.setOnAction(event -> openForm(c, ClientFormController.Mode.EDIT));
-        Button payment = new Button("Registrar abono");
-        payment.getStyleClass().addAll("drawer-button", "drawer-outline");
-        payment.setOnAction(event -> onRegisterPayment(c));
-        Button contract = new Button("Nuevo contrato");
-        contract.getStyleClass().addAll("drawer-button", "drawer-primary");
-        contract.setOnAction(event -> onNewContract(c));
-        List<Button> buttons = List.of(edit, payment, contract);
-        for (Button button : buttons) {
-            button.setMaxWidth(Double.MAX_VALUE);
-            HBox.setHgrow(button, Priority.ALWAYS);
-        }
-        return buttons;
+        return List.of(DetailShell.secondary("Editar", () -> openForm(c, ClientFormController.Mode.EDIT)),
+                DetailShell.secondary("Registrar abono", () -> onRegisterPayment(c)),
+                DetailShell.primary("Nuevo contrato", () -> onNewContract(c)));
     }
 
     // ---------- acciones ----------
@@ -636,7 +571,8 @@ public class ClientController implements RefreshableView {
         FxmlViewLoader.View<ClientFormController> view = viewLoader.loadView(FxmlViewLoader.CLIENT_FORM);
         Stage stage = new Stage();
         stage.initOwner(window());
-        stage.initModality(Modality.WINDOW_MODAL);
+        // Igual que los demás formularios: en Windows, con WINDOW_MODAL el calendario de la ventana transparente no recibía los clics
+        stage.initModality(Modality.APPLICATION_MODAL);
         stage.setTitle("Clientes");
         stage.setScene(new Scene(view.root()));
         view.controller().init(client, mode, saved -> reload());
@@ -644,15 +580,24 @@ public class ClientController implements RefreshableView {
         stage.showAndWait();
     }
 
-    /** Contratos y ventas (HU de EP-05) aún no está: se avisa en vez de abrir una pantalla vacía. */
+    /** Abre Contratos y ventas con el formulario de nueva venta y este cliente ya elegido. */
     private void onNewContract(Client c) {
-        showInfo("Nuevo contrato", "El contrato de " + ClientService.displayName(c)
-                + " se registra en el módulo Contratos y ventas, que llega en un próximo sprint.");
+        openContracts(c, true);
     }
 
+    /** Abre Contratos y ventas mostrando solo las ventas de este cliente que tienen saldo. */
     private void onRegisterPayment(Client c) {
-        showInfo("Registrar abono", "Los abonos de " + ClientService.displayName(c)
-                + " se registran en Contratos y ventas, sobre la venta que tiene saldo. Ese módulo llega en un próximo sprint.");
+        openContracts(c, false);
+    }
+
+    private void openContracts(Client c, boolean newSale) {
+        if (!ModuleLink.canOpen(AppModule.CONTRATOS)) {
+            showInfo("Contratos y ventas", "Su usuario no tiene acceso al módulo Contratos y ventas.");
+            return;
+        }
+        String detail = (c.getClientType() == ClientType.CORPORATE ? "Empresa · " : "") + documentLabel(c);
+        ModuleLink.open(AppModule.CONTRATOS, new ContractController.ClientLink(
+                new ContractService.Option(c.getId(), ClientService.displayName(c), detail), newSale));
     }
 
     // ---------- piezas ----------
@@ -737,22 +682,6 @@ public class ClientController implements RefreshableView {
         GridPane.setHgrow(val, Priority.ALWAYS);
         grid.add(key, 0, row);
         grid.add(val, 1, row);
-    }
-
-    /** Sección del panel: título y un recuadro con pares etiqueta / valor. */
-    private static VBox section(String title, String... pairs) {
-        GridPane grid = infoGrid();
-        for (int i = 0; i + 1 < pairs.length; i += 2) {
-            infoRow(grid, i / 2, pairs[i], pairs[i + 1]);
-        }
-        VBox box = new VBox(grid);
-        box.getStyleClass().add("info-box");
-        return titled(title, box);
-    }
-
-    private static VBox titled(String title, VBox content) {
-        Label caption = wrapped(title, "kpi-caption");
-        return new VBox(8, caption, content);
     }
 
     private static ListCell<BalanceFilter> balanceCell() {

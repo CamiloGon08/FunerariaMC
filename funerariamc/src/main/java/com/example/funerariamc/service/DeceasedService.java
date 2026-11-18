@@ -54,16 +54,16 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * Difuntos (propuesta P-13 / P-13.1): registro con indicadores, servicios en curso, documentos
+ * Difuntos: registro con indicadores, servicios en curso, documentos
  * pendientes y salidas del día; expediente con el recorrido del servicio; registro de un difunto
- * con su certificado (RF-DIF-01, RN-01, RN-02), NN (RF-DIF-02), documentos (RF-DIF-03) y
- * vínculo con un plan exequial (HU-56, RN-08). Lo usan Secretaría, Administrador de Cementerio
+ * con su certificado, NN, documentos y
+ * vínculo con un plan exequial. Lo usan Secretaría, Administrador de Cementerio
  * y Administrador Maestro.
  */
 @Service
 public class DeceasedService {
 
-    /** Nombre con que se guarda un cuerpo no identificado (RF-DIF-02). */
+    /** Nombre con que se guarda un cuerpo no identificado. */
     public static final String UNIDENTIFIED_NAME = "NN";
 
     private static final Set<String> NN_ROLES = Set.of(RoleNames.CEMETERY_ADMIN, RoleNames.MASTER_ADMIN);
@@ -172,7 +172,7 @@ public class DeceasedService {
     /**
      * Fila del registro. code es "DF-0042"; age es null sin fecha de nacimiento; missing son los
      * documentos obligatorios que faltan; blocksCremation indica que falta la orden de entrega
-     * de un cuerpo con cremación programada (RN-03).
+     * de un cuerpo con cremación programada.
      */
     public record DeceasedItem(Long id, String code, boolean unidentified, String fullName, String documentNumber,
                                Integer age, LocalDate deathDate, DeathType deathType, ExternalCause externalCause,
@@ -230,7 +230,7 @@ public class DeceasedService {
                                LocalDateTime createdAt) {
     }
 
-    /** Plan que cubre al difunto: titular o beneficiario, con su carencia (RN-08). */
+    /** Plan que cubre al difunto: titular o beneficiario, con su carencia. */
     public record PlanCoverage(Long planId, String code, String planName, PlanStatus status, String holder,
                                String holderDocument, String relationship, LocalDate startDate,
                                LocalDate waitingEnds, boolean covered, long beneficiaries) {
@@ -314,7 +314,7 @@ public class DeceasedService {
                 .toList();
     }
 
-    /** Expediente del difunto (P-13.1). */
+    /** Expediente del difunto. */
     @Transactional(readOnly = true)
     public DeceasedDetail detail(Long deceasedId) {
         requireAccess();
@@ -371,7 +371,7 @@ public class DeceasedService {
     }
 
     /**
-     * HU-56: planes activos donde ese documento es titular o beneficiario, con la carencia
+     * planes activos donde ese documento es titular o beneficiario, con la carencia
      * calculada a la fecha de defunción (hoy si todavía no la tiene).
      */
     @Transactional(readOnly = true)
@@ -400,8 +400,8 @@ public class DeceasedService {
     // ---------- operaciones ----------
 
     /**
-     * RF-DIF-01 / RF-DIF-02: registra el difunto con su certificado de defunción en una sola
-     * transacción. Sin certificado no se registra (RN-02). Si trae plan, valida que lo cubra.
+     * Registra el difunto con su certificado de defunción en una sola
+     * transacción. Sin certificado no se registra. Si trae plan, valida que lo cubra.
      */
     @Transactional
     public Deceased register(DeceasedData data, DeathDocumentData certificate) {
@@ -417,7 +417,7 @@ public class DeceasedService {
                 throw new UnauthorizedActionException();
             }
             deceased.setName(UNIDENTIFIED_NAME);
-            // RF-DIF-02: solo el nombre «NN», sin apellidos ni documento (lastname es NOT NULL en la BD)
+            // NN: solo el nombre «NN», sin apellidos ni documento (lastname es NOT NULL en la BD)
             deceased.setLastname("");
             if (data.planId() != null) {
                 throw new InvalidDataException("Un cuerpo no identificado no se puede vincular a un plan.");
@@ -468,7 +468,7 @@ public class DeceasedService {
     }
 
     /**
-     * HU-56: vincula (o quita, con planId null) el plan exequial que cubre al difunto. Solo antes
+     * vincula (o quita, con planId null) el plan exequial que cubre al difunto. Solo antes
      * de firmar el contrato de servicio, porque el contrato ya se cotizó con o sin plan.
      */
     @Transactional
@@ -620,7 +620,7 @@ public class DeceasedService {
                     + orDash(row.getCemeteryName()) + since, null, item.stage() == Stage.FINISHED));
         } else if (row.getCremationId() != null) {
             String detail = "Cremación · horno " + orDash(row.getFurnaceCode())
-                    + (item.blocksCremation() ? " · falta la orden de entrega (RN-03)" : "");
+                    + (item.blocksCremation() ? " · falta la orden de entrega" : "");
             LocalDateTime at = row.getCremationCompletedAt() != null ? row.getCremationCompletedAt()
                     : row.getCremationScheduledAt();
             steps.add(new TimelineStep("Destino", detail, at, row.getCremationCompletedAt() != null));
@@ -630,7 +630,7 @@ public class DeceasedService {
         return steps;
     }
 
-    /** Plan activo que cubre al difunto: es titular o beneficiario y ya pasó la carencia (RN-08). */
+    /** Plan activo que cubre al difunto: es titular o beneficiario y ya pasó la carencia. */
     private FuneralPlan coveringPlan(Long planId, Deceased deceased) {
         FuneralPlan plan = planRepository.findDetailById(planId)
                 .orElseThrow(() -> new ResourceNotFoundException("Plan", planId));
@@ -679,7 +679,7 @@ public class DeceasedService {
         return base == null ? null : base.plusDays(parameters.waitingDays());
     }
 
-    /** RN-01: la causa externa solo aplica a una muerte no natural, y ahí es obligatoria. */
+    /** La causa externa solo aplica a una muerte no natural, y ahí es obligatoria. */
     private static void setDeathType(Deceased deceased, DeathType type, ExternalCause cause) {
         if (type == null) {
             throw new InvalidDataException("Seleccione el tipo de muerte.");

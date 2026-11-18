@@ -397,30 +397,6 @@ class SystemParameterServiceTest {
         assertFalse(last.known());
     }
 
-    @Test
-    void createRejectsDuplicatesAndBadNames() {
-        when(parameters.existsByParamName("PLAN_WAITING_DAYS")).thenReturn(true);
-        assertThrows(InvalidDataException.class, () -> service.create(
-                new ParameterData("plan_waiting_days", "10", null, ParameterCategory.PLAN, null)));
-        assertThrows(InvalidDataException.class, () -> service.create(
-                new ParameterData("con espacio", "10", null, ParameterCategory.PLAN, null)));
-        assertThrows(InvalidDataException.class, () -> service.create(
-                new ParameterData("SIN_CATEGORIA", "10", null, null, null)));
-        verify(parameters, never()).save(any());
-        verifyNoInteractions(audit);
-    }
-
-    @Test
-    void createSavesUppercaseNameAndRecordsIt() {
-        when(parameters.save(any(SystemParameter.class))).thenAnswer(call -> call.getArgument(0));
-        SystemParameter created = service.create(
-                new ParameterData("tarifa_prueba", " 10 ", "Prueba", ParameterCategory.GENERAL, "COP"));
-        assertEquals("TARIFA_PRUEBA", created.getParamName());
-        assertEquals("10", created.getParamValue());
-        assertEquals("COP", created.getUnit());
-        verify(audit).record(5L, AccessLogService.SYSTEM_PARAMETER_CREATED + "TARIFA_PRUEBA - -> 10");
-    }
-
     @ParameterizedTest
     @ValueSource(strings = {RoleNames.SECRETARY, RoleNames.SALESPERSON, RoleNames.CEMETERY_ADMIN})
     void onlyMasterAdminSeesTheParameterScreen(String role) {

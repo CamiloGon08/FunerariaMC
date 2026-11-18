@@ -16,8 +16,7 @@
 <?import javafx.scene.layout.VBox?>
 
 <!--
-  Módulo Salas de velación, tablero 19 y panel 19.1 de Figma con la
-  paleta verde oscura (captura 07_salas): banda verde con el título y 4 indicadores, fecha
+  Módulo Salas de velación: banda verde con el título y 4 indicadores, fecha
   consultada con flechas y "Hoy", filtro por estado, una tarjeta por sala y panel lateral.
   Se muestra dentro del contentPane de main.fxml. El menú la guarda abierta (RefreshableView).
 -->
@@ -84,11 +83,10 @@
         </VBox>
     </ScrollPane>
 
-    <!-- Panel de detalle de la velación (19.1) -->
+    <!-- Panel de detalle de la velación -->
     <Region fx:id="veil" styleClass="drawer-veil" visible="false" onMouseClicked="#onCloseDrawer"/>
     <VBox fx:id="drawer" styleClass="drawer" StackPane.alignment="CENTER_RIGHT"
           prefWidth="480" maxWidth="480" visible="false">
-        <VBox fx:id="drawerHead" styleClass="drawer-head"/>
         <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="card-scroll" VBox.vgrow="ALWAYS">
             <VBox fx:id="drawerBody" spacing="12" styleClass="drawer-body"/>
         </ScrollPane>
