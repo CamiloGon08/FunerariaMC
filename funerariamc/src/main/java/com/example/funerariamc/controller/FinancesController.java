@@ -17,7 +17,10 @@ import com.example.funerariamc.service.ReportService.MonthBalance;
 import com.example.funerariamc.service.ReportService.Slice;
 import com.example.funerariamc.service.ReportService.Summary;
 import com.example.funerariamc.ui.RefreshableView;
+import com.example.funerariamc.ui.Notice;
 import com.example.funerariamc.ui.FormShell;
+import com.example.funerariamc.ui.Responsive;
+import javafx.beans.value.ObservableBooleanValue;
 import javafx.animation.FadeTransition;
 import javafx.animation.KeyFrame;
 import javafx.animation.PauseTransition;
@@ -37,7 +40,6 @@ import javafx.scene.chart.LineChart;
 import javafx.scene.chart.NumberAxis;
 import javafx.scene.chart.PieChart;
 import javafx.scene.chart.XYChart;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
@@ -94,6 +96,9 @@ import java.util.function.Consumer;
 @Scope("prototype")
 public class FinancesController implements RefreshableView {
 
+    /** Nombre del módulo que se muestra arriba del título en los avisos. */
+    private static final String MODULE_NAME = "Finanzas";
+
     private static final Locale ES = Locale.forLanguageTag("es-CO");
     private static final DateTimeFormatter DATE_HOUR = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("dd/MM/yyyy");
@@ -108,8 +113,15 @@ public class FinancesController implements RefreshableView {
     private static final double W_ACTION = 150;
     private static final double W_ROLE = 160;
     private static final double W_CASES = 110;
+    /**
+     * Con el módulo más angosto que esto (ventana pequeña): Movimientos oculta Tipo y Origen (el signo del valor
+     * ya dice si es ingreso o egreso) y Comisiones oculta Casos y Tarifa, para que la descripción se lea.
+     */
+    private static final double NARROW_MODULE = 920;
 
     private final FinancialTransactionService transactionService;
+    /** Verdadero en ventana angosta: se ocultan las columnas secundarias de Movimientos y Comisiones. */
+    private ObservableBooleanValue narrow;
     private final CommissionService commissionService;
     private final ReportService reportService;
 
@@ -212,11 +224,15 @@ public class FinancesController implements RefreshableView {
         searchDelay.setOnFinished(e -> applyMovementFilter());
         searchField.textProperty().addListener((obs, old, text) -> searchDelay.playFromStart());
 
+        narrow = Responsive.narrowerThan(root, NARROW_MODULE);
+        Node typeHead = cell(label("TIPO", "head-cell"), W_TYPE);
+        Node originHead = cell(label("ORIGEN · CUENTA", "head-cell"), W_ORIGIN);
+        Responsive.hideWhen(narrow, typeHead, originHead);
         movementsHead.getChildren().setAll(
                 cell(label("FECHA", "head-cell"), W_DATE),
-                cell(label("TIPO", "head-cell"), W_TYPE),
+                typeHead,
                 grow(label("DESCRIPCIÓN", "head-cell")),
-                cell(label("ORIGEN · CUENTA", "head-cell"), W_ORIGIN),
+                originHead,
                 cell(label("VALOR", "head-cell"), W_MONEY),
                 cell(label("", "head-cell"), W_ACTION));
         movementsList.setItems(movementRows);
@@ -225,12 +241,15 @@ public class FinancesController implements RefreshableView {
         movementsList.setPlaceholder(new Label(""));
         movementsList.setPrefWidth(0);
 
+        Node casesHead = cell(label("CASOS", "head-cell"), W_CASES);
+        Node rateHead = cell(label("TARIFA", "head-cell"), W_CASES);
+        Responsive.hideWhen(narrow, casesHead, rateHead);
         commissionsHead.getChildren().setAll(
                 grow(label("PERSONA", "head-cell")),
                 cell(label("CARGO", "head-cell"), W_ROLE),
-                cell(label("CASOS", "head-cell"), W_CASES),
+                casesHead,
                 cell(label("BASE", "head-cell"), W_MONEY),
-                cell(label("TARIFA", "head-cell"), W_CASES),
+                rateHead,
                 cell(label("COMISIÓN", "head-cell"), W_MONEY),
                 cell(label("", "head-cell"), W_ACTION + 20));
         commissionsList.setItems(commissionRows);
@@ -843,7 +862,10 @@ public class FinancesController implements RefreshableView {
             StackPane.setAlignment(voidButton, Pos.CENTER_LEFT);
             StackPane.setAlignment(hint, Pos.CENTER_LEFT);
             VBox source = new VBox(2, origin, account);
-            row = new HBox(cell(when, W_DATE), cell(type, W_TYPE), grow(what), cell(source, W_ORIGIN),
+            Node typeCell = cell(type, W_TYPE);
+            Node sourceCell = cell(source, W_ORIGIN);
+            Responsive.hideWhen(narrow, typeCell, sourceCell);
+            row = new HBox(cell(when, W_DATE), typeCell, grow(what), sourceCell,
                     cell(amount, W_MONEY), cell(action, W_ACTION));
             row.getStyleClass().add("item-row");
         }
@@ -1034,8 +1056,11 @@ public class FinancesController implements RefreshableView {
             StackPane.setAlignment(done, Pos.CENTER_LEFT);
             VBox person = new VBox(2, name, sub);
             person.setAlignment(Pos.CENTER_LEFT);
-            row = new HBox(grow(person), cell(role, W_ROLE), cell(cases, W_CASES), cell(base, W_MONEY),
-                    cell(rate, W_CASES), cell(amount, W_MONEY), cell(action, W_ACTION + 20));
+            Node casesCell = cell(cases, W_CASES);
+            Node rateCell = cell(rate, W_CASES);
+            Responsive.hideWhen(narrow, casesCell, rateCell);
+            row = new HBox(grow(person), cell(role, W_ROLE), casesCell, cell(base, W_MONEY),
+                    rateCell, cell(amount, W_MONEY), cell(action, W_ACTION + 20));
             row.getStyleClass().add("item-row");
         }
 
@@ -1255,17 +1280,7 @@ public class FinancesController implements RefreshableView {
     }
 
     private boolean confirm(String question, String detail, String actionText) {
-        Alert alert = new Alert(Alert.AlertType.NONE);
-        alert.initOwner(window());
-        alert.setTitle("Finanzas");
-        alert.setHeaderText(question);
-        alert.setContentText(detail);
-        ButtonType action = new ButtonType(actionText, ButtonBar.ButtonData.OK_DONE);
-        ButtonType cancel = new ButtonType("Cancelar", ButtonBar.ButtonData.CANCEL_CLOSE);
-        alert.getButtonTypes().setAll(cancel, action);
-        styleDialog(alert.getDialogPane());
-        ((Button) alert.getDialogPane().lookupButton(action)).getStyleClass().add("primary-dialog-button");
-        return alert.showAndWait().filter(action::equals).isPresent();
+        return Notice.confirm(window(), MODULE_NAME, question, detail, actionText);
     }
 
     // ---------- piezas ----------
@@ -1350,11 +1365,7 @@ public class FinancesController implements RefreshableView {
     }
 
     private void showError(String text) {
-        Alert alert = new Alert(Alert.AlertType.WARNING, text);
-        alert.initOwner(window());
-        alert.setHeaderText(null);
-        styleDialog(alert.getDialogPane());
-        alert.showAndWait();
+        Notice.warning(window(), MODULE_NAME, "Atención", text);
     }
 
     private void showToast(String text) {

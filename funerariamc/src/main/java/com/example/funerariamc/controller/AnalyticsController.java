@@ -11,6 +11,7 @@ import com.example.funerariamc.service.AnalyticsService.SellerLine;
 import com.example.funerariamc.service.AnalyticsService.ThanatoLine;
 import com.example.funerariamc.service.FinancePeriod;
 import com.example.funerariamc.ui.RefreshableView;
+import com.example.funerariamc.ui.Notice;
 import com.example.funerariamc.service.BrandPalette;
 import com.example.funerariamc.ui.BrandTheme;
 import javafx.animation.FadeTransition;
@@ -24,7 +25,6 @@ import javafx.scene.chart.CategoryAxis;
 import javafx.scene.chart.NumberAxis;
 import javafx.scene.chart.StackedBarChart;
 import javafx.scene.chart.XYChart;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ToggleButton;
@@ -61,6 +61,9 @@ import java.util.function.Consumer;
 @Component
 @Scope("prototype")
 public class AnalyticsController implements RefreshableView {
+
+    /** Nombre del módulo que se muestra arriba del título en los avisos. */
+    private static final String MODULE_NAME = "Panel de análisis";
 
     private static final Locale ES = Locale.forLanguageTag("es-CO");
 
@@ -536,11 +539,7 @@ public class AnalyticsController implements RefreshableView {
     }
 
     private void showError(String text) {
-        Alert alert = new Alert(Alert.AlertType.WARNING, text);
-        alert.initOwner(window());
-        alert.setHeaderText(null);
-        alert.getDialogPane().getStylesheets().addAll(root.getStylesheets());
-        alert.showAndWait();
+        Notice.warning(window(), MODULE_NAME, "Atención", text);
     }
 
     private void showToast(String text) {
@@ -574,3 +573,4 @@ public class AnalyticsController implements RefreshableView {
         thread.start();
     }
 }
+

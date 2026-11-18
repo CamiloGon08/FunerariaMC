@@ -3,9 +3,9 @@ package com.example.funerariamc.controller;
 import com.example.funerariamc.config.FxmlViewLoader;
 import com.example.funerariamc.exception.BusinessException;
 import com.example.funerariamc.service.PasswordResetService;
+import com.example.funerariamc.ui.Notice;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
@@ -16,7 +16,7 @@ import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
 /**
- * RF-ACC-03: "¿Olvidó su contraseña?" (password-recovery.fxml).
+ * "¿Olvidó su contraseña?" (password-recovery.fxml).
  * Paso 1 pide un código al correo o Telegram del empleado; paso 2 lo valida y guarda la nueva contraseña.
  * El envío y el BCrypt corren en otro hilo para que la ventana no se congele.
  */
@@ -29,6 +29,7 @@ public class PasswordRecoveryController {
     private static final String CODE_SENT = "Si el usuario existe y tiene correo o Telegram registrado, "
             + "le enviamos un código. Vence en 10 minutos.";
     private static final String CONNECTION_ERROR = "No se pudo conectar con el sistema. Intente de nuevo.";
+    private static final String SENDING = "Enviando el código… Mientras llega puede ir escribiendo su nueva contraseña.";
 
     private final PasswordResetService passwordResetService;
     private final FxmlViewLoader viewLoader;
@@ -110,11 +111,9 @@ public class PasswordRecoveryController {
         }
         String username = text(usernameField).trim();
         run(changePasswordButton, () -> passwordResetService.resetPassword(username, code, newPassword), () -> {
-            Alert alert = new Alert(Alert.AlertType.INFORMATION,
+            Notice.success(stepLabel.getScene() == null ? null : stepLabel.getScene().getWindow(), null,
+                    "Contraseña actualizada",
                     "Su contraseña se cambió correctamente. Ya puede iniciar sesión con la nueva contraseña.");
-            alert.setHeaderText(null);
-            alert.setTitle("Contraseña actualizada");
-            alert.showAndWait();
             onBackToLogin();
         });
     }
@@ -124,24 +123,28 @@ public class PasswordRecoveryController {
         viewLoader.switchScene(stepLabel, FxmlViewLoader.LOGIN, FxmlViewLoader.LOGIN_TITLE);
     }
 
+    /**
+     * El envío del correo (o Telegram) tarda unos segundos: la pantalla pasa de inmediato al paso 2 con
+     * "Enviando el código…" y el envío sigue en otro hilo. Al terminar se avisa que llegó o, si falló,
+     * se muestra el error y se puede usar "Reenviar código".
+     */
     private void requestCode(String username) {
-        run(sendCodeButton, () -> passwordResetService.requestCode(username), () -> {
-            requestStep.setVisible(false);
-            requestStep.setManaged(false);
-            resetStep.setVisible(true);
-            resetStep.setManaged(true);
-            stepLabel.setText(STEP_2_TEXT);
-            showInfo(CODE_SENT);
-            codeField.clear();
-            codeField.requestFocus();
-        });
+        requestStep.setVisible(false);
+        requestStep.setManaged(false);
+        resetStep.setVisible(true);
+        resetStep.setManaged(true);
+        stepLabel.setText(STEP_2_TEXT);
+        showInfo(SENDING);
+        codeField.clear();
+        codeField.requestFocus();
+        // "Cambiar contraseña" espera a que el código salga: antes de eso ningún código sirve
+        run(changePasswordButton, () -> passwordResetService.requestCode(username), () -> showInfo(CODE_SENT));
     }
 
     /** Ejecuta la llamada al servicio en otro hilo; muestra el error del servicio si falla. */
     private void run(Button button, Runnable call, Runnable onSuccess) {
         clearError();
-        button.setDisable(true);
-        resendLink.setDisable(true);
+        setBusy(button, true);
         Task<Void> task = new Task<>() {
             @Override
             protected Void call() {
@@ -150,13 +153,12 @@ public class PasswordRecoveryController {
             }
         };
         task.setOnSucceeded(e -> {
-            button.setDisable(false);
-            resendLink.setDisable(false);
+            setBusy(button, false);
             onSuccess.run();
         });
         task.setOnFailed(e -> {
-            button.setDisable(false);
-            resendLink.setDisable(false);
+            setBusy(button, false);
+            showInfo("");
             Throwable error = task.getException();
             if (error instanceof BusinessException) {
                 showError(error.getMessage());
@@ -168,6 +170,14 @@ public class PasswordRecoveryController {
         Thread thread = new Thread(task, "password-recovery");
         thread.setDaemon(true);
         thread.start();
+    }
+
+    /** Mientras se envía, el botón y "Reenviar código" quedan deshabilitados (no se piden dos códigos a la vez). */
+    private void setBusy(Button button, boolean busy) {
+        if (button != null) {
+            button.setDisable(busy);
+        }
+        resendLink.setDisable(busy);
     }
 
     private static String text(TextField field) {
