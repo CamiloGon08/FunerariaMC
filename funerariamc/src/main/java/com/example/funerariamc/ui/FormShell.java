@@ -286,9 +286,18 @@ public final class FormShell {
             if (shown != null) {
                 shown.handle(e);
             }
-            place(pane.getScene().getWindow(), pane, owner, kind);
-            if (kind == Kind.WINDOW) {
-                fitWindow(pane, owner);
+            Window window = pane.getScene().getWindow();
+            Runnable arrange = () -> {
+                place(window, pane, owner, kind);
+                if (kind == Kind.WINDOW) {
+                    fitWindow(pane, owner);
+                }
+            };
+            // Con showAndWait la ventana a veces se muestra antes de tener tamaño (NaN): se acomoda cuando ya lo tiene
+            if (Double.isNaN(window.getWidth()) || Double.isNaN(window.getHeight())) {
+                Platform.runLater(arrange);
+            } else {
+                arrange.run();
             }
         });
         EventHandler<DialogEvent> hidden = dialog.getOnHidden();
@@ -810,8 +819,11 @@ public final class FormShell {
         double sh = scene.getHeight();
         switch (kind) {
             case WINDOW -> {
-                double w = Math.min(window.getWidth(), sw - 2 * MARGIN);
-                double h = Math.min(window.getHeight(), sh - 2 * MARGIN);
+                double w = Math.min(sized(window.getWidth(), content.getWidth(), content.prefWidth(-1)), sw - 2 * MARGIN);
+                double h = Math.min(sized(window.getHeight(), content.getHeight(), content.prefHeight(w)), sh - 2 * MARGIN);
+                if (w <= 0 || h <= 0) {
+                    return; // todavía sin medidas: la ventana se acomoda sola al terminar de mostrarse
+                }
                 window.setWidth(w);
                 window.setHeight(h);
                 window.setX(sx + (sw - w) / 2);
@@ -860,7 +872,11 @@ public final class FormShell {
             }
             fitting[0] = true;
             try {
-                double width = window.getWidth();
+                // A veces la ventana aún no tiene ancho (NaN) al mostrarse: con NaN el cálculo del alto no termina y la app se congela
+                double width = sized(window.getWidth(), pane.getWidth(), pane.prefWidth(-1));
+                if (width <= 0) {
+                    return;
+                }
                 double viewport = scroll.getViewportBounds().getWidth();
                 scroll.setPrefViewportHeight(body.prefHeight(viewport > 0 ? viewport : -1));
                 pane.setMinHeight(Region.USE_COMPUTED_SIZE);
@@ -988,5 +1004,15 @@ public final class FormShell {
 
     private static String sheet() {
         return FormShell.class.getResource(SHEET).toExternalForm();
+    }
+
+    /** La primera medida válida (mayor que cero y no NaN); 0 si ninguna lo es. */
+    private static double sized(double... values) {
+        for (double value : values) {
+            if (!Double.isNaN(value) && value > 0) {
+                return value;
+            }
+        }
+        return 0;
     }
 }
