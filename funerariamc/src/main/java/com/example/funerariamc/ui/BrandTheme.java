@@ -323,6 +323,14 @@ public final class BrandTheme {
         if (primary == null || BrandPalette.DEFAULT_PRIMARY.equalsIgnoreCase(primary)) {
             return null;
         }
+        return tint(primary, veil);
+    }
+
+    /** Blanco y negro + velo del color, solo donde hay imagen. */
+    private static Effect tint(String primary, double veil) {
+        if (primary == null) {
+            return null;
+        }
         ColorAdjust gray = new ColorAdjust(0, -1, 0, 0.25);
         Color color = Color.web(primary);
         ColorInput tone = new ColorInput(-4000, -4000, 8000, 8000,
@@ -330,6 +338,68 @@ public final class BrandTheme {
         return new Blend(BlendMode.SRC_ATOP, gray, tone);
     }
 
+
+    /**
+     * Foto propia del menú con la misma forma de la foto del lirio: se recorta con el borde curvo de
+     * login-lirio.png (llenándolo, se corta lo que sobre) y se le deja encima el filete dorado. Así en el
+     * login solo cambia la imagen y el resto del diseño queda igual.
+     */
+    private static String loginStylesheet(byte[] image) {
+        try (InputStream lilyStream = BrandTheme.class.getResourceAsStream(LOGIN_PHOTO)) {
+            BufferedImage photo = ImageIO.read(new ByteArrayInputStream(image));
+            if (lilyStream == null || photo == null) {
+                return null;
+            }
+            BufferedImage lily = ImageIO.read(lilyStream);
+            int width = lily.getWidth();
+            int height = lily.getHeight();
+            // Borde derecho de la foto del lirio en cada fila (último píxel visible)
+            int[] edge = new int[height];
+            int widest = 0;
+            for (int y = 0; y < height; y++) {
+                edge[y] = -1;
+                for (int x = width - 1; x >= 0; x--) {
+                    if ((lily.getRGB(x, y) >>> 24) >= 32) {
+                        edge[y] = x;
+                        break;
+                    }
+                }
+                widest = Math.max(widest, edge[y] + 1);
+            }
+            // La foto propia llena el área del lirio (como "cover") y queda centrada
+            BufferedImage filled = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+            double scale = Math.max((double) widest / photo.getWidth(), (double) height / photo.getHeight());
+            int drawWidth = (int) Math.ceil(photo.getWidth() * scale);
+            int drawHeight = (int) Math.ceil(photo.getHeight() * scale);
+            Graphics2D graphics = filled.createGraphics();
+            graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+            graphics.drawImage(photo, (widest - drawWidth) / 2, (height - drawHeight) / 2, drawWidth, drawHeight, null);
+            graphics.dispose();
+            BufferedImage result = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+            for (int y = 0; y < height; y++) {
+                for (int x = 0; x <= edge[y]; x++) {
+                    int lilyPixel = lily.getRGB(x, y);
+                    if (x > edge[y] - LOGIN_BORDER) {
+                        result.setRGB(x, y, lilyPixel); // filete dorado del borde curvo
+                    } else {
+                        int alpha = lilyPixel >>> 24;
+                        result.setRGB(x, y, (alpha << 24) | (filled.getRGB(x, y) & 0xFFFFFF));
+                    }
+                }
+            }
+            Path folder = Files.createDirectories(Path.of(System.getProperty("java.io.tmpdir"), "funerariamc-brand"));
+            String id = Integer.toHexString(Arrays.hashCode(image)) + "-" + image.length;
+            Path picture = folder.resolve("login-" + id + ".png");
+            ImageIO.write(result, "png", picture.toFile());
+            Path sheet = folder.resolve(LOGIN_SHEET_PREFIX + id + ".css");
+            Files.writeString(sheet, ".root .login-photo { -fx-background-image: url(\"" + picture.toUri() + "\"); }\n");
+            picture.toFile().deleteOnExit();
+            sheet.toFile().deleteOnExit();
+            return sheet.toUri().toString();
+        } catch (IOException | RuntimeException failure) {
+            return null; // sin la foto propia queda la foto del lirio: el login sigue funcionando
+        }
+    }
 
     /**
      * Las hojas de JavaFX solo leen imágenes desde una dirección.
