@@ -1,14 +1,22 @@
 package com.example.funerariamc.ui;
 
+import com.example.funerariamc.service.BrandPalette;
 import com.example.funerariamc.service.BrandingService;
 import com.example.funerariamc.service.BrandingService.BrandView;
 import javafx.application.Platform;
 import javafx.beans.property.ReadOnlyObjectProperty;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.collections.ListChangeListener;
+import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.effect.Blend;
+import javafx.scene.effect.BlendMode;
+import javafx.scene.effect.ColorAdjust;
+import javafx.scene.effect.ColorInput;
+import javafx.scene.effect.Effect;
 import javafx.scene.image.Image;
+import javafx.scene.paint.Color;
 import javafx.stage.Window;
 
 import java.io.ByteArrayInputStream;
@@ -23,8 +31,9 @@ import java.util.Arrays;
 public final class BrandTheme {
 
     /**
-     * Clase que llevan las raíces cuando la funeraria ya no se ve como El Edén (otro logo u otros colores):
-     * app.css oculta las fotos del lirio, que son de El Edén y vienen en verde.
+     * Clase que llevan las raíces cuando el login va sin la foto del lirio (la funeraria quitó la imagen
+     * del menú o puso una propia): app.css cambia la foto por un panel con el color principal.
+     * Con otros colores pero con el lirio, la foto se queda y se tiñe del color principal (loginTint).
      */
     public static final String CUSTOM_CLASS = "brand-custom";
     /** La funeraria no quiere imagen en las bandas verdes. */
@@ -148,8 +157,17 @@ public final class BrandTheme {
         root.getProperties().put(APPLIED_STYLE, style);
         root.setStyle(style);
         root.getStyleClass().removeAll(CUSTOM_CLASS, NO_BAND_CLASS);
-        if (!brand().edenLook()) {
+        boolean lilyLogin = brand().showMenuImage() && !brand().hasCustomMenuImage();
+        if (!lilyLogin) {
             root.getStyleClass().add(CUSTOM_CLASS);
+        }
+        // Login: la foto del lirio y las hojas de las esquinas toman el tono del color principal
+        String primary = lilyLogin ? brand().primaryColor() : null;
+        for (Node node : root.lookupAll(".login-photo")) {
+            node.setEffect(loginTint(primary, 0.55));
+        }
+        for (Node node : root.lookupAll(".eden-leaves")) {
+            node.setEffect(loginTint(primary, 0.75));
         }
         if (!brand().showBandImage()) {
             root.getStyleClass().add(NO_BAND_CLASS);
@@ -160,6 +178,23 @@ public final class BrandTheme {
             root.getStylesheets().add(bandStylesheet);
         }
     }
+
+    /**
+     * Tono para las fotos del login (vienen en el verde de El Edén): la foto pasa a blanco y negro y encima
+     * se pone un velo del color principal, solo donde hay foto. El lirio queda claro y el resto toma el
+     * color de la funeraria. null si el color es el de El Edén.
+     */
+    static Effect loginTint(String primary, double veil) {
+        if (primary == null || BrandPalette.DEFAULT_PRIMARY.equalsIgnoreCase(primary)) {
+            return null;
+        }
+        ColorAdjust gray = new ColorAdjust(0, -1, 0, 0.25);
+        Color color = Color.web(primary);
+        ColorInput tone = new ColorInput(-4000, -4000, 8000, 8000,
+                Color.color(color.getRed(), color.getGreen(), color.getBlue(), veil));
+        return new Blend(BlendMode.SRC_ATOP, gray, tone);
+    }
+
 
     /**
      * Las hojas de JavaFX solo leen imágenes desde una dirección.

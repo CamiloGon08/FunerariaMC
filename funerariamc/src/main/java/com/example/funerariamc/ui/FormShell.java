@@ -123,16 +123,51 @@ public final class FormShell {
                 warning.hide();
                 return change;
             }
-            warning.setText(problem);
-            javafx.geometry.Bounds b = field.localToScreen(field.getBoundsInLocal());
-            if (b != null && field.getScene() != null) {
-                warning.show(field, b.getMinX(), b.getMaxY() + 4);
-                javafx.animation.PauseTransition hide = new javafx.animation.PauseTransition(javafx.util.Duration.seconds(2.5));
-                hide.setOnFinished(e -> warning.hide());
-                hide.play();
-            }
+            showWarning(field, warning, problem);
             return null;
         }));
+        hideWhenLeaving(field, warning);
+    }
+
+    /**
+     * Campo de teléfono: solo números y máximo 10 dígitos (celular 10, fijo 7). Si se pasa o se escribe
+     * una letra, no deja escribirla y lo avisa debajo del campo, igual que el número de documento.
+     * Los espacios, guiones y paréntesis que se escriban o peguen no cuentan como dígitos.
+     */
+    public static void phone(TextField... fields) {
+        for (TextField field : fields) {
+            Tooltip warning = new Tooltip();
+            warning.getStyleClass().add("field-warning");
+            String current = field.getText();
+            field.setTextFormatter(new TextFormatter<String>(change -> {
+                String clean = change.getControlNewText().replaceAll("[\\s()-]", "");
+                String problem = !clean.matches("\\d*") ? "El teléfono solo lleva números."
+                        : clean.length() > 10 ? "El teléfono tiene máximo 10 dígitos." : null;
+                if (problem == null) {
+                    warning.hide();
+                    return change;
+                }
+                showWarning(field, warning, problem);
+                return null;
+            }));
+            hideWhenLeaving(field, warning);
+            field.setText(current == null ? "" : current);
+        }
+    }
+
+    /** Muestra el aviso debajo del campo por dos segundos y medio. */
+    private static void showWarning(TextField field, Tooltip warning, String problem) {
+        warning.setText(problem);
+        javafx.geometry.Bounds b = field.localToScreen(field.getBoundsInLocal());
+        if (b != null && field.getScene() != null) {
+            warning.show(field, b.getMinX(), b.getMaxY() + 4);
+            javafx.animation.PauseTransition hide = new javafx.animation.PauseTransition(javafx.util.Duration.seconds(2.5));
+            hide.setOnFinished(e -> warning.hide());
+            hide.play();
+        }
+    }
+
+    private static void hideWhenLeaving(TextField field, Tooltip warning) {
         field.focusedProperty().addListener((obs, was, focused) -> {
             if (!focused) {
                 warning.hide();
