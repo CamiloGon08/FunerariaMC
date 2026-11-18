@@ -1,5 +1,10 @@
 package com.example.funerariamc.ui;
 
+import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.SimpleBooleanProperty;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableBooleanValue;
+import javafx.collections.ListChangeListener;
 import javafx.geometry.HPos;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
@@ -8,12 +13,15 @@ import javafx.geometry.VPos;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.layout.ColumnConstraints;
+import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.Priority;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -29,6 +37,8 @@ public final class Responsive {
     private static final String APPLIED = "responsive-applied";
     /** Niveles desde la raíz donde se busca el ScrollPane de la pantalla completa. */
     private static final int PAGE_SCROLL_LEVELS = 2;
+    /** Marco que MainController pone alrededor de cada módulo: su ancho es el espacio real del módulo. */
+    private static final String MODULE_FRAME = "module-frame";
 
     private Responsive() {
     }
@@ -50,6 +60,108 @@ public final class Responsive {
         }
         kpiRows.forEach(row -> replace(row, KPI_MIN_WIDTH));
         filterRows.forEach(row -> replace(row, 0));
+    }
+
+    /**
+     * Verdadero mientras el área del módulo (el marco que le da MainController) mide menos de
+     * {@code width} px. Sirve para ocultar columnas de una tabla de anchos fijos en ventana angosta:
+     * se mide el marco y no la tabla, así la tabla no se queda ancha por sí misma.
+     */
+    public static ObservableBooleanValue narrowerThan(Node node, double width) {
+        BooleanProperty narrow = new SimpleBooleanProperty(false);
+        ScrollPane[] frame = new ScrollPane[1];
+        ChangeListener<Number> measure = (obs, old, value) ->
+                narrow.set(value.doubleValue() > 0 && value.doubleValue() < width);
+        Runnable attach = () -> {
+            ScrollPane found = node.getScene() == null ? null : moduleFrame(node);
+            if (found == frame[0]) {
+                return;
+            }
+            if (frame[0] != null) {
+                frame[0].widthProperty().removeListener(measure);
+            }
+            frame[0] = found;
+            if (found != null) {
+                found.widthProperty().addListener(measure);
+                measure.changed(null, null, found.getWidth());
+            }
+        };
+        // El módulo entra y sale del marco cada vez que se abre (las vistas se reutilizan)
+        node.sceneProperty().addListener((obs, old, scene) -> attach.run());
+        node.parentProperty().addListener((obs, old, parent) -> attach.run());
+        attach.run();
+        return narrow;
+    }
+
+    /** Oculta los nodos (y les quita el espacio) mientras {@code hidden} sea verdadero. */
+    public static void hideWhen(ObservableBooleanValue hidden, Node... nodes) {
+        for (Node node : nodes) {
+            node.visibleProperty().bind(javafx.beans.binding.Bindings.not(hidden));
+            node.managedProperty().bind(node.visibleProperty());
+        }
+    }
+
+    /**
+     * Rejilla de tarjetas con tantas columnas como quepan (cada una de al menos {@code minCard} px),
+     * hasta {@code maxColumns}. Las tarjetas se reacomodan en el mismo orden en que se agregaron, así
+     * el controlador puede seguir usando {@code grid.add(card, i % 3, i / 3)}.
+     */
+    public static void cardColumns(GridPane grid, double minCard, int maxColumns) {
+        int[] current = {0};
+        boolean[] busy = {false};
+        Runnable reflow = () -> {
+            if (busy[0]) {
+                return;
+            }
+            busy[0] = true;
+            try {
+                double width = grid.getWidth() - grid.getInsets().getLeft() - grid.getInsets().getRight();
+                int columns = width <= 0 ? maxColumns
+                        : (int) Math.max(1, Math.min(maxColumns, Math.floor((width + grid.getHgap()) / (minCard + grid.getHgap()))));
+                if (columns != current[0]) {
+                    current[0] = columns;
+                    List<ColumnConstraints> constraints = new ArrayList<>();
+                    for (int i = 0; i < columns; i++) {
+                        ColumnConstraints column = new ColumnConstraints();
+                        column.setPercentWidth(100.0 / columns);
+                        column.setHgrow(Priority.ALWAYS);
+                        column.setFillWidth(true);
+                        constraints.add(column);
+                    }
+                    grid.getColumnConstraints().setAll(constraints);
+                }
+                int index = 0;
+                for (Node child : grid.getChildren()) {
+                    if (!child.isManaged()) {
+                        continue;
+                    }
+                    Integer column = index % columns;
+                    Integer row = index / columns;
+                    if (!Objects.equals(GridPane.getColumnIndex(child), column)) {
+                        GridPane.setColumnIndex(child, column);
+                    }
+                    if (!Objects.equals(GridPane.getRowIndex(child), row)) {
+                        GridPane.setRowIndex(child, row);
+                    }
+                    index++;
+                }
+            } finally {
+                busy[0] = false;
+            }
+        };
+        grid.widthProperty().addListener((obs, old, value) -> reflow.run());
+        grid.getChildren().addListener((ListChangeListener<Node>) change -> reflow.run());
+        reflow.run();
+    }
+
+    /** El marco del módulo que contiene al nodo (null si todavía no está en uno). */
+    private static ScrollPane moduleFrame(Node node) {
+        for (Node parent = node.getParent(); parent != null; parent = parent.getParent()) {
+            if (parent instanceof ScrollPane scroll && scroll.getStyleClass().contains(MODULE_FRAME)) {
+                return scroll;
+            }
+        }
+        return null;
     }
 
     private static void collect(Node node, List<HBox> kpiRows, List<HBox> filterRows) {
