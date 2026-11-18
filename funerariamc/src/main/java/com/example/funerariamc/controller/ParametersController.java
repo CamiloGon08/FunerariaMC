@@ -809,9 +809,12 @@ public class ParametersController implements RefreshableView {
             previewButton.setStyle("-fx-background-color: " + palette.get("-color-accent") + "; -fx-text-fill: "
                     + palette.get("-color-background") + ";");
             previewLink.setStyle("-fx-text-fill: " + palette.get("-color-gold-deep") + ";");
-            // Los problemas impiden guardar; los avisos solo informan
-            List<String> notes = new ArrayList<>(palette.readabilityProblems());
+            // Los problemas impiden guardar y van en rojo; si solo hay avisos van en color de aviso
+            List<String> problems = palette.readabilityProblems();
+            List<String> notes = new ArrayList<>(problems);
             notes.addAll(palette.readabilityWarnings());
+            readability.getStyleClass().removeAll("param-error", "param-warning");
+            readability.getStyleClass().add(problems.isEmpty() ? "param-warning" : "param-error");
             readability.setText(String.join(" ", notes));
         };
         name.textProperty().addListener((obs, old, text) -> updatePreview.run());
@@ -849,7 +852,8 @@ public class ParametersController implements RefreshableView {
                 .field("ASÍ SE VERÁ", new VBox(8, preview, readability));
         form.note(note("El principal pinta el menú y el panel del login; el de acento, los botones y los títulos;"
                 + " el de detalle, los filetes y los textos dorados. Los demás tonos se calculan solos. Los colores de"
-                + " error, aviso y éxito no cambian. Si un color deja un texto ilegible no se puede guardar."
+                + " error, aviso y éxito no cambian. Si un color deja un texto difícil de leer sale un aviso, pero se"
+                + " puede guardar; solo se rechaza un color casi blanco, con el que el texto no se vería."
                 + " Cada cambio queda en la bitácora."));
         // Dos columnas: a la izquierda nombre, logo e imágenes; a la derecha colores y vista previa
         twoColumns(form, "Colores");
