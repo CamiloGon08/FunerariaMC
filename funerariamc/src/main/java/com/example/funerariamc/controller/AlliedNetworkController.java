@@ -522,6 +522,7 @@ public class AlliedNetworkController implements RefreshableView {
         nit.setPromptText("Ej.: 900214556-3");
         TextField phone = new TextField(h == null ? "" : h.phone());
         phone.setPromptText("Ej.: 3005550142");
+        FormShell.phone(phone);
         TextField city = new TextField(h == null || h.city() == null ? "" : h.city());
         city.setPromptText("Ej.: Santa Marta");
         TextField email = new TextField(h == null || h.email() == null ? "" : h.email());
