@@ -105,7 +105,7 @@ public final class ParameterCatalog {
                     "Días antes del vencimiento de licencias y documentos de vehículos en que se avisa.",
                     ParameterCategory.TRANSPORT, "días", Kind.WHOLE),
             new Definition(ChatbotService.FUNERAL_HOME_ADDRESS, "Dirección de la sede",
-                    "Dirección que el bot de Telegram muestra en la opción Contacto.",
+                    "Dirección que el bot de Telegram muestra en Contacto; el mapa de Transporte la usa como punto de salida de la sede.",
                     ParameterCategory.GENERAL, null, Kind.TEXT),
             new Definition(ChatbotService.FUNERAL_HOME_PHONE, "Teléfono de la sede",
                     "Teléfono que el bot de Telegram muestra en la opción Contacto.",
