@@ -315,6 +315,23 @@ public final class BrandTheme {
     }
 
     /**
+     * Tono para las fotos del login (vienen en el verde de El Edén): la foto pasa a blanco y negro y encima
+     * se pone un velo del color principal, solo donde hay foto. El lirio queda claro y el resto toma el
+     * color de la funeraria. null si el color es el de El Edén.
+     */
+    static Effect loginTint(String primary, double veil) {
+        if (primary == null || BrandPalette.DEFAULT_PRIMARY.equalsIgnoreCase(primary)) {
+            return null;
+        }
+        ColorAdjust gray = new ColorAdjust(0, -1, 0, 0.25);
+        Color color = Color.web(primary);
+        ColorInput tone = new ColorInput(-4000, -4000, 8000, 8000,
+                Color.color(color.getRed(), color.getGreen(), color.getBlue(), veil));
+        return new Blend(BlendMode.SRC_ATOP, gray, tone);
+    }
+
+
+    /**
      * Las hojas de JavaFX solo leen imágenes desde una dirección.
      */
     private static String bandStylesheet(byte[] image) {
