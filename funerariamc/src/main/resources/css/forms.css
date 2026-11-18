@@ -330,3 +330,19 @@
 .agenda-swatch.taken { -fx-background-color: -color-primary; }
 .agenda-swatch.reserved { -fx-background-color: -color-gold-wash; -fx-border-color: -color-gold-muted; }
 .agenda-swatch.this { -fx-background-color: transparent; -fx-border-color: -color-detail; -fx-border-width: 1.5; }
+
+/* ---------- Avisos y confirmaciones (ui/Notice) ----------
+   Mismo marco que los formularios; el ícono del tono va en un círculo suave al lado del texto. */
+.form-shell.notice-dialog .form-body { -fx-padding: 24 30 22 30; }
+.form-shell .notice-text { -fx-text-fill: -color-ink; -fx-font-size: 14px; -fx-line-spacing: 2; }
+.form-shell .notice-row { -fx-alignment: top-left; }
+.form-shell .notice-circle { -fx-fill: -color-surface; }
+.form-shell .notice-mark { -fx-fill: transparent; -fx-stroke: -color-text-strong; -fx-stroke-width: 2.2; -fx-stroke-line-cap: round; -fx-stroke-line-join: round; }
+.form-shell .notice-tone-info .notice-circle { -fx-fill: -color-surface; }
+.form-shell .notice-tone-info .notice-mark { -fx-stroke: -color-primary; }
+.form-shell .notice-tone-success .notice-circle { -fx-fill: -color-success-soft; }
+.form-shell .notice-tone-success .notice-mark { -fx-stroke: -color-forest; }
+.form-shell .notice-tone-warning .notice-circle { -fx-fill: -color-warning-bg; }
+.form-shell .notice-tone-warning .notice-mark { -fx-stroke: -color-warning-deep; }
+.form-shell .notice-tone-error .notice-circle { -fx-fill: -color-error-bg; }
+.form-shell .notice-tone-error .notice-mark { -fx-stroke: -color-error; }
