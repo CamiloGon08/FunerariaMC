@@ -64,6 +64,14 @@ class BrandPaletteTest {
     }
 
     @Test
+    void lightButReadableColorsOnlyWarn() {
+        // Azul claro con acento gris: se lee con algo de esfuerzo, se avisa pero se puede guardar
+        BrandPalette lightBlue = BrandPalette.of("#6B86E0", "#9AA0A6", "#E0B860");
+        assertTrue(lightBlue.readabilityProblems().isEmpty());
+        assertTrue(lightBlue.readabilityWarnings().size() >= 2);
+    }
+
+    @Test
     void goldOnTealIsAcceptedBecauseTheHueIsDifferent() {
         // Claridad cercana pero tono muy distinto: se distingue y no se avisa ni se bloquea
         BrandPalette teal = BrandPalette.of("#336666", "#3D5A80", "#CC9933");

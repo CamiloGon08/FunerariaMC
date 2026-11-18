@@ -25,6 +25,8 @@ public final class BrandPalette {
     static final double LARGE_CONTRAST = 3.0;
     /** Por debajo de este contraste el detalle casi no se ve sobre el principal, sea cual sea el tono. */
     static final double MIN_DETAIL_CONTRAST = 1.5;
+    /** Por debajo de este contraste el texto claro casi desaparece (por ejemplo, un principal casi blanco). */
+    static final double MIN_TEXT_CONTRAST = 1.5;
     /** Grados de matiz por debajo de los cuales dos colores se ven del mismo tono. */
     static final double SIMILAR_HUE = 30;
 
@@ -191,17 +193,16 @@ public final class BrandPalette {
     }
 
     /**
-     * Problemas de lectura que dejarían estos colores: vacío si se pueden usar. Se revisa el texto
-     * claro del menú y el texto de los botones; si alguno no se lee, la marca no se guarda.
+     * Problemas que impiden guardar: el texto claro del menú o de los botones casi desaparece porque
+     * el color es casi blanco. Un color claro pero legible solo genera un aviso (ver readabilityWarnings).
      */
     public List<String> readabilityProblems() {
         List<String> problems = new ArrayList<>();
-        if (contrast(get("-color-background"), get("-color-forest")) < TEXT_CONTRAST
-                || contrast(get("-color-background"), get("-color-primary")) < TEXT_CONTRAST) {
-            problems.add("El color principal es muy claro: el texto del menú lateral no se leería.");
+        if (menuContrast() < MIN_TEXT_CONTRAST) {
+            problems.add("El color principal es casi blanco: el texto del menú lateral no se vería.");
         }
-        if (contrast(get("-color-background"), get("-color-accent")) < TEXT_CONTRAST) {
-            problems.add("El color de acento es muy claro: el texto de los botones no se leería.");
+        if (accentContrast() < MIN_TEXT_CONTRAST) {
+            problems.add("El color de acento es casi blanco: el texto de los botones no se vería.");
         }
         return problems;
     }
@@ -219,10 +220,30 @@ public final class BrandPalette {
         double ratio = contrast(detail, forest);
         double hueGap = Math.abs(hsl(detail)[0] - hsl(forest)[0]);
         hueGap = Math.min(hueGap, 360 - hueGap);
+        // Principal o acento claros: el texto se lee con algo de esfuerzo; el administrador decide con la vista previa
+        double menu = menuContrast();
+        if (menu >= MIN_TEXT_CONTRAST && menu < TEXT_CONTRAST) {
+            warnings.add("El color principal es claro: revise en la vista previa que el texto del menú lateral se lea bien.");
+        }
+        double accent = accentContrast();
+        if (accent >= MIN_TEXT_CONTRAST && accent < TEXT_CONTRAST) {
+            warnings.add("El color de acento es claro: revise que el texto de los botones se lea bien.");
+        }
         if (ratio < MIN_DETAIL_CONTRAST || (ratio < LARGE_CONTRAST && hueGap < SIMILAR_HUE)) {
             warnings.add("El color de detalle se parece al principal: los títulos dorados del menú podrían verse poco.");
         }
         return warnings;
+    }
+
+    /** El menor contraste del texto claro del menú sobre el principal y sobre su tono oscuro. */
+    private double menuContrast() {
+        return Math.min(contrast(get("-color-background"), get("-color-forest")),
+                contrast(get("-color-background"), get("-color-primary")));
+    }
+
+    /** Contraste del texto claro de los botones sobre el color de acento. */
+    private double accentContrast() {
+        return contrast(get("-color-background"), get("-color-accent"));
     }
 
     /** true si el texto es un color #RRGGBB. */
