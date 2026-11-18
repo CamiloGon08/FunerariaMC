@@ -104,7 +104,8 @@
 
                 <!-- Movimientos: buscador, filtro, registrar y tabla -->
                 <VBox fx:id="movementsPane" styleClass="table-card" spacing="12" visible="false" minHeight="560">
-                    <HBox spacing="10" alignment="CENTER_LEFT">
+                    <!-- wrap-row: en ventana angosta el buscador y los filtros bajan de línea -->
+                    <HBox spacing="10" alignment="CENTER_LEFT" styleClass="wrap-row">
                         <VBox spacing="2" HBox.hgrow="ALWAYS" minWidth="160">
                             <Label text="Movimientos" styleClass="grid-title"/>
                             <Label fx:id="movementsCount" styleClass="grid-subtitle" wrapText="true" minHeight="-Infinity"/>
@@ -131,7 +132,7 @@
 
                 <!-- Comisiones del mes -->
                 <VBox fx:id="commissionsPane" styleClass="table-card" spacing="12" visible="false" minHeight="560">
-                    <HBox spacing="10" alignment="CENTER_LEFT">
+                    <HBox spacing="10" alignment="CENTER_LEFT" styleClass="wrap-row">
                         <VBox spacing="2" HBox.hgrow="ALWAYS" minWidth="160">
                             <Label fx:id="commissionsTitle" text="Comisiones" styleClass="grid-title"/>
                             <Label fx:id="commissionsCount" styleClass="grid-subtitle" wrapText="true" minHeight="-Infinity"/>
