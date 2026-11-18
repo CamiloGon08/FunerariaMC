@@ -176,6 +176,19 @@ public class WakeRoomService {
     @Transactional(readOnly = true)
     public Board board(LocalDate date) {
         requireAccess();
+        return buildBoard(date);
+    }
+
+    /**
+     * El mismo tablero para la pantalla de Inicio, que es informativa y la ven todos los roles
+     * (solo lectura: no abre el módulo Salas ni permite cambiar nada).
+     */
+    @Transactional(readOnly = true)
+    public Board homeBoard(LocalDate date) {
+        return buildBoard(date);
+    }
+
+    private Board buildBoard(LocalDate date) {
         LocalDate day = date == null ? today() : date;
         LocalDateTime now = now();
         LocalDateTime from = day.atStartOfDay();
