@@ -269,6 +269,19 @@ public class TransportService {
     @Transactional(readOnly = true)
     public Screen screen() {
         requireAccess();
+        return buildScreen();
+    }
+
+    /**
+     * Los mismos datos para la pantalla de Inicio, que es informativa y la ven todos los roles
+     * (solo lectura: no abre el módulo Transporte ni permite cambiar nada).
+     */
+    @Transactional(readOnly = true)
+    public Screen homeScreen() {
+        return buildScreen();
+    }
+
+    private Screen buildScreen() {
         LocalDateTime now = now();
         LocalDate today = now.toLocalDate();
         int warningDays = warningDays();
