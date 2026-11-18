@@ -5,6 +5,7 @@ import com.example.funerariamc.model.AppUser;
 import com.example.funerariamc.model.FinancialTransaction;
 import com.example.funerariamc.model.FuneralSalesperson;
 import com.example.funerariamc.model.InventoryItem;
+import com.example.funerariamc.model.Manager;
 import com.example.funerariamc.model.Receptionist;
 import com.example.funerariamc.model.Role;
 import com.example.funerariamc.utils.enums.CremationBatchStatus;
@@ -56,9 +57,9 @@ class HomeServiceTest {
 
     @BeforeEach
     void setUp() {
-        when(rooms.board(TODAY)).thenReturn(new WakeRoomService.Board(TODAY, true, List.of(),
+        when(rooms.homeBoard(TODAY)).thenReturn(new WakeRoomService.Board(TODAY, true, List.of(),
                 new WakeRoomService.Kpis(3, 2, 0, "", 1, 0, List.of())));
-        when(transport.screen()).thenReturn(new TransportService.Screen(TODAY, LocalDateTime.now(clock), null,
+        when(transport.homeScreen()).thenReturn(new TransportService.Screen(TODAY, LocalDateTime.now(clock), null,
                 List.of(), List.of(), List.of(), true));
         when(batches.findBatchesBetween(any(), any())).thenReturn(List.of());
         when(inventory.findAtOrBelowMinimum(any())).thenReturn(List.of());
@@ -66,14 +67,26 @@ class HomeServiceTest {
     }
 
     @Test
-    void onlyMasterAndSecretarySeeTheBoard() {
-        login(new FuneralSalesperson(), RoleNames.SALESPERSON);
+    void everyRoleSeesTheBoardButOnlyMasterSeesMoney() {
         assertFalse(service.canSeeHome());
         assertThrows(UnauthorizedActionException.class, service::today);
+
+        login(new FuneralSalesperson(), RoleNames.SALESPERSON);
+        assertTrue(service.canSeeHome());
+        assertNotNull(service.today());
+        assertFalse(service.canSeeMoney());
+
+        login(new Manager(), RoleNames.CEMETERY_ADMIN);
+        assertTrue(service.canSeeHome());
+        assertNotNull(service.today());
+        assertFalse(service.canSeeMoney());
 
         login(new Receptionist(), RoleNames.SECRETARY);
         assertTrue(service.canSeeHome());
         assertFalse(service.canSeeMoney());
+        // Inicio usa las lecturas sin el permiso de módulo: Salas y Transporte no se abren desde aquí
+        verify(rooms, never()).board(any());
+        verify(transport, never()).screen();
     }
 
     @Test
@@ -103,7 +116,7 @@ class HomeServiceTest {
         Transfer inRoute = transfer("C-1", TODAY.atTime(8, 0), TransportStatus.IN_PROGRESS, 5L);
         Transfer later = transfer("C-2", TODAY.atTime(15, 30), TransportStatus.SCHEDULED, 6L);
         Transfer tomorrow = transfer("C-3", TODAY.plusDays(1).atTime(9, 0), TransportStatus.SCHEDULED, 7L);
-        when(transport.screen()).thenReturn(new TransportService.Screen(TODAY, LocalDateTime.now(clock), null,
+        when(transport.homeScreen()).thenReturn(new TransportService.Screen(TODAY, LocalDateTime.now(clock), null,
                 List.of(), List.of(), List.of(inRoute, later, tomorrow), true));
         when(batches.findBatchesBetween(TODAY.atStartOfDay(), TODAY.plusDays(1).atStartOfDay())).thenReturn(List.of(
                 batch(1L, TODAY.atTime(7, 0), CremationBatchStatus.FINISHED, 1),
@@ -128,7 +141,7 @@ class HomeServiceTest {
                 new DocStatus(TODAY.minusDays(1), true, false), new DocStatus(TODAY.plusYears(1), false, false),
                 null, null, null, null);
         Transfer noDriver = transfer("C-9", TODAY.atTime(16, 0), TransportStatus.SCHEDULED, null);
-        when(transport.screen()).thenReturn(new TransportService.Screen(TODAY, LocalDateTime.now(clock), null,
+        when(transport.homeScreen()).thenReturn(new TransportService.Screen(TODAY, LocalDateTime.now(clock), null,
                 List.of(hearse), List.of(), List.of(noDriver), true));
         when(vaults.countByStatus(VaultStatus.OVERDUE)).thenReturn(0L);
         InventoryItem candles = new InventoryItem();
