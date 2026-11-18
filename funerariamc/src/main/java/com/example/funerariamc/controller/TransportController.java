@@ -27,6 +27,7 @@ import com.example.funerariamc.service.TransportService.VehicleCard;
 import com.example.funerariamc.service.TransportService.VehicleState;
 import com.example.funerariamc.service.VehicleData;
 import com.example.funerariamc.ui.RefreshableView;
+import com.example.funerariamc.ui.Notice;
 import com.example.funerariamc.ui.BrandTheme;
 import com.example.funerariamc.ui.DetailShell;
 import com.example.funerariamc.ui.FormShell;
@@ -42,7 +43,6 @@ import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
@@ -105,6 +105,9 @@ import java.util.function.Predicate;
 @Component
 @Scope("prototype")
 public class TransportController implements RefreshableView {
+
+    /** Nombre del módulo que se muestra arriba del título en los avisos. */
+    private static final String MODULE_NAME = "Transporte";
 
     private static final Locale ES = Locale.forLanguageTag("es-CO");
     private static final DateTimeFormatter HOUR = DateTimeFormatter.ofPattern("HH:mm");
@@ -1563,17 +1566,7 @@ public class TransportController implements RefreshableView {
 
     /** Confirmación con la pregunta como encabezado y el botón con el nombre de la acción. */
     private boolean confirm(String question, String detail, String actionText) {
-        Alert alert = new Alert(Alert.AlertType.NONE);
-        alert.initOwner(window());
-        alert.setTitle("Transporte");
-        alert.setHeaderText(question);
-        alert.setContentText(detail);
-        ButtonType action = new ButtonType(actionText, ButtonBar.ButtonData.OK_DONE);
-        ButtonType cancel = new ButtonType("Cancelar", ButtonBar.ButtonData.CANCEL_CLOSE);
-        alert.getButtonTypes().setAll(cancel, action);
-        styleDialog(alert.getDialogPane());
-        ((Button) alert.getDialogPane().lookupButton(action)).getStyleClass().add("primary-dialog-button");
-        return alert.showAndWait().filter(action::equals).isPresent();
+        return Notice.confirm(window(), MODULE_NAME, question, detail, actionText);
     }
 
     // ---------- piezas ----------
@@ -1714,11 +1707,7 @@ public class TransportController implements RefreshableView {
     }
 
     private void showError(String message) {
-        Alert alert = new Alert(Alert.AlertType.WARNING, message);
-        alert.initOwner(window());
-        alert.setHeaderText(null);
-        styleDialog(alert.getDialogPane());
-        alert.showAndWait();
+        Notice.warning(window(), MODULE_NAME, "Atención", message);
     }
 
     private void showToast(String text) {

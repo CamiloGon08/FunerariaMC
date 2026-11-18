@@ -127,7 +127,7 @@
                     <HBox styleClass="agenda-header">
                         <Label text="COMPRA" styleClass="agenda-head" minWidth="110" prefWidth="110"/>
                         <Label text="PROVEEDOR" styleClass="agenda-head" HBox.hgrow="ALWAYS" prefWidth="0" maxWidth="Infinity"/>
-                        <Label text="CANTIDAD" styleClass="agenda-head" minWidth="150" prefWidth="150"/>
+                        <Label fx:id="purchaseQuantityHead" text="CANTIDAD" styleClass="agenda-head" minWidth="150" prefWidth="150"/>
                         <Label text="TOTAL" styleClass="agenda-head" minWidth="130" prefWidth="130"/>
                         <Label text="ESTADO" styleClass="agenda-head" minWidth="170" prefWidth="170"/>
                         <Label text="ACCIONES" styleClass="agenda-head" minWidth="190" prefWidth="190"/>

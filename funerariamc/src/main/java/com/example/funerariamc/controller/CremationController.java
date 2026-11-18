@@ -25,8 +25,11 @@ import com.example.funerariamc.service.CremationStockService.ProviderStock;
 import com.example.funerariamc.service.CremationStockService.Purchase;
 import com.example.funerariamc.service.CremationStockService.Stock;
 import com.example.funerariamc.ui.RefreshableView;
+import com.example.funerariamc.ui.Notice;
 import com.example.funerariamc.ui.FormShell;
 import com.example.funerariamc.ui.DetailShell;
+import com.example.funerariamc.ui.Responsive;
+import javafx.beans.value.ObservableBooleanValue;
 import javafx.animation.FadeTransition;
 import javafx.animation.KeyFrame;
 import javafx.animation.ParallelTransition;
@@ -40,7 +43,6 @@ import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ButtonBar;
@@ -100,6 +102,9 @@ import java.util.stream.Collectors;
 @Scope("prototype")
 public class CremationController implements RefreshableView {
 
+    /** Nombre del módulo que se muestra arriba del título en los avisos. */
+    private static final String MODULE_NAME = "Cremaciones";
+
     private static final Locale ES = Locale.forLanguageTag("es-CO");
     private static final DateTimeFormatter HOUR = DateTimeFormatter.ofPattern("HH:mm");
     private static final DateTimeFormatter DATE_HOUR = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
@@ -107,7 +112,11 @@ public class CremationController implements RefreshableView {
     private static final DateTimeFormatter MONTH = DateTimeFormatter.ofPattern("MMMM", ES);
     /** Tarjetas de hornos por fila,. */
     private static final int COLUMNS = 3;
+    /** Ancho mínimo de una tarjeta de horno; si no caben 3, pasan a 2 por fila. */
+    private static final double MIN_CARD_WIDTH = 290;
     private static final int WEEK_DAYS = 7;
+    /** Con el módulo más angosto que esto (ventana pequeña), Compras oculta Cantidad para caber sin barra horizontal. */
+    private static final double NARROW_MODULE = 930;
 
     private final CremationService cremationService;
     private final CremationStockService stockService;
@@ -115,6 +124,10 @@ public class CremationController implements RefreshableView {
 
     @FXML
     private StackPane root;
+    @FXML
+    private Label purchaseQuantityHead;
+    /** Verdadero en ventana angosta: la tabla de compras oculta Cantidad (sigue en el total). */
+    private ObservableBooleanValue narrow;
     @FXML
     private ToggleGroup stateGroup;
     @FXML
@@ -205,6 +218,8 @@ public class CremationController implements RefreshableView {
 
     @FXML
     private void initialize() {
+        narrow = Responsive.narrowerThan(root, NARROW_MODULE);
+        Responsive.hideWhen(narrow, purchaseQuantityHead);
         scheduledToggle.setUserData(CremationBatchStatus.SCHEDULED);
         inProgressToggle.setUserData(CremationBatchStatus.IN_PROGRESS);
         finishedToggle.setUserData(CremationBatchStatus.FINISHED);
@@ -220,11 +235,8 @@ public class CremationController implements RefreshableView {
         typing.setOnFinished(e -> render());
         searchField.textProperty().addListener((obs, old, text) -> typing.playFromStart());
 
-        for (int i = 0; i < COLUMNS; i++) {
-            ColumnConstraints column = new ColumnConstraints();
-            column.setPercentWidth(100.0 / COLUMNS);
-            furnaceGrid.getColumnConstraints().add(column);
-        }
+        // Columnas según el ancho: en ventana angosta las tarjetas pasan a 2 (o 1) por fila
+        Responsive.cardColumns(furnaceGrid, MIN_CARD_WIDTH, COLUMNS);
 
         detail = DetailShell.install(drawer, veil, DetailShell.Kind.PANEL);
         toast.setOpacity(0);
@@ -1008,6 +1020,7 @@ public class CremationController implements RefreshableView {
         VBox quantity = new VBox(1, label(count(p.quantity(), "cremación", "cremaciones"), "agenda-text"),
                 label(MONEY.format(p.unitPrice()) + " c/u", "agenda-muted"));
         fixed(quantity, 150);
+        Responsive.hideWhen(narrow, quantity);
         VBox total = new VBox(label(MONEY.format(p.total()), "agenda-text"));
         fixed(total, 130);
 
@@ -1410,15 +1423,7 @@ public class CremationController implements RefreshableView {
 
     /** Confirmación con la pregunta arriba, Cancelar a la izquierda y la acción con su nombre. */
     private boolean confirm(String question, String detail, String action) {
-        ButtonType yes = new ButtonType(action, ButtonBar.ButtonData.OK_DONE);
-        ButtonType no = new ButtonType("Cancelar", ButtonBar.ButtonData.CANCEL_CLOSE);
-        Alert alert = new Alert(Alert.AlertType.NONE, detail, no, yes);
-        alert.initOwner(window());
-        alert.setTitle(action);
-        alert.setHeaderText(question);
-        styleDialog(alert.getDialogPane());
-        ((Button) alert.getDialogPane().lookupButton(yes)).getStyleClass().add("primary-dialog-button");
-        return alert.showAndWait().filter(yes::equals).isPresent();
+        return Notice.confirm(window(), MODULE_NAME, question, detail, action);
     }
 
     // ---------- piezas ----------
@@ -1506,11 +1511,7 @@ public class CremationController implements RefreshableView {
     }
 
     private void showError(String message) {
-        Alert alert = new Alert(Alert.AlertType.WARNING, message);
-        alert.initOwner(window());
-        alert.setHeaderText(null);
-        styleDialog(alert.getDialogPane());
-        alert.showAndWait();
+        Notice.warning(window(), MODULE_NAME, "Atención", message);
     }
 
     private void showToast(String text) {

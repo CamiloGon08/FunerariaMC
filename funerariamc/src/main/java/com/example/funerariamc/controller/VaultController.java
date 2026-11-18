@@ -38,7 +38,6 @@ import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
@@ -101,6 +100,9 @@ import java.util.function.Function;
 @Component
 @Scope("prototype")
 public class VaultController implements RefreshableView {
+
+    /** Nombre del módulo que se muestra arriba del título en los avisos. */
+    private static final String MODULE_NAME = "Cementerio y bóvedas";
 
     static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     /** Bóvedas de "Requieren atención" cuyo panel se adelanta apenas carga el muro. */
@@ -1364,15 +1366,8 @@ public class VaultController implements RefreshableView {
                 + (d.leaseEnd() == null ? " no tiene fecha de vencimiento." : " vence el " + DATE.format(d.leaseEnd()) + ".")
                 + " Se renueva por " + CemeteryService.RENEWAL_YEARS + " año al valor de este año: vencerá el "
                 + DATE.format(CemeteryService.renewalEnd(base)) + " y el pago queda como ingreso en Finanzas.";
-        ButtonType renew = new ButtonType("Renovar arriendo", ButtonBar.ButtonData.OK_DONE);
-        ButtonType cancel = new ButtonType("Cancelar", ButtonBar.ButtonData.CANCEL_CLOSE);
-        Alert alert = new Alert(Alert.AlertType.NONE, text, cancel, renew);
-        alert.setTitle("Renovar arriendo");
-        alert.setHeaderText("¿Renovar el arriendo de " + d.code() + "?");
-        alert.initOwner(window());
-        styleDialog(alert.getDialogPane());
-        alert.getDialogPane().lookupButton(renew).getStyleClass().add("primary-dialog-button");
-        if (alert.showAndWait().filter(renew::equals).isEmpty()) {
+        if (!com.example.funerariamc.ui.Notice.confirm(window(), MODULE_NAME, "¿Renovar el arriendo de " + d.code() + "?", text,
+                "Renovar arriendo")) {
             return;
         }
         detail.setBusy(true);
@@ -1469,18 +1464,9 @@ public class VaultController implements RefreshableView {
 
     /** Confirma un destino distinto de fosa común u osario para un cuerpo no reclamado. */
     private boolean confirmUnclaimedDestination(ExhumationDestination destination) {
-        ButtonType keep = new ButtonType("Guardar así", ButtonBar.ButtonData.OK_DONE);
-        ButtonType cancel = new ButtonType("Cancelar", ButtonBar.ButtonData.CANCEL_CLOSE);
-        Alert alert = new Alert(Alert.AlertType.NONE,
+        return com.example.funerariamc.ui.Notice.confirm(window(), MODULE_NAME, "¿Confirma el destino de los restos?",
                 "El motivo es «cuerpo no reclamado» y el destino es " + DESTINATIONS.get(destination)
-                        + ". Lo usual es la fosa común o el osario.",
-                cancel, keep);
-        alert.setTitle("Destino de los restos");
-        alert.setHeaderText("¿Confirma el destino de los restos?");
-        alert.initOwner(window());
-        styleDialog(alert.getDialogPane());
-        alert.getDialogPane().lookupButton(keep).getStyleClass().add("primary-dialog-button");
-        return alert.showAndWait().filter(keep::equals).isPresent();
+                        + ". Lo usual es la fosa común o el osario.", "Guardar así");
     }
 
     // ---------- formularios con el estilo de "Personal · El Edén" ----------
@@ -1817,11 +1803,7 @@ public class VaultController implements RefreshableView {
     }
 
     private void showError(String message) {
-        Alert alert = new Alert(Alert.AlertType.WARNING, message);
-        alert.initOwner(window());
-        alert.setHeaderText(null);
-        styleDialog(alert.getDialogPane());
-        alert.showAndWait();
+        com.example.funerariamc.ui.Notice.warning(window(), MODULE_NAME, "Atención", message);
     }
 
     private Window window() {

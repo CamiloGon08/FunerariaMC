@@ -86,9 +86,10 @@
                 <Label fx:id="serviceEmpty" styleClass="card-subtitle" managed="false" visible="false"
                        text="No hay difuntos en servicio en este momento."/>
 
-                <HBox spacing="16" fillHeight="false">
+                <!-- wrap-row: en ventana angosta la columna de Documentos pendientes y Salidas de hoy baja debajo del registro -->
+                <HBox spacing="16" fillHeight="false" styleClass="wrap-row">
                     <!-- Registro de difuntos -->
-                    <VBox styleClass="table-card" HBox.hgrow="ALWAYS" minWidth="0" spacing="6">
+                    <VBox styleClass="table-card" HBox.hgrow="ALWAYS" spacing="6">
                         <HBox alignment="CENTER_LEFT" spacing="12">
                             <Label text="Registro de difuntos" styleClass="card-title"/>
                             <Pane HBox.hgrow="ALWAYS"/>
