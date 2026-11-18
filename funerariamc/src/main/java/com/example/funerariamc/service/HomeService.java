@@ -95,10 +95,9 @@ public class HomeService {
         this.clock = clock;
     }
 
-    /** Inicio con datos: Administrador Maestro y Secretaría. Los demás roles ven el saludo. */
+    /** Inicio con datos: es informativo y lo ven todos los roles con sesión iniciada. */
     public boolean canSeeHome() {
-        return sessionContext.getRoleName()
-                .map(role -> RoleNames.MASTER_ADMIN.equals(role) || RoleNames.SECRETARY.equals(role)).orElse(false);
+        return sessionContext.getRoleName().isPresent();
     }
 
     public boolean canSeeMoney() {
@@ -120,8 +119,8 @@ public class HomeService {
         LocalDateTime now = now();
         LocalDate today = now.toLocalDate();
         boolean money = canSeeMoney();
-        var boardRead = ParallelReads.start(() -> wakeRoomService.board(today));
-        var transportRead = ParallelReads.start(transportService::screen);
+        var boardRead = ParallelReads.start(() -> wakeRoomService.homeBoard(today));
+        var transportRead = ParallelReads.start(transportService::homeScreen);
         var batchesRead = ParallelReads.start(() -> batchRepository.findBatchesBetween(today.atStartOfDay(),
                 today.plusDays(1).atStartOfDay()));
         var paymentsRead = money ? ParallelReads.start(() -> payments(today))
