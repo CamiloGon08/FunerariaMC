@@ -16,6 +16,8 @@ import com.example.funerariamc.service.WakeRoomService.RoomState;
 import com.example.funerariamc.service.WakeRoomService.Wake;
 import com.example.funerariamc.service.WakeRoomService.WakeDetail;
 import com.example.funerariamc.ui.DetailShell;
+import com.example.funerariamc.ui.Notice;
+import com.example.funerariamc.ui.Responsive;
 import com.example.funerariamc.ui.DetailCache;
 import com.example.funerariamc.ui.RefreshableView;
 import com.example.funerariamc.ui.FormShell;
@@ -30,7 +32,6 @@ import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
@@ -87,6 +88,9 @@ import java.util.stream.Collectors;
 @Scope("prototype")
 public class WakeRoomController implements RefreshableView {
 
+    /** Nombre del módulo que se muestra arriba del título en los avisos. */
+    private static final String MODULE_NAME = "Salas de velación";
+
     private static final Locale ES = Locale.forLanguageTag("es-CO");
     private static final DateTimeFormatter DAY_TEXT = DateTimeFormatter.ofPattern("EEEE, d 'de' MMMM 'de' yyyy", ES);
     private static final DateTimeFormatter HOUR = DateTimeFormatter.ofPattern("HH:mm");
@@ -94,6 +98,8 @@ public class WakeRoomController implements RefreshableView {
     private static final DateTimeFormatter DATE_HOUR = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     /** Columnas del tablero, como en el diseño. */
     private static final int COLUMNS = 3;
+    /** Ancho mínimo de una tarjeta de sala; si no caben 3, pasan a 2 por fila. */
+    private static final double MIN_CARD_WIDTH = 300;
 
     private final WakeRoomService wakeRoomService;
     private final ContractService contractService;
@@ -184,11 +190,8 @@ public class WakeRoomController implements RefreshableView {
             }
         });
 
-        for (int i = 0; i < COLUMNS; i++) {
-            ColumnConstraints column = new ColumnConstraints();
-            column.setPercentWidth(100.0 / COLUMNS);
-            cardGrid.getColumnConstraints().add(column);
-        }
+        // Columnas según el ancho: en ventana angosta las tarjetas pasan a 2 (o 1) por fila
+        Responsive.cardColumns(cardGrid, MIN_CARD_WIDTH, COLUMNS);
 
         datePicker.setConverter(dayConverter());
         datePicker.setValue(today());
@@ -1104,20 +1107,11 @@ public class WakeRoomController implements RefreshableView {
     }
 
     private void showError(String message) {
-        Alert alert = new Alert(Alert.AlertType.WARNING, message);
-        alert.initOwner(window());
-        alert.setHeaderText(null);
-        styleDialog(alert.getDialogPane());
-        alert.showAndWait();
+        Notice.warning(window(), MODULE_NAME, "Atención", message);
     }
 
     private void showInfo(String title, String message) {
-        Alert alert = new Alert(Alert.AlertType.NONE, message, new ButtonType("Entendido", ButtonBar.ButtonData.OK_DONE));
-        alert.initOwner(window());
-        alert.setTitle(title);
-        alert.setHeaderText(title);
-        styleDialog(alert.getDialogPane());
-        alert.showAndWait();
+        Notice.info(window(), MODULE_NAME, title, message);
     }
 
     private void showToast(String text) {

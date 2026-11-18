@@ -27,6 +27,7 @@ import com.example.funerariamc.service.PlanData;
 import com.example.funerariamc.service.PlanParameters;
 import com.example.funerariamc.service.PlanPaymentData;
 import com.example.funerariamc.ui.DetailShell;
+import com.example.funerariamc.ui.Notice;
 import com.example.funerariamc.ui.DetailCache;
 import com.example.funerariamc.ui.RefreshableView;
 import com.example.funerariamc.ui.FormShell;
@@ -42,7 +43,6 @@ import javafx.scene.chart.CategoryAxis;
 import javafx.scene.chart.LineChart;
 import javafx.scene.chart.NumberAxis;
 import javafx.scene.chart.XYChart;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
@@ -100,6 +100,9 @@ import java.util.stream.Collectors;
 @Component
 @Scope("prototype")
 public class FuneralPlanController implements RefreshableView {
+
+    /** Nombre del módulo que se muestra arriba del título en los avisos. */
+    private static final String MODULE_NAME = "Planes exequiales";
 
     static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter SINCE = DateTimeFormatter.ofPattern("MM/yyyy");
@@ -1012,16 +1015,8 @@ public class FuneralPlanController implements RefreshableView {
     /** Confirmación como la de Personal: la pregunta arriba, la explicación y un botón con la acción. */
     private void confirmAndRun(String title, String question, String detail, String actionText, boolean danger,
                                Runnable action) {
-        ButtonType confirm = new ButtonType(actionText, ButtonBar.ButtonData.OK_DONE);
-        ButtonType back = new ButtonType(actionText.startsWith("Cancelar") ? "Volver" : "Cancelar",
-                ButtonBar.ButtonData.CANCEL_CLOSE);
-        Alert alert = new Alert(Alert.AlertType.NONE, detail, back, confirm);
-        alert.initOwner(window());
-        alert.setTitle(title);
-        alert.setHeaderText(question);
-        styleDialog(alert.getDialogPane());
-        alert.getDialogPane().lookupButton(confirm).getStyleClass().add(danger ? "danger-button" : "primary-dialog-button");
-        if (alert.showAndWait().filter(confirm::equals).isEmpty()) {
+        String back = actionText.startsWith("Cancelar") ? "Volver" : "Cancelar";
+        if (!Notice.confirm(window(), MODULE_NAME, question, detail, actionText, back, danger)) {
             return;
         }
         Long reopen = drawerPlanId;
@@ -1284,11 +1279,7 @@ public class FuneralPlanController implements RefreshableView {
     }
 
     private void showError(String message) {
-        Alert alert = new Alert(Alert.AlertType.WARNING, message);
-        alert.initOwner(window());
-        alert.setHeaderText(null);
-        styleDialog(alert.getDialogPane());
-        alert.showAndWait();
+        Notice.warning(window(), MODULE_NAME, "Atención", message);
     }
 
     private Window window() {
