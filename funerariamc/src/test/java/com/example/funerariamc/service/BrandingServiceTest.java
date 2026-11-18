@@ -126,6 +126,12 @@ class BrandingServiceTest {
     }
 
     @Test
+    void lightButReadableColorsCanBeSaved() {
+        BrandView saved = service.save(new BrandingData("Otra", null, null, false, "#6B86E0", "#9AA0A6", "#E0B860"));
+        assertEquals("#6B86E0", saved.palette().get("-color-primary"));
+    }
+
+    @Test
     void invalidDataIsRejected() {
         assertThrows(InvalidDataException.class, () -> service.save(data("  ", null)));
         assertThrows(InvalidDataException.class, () -> service.save(data("x".repeat(61), null)));
@@ -133,7 +139,7 @@ class BrandingServiceTest {
                 new BrandingData("Otra", null, null, false, "azul", "#3D5A80", "#C9A96E")));
         InvalidDataException light = assertThrows(InvalidDataException.class, () -> service.save(
                 new BrandingData("Otra", null, null, false, "#F2F2F2", "#3D5A80", "#C9A96E")));
-        assertTrue(light.getMessage().contains("color principal es muy claro"));
+        assertTrue(light.getMessage().contains("color principal es casi blanco"));
         verify(repository, never()).save(any());
     }
 
