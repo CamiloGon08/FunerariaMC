@@ -110,6 +110,8 @@ public class TransportController implements RefreshableView {
     private static final DateTimeFormatter HOUR = DateTimeFormatter.ofPattern("HH:mm");
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("EEEE d 'de' MMMM", ES);
+    /** Valor del filtro "Otro día" en Traslados. */
+    private static final int OTHER_DAY = -1;
     /** Cada cuánto se vuelve a leer la flota mientras la pantalla está abierta. */
     private static final Duration AUTO_REFRESH = Duration.seconds(60);
 
@@ -209,9 +211,13 @@ public class TransportController implements RefreshableView {
 
     private Screen screen;
     private Tab tab = Tab.MONITOR;
-    /** Filtro de la pestaña Vehículos (null = todos) y de Traslados (0 hoy, 1 mañana, 7 semana). */
+    /** Filtro de la pestaña Vehículos (null = todos) y de Traslados (0 hoy, 1 mañana, 7 semana, -1 otro día). */
     private VehicleType vehicleFilter;
     private int dayFilter;
+    /** Traslados > Otro día: el día elegido en el calendario y sus traslados (null mientras se cargan). */
+    private LocalDate pickedDay;
+    private List<Transfer> pickedTransfers;
+    private DatePicker dayPicker;
     /** Traslado elegido: "contrato|hora de salida". */
     private String selectedTransfer;
     /** Cada carga lleva un número; si llega una respuesta vieja, se descarta. */
@@ -274,6 +280,9 @@ public class TransportController implements RefreshableView {
             }
             screen = result;
             paint();
+            if (dayFilter == OTHER_DAY) {
+                loadPickedDay(); // la actualización automática también refresca el día elegido
+            }
         }, failure -> {
             if (request == generation) {
                 updatedLabel.setText("Sin conexión");
@@ -350,6 +359,9 @@ public class TransportController implements RefreshableView {
             addFilter("Hoy · " + countDays(0), 0, dayFilter == 0);
             addFilter("Mañana · " + countDays(1), 1, dayFilter == 1);
             addFilter("Esta semana · " + countDays(7), 7, dayFilter == 7);
+            addFilter(pickedDay == null ? "Otro día" : "Otro día · " + DATE.format(pickedDay), OTHER_DAY,
+                    dayFilter == OTHER_DAY);
+            filterBox.getChildren().add(dayPicker());
         }
         show(filterBox, !filterBox.getChildren().isEmpty());
         filterGroup.selectedToggleProperty().addListener((obs, old, toggle) -> {
@@ -365,6 +377,9 @@ public class TransportController implements RefreshableView {
             } else if (tab == Tab.TRANSFERS) {
                 dayFilter = (Integer) toggle.getUserData();
                 selectedTransfer = null;
+                if (dayFilter == OTHER_DAY && pickedDay == null) {
+                    dayPicker().show(); // primero hay que elegir el día
+                }
                 paintTransfers();
             }
         });
@@ -377,6 +392,60 @@ public class TransportController implements RefreshableView {
         toggle.setToggleGroup(filterGroup);
         toggle.setSelected(selected);
         filterBox.getChildren().add(toggle);
+    }
+
+    /**
+     * Calendario de Traslados > Otro día. Se crea una sola vez; al elegir una fecha se marca
+     * "Otro día" y se cargan los traslados de esa fecha en segundo plano.
+     */
+    private DatePicker dayPicker() {
+        if (dayPicker == null) {
+            dayPicker = datePicker(null);
+            dayPicker.setPromptText("Elegir día");
+            dayPicker.getStyleClass().add("day-picker");
+            dayPicker.setMaxWidth(Region.USE_PREF_SIZE);
+            dayPicker.setPrefWidth(150);
+            dayPicker.valueProperty().addListener((obs, old, day) -> {
+                if (day == null || day.equals(pickedDay) && dayFilter == OTHER_DAY) {
+                    return;
+                }
+                pickedDay = day;
+                pickedTransfers = null;
+                dayFilter = OTHER_DAY;
+                selectedTransfer = null;
+                for (Toggle toggle : filterGroup.getToggles()) {
+                    if (Objects.equals(toggle.getUserData(), OTHER_DAY) && toggle instanceof ToggleButton button) {
+                        button.setText("Otro día · " + DATE.format(day));
+                        button.setSelected(true);
+                    }
+                }
+                paintTransfers();
+                loadPickedDay();
+            });
+        }
+        return dayPicker;
+    }
+
+    /** Trae los traslados del día elegido; si mientras tanto se eligió otro día, la respuesta se descarta. */
+    private void loadPickedDay() {
+        LocalDate day = pickedDay;
+        if (day == null) {
+            return;
+        }
+        async("transport-day", () -> transportService.transfersOn(day), result -> {
+            if (!day.equals(pickedDay)) {
+                return;
+            }
+            pickedTransfers = result;
+            if (tab == Tab.TRANSFERS && dayFilter == OTHER_DAY) {
+                paintTransfers();
+            }
+        }, failure -> {
+            if (day.equals(pickedDay)) {
+                pickedTransfers = List.of();
+                showError(message(failure, "No se pudieron cargar los traslados de ese día."));
+            }
+        });
     }
 
     private int countDays(int days) {
@@ -652,6 +721,7 @@ public class TransportController implements RefreshableView {
         transfersTitle.setText(switch (dayFilter) {
             case 0 -> "Traslados de hoy";
             case 1 -> "Traslados de mañana";
+            case OTHER_DAY -> pickedDay == null ? "Traslados de otro día" : "Traslados del " + DAY.format(pickedDay);
             default -> "Traslados de la semana";
         });
         Transfer selected = byKey(selectedTransfer);
@@ -664,7 +734,11 @@ public class TransportController implements RefreshableView {
             items.add(transferItem(t, t.equals(selected)));
         }
         if (items.isEmpty()) {
-            items.add(wrapped("No hay traslados para este día. Use \"+ Asignar traslado\".", "empty-table"));
+            String empty = dayFilter != OTHER_DAY ? "No hay traslados para este día. Use \"+ Asignar traslado\"."
+                    : pickedDay == null ? "Elija un día en el calendario para ver sus traslados."
+                    : pickedTransfers == null ? "Cargando los traslados del " + DATE.format(pickedDay) + "…"
+                    : "No hay traslados programados para el " + DATE.format(pickedDay) + ".";
+            items.add(wrapped(empty, "empty-table"));
         }
         transferList.getChildren().setAll(items);
 
@@ -715,6 +789,10 @@ public class TransportController implements RefreshableView {
     }
 
     private List<Transfer> transfersFor(int days) {
+        if (days == OTHER_DAY) {
+            // Cualquier fecha: la lista viene de su propia consulta, no de la semana ya cargada.
+            return pickedTransfers == null ? List.of() : pickedTransfers;
+        }
         LocalDate today = screen.today();
         Predicate<Transfer> inRange = switch (days) {
             case 0 -> t -> t.scheduledAt().toLocalDate().equals(today) || t.status() == TransportStatus.IN_PROGRESS;
@@ -784,6 +862,9 @@ public class TransportController implements RefreshableView {
     private String mapProblem(RouteMapService.MapData data) {
         if (!routeMapService.isConfigured()) {
             return "recorrido por paradas · falta la clave del mapa (ORS_API_KEY)";
+        }
+        if (data.problem() != null) {
+            return "recorrido por paradas · " + data.problem();
         }
         return data.notFound().isEmpty() ? "recorrido por paradas"
                 : "recorrido por paradas · no se encontró en el mapa: " + String.join(", ", data.notFound());
