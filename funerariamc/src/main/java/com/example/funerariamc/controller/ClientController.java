@@ -19,6 +19,8 @@ import com.example.funerariamc.service.ClientService.BalanceFilter;
 import com.example.funerariamc.service.AppModule;
 import com.example.funerariamc.service.ContractService;
 import com.example.funerariamc.ui.DetailShell;
+import com.example.funerariamc.ui.Notice;
+import com.example.funerariamc.ui.Responsive;
 import com.example.funerariamc.ui.RefreshableView;
 import com.example.funerariamc.ui.FormShell;
 import com.example.funerariamc.ui.ModuleLink;
@@ -28,7 +30,6 @@ import javafx.css.PseudoClass;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
@@ -72,9 +73,14 @@ import java.util.Optional;
 @Scope("prototype")
 public class ClientController implements RefreshableView {
 
+    /** Nombre del módulo que se muestra arriba del título en los avisos. */
+    private static final String MODULE_NAME = "Clientes";
+
     /** Tarjetas por tanda: 4 filas de 3. Al bajar hasta el final se piden 12 más. */
     private static final int PAGE_SIZE = 12;
     private static final int COLUMNS = 3;
+    /** Ancho mínimo de una tarjeta de cliente; si no caben 3, pasan a 2 por fila (el nombre no se parte letra por letra). */
+    private static final double MIN_CARD_WIDTH = 320;
     private static final PseudoClass SELECTED = PseudoClass.getPseudoClass("selected");
     private static final DateTimeFormatter DATE = EmployeeController.DATE;
 
@@ -156,6 +162,8 @@ public class ClientController implements RefreshableView {
 
     @FXML
     private void initialize() {
+        // Columnas según el ancho: en ventana angosta las tarjetas pasan a 2 (o 1) por fila
+        Responsive.cardColumns(cardGrid, MIN_CARD_WIDTH, COLUMNS);
         typeGroup.selectedToggleProperty().addListener((obs, old, toggle) -> {
             if (toggle == null) {
                 old.setSelected(true); // siempre queda un tipo elegido
@@ -798,20 +806,11 @@ public class ClientController implements RefreshableView {
     }
 
     private void showInfo(String title, String message) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION, message);
-        alert.initOwner(window());
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        EmployeeController.styleDialog(alert);
-        alert.showAndWait();
+        Notice.info(window(), MODULE_NAME, title, message);
     }
 
     private void showError(String message) {
-        Alert alert = new Alert(Alert.AlertType.WARNING, message);
-        alert.initOwner(window());
-        alert.setHeaderText(null);
-        EmployeeController.styleDialog(alert);
-        alert.showAndWait();
+        Notice.warning(window(), MODULE_NAME, "Atención", message);
     }
 
     private Window window() {

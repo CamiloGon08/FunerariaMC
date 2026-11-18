@@ -108,6 +108,11 @@ final class AccountDialogs {
         content.setPrefWidth(420);
         dialog.getDialogPane().setContent(content);
         EmployeeController.styleDialog(dialog);
+        if (dialog.getDialogPane().lookupButton(dialog.getButtonTypes().get(0)) instanceof Button done) {
+            done.getStyleClass().add("primary-dialog-button");
+        }
+        // Mismo marco que "Crear cuenta de acceso"
+        FormShell.window(dialog, "Seguridad: personal y cuentas");
         dialog.showAndWait();
     }
 

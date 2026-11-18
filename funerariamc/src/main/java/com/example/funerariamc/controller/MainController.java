@@ -12,6 +12,7 @@ import com.example.funerariamc.service.RoleNames;
 import com.example.funerariamc.service.SessionContext;
 import com.example.funerariamc.ui.ModuleIcons;
 import com.example.funerariamc.ui.ModuleLink;
+import com.example.funerariamc.ui.Notice;
 import com.example.funerariamc.ui.RefreshableView;
 import com.example.funerariamc.ui.Responsive;
 import com.example.funerariamc.ui.Reveal;
@@ -20,11 +21,11 @@ import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
 import javafx.scene.Parent;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.geometry.Pos;
+import javafx.stage.Window;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
@@ -347,10 +348,12 @@ public class MainController {
                 ? business.getMessage()
                 // Si la bitácora no se puede escribir, el módulo no queda abierto y se informa el error.
                 : "No se pudo registrar el acceso en la bitácora, por eso el módulo no se abrió. Intente de nuevo.";
-        Alert alert = new Alert(failure instanceof BusinessException ? Alert.AlertType.WARNING : Alert.AlertType.ERROR,
-                message);
-        alert.setHeaderText(null);
-        alert.showAndWait();
+        Window owner = contentPane.getScene() == null ? null : contentPane.getScene().getWindow();
+        if (failure instanceof BusinessException) {
+            Notice.warning(owner, null, "No se pudo abrir el módulo", message);
+        } else {
+            Notice.error(owner, null, "No se pudo abrir el módulo", message);
+        }
     }
 
     @FXML
@@ -362,7 +365,7 @@ public class MainController {
             showMessage(greeting, "Seleccione un módulo en el menú de la izquierda.");
             return;
         }
-        // El Administrador Maestro y la Secretaría ven el resumen del día; se arma una sola vez y se refresca.
+        // Todos los roles ven el resumen del día (es informativo); se arma una sola vez y se refresca.
         if (homeView == null) {
             homeView = viewLoader.loadView(FxmlViewLoader.HOME);
         } else if (homeView.controller() instanceof RefreshableView refreshable) {
@@ -373,8 +376,7 @@ public class MainController {
     }
 
     private boolean seesHomeBoard() {
-        return sessionContext.getRoleName()
-                .map(role -> RoleNames.MASTER_ADMIN.equals(role) || RoleNames.SECRETARY.equals(role)).orElse(false);
+        return sessionContext.getRoleName().isPresent();
     }
 
     /** "Domingo 8 de noviembre · 10:30": primera letra en mayúscula y sin el punto que agrega Java. */

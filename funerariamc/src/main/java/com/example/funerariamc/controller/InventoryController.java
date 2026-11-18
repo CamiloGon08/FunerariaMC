@@ -15,6 +15,8 @@ import com.example.funerariamc.service.InventoryService.Kpis;
 import com.example.funerariamc.service.InventoryService.MovementResult;
 import com.example.funerariamc.service.InventoryService.Overview;
 import com.example.funerariamc.ui.DetailShell;
+import com.example.funerariamc.ui.Notice;
+import com.example.funerariamc.ui.Responsive;
 import com.example.funerariamc.ui.DetailCache;
 import com.example.funerariamc.ui.RefreshableView;
 import com.example.funerariamc.ui.FormShell;
@@ -22,6 +24,7 @@ import javafx.animation.FadeTransition;
 import javafx.animation.PauseTransition;
 import javafx.animation.SequentialTransition;
 import javafx.beans.property.DoubleProperty;
+import javafx.beans.value.ObservableBooleanValue;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -32,7 +35,6 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.Node;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
@@ -98,6 +100,9 @@ import java.util.function.Function;
 @Scope("prototype")
 public class InventoryController implements RefreshableView {
 
+    /** Nombre del módulo que se muestra arriba del título en los avisos. */
+    private static final String MODULE_NAME = "Inventario";
+
     private static final Locale ES = Locale.forLanguageTag("es-CO");
     private static final DateTimeFormatter DATE_HOUR = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     /** Ancho de la foto dentro del panel de detalle (el panel menos sus márgenes). */
@@ -117,6 +122,8 @@ public class InventoryController implements RefreshableView {
     private static final double W_MONEY = 120;
     private static final double W_STATE = 132;
     private static final double W_ACTIONS = 128;
+    /** Con el módulo más angosto que esto (ventana pequeña), la tabla oculta Categoría y Mínimo para caber sin barra. */
+    private static final double NARROW_MODULE = 1060;
 
     /** Siluetas por categoría cuando el artículo no tiene foto. */
     private static final String COFFIN_SHAPE = "M14 0 L34 0 L44 22 L38 96 L10 96 L4 22 Z";
@@ -215,6 +222,8 @@ public class InventoryController implements RefreshableView {
     private final PauseTransition searchDelay = new PauseTransition(Duration.millis(200));
     /** Ancho de cada tarjeta según el espacio disponible (2 a 5 columnas). */
     private final DoubleProperty cardWidth = new SimpleDoubleProperty(CARD_MIN_WIDTH);
+    /** Verdadero en ventana angosta: la tabla oculta Categoría y Mínimo (siguen en el detalle del artículo). */
+    private ObservableBooleanValue narrow;
 
     public InventoryController(InventoryService inventoryService) {
         this.inventoryService = inventoryService;
@@ -248,12 +257,19 @@ public class InventoryController implements RefreshableView {
             }
         });
 
+        // Solo la vista elegida (tarjetas o tabla) ocupa espacio: la tabla oculta no ensancha la pantalla
+        tableCard.managedProperty().bind(tableCard.visibleProperty());
+        cardScroll.managedProperty().bind(cardScroll.visibleProperty());
+        narrow = Responsive.narrowerThan(root, NARROW_MODULE);
+        Node categoryHead = cell(label("CATEGORÍA", "head-cell"), W_CATEGORY);
+        Node minimumHead = cell(label("MÍNIMO", "head-cell"), W_NUMBER);
+        Responsive.hideWhen(narrow, categoryHead, minimumHead);
         tableHead.getChildren().setAll(
                 cell(new Label(), W_THUMB),
                 grow(label("ARTÍCULO", "head-cell")),
-                cell(label("CATEGORÍA", "head-cell"), W_CATEGORY),
+                categoryHead,
                 cell(label("DISPONIBLE", "head-cell"), W_NUMBER),
-                cell(label("MÍNIMO", "head-cell"), W_NUMBER),
+                minimumHead,
                 cell(label("PRECIO", "head-cell"), W_MONEY),
                 cell(label("ESTADO", "head-cell"), W_STATE),
                 cell(label("ACCIONES", "head-cell"), W_ACTIONS));
@@ -605,8 +621,11 @@ public class InventoryController implements RefreshableView {
             thumb.setMaxSize(42, 42);
             VBox who = new VBox(2, name, code);
             who.setAlignment(Pos.CENTER_LEFT);
-            row = new HBox(cell(thumb, W_THUMB), grow(who), cell(category, W_CATEGORY), cell(stock, W_NUMBER),
-                    cell(minimum, W_NUMBER), cell(price, W_MONEY), cell(state, W_STATE), cell(move, W_ACTIONS));
+            Node categoryCell = cell(category, W_CATEGORY);
+            Node minimumCell = cell(minimum, W_NUMBER);
+            Responsive.hideWhen(narrow, categoryCell, minimumCell);
+            row = new HBox(cell(thumb, W_THUMB), grow(who), categoryCell, cell(stock, W_NUMBER),
+                    minimumCell, cell(price, W_MONEY), cell(state, W_STATE), cell(move, W_ACTIONS));
             row.getStyleClass().add("item-row");
             row.setMinWidth(0);
             setPrefWidth(0); // la fila se ajusta al ancho de la lista, sin barra horizontal
@@ -1235,11 +1254,7 @@ public class InventoryController implements RefreshableView {
     }
 
     private void showError(String message) {
-        Alert alert = new Alert(Alert.AlertType.WARNING, message);
-        alert.initOwner(window());
-        alert.setHeaderText(null);
-        styleDialog(alert.getDialogPane());
-        alert.showAndWait();
+        Notice.warning(window(), MODULE_NAME, "Atención", message);
     }
 
     private void showToast(String text) {

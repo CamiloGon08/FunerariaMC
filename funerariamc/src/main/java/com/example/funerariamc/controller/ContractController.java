@@ -22,6 +22,8 @@ import com.example.funerariamc.service.ContractService.SaleRow;
 import com.example.funerariamc.service.ContractService.SaleView;
 import com.example.funerariamc.service.SalePaymentData;
 import com.example.funerariamc.ui.DetailShell;
+import com.example.funerariamc.ui.Notice;
+import com.example.funerariamc.ui.Responsive;
 import com.example.funerariamc.ui.DetailCache;
 import com.example.funerariamc.ui.RefreshableView;
 import com.example.funerariamc.ui.FormShell;
@@ -30,6 +32,7 @@ import javafx.animation.FadeTransition;
 import javafx.animation.PauseTransition;
 import javafx.animation.SequentialTransition;
 import javafx.application.Platform;
+import javafx.beans.value.ObservableBooleanValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
@@ -38,7 +41,6 @@ import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
@@ -96,6 +98,9 @@ import java.util.function.Function;
 @Scope("prototype")
 public class ContractController implements RefreshableView {
 
+    /** Nombre del módulo que se muestra arriba del título en los avisos. */
+    private static final String MODULE_NAME = "Contratos y ventas";
+
     private static final Locale ES = Locale.forLanguageTag("es-CO");
     private static final DateTimeFormatter HOUR = DateTimeFormatter.ofPattern("HH:mm");
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
@@ -109,9 +114,13 @@ public class ContractController implements RefreshableView {
     private static final double W_MONEY = 112;
     private static final double W_STATE = 112;
     private static final double W_ACTIONS = 150;
+    /** Con el módulo más angosto que esto (ventana pequeña) se ocultan Tipo y Abonado: el resto cabe sin barra horizontal. */
+    private static final double NARROW_MODULE = 1090;
 
     private final ContractService contractService;
     private final DetailCache<SaleView> details;
+    /** Verdadero en ventana angosta: Tipo y Abonado se ocultan (siguen en el detalle de la venta). */
+    private ObservableBooleanValue narrow;
 
     @FXML
     private StackPane root;
@@ -217,12 +226,16 @@ public class ContractController implements RefreshableView {
         searchDelay.setOnFinished(e -> applyFilter());
         searchField.textProperty().addListener((obs, old, text) -> searchDelay.playFromStart());
 
+        narrow = Responsive.narrowerThan(root, NARROW_MODULE);
+        Node typeHead = cell(label("TIPO", "head-cell"), W_TYPE);
+        Node paidHead = cell(label("ABONADO", "head-cell"), W_MONEY);
+        Responsive.hideWhen(narrow, typeHead, paidHead);
         tableHead.getChildren().setAll(
                 cell(label("N.°", "head-cell"), W_NUMBER),
                 grow(label("DIFUNTO / CLIENTE", "head-cell")),
-                cell(label("TIPO", "head-cell"), W_TYPE),
+                typeHead,
                 cell(label("TOTAL", "head-cell"), W_MONEY),
-                cell(label("ABONADO", "head-cell"), W_MONEY),
+                paidHead,
                 cell(label("SALDO", "head-cell"), W_MONEY),
                 cell(label("ESTADO", "head-cell"), W_STATE),
                 cell(label("ACCIONES", "head-cell"), W_ACTIONS));
@@ -328,8 +341,11 @@ public class ContractController implements RefreshableView {
             who.setAlignment(Pos.CENTER_LEFT);
             HBox actions = new HBox(6, view, pay);
             actions.setAlignment(Pos.CENTER_LEFT);
-            row = new HBox(cell(number, W_NUMBER), grow(who), cell(type, W_TYPE), cell(total, W_MONEY),
-                    cell(paid, W_MONEY), cell(balance, W_MONEY), cell(state, W_STATE), cell(actions, W_ACTIONS));
+            Node typeCell = cell(type, W_TYPE);
+            Node paidCell = cell(paid, W_MONEY);
+            Responsive.hideWhen(narrow, typeCell, paidCell);
+            row = new HBox(cell(number, W_NUMBER), grow(who), typeCell, cell(total, W_MONEY),
+                    paidCell, cell(balance, W_MONEY), cell(state, W_STATE), cell(actions, W_ACTIONS));
             row.getStyleClass().add("sale-row");
             row.setMinWidth(0);
             setPrefWidth(0); // la fila se ajusta al ancho de la lista, sin barra horizontal
@@ -1019,19 +1035,10 @@ public class ContractController implements RefreshableView {
     }
 
     private void confirmVoid(SaleRow r) {
-        ButtonType voidType = new ButtonType("Anular venta", ButtonBar.ButtonData.OK_DONE);
-        ButtonType cancel = new ButtonType("Cancelar", ButtonBar.ButtonData.CANCEL_CLOSE);
-        Alert alert = new Alert(Alert.AlertType.NONE, "La venta queda como anulada (no se borra), sus abonos se "
-                + "anulan en Finanzas, los productos vuelven al inventario y, si tiene contrato, el contrato se "
-                + "cancela. Esta acción no se puede deshacer.", cancel, voidType);
-        alert.initOwner(window());
-        alert.setTitle("Anular venta");
-        alert.setHeaderText("¿Anular la venta N.° " + r.number() + "?");
-        styleDialog(alert.getDialogPane());
-        if (alert.getDialogPane().lookupButton(voidType) instanceof Button button) {
-            button.getStyleClass().add("danger-button");
-        }
-        if (alert.showAndWait().filter(voidType::equals).isEmpty()) {
+        if (!Notice.confirmDanger(window(), MODULE_NAME, "¿Anular la venta N.° " + r.number() + "?",
+                "La venta queda como anulada (no se borra), sus abonos se anulan en Finanzas, los productos vuelven "
+                        + "al inventario y, si tiene contrato, el contrato se cancela. Esta acción no se puede deshacer.",
+                "Anular venta")) {
             return;
         }
         async("sale-void", () -> {
@@ -1196,10 +1203,10 @@ public class ContractController implements RefreshableView {
                 okButton.setDisable(false);
                 cancelButton.setDisable(false);
                 form.body.setDisable(false);
+                // En el formulario por pasos el mensaje de abajo no se alcanza a ver: también se avisa en una ventana
                 String why = message(failure, "No se pudo guardar. Revise la conexión e intente de nuevo.");
                 form.error.setText(why);
-                failure.printStackTrace();
-                new Alert(Alert.AlertType.ERROR, why).showAndWait();
+                Notice.warning(window(), MODULE_NAME, "No se pudo guardar", why);
             });
         });
         dialog.setOnCloseRequest(event -> {
@@ -1362,11 +1369,7 @@ public class ContractController implements RefreshableView {
     }
 
     private void showError(String message) {
-        Alert alert = new Alert(Alert.AlertType.WARNING, message);
-        alert.initOwner(window());
-        alert.setHeaderText(null);
-        styleDialog(alert.getDialogPane());
-        alert.showAndWait();
+        Notice.warning(window(), MODULE_NAME, "Atención", message);
     }
 
     private void showToast(String text) {

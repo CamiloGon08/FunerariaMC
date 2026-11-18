@@ -14,6 +14,8 @@ import com.example.funerariamc.service.RoleNames;
 import com.example.funerariamc.service.UserAccountService;
 import com.example.funerariamc.service.UserAccountService.AccountSummary;
 import com.example.funerariamc.ui.RefreshableView;
+import com.example.funerariamc.ui.Notice;
+import com.example.funerariamc.ui.Responsive;
 import com.example.funerariamc.ui.DetailShell;
 import com.example.funerariamc.ui.FormShell;
 import javafx.animation.PauseTransition;
@@ -25,8 +27,6 @@ import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
-import javafx.scene.control.ButtonBar;
-import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
@@ -68,10 +68,15 @@ import java.util.Optional;
 @Scope("prototype")
 public class EmployeeController implements RefreshableView {
 
+    /** Nombre del módulo que se muestra arriba del título en los avisos. */
+    private static final String MODULE_NAME = "Seguridad: personal y cuentas";
+
     static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     /** Tarjetas por tanda: 4 filas de 3. Al bajar hasta el final se piden 12 más. */
     private static final int PAGE_SIZE = 12;
     private static final int COLUMNS = 3;
+    /** Ancho mínimo de una tarjeta de empleado; si no caben 3, pasan a 2 por fila (el nombre no se parte letra por letra). */
+    private static final double MIN_CARD_WIDTH = 320;
     private static final PseudoClass INACTIVE = PseudoClass.getPseudoClass("inactive");
 
     /** Áreas de la pantalla: cada chip filtra uno o varios cargos. */
@@ -174,6 +179,8 @@ public class EmployeeController implements RefreshableView {
 
     @FXML
     private void initialize() {
+        // Columnas según el ancho: en ventana angosta las tarjetas pasan a 2 (o 1) por fila
+        Responsive.cardColumns(cardGrid, MIN_CARD_WIDTH, COLUMNS);
         for (Area area : AREAS) {
             ToggleButton chip = new ToggleButton(area.label());
             chip.getStyleClass().addAll("chip", "area-chip");
@@ -573,25 +580,18 @@ public class EmployeeController implements RefreshableView {
         String consequence = hasAccount
                 ? "Su cuenta de acceso se deshabilita y no podrá iniciar sesión."
                 : "No podrá asignarse a servicios.";
-        ButtonType deactivate = new ButtonType("Desactivar", ButtonBar.ButtonData.OK_DONE);
-        ButtonType cancel = new ButtonType("Cancelar", ButtonBar.ButtonData.CANCEL_CLOSE);
-        Alert alert = new Alert(Alert.AlertType.NONE, "", cancel, deactivate);
-        alert.initOwner(window());
-        alert.setTitle("Desactivar empleado");
-        alert.setHeaderText("¿Desactivar a " + fullName(employee) + "?");
-        alert.setContentText(EmployeePosition.displayNameOf(employee) + ", " + documentLabel(employee)
-                + ", pasará a INACTIVO. " + consequence
-                + "\n\nNo se borra: conserva su historial y puede activarse de nuevo.");
-        styleDialog(alert);
-        alert.getDialogPane().lookupButton(deactivate).getStyleClass().add("danger-button");
-        alert.showAndWait().filter(deactivate::equals).ifPresent(answer -> {
-            try {
-                employeeService.deactivate(employee.getId());
-                reload();
-            } catch (BusinessException e) {
-                showError(e.getMessage());
-            }
-        });
+        if (!Notice.confirmDanger(window(), MODULE_NAME, "¿Desactivar a " + fullName(employee) + "?",
+                EmployeePosition.displayNameOf(employee) + ", " + documentLabel(employee) + ", pasará a INACTIVO. "
+                        + consequence + "\n\nNo se borra: conserva su historial y puede activarse de nuevo.",
+                "Desactivar")) {
+            return;
+        }
+        try {
+            employeeService.deactivate(employee.getId());
+            reload();
+        } catch (BusinessException e) {
+            showError(e.getMessage());
+        }
     }
 
     private void onActivate(Employee employee) {
@@ -755,11 +755,7 @@ public class EmployeeController implements RefreshableView {
     }
 
     private void showError(String message) {
-        Alert alert = new Alert(Alert.AlertType.WARNING, message);
-        alert.initOwner(window());
-        alert.setHeaderText(null);
-        styleDialog(alert);
-        alert.showAndWait();
+        Notice.warning(window(), MODULE_NAME, "Atención", message);
     }
 
     private Window window() {

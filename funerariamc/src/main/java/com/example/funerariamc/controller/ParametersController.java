@@ -10,6 +10,7 @@ import com.example.funerariamc.service.ParameterCatalog;
 import com.example.funerariamc.service.SystemParameterService;
 import com.example.funerariamc.service.SystemParameterService.ParameterView;
 import com.example.funerariamc.ui.BrandTheme;
+import com.example.funerariamc.ui.Notice;
 import com.example.funerariamc.ui.LilyLogo;
 import com.example.funerariamc.ui.RefreshableView;
 import com.example.funerariamc.ui.FormShell;
@@ -23,7 +24,6 @@ import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
@@ -84,6 +84,9 @@ import java.util.function.Consumer;
 @Component
 @Scope("prototype")
 public class ParametersController implements RefreshableView {
+
+    /** Nombre del módulo que se muestra arriba del título en los avisos. */
+    private static final String MODULE_NAME = "Parámetros del sistema";
 
     private static final Locale ES = Locale.forLanguageTag("es-CO");
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
@@ -1084,17 +1087,7 @@ public class ParametersController implements RefreshableView {
 
     /** Confirmación con la pregunta arriba y el botón con el nombre de la acción; Cancelar a la izquierda. */
     private boolean confirm(String question, String detail, String actionText) {
-        Alert alert = new Alert(Alert.AlertType.NONE);
-        alert.initOwner(window());
-        alert.setTitle("Parámetros del sistema");
-        alert.setHeaderText(question);
-        alert.setContentText(detail);
-        ButtonType action = new ButtonType(actionText, ButtonBar.ButtonData.OK_DONE);
-        ButtonType cancel = new ButtonType("Cancelar", ButtonBar.ButtonData.CANCEL_CLOSE);
-        alert.getButtonTypes().setAll(cancel, action);
-        styleDialog(alert.getDialogPane());
-        ((Button) alert.getDialogPane().lookupButton(action)).getStyleClass().add("primary-dialog-button");
-        return alert.showAndWait().filter(action::equals).isPresent();
+        return Notice.confirm(window(), MODULE_NAME, question, detail, actionText);
     }
 
     // ---------- piezas ----------
@@ -1140,11 +1133,7 @@ public class ParametersController implements RefreshableView {
     }
 
     private void showError(String text) {
-        Alert alert = new Alert(Alert.AlertType.WARNING, text);
-        alert.initOwner(window());
-        alert.setHeaderText(null);
-        styleDialog(alert.getDialogPane());
-        alert.showAndWait();
+        Notice.warning(window(), MODULE_NAME, "Atención", text);
     }
 
     private void showToast(String text) {
