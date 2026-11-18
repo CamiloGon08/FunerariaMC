@@ -912,6 +912,16 @@ public final class FormShell {
         });
     }
 
+    /** La primera medida válida (mayor que cero y no NaN); 0 si ninguna lo es. */
+    private static double sized(double... values) {
+        for (double value : values) {
+            if (!Double.isNaN(value) && value > 0) {
+                return value;
+            }
+        }
+        return 0;
+    }
+
     /** El desplazamiento que envuelve el cuerpo del formulario (null si no hay). */
     private static ScrollPane scrollOf(Pane root) {
         for (Node child : root.getChildren()) {
