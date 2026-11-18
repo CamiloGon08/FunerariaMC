@@ -25,6 +25,7 @@ import com.example.funerariamc.service.DeceasedService.Stage;
 import com.example.funerariamc.service.DeceasedService.TimelineStep;
 import com.example.funerariamc.service.FileStorageService;
 import com.example.funerariamc.ui.DetailShell;
+import com.example.funerariamc.ui.Notice;
 import com.example.funerariamc.ui.DetailCache;
 import com.example.funerariamc.ui.RefreshableView;
 import com.example.funerariamc.ui.FormShell;
@@ -37,7 +38,6 @@ import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
@@ -94,6 +94,9 @@ import java.util.function.Function;
 @Component
 @Scope("prototype")
 public class DeceasedController implements RefreshableView {
+
+    /** Nombre del módulo que se muestra arriba del título en los avisos. */
+    private static final String MODULE_NAME = "Difuntos";
 
     static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter DAY_TIME = DateTimeFormatter.ofPattern("dd/MM · HH:mm");
@@ -390,7 +393,8 @@ public class DeceasedController implements RefreshableView {
         });
         HBox.setHgrow(card, Priority.ALWAYS);
         card.setPrefWidth(0);
-        card.setMinWidth(200);
+        // 4 tarjetas de 160 caben en la ventana más pequeña (1000 px) sin empujar la pantalla a la derecha
+        card.setMinWidth(160);
         card.setOnMouseEntered(e -> details.prefetch(item.id()));
         card.setOnMouseClicked(e -> openDrawer(item.id()));
         return card;
@@ -1344,11 +1348,7 @@ public class DeceasedController implements RefreshableView {
     }
 
     private void showError(String message) {
-        Alert alert = new Alert(Alert.AlertType.WARNING, message);
-        alert.initOwner(window());
-        alert.setHeaderText(null);
-        styleDialog(alert.getDialogPane());
-        alert.showAndWait();
+        Notice.warning(window(), MODULE_NAME, "Atención", message);
     }
 
     private Window window() {

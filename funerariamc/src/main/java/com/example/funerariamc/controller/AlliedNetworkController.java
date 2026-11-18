@@ -16,6 +16,7 @@ import com.example.funerariamc.service.AlliedNetworkService.PaymentRow;
 import com.example.funerariamc.service.AlliedPaymentData;
 import com.example.funerariamc.service.SaleParameters;
 import com.example.funerariamc.ui.RefreshableView;
+import com.example.funerariamc.ui.Notice;
 import com.example.funerariamc.ui.FormShell;
 import com.example.funerariamc.ui.DetailShell;
 import javafx.animation.FadeTransition;
@@ -27,7 +28,6 @@ import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
@@ -81,6 +81,9 @@ import java.util.function.Consumer;
 @Component
 @Scope("prototype")
 public class AlliedNetworkController implements RefreshableView {
+
+    /** Nombre del módulo que se muestra arriba del título en los avisos. */
+    private static final String MODULE_NAME = "Red de funerarias aliadas";
 
     private static final Locale ES = Locale.forLanguageTag("es-CO");
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("dd/MM/yyyy");
@@ -946,17 +949,7 @@ public class AlliedNetworkController implements RefreshableView {
     }
 
     private boolean confirm(String question, String detail, String actionText) {
-        Alert alert = new Alert(Alert.AlertType.NONE);
-        alert.initOwner(window());
-        alert.setTitle("Red de funerarias aliadas");
-        alert.setHeaderText(question);
-        alert.setContentText(detail);
-        ButtonType action = new ButtonType(actionText, ButtonBar.ButtonData.OK_DONE);
-        ButtonType cancel = new ButtonType("Cancelar", ButtonBar.ButtonData.CANCEL_CLOSE);
-        alert.getButtonTypes().setAll(cancel, action);
-        styleDialog(alert.getDialogPane());
-        ((Button) alert.getDialogPane().lookupButton(action)).getStyleClass().add("primary-dialog-button");
-        return alert.showAndWait().filter(action::equals).isPresent();
+        return Notice.confirm(window(), MODULE_NAME, question, detail, actionText);
     }
 
     // ---------- piezas ----------
@@ -1001,11 +994,7 @@ public class AlliedNetworkController implements RefreshableView {
     }
 
     private void showError(String text) {
-        Alert alert = new Alert(Alert.AlertType.WARNING, text);
-        alert.initOwner(window());
-        alert.setHeaderText(null);
-        styleDialog(alert.getDialogPane());
-        alert.showAndWait();
+        Notice.warning(window(), MODULE_NAME, "Atención", text);
     }
 
     private void showToast(String text) {
