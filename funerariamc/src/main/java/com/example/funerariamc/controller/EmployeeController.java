@@ -542,7 +542,8 @@ public class EmployeeController implements RefreshableView {
         FxmlViewLoader.View<EmployeeFormController> view = viewLoader.loadView(FxmlViewLoader.EMPLOYEE_FORM);
         Stage stage = new Stage();
         stage.initOwner(window());
-        stage.initModality(Modality.WINDOW_MODAL);
+        // Igual que los demás formularios: en Windows, con WINDOW_MODAL el calendario de la ventana transparente no recibía los clics
+        stage.initModality(Modality.APPLICATION_MODAL);
         stage.setTitle(employee == null ? "Registrar empleado" : "Actualizar empleado");
         stage.setScene(new Scene(view.root()));
         view.controller().init(employee, saved -> reload());
