@@ -31,6 +31,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.List;
@@ -82,17 +83,33 @@ class AnalyticsServiceTest {
         Overview o = service.overview(NOVEMBER);
         assertEquals(2, o.kpis().services());
         assertEquals(0, new BigDecimal("2500000").compareTo(o.kpis().averageValue()));
-        // Mes actual: plan, particular y venta de productos (la anulada no cuenta).
-        AnalyticsService.KindMonth last = o.kindMonths().get(o.kindMonths().size() - 1);
-        assertEquals(YearMonth.of(2026, 11), last.month());
-        assertArrayEquals(new long[]{1, 0, 1, 1}, last.counts());
-        assertEquals(AnalyticsService.KIND_MONTHS, o.kindMonths().size());
+        // Noviembre va por semanas hasta hoy (día 8): 1–7 y 8. Las ventas son de los días 2, 3 y 4 (la anulada no cuenta).
+        List<AnalyticsService.KindBucket> weeks = o.kindBuckets();
+        assertEquals(2, weeks.size());
+        assertEquals("1–7 nov", weeks.get(0).label());
+        assertArrayEquals(new long[]{1, 0, 1, 1}, weeks.get(0).counts());
+        assertEquals(0, weeks.get(1).total());
     }
 
     @Test
-    void yearChartStopsAtTheCurrentMonth() {
+    void yearChartGoesByMonthAndStopsAtTheCurrentMonth() {
         Overview o = service.overview(FinancePeriod.year(2026));
-        assertEquals(YearMonth.of(2026, 11), o.kindMonths().get(o.kindMonths().size() - 1).month());
+        assertEquals(11, o.kindBuckets().size());
+        assertEquals("Ene", o.kindBuckets().get(0).label());
+        assertEquals(YearMonth.of(2026, 11), YearMonth.from(o.kindBuckets().get(10).from()));
+    }
+
+    @Test
+    void sevenDayChartHasOneBarPerDayAndFollowsThePeriod() {
+        List<SaleRepository.SaleRow> rows = List.of(sale(SaleType.PRIVATE, null, SaleStatus.ACTIVE, "2000000", 3));
+        when(sales.findRowsBetween(any(), any(), eq(TransactionType.INCOME), eq(TransactionStatus.ACTIVE)))
+                .thenReturn(rows);
+        Overview o = service.overview(new FinancePeriod(LocalDate.of(2026, 11, 2),
+                LocalDate.of(2026, 11, 8)));
+        assertEquals(7, o.kindBuckets().size());
+        assertEquals("Lun 2", o.kindBuckets().get(0).label());
+        assertEquals(1, o.kindBuckets().get(1).counts()[2]);
+        assertEquals(1, o.kindBuckets().stream().mapToLong(AnalyticsService.KindBucket::total).sum());
     }
 
     @Test
