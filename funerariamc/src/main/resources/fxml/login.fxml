@@ -23,7 +23,7 @@
            stylesheets="@../css/app.css">
 
     <!-- Foto del lirio con el borde curvo dorado; el marfil de la derecha es el fondo del root -->
-    <Region styleClass="login-photo" StackPane.alignment="CENTER_LEFT"/>
+    <Region fx:id="loginPhoto" styleClass="login-photo" StackPane.alignment="CENTER_LEFT"/>
     <ImageView styleClass="eden-leaves" StackPane.alignment="TOP_RIGHT" fitWidth="150" preserveRatio="true" mouseTransparent="true">
         <Image url="@../images/hojas-arriba.png"/>
     </ImageView>
@@ -63,7 +63,7 @@
     </VBox>
 
     <!-- Formulario en el lado marfil -->
-    <VBox styleClass="login-form" StackPane.alignment="CENTER_RIGHT" maxWidth="430" maxHeight="-Infinity">
+    <VBox fx:id="loginForm" styleClass="login-form" StackPane.alignment="CENTER_RIGHT" maxWidth="430" maxHeight="-Infinity">
         <StackPane.margin>
             <Insets right="80"/>
         </StackPane.margin>

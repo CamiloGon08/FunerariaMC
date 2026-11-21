@@ -30,6 +30,8 @@ class RouteMapPane extends StackPane {
     private static final DateTimeFormatter HOUR = DateTimeFormatter.ofPattern("HH:mm");
     private static final JsonMapper JSON = JsonMapper.builder().build();
 
+    /** Mapa ya creado y cargado en segundo plano, listo para usarse al abrir Transporte. */
+    private static RouteMapPane spare;
     private final WebView webView = new WebView();
     private final WebEngine engine = webView.getEngine();
     // Espera corta para avisar a Leaflet una sola vez cuando el espacio termina de cambiar de tamaño
@@ -64,6 +66,31 @@ class RouteMapPane extends StackPane {
             }
         });
         engine.load(RouteMapPane.class.getResource("/web/transport-map.html").toExternalForm());
+    }
+
+    /**
+     * Crea un mapa de reserva y empieza a cargar Leaflet y las calles de la ciudad sin mostrarlo. Crear
+     * la WebView y cargar la página es lo que más tarda; así, al abrir Transporte el mapa ya está listo.
+     * Se llama en el hilo de JavaFX.
+     */
+    static void prewarm() {
+        if (spare == null) {
+            spare = new RouteMapPane();
+        }
+    }
+
+    /** Entrega el mapa de reserva (si hay) y deja preparando otro para el siguiente espacio. */
+    static RouteMapPane obtain() {
+        RouteMapPane map = spare;
+        spare = null;
+        if (map == null) {
+            map = new RouteMapPane();
+        }
+        // El otro espacio del módulo (pestaña Traslados) también lo encuentra listo
+        PauseTransition later = new PauseTransition(Duration.seconds(2));
+        later.setOnFinished(e -> prewarm());
+        later.play();
+        return map;
     }
 
     /** Dibuja las paradas, la ruta y, si va en ruta, el vehículo en la última parada a la que llegó. */

@@ -19,18 +19,11 @@ import com.example.funerariamc.persistence.ServiceContractRepository;
 import com.example.funerariamc.persistence.StaffOptionRepository;
 import com.example.funerariamc.persistence.VaultRepository;
 import com.example.funerariamc.persistence.WakeRoomRepository;
-import com.lowagie.text.Document;
-import com.lowagie.text.Font;
-import com.lowagie.text.PageSize;
-import com.lowagie.text.Paragraph;
-import com.lowagie.text.pdf.PdfPTable;
-import com.lowagie.text.pdf.PdfWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.awt.Color;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.math.BigDecimal;
@@ -435,7 +428,7 @@ public class AnalyticsService {
         try {
             temp = Files.createTempFile(target.toAbsolutePath().getParent(), "funeraria-", ".pdf");
             try (OutputStream out = Files.newOutputStream(temp)) {
-                writePdf(overview, out, BrandingService.fullNameOf(brandingService));
+                writePdf(overview, out, ExportDesign.brandOf(brandingService), BrandingService.fullNameOf(brandingService));
             }
             Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException | RuntimeException failure) {
@@ -459,38 +452,33 @@ public class AnalyticsService {
     }
 
     static void writePdf(Overview o, OutputStream out) {
-        writePdf(o, out, BrandingService.defaults().fullName());
+        writePdf(o, out, BrandingService.defaults(), BrandingService.defaults().fullName());
     }
 
-    /** PDF del panel con el nombre de la funeraria en el título. */
-    static void writePdf(Overview o, OutputStream out, String funeralHome) {
-        Document document = new Document(PageSize.A4, 36, 36, 40, 40);
-        PdfWriter.getInstance(document, out);
-        document.open();
-        Color forest = new Color(0x1E, 0x3A, 0x2E);
-        Color muted = new Color(0x6A, 0x73, 0x66);
-        Font title = new Font(Font.TIMES_ROMAN, 22, Font.BOLD, forest);
-        Font h2 = new Font(Font.TIMES_ROMAN, 14, Font.BOLD, forest);
-        Font small = new Font(Font.HELVETICA, 9, Font.NORMAL, muted);
-        Font body = new Font(Font.HELVETICA, 9, Font.NORMAL, Color.BLACK);
-        Font bold = new Font(Font.HELVETICA, 9, Font.BOLD, Color.BLACK);
+    /**
+     * PDF del panel con el diseño de la pantalla: banda con los cinco indicadores, tarjetas por sección,
+     * mapa de calor de las salas y los colores, el logo y el nombre de la funeraria.
+     */
+    static void writePdf(Overview o, OutputStream out, BrandingService.BrandView brand, String funeralHome) {
+        ExportDesign.PdfReport pdf = ExportDesign.pdf(brand, funeralHome, out, "Panel de análisis");
         Kpis k = o.kpis();
-
-        document.add(new Paragraph(funeralHome + " · Panel de análisis", title));
-        document.add(new Paragraph("Período: " + o.periodLabel() + " (" + o.period().from().format(DATE) + " a "
-                + o.period().to().format(DATE) + "). Generado el " + o.generatedAt().format(DATE_HOUR)
-                + ". Solo lectura: las ventas anuladas no cuentan.", small));
-
-        ReportService.section(document, "Indicadores", h2);
-        PdfPTable kpis = ReportService.table(new float[]{4, 3}, bold, "Indicador", "Valor");
-        ReportService.cells(kpis, body, "Servicios del período", k.services() + " (" + o.previousLabel() + ": "
-                + k.servicesPrevious() + ")");
-        ReportService.cells(kpis, body, "Valor promedio por servicio", ReportService.pesos(k.averageValue()));
-        ReportService.cells(kpis, body, "Ocupación de salas (horas)", k.roomOccupancy() + " %");
-        ReportService.cells(kpis, body, "Ocupación de bóvedas (hoy)", k.vaultOccupancy() + " % de " + k.vaults());
-        ReportService.cells(kpis, body, "Comisiones registradas", ReportService.pesos(k.commissions()) + " · "
-                + k.commissionPeople() + (k.commissionPeople() == 1 ? " persona" : " personas"));
-        document.add(kpis);
+        long diff = k.services() - k.servicesPrevious();
+        String change = k.servicesPrevious() == 0
+                ? "Período anterior (" + o.previousLabel() + "): 0"
+                : (diff >= 0 ? "+" : "-") + Math.abs(Math.round(diff * 100.0 / k.servicesPrevious()))
+                + " % vs. " + o.previousLabel() + " (" + k.servicesPrevious() + ")";
+        ExportDesign.Tone tone = k.servicesPrevious() == 0 ? ExportDesign.Tone.NEUTRAL
+                : (diff >= 0 ? ExportDesign.Tone.UP : ExportDesign.Tone.DOWN);
+        pdf.hero("Panel de análisis", "Período: " + o.periodLabel() + " · del " + o.period().from().format(DATE)
+                        + " al " + o.period().to().format(DATE) + " · generado el " + o.generatedAt().format(DATE_HOUR),
+                List.of(new ExportDesign.Kpi("SERVICIOS DEL PERÍODO", String.valueOf(k.services()), change, tone),
+                        new ExportDesign.Kpi("VALOR PROMEDIO", ReportService.pesos(k.averageValue()), "por servicio vendido"),
+                        new ExportDesign.Kpi("OCUPACIÓN DE SALAS", k.roomOccupancy() + " %", "de las horas del período"),
+                        new ExportDesign.Kpi("OCUPACIÓN DE BÓVEDAS", k.vaultOccupancy() + " %", "de " + k.vaults() + " bóvedas, hoy"),
+                        new ExportDesign.Kpi("COMISIONES", ReportService.pesos(k.commissions()),
+                                k.commissionPeople() == 1 ? "1 persona" : k.commissionPeople() + " personas")),
+                true);
+        pdf.note("Solo lectura: las ventas anuladas no cuentan.");
 
         KindGrouping grouping = groupingOf(o.period());
         String unit = switch (grouping) {
@@ -498,68 +486,67 @@ public class AnalyticsService {
             case WEEK -> "Semana";
             case MONTH -> "Mes";
         };
-        ReportService.section(document, "Servicios y ventas por tipo (" + o.periodLabel() + ")", h2);
-        PdfPTable kinds = ReportService.table(new float[]{1.4f, 1.6f, 1.6f, 1.4f, 1.6f, 1}, bold,
-                unit, KINDS[0], KINDS[1], KINDS[2], KINDS[3], "Total");
+        ExportDesign.PdfTable kinds = pdf.table("Servicios y ventas por tipo", o.periodLabel(),
+                new float[]{1.4f, 1.6f, 1.6f, 1.4f, 1.6f, 1}, unit, KINDS[0], KINDS[1], KINDS[2], KINDS[3], "Total");
+        long[] totals = new long[KINDS.length];
+        long all = 0;
         for (KindBucket m : o.kindBuckets()) {
-            ReportService.cells(kinds, body, m.label(), String.valueOf(m.counts()[0]),
-                    String.valueOf(m.counts()[1]), String.valueOf(m.counts()[2]), String.valueOf(m.counts()[3]),
-                    String.valueOf(m.total()));
+            kinds.row(m.label(), String.valueOf(m.counts()[0]), String.valueOf(m.counts()[1]),
+                    String.valueOf(m.counts()[2]), String.valueOf(m.counts()[3]), String.valueOf(m.total()));
+            for (int i = 0; i < totals.length; i++) {
+                totals[i] += m.counts()[i];
+            }
+            all += m.total();
         }
-        document.add(kinds);
+        kinds.total("Total", String.valueOf(totals[0]), String.valueOf(totals[1]), String.valueOf(totals[2]),
+                String.valueOf(totals[3]), String.valueOf(all));
+        kinds.end();
 
-        ReportService.section(document, "Ocupación de bóvedas por cementerio", h2);
-        PdfPTable vaults = ReportService.table(new float[]{4, 1.4f, 1.4f, 1.4f, 1.4f, 1}, bold,
-                "Cementerio", "Bóvedas", "Ocupadas", "En mora", "Disponibles", "%");
+        ExportDesign.PdfTable vaults = pdf.table("Ocupación de bóvedas por cementerio", "Estado de hoy",
+                new float[]{4, 1.4f, 1.4f, 1.4f, 1.4f, 1.3f}, "Cementerio", "Bóvedas", "Ocupadas", "En mora",
+                "Disponibles", "%");
         for (CemeteryOccupancy c : o.cemeteries()) {
-            ReportService.cells(vaults, body, c.name(), String.valueOf(c.total()), String.valueOf(c.occupied()),
+            vaults.bar(c.percent() / 100.0, c.name(), String.valueOf(c.total()), String.valueOf(c.occupied()),
                     String.valueOf(c.overdue()), String.valueOf(c.available()), c.percent() + " %");
         }
         if (o.cemeteries().isEmpty()) {
-            ReportService.cells(vaults, body, "Sin bóvedas registradas", "", "", "", "", "");
+            vaults.empty("Sin bóvedas registradas");
         }
-        document.add(vaults);
+        vaults.end();
 
-        ReportService.section(document, "Ocupación de salas por día de la semana (% de horas)", h2);
-        PdfPTable heat = ReportService.table(new float[]{3, 1, 1, 1, 1, 1, 1, 1}, bold,
-                "Sala", WEEKDAYS[0], WEEKDAYS[1], WEEKDAYS[2], WEEKDAYS[3], WEEKDAYS[4], WEEKDAYS[5], WEEKDAYS[6]);
+        ExportDesign.PdfTable heat = pdf.table("Ocupación de salas por día de la semana", "Porcentaje de horas ocupadas",
+                new float[]{3, 1, 1, 1, 1, 1, 1, 1}, "Sala", WEEKDAYS[0], WEEKDAYS[1], WEEKDAYS[2], WEEKDAYS[3],
+                WEEKDAYS[4], WEEKDAYS[5], WEEKDAYS[6]);
         for (RoomHeat r : o.rooms()) {
-            String[] row = new String[8];
-            row[0] = r.room();
-            for (int d = 0; d < 7; d++) {
-                row[d + 1] = r.percents()[d] + " %";
-            }
-            ReportService.cells(heat, body, row);
+            heat.heat(r.room(), r.percents());
         }
         if (o.rooms().isEmpty()) {
-            ReportService.cells(heat, body, "Sin salas registradas", "", "", "", "", "", "", "");
+            heat.empty("Sin salas registradas");
         }
-        document.add(heat);
+        heat.end();
 
-        ReportService.section(document, "Equipo · vendedores", h2);
-        PdfPTable sellers = ReportService.table(new float[]{3.4f, 1, 2, 2, 2}, bold,
-                "Vendedor", "Ventas", "Total vendido", "Promedio", "Comisión registrada");
+        ExportDesign.PdfTable sellers = pdf.table("Equipo · vendedores", "Ventas y comisión registrada en el período",
+                new float[]{3.4f, 1, 2, 2, 2}, "Vendedor", "Ventas", "Total vendido", "Promedio", "Comisión registrada");
         for (SellerLine s : o.sellers()) {
-            ReportService.cells(sellers, body, s.name() + (s.active() ? "" : " (inactivo)"), String.valueOf(s.sales()),
+            sellers.row(s.name() + (s.active() ? "" : " (inactivo)"), String.valueOf(s.sales()),
                     ReportService.pesos(s.sold()), ReportService.pesos(s.average()), ReportService.pesos(s.commission()));
         }
         if (o.sellers().isEmpty()) {
-            ReportService.cells(sellers, body, "Sin vendedores", "", "", "", "");
+            sellers.empty("Sin vendedores");
         }
-        document.add(sellers);
+        sellers.end();
 
-        ReportService.section(document, "Equipo · tanatólogos", h2);
-        PdfPTable thanato = ReportService.table(new float[]{4, 2, 2}, bold, "Tanatólogo", "Preparaciones",
-                "Comisión registrada");
+        ExportDesign.PdfTable thanato = pdf.table("Equipo · tanatólogos", "Preparaciones y comisión registrada",
+                new float[]{4, 2, 2}, "Tanatólogo", "Preparaciones", "Comisión registrada");
         for (ThanatoLine t : o.thanatologists()) {
-            ReportService.cells(thanato, body, t.name() + (t.active() ? "" : " (inactivo)"), String.valueOf(t.cases()),
+            thanato.row(t.name() + (t.active() ? "" : " (inactivo)"), String.valueOf(t.cases()),
                     ReportService.pesos(t.commission()));
         }
         if (o.thanatologists().isEmpty()) {
-            ReportService.cells(thanato, body, "Sin tanatólogos", "", "");
+            thanato.empty("Sin tanatólogos");
         }
-        document.add(thanato);
-        document.close();
+        thanato.end();
+        pdf.close();
     }
 
     static String shortMonth(YearMonth month) {
