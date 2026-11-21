@@ -235,6 +235,7 @@ public final class FormShell {
             if (root instanceof Region region) {
                 place(stage, region, owner, kind);
             }
+            toFront(stage);
         });
         stage.addEventHandler(WindowEvent.WINDOW_HIDDEN, e -> undim(owner, previous[0]));
     }
@@ -292,6 +293,7 @@ public final class FormShell {
                 if (kind == Kind.WINDOW) {
                     fitWindow(pane, owner);
                 }
+                toFront(window);
             };
             // Con showAndWait la ventana a veces se muestra antes de tener tamaño (NaN): se acomoda cuando ya lo tiene
             if (Double.isNaN(window.getWidth()) || Double.isNaN(window.getHeight())) {
@@ -944,6 +946,14 @@ public final class FormShell {
         }
         Bounds bounds = sidebar.localToScene(sidebar.getBoundsInLocal());
         return bounds.getMaxX();
+    }
+
+    /** Trae el formulario al frente: con la ventana principal maximizada nunca debe quedar detrás de ella. */
+    private static void toFront(Window window) {
+        if (window instanceof Stage stage && stage.isShowing()) {
+            stage.toFront();
+            stage.requestFocus();
+        }
     }
 
     private static Effect dim(Window owner) {

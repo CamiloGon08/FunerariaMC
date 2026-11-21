@@ -450,7 +450,9 @@ public class EmployeeFormController {
             Window owner = window().getOwner();
             window().close();
             if (credentials != null) {
-                AccountDialogs.showCredentials(owner, saved, credentials);
+                // Se muestra cuando el formulario ya terminó de cerrarse: abrirla en el mismo clic que cierra
+                // el formulario dejaba en Windows la ventana de la contraseña oculta y la pantalla bloqueada
+                Platform.runLater(() -> AccountDialogs.showCredentials(owner, saved, credentials));
             }
         } catch (NumberFormatException e) {
             errorLabel.setText(e.getMessage());
