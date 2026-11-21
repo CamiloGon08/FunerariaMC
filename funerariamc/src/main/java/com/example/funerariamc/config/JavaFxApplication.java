@@ -33,7 +33,8 @@ public class JavaFxApplication extends Application {
         FxmlViewLoader viewLoader = context.getBean(FxmlViewLoader.class);
         stage.setTitle(BrandTheme.title(FxmlViewLoader.LOGIN_TITLE));
         stage.setScene(new Scene(viewLoader.load(FxmlViewLoader.LOGIN)));
-        stage.centerOnScreen();
+        // La aplicación abre en ventana completa; el usuario puede restaurarla con el botón de la barra.
+        stage.setMaximized(true);
         stage.show();
     }
 

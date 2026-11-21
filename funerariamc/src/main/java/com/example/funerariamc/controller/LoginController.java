@@ -5,13 +5,20 @@ import com.example.funerariamc.exception.BusinessException;
 import com.example.funerariamc.model.AppUser;
 import com.example.funerariamc.service.AuthService;
 import com.example.funerariamc.ui.EyeToggle;
+import javafx.beans.InvalidationListener;
 import javafx.fxml.FXML;
+import javafx.geometry.Insets;
 import javafx.scene.control.Button;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
+import javafx.scene.image.Image;
+import javafx.scene.layout.Background;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
@@ -25,6 +32,8 @@ public class LoginController {
 
     private static final String EMPTY_FIELDS = "Ingrese su usuario y su contraseña.";
     private static final String CONNECTION_ERROR = "No se pudo conectar con el sistema. Intente de nuevo.";
+    /** Margen mínimo del formulario al borde derecho, el del diseño original. */
+    private static final double FORM_MARGIN = 80;
 
     private final AuthService authService;
     private final FxmlViewLoader viewLoader;
@@ -43,6 +52,10 @@ public class LoginController {
     private Label errorLabel;
     @FXML
     private Button loginButton;
+    @FXML
+    private Region loginPhoto;
+    @FXML
+    private VBox loginForm;
 
     public LoginController(AuthService authService, FxmlViewLoader viewLoader) {
         this.authService = authService;
@@ -52,10 +65,41 @@ public class LoginController {
     @FXML
     private void initialize() {
         clearError();
+        keepFormCentered();
         usernameField.textProperty().addListener((obs, oldValue, newValue) -> clearError());
         passwordField.textProperty().addListener((obs, oldValue, newValue) -> clearError());
         forgotPasswordLink.setOnAction(e -> onForgotPassword());
         setupShowPassword();
+    }
+
+    /**
+     * En ventana completa el formulario queda centrado en el espacio marfil a la derecha de la foto,
+     * en vez de pegado al borde; en ventanas pequeñas conserva el margen de 80 px.
+     */
+    private void keepFormCentered() {
+        if (!(loginForm.getParent() instanceof StackPane root)) {
+            return;
+        }
+        InvalidationListener center = o -> {
+            double photo = photoWidth(root.getHeight());
+            double margin = Math.max(FORM_MARGIN, (root.getWidth() - photo - loginForm.getWidth()) / 2);
+            StackPane.setMargin(loginForm, new Insets(0, margin, 0, 0));
+        };
+        root.widthProperty().addListener(center);
+        root.heightProperty().addListener(center);
+        loginForm.widthProperty().addListener(center);
+    }
+
+    /** Ancho visible de la foto: la imagen se escala al alto de la ventana; sin imagen, el panel de color. */
+    private double photoWidth(double height) {
+        Background background = loginPhoto.getBackground();
+        if (background != null && !background.getImages().isEmpty()) {
+            Image image = background.getImages().get(0).getImage();
+            if (image != null && image.getHeight() > 0) {
+                return height * image.getWidth() / image.getHeight();
+            }
+        }
+        return loginPhoto.getMaxWidth() > 0 && loginPhoto.getMaxWidth() < Double.MAX_VALUE ? loginPhoto.getMaxWidth() : 0;
     }
 
     /** El ojito alterna entre el PasswordField (puntos) y un TextField con el mismo texto. */

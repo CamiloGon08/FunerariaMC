@@ -17,6 +17,8 @@ import com.example.funerariamc.ui.RefreshableView;
 import com.example.funerariamc.ui.Responsive;
 import com.example.funerariamc.ui.Reveal;
 import com.example.funerariamc.ui.SidebarAnimator;
+import javafx.animation.PauseTransition;
+import javafx.util.Duration;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
@@ -163,6 +165,13 @@ public class MainController {
         sidebarAnimator.showExpanded();
         watchWindowSize();
         onHome();
+        // Si el rol ve Transporte, su mapa se carga en segundo plano después del Inicio: al abrir el
+        // módulo ya está listo en vez de crearse y cargarse en ese momento.
+        if (modules.contains(AppModule.TRANSPORTE)) {
+            PauseTransition warmUp = new PauseTransition(Duration.seconds(1.5));
+            warmUp.setOnFinished(e -> RouteMapPane.prewarm());
+            warmUp.play();
+        }
     }
 
     /**

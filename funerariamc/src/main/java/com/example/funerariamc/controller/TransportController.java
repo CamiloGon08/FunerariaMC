@@ -267,6 +267,9 @@ public class TransportController implements RefreshableView {
         autoRefresh.setCycleCount(Animation.INDEFINITE);
         autoRefresh.play();
         showTab();
+        // El mapa empieza a cargar ya, mientras llegan los datos de la flota, y no después de ellos
+        RouteMapPane monitorMap = maps.computeIfAbsent(monitorRouteSlot, s -> RouteMapPane.obtain());
+        monitorRouteSlot.getChildren().setAll(monitorMap);
         load();
     }
 
@@ -822,13 +825,21 @@ public class TransportController implements RefreshableView {
         }
         mapKeys.put(slot, key);
         if (t == null) {
-            RouteMapPane map = maps.computeIfAbsent(slot, s -> new RouteMapPane());
+            RouteMapPane map = maps.computeIfAbsent(slot, s -> RouteMapPane.obtain());
             slot.getChildren().setAll(map);
             map.clear();
             hint.setText(emptyText);
             return;
         }
-        slot.getChildren().setAll(routeView(t, emptyText));
+        if (t.stops().size() >= 2 && t.stops().stream().allMatch(Stop::located)) {
+            // Las paradas ya tienen coordenadas guardadas: el mapa se dibuja al instante con línea recta
+            // y la ruta por calles la reemplaza cuando llega.
+            RouteMapPane map = maps.computeIfAbsent(slot, s -> RouteMapPane.obtain());
+            slot.getChildren().setAll(map);
+            map.show(new RouteMapService.MapData(t.stops(), null, List.of()), t);
+        } else {
+            slot.getChildren().setAll(routeView(t, emptyText));
+        }
         hint.setText(prefix + (routeMapService.isConfigured() ? "buscando el mapa…" : "recorrido por paradas"));
         if (t.stops().size() < 2) {
             hint.setText(prefix + "recorrido por paradas");
@@ -842,7 +853,7 @@ public class TransportController implements RefreshableView {
                 hint.setText(prefix + mapProblem(data));
                 return;
             }
-            RouteMapPane map = maps.computeIfAbsent(slot, s -> new RouteMapPane());
+            RouteMapPane map = maps.computeIfAbsent(slot, s -> RouteMapPane.obtain());
             slot.getChildren().setAll(map);
             map.show(data, t);
             hint.setText(prefix + routeText(data));

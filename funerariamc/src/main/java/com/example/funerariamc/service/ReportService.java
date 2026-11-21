@@ -11,29 +11,14 @@ import com.example.funerariamc.persistence.FinancialTransactionRepository;
 import com.example.funerariamc.persistence.SaleRepository;
 import com.example.funerariamc.service.FinancialTransactionService.MovementRow;
 import com.example.funerariamc.service.FinancialTransactionService.Origin;
-import com.lowagie.text.Document;
-import com.lowagie.text.Element;
-import com.lowagie.text.Font;
-import com.lowagie.text.PageSize;
-import com.lowagie.text.Paragraph;
-import com.lowagie.text.Phrase;
-import com.lowagie.text.pdf.PdfPCell;
-import com.lowagie.text.pdf.PdfPTable;
-import com.lowagie.text.pdf.PdfWriter;
-import org.apache.poi.ss.usermodel.BorderStyle;
-import org.apache.poi.ss.usermodel.CellStyle;
-import org.apache.poi.ss.usermodel.DataFormat;
-import org.apache.poi.ss.usermodel.FillPatternType;
-import org.apache.poi.ss.usermodel.IndexedColors;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
+import com.example.funerariamc.service.BrandingService.BrandView;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import java.awt.Color;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.math.BigDecimal;
@@ -368,9 +353,9 @@ public class ReportService {
             temp = Files.createTempFile(folder, "funeraria-", "." + format.getExtension());
             try (OutputStream out = Files.newOutputStream(temp)) {
                 if (format == Format.PDF) {
-                    writePdf(summary, out, BrandingService.fullNameOf(brandingService));
+                    writePdf(summary, out, ExportDesign.brandOf(brandingService), BrandingService.fullNameOf(brandingService));
                 } else {
-                    writeExcel(summary, out, BrandingService.fullNameOf(brandingService));
+                    writeExcel(summary, out, ExportDesign.brandOf(brandingService), BrandingService.fullNameOf(brandingService));
                 }
             }
             Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING);
@@ -396,106 +381,160 @@ public class ReportService {
     }
 
     static void writePdf(Summary s, OutputStream out) {
-        writePdf(s, out, BrandingService.defaults().fullName());
+        writePdf(s, out, BrandingService.defaults(), BrandingService.defaults().fullName());
     }
 
-    /** PDF del resumen con el nombre de la funeraria en el título. */
-    static void writePdf(Summary s, OutputStream out, String funeralHome) {
-        Document document = new Document(PageSize.A4, 36, 36, 40, 40);
-        PdfWriter.getInstance(document, out);
-        document.open();
-        Color forest = new Color(0x1E, 0x3A, 0x2E);
-        Color muted = new Color(0x6A, 0x73, 0x66);
-        Font title = new Font(Font.TIMES_ROMAN, 22, Font.BOLD, forest);
-        Font h2 = new Font(Font.TIMES_ROMAN, 14, Font.BOLD, forest);
-        Font small = new Font(Font.HELVETICA, 9, Font.NORMAL, muted);
-        Font body = new Font(Font.HELVETICA, 9, Font.NORMAL, Color.BLACK);
-        Font bold = new Font(Font.HELVETICA, 9, Font.BOLD, Color.BLACK);
+    /**
+     * PDF del resumen con el diseño de la pantalla de Finanzas: banda con los cuatro indicadores y una
+     * tarjeta por sección, con los colores, el logo y el nombre de la funeraria.
+     */
+    static void writePdf(Summary s, OutputStream out, BrandView brand, String funeralHome) {
+        ExportDesign.PdfReport pdf = ExportDesign.pdf(brand, funeralHome, out, "Resumen financiero");
+        pdf.hero("Resumen financiero", periodText(s) + " · generado el " + s.generatedAt().format(DATE_HOUR),
+                summaryKpis(s), true);
+        pdf.note("Los movimientos anulados no cuentan en los totales.");
 
-        document.add(new Paragraph(funeralHome + " · Resumen financiero", title));
-        document.add(new Paragraph("Período: " + s.periodLabel() + " (" + s.period().from().format(DATE) + " a "
-                + s.period().to().format(DATE) + "). Generado el " + s.generatedAt().format(DATE_HOUR)
-                + ". Los movimientos anulados no cuentan en los totales.", small));
+        ExportDesign.PdfTable balance = pdf.table("Balance del período", "Comparado con " + s.previousLabel(),
+                new float[]{3, 2, 2}, "Concepto", "Período", "Período anterior");
+        balance.row("Ingresos", pesos(s.totals().income()), pesos(s.totals().previousIncome()));
+        balance.row("Egresos", pesos(s.totals().expense()), pesos(s.totals().previousExpense()));
+        balance.total("Saldo", pesos(s.totals().balance()), pesos(s.totals().previousBalance()));
+        balance.row("Por cobrar hoy (" + credit(s.onCredit()) + ")", pesos(s.receivable()), "");
+        balance.end();
 
-        section(document, "Balance del período", h2);
-        PdfPTable balance = table(new float[]{3, 2, 2}, bold, "Concepto", "Período", "Período anterior");
-        cells(balance, body, "Ingresos", pesos(s.totals().income()), pesos(s.totals().previousIncome()));
-        cells(balance, body, "Egresos", pesos(s.totals().expense()), pesos(s.totals().previousExpense()));
-        cells(balance, bold, "Saldo", pesos(s.totals().balance()), pesos(s.totals().previousBalance()));
-        cells(balance, body, "Por cobrar hoy (" + s.onCredit() + " ventas a crédito)", pesos(s.receivable()), "");
-        document.add(balance);
-
-        section(document, "Ingresos por origen", h2);
-        PdfPTable origins = table(new float[]{4, 2, 1}, bold, "Origen", "Valor", "%");
+        ExportDesign.PdfTable origins = pdf.table("Ingresos por origen", "De dónde entró el dinero del período",
+                new float[]{4, 2, 1.4f}, "Origen", "Valor", "%");
         for (Slice slice : s.incomeByOrigin()) {
-            cells(origins, body, slice.label(), pesos(slice.amount()), percent(slice.amount(), s.totals().income()));
+            origins.bar(fraction(slice.amount(), s.totals().income()), slice.label(), pesos(slice.amount()),
+                    percent(slice.amount(), s.totals().income()));
         }
         if (s.incomeByOrigin().isEmpty()) {
-            cells(origins, body, "Sin ingresos en el período", "", "");
+            origins.empty("Sin ingresos en el período");
         }
-        document.add(origins);
+        origins.end();
 
-        section(document, "Egresos por cuenta", h2);
-        PdfPTable accounts = table(new float[]{4, 2, 1}, bold, "Cuenta", "Valor", "%");
+        ExportDesign.PdfTable accounts = pdf.table("Egresos por cuenta", "En qué se fue el dinero del período",
+                new float[]{4, 2, 1.4f}, "Cuenta", "Valor", "%");
         for (Slice slice : s.expenseByAccount()) {
-            cells(accounts, body, slice.label(), pesos(slice.amount()), percent(slice.amount(), s.totals().expense()));
+            accounts.bar(fraction(slice.amount(), s.totals().expense()), slice.label(), pesos(slice.amount()),
+                    percent(slice.amount(), s.totals().expense()));
         }
         if (s.expenseByAccount().isEmpty()) {
-            cells(accounts, body, "Sin egresos en el período", "", "");
+            accounts.empty("Sin egresos en el período");
         }
-        document.add(accounts);
+        accounts.end();
 
-        section(document, "Balance por mes · " + s.year(), h2);
-        PdfPTable months = table(new float[]{2, 2, 2, 2}, bold, "Mes", "Ingresos", "Egresos", "Saldo");
+        ExportDesign.PdfTable months = pdf.table("Balance por mes · " + s.year(), "Ingresos, egresos y saldo de cada mes",
+                new float[]{2, 2, 2, 2}, "Mes", "Ingresos", "Egresos", "Saldo");
+        BigDecimal yearIncome = BigDecimal.ZERO;
+        BigDecimal yearExpense = BigDecimal.ZERO;
         for (MonthBalance m : s.months()) {
-            cells(months, body, m.month(), pesos(m.income()), pesos(m.expense()), pesos(m.balance()));
+            months.row(m.month(), pesos(m.income()), pesos(m.expense()), pesos(m.balance()));
+            yearIncome = yearIncome.add(orZero(m.income()));
+            yearExpense = yearExpense.add(orZero(m.expense()));
         }
-        document.add(months);
+        months.total("Total " + s.year(), pesos(yearIncome), pesos(yearExpense), pesos(yearIncome.subtract(yearExpense)));
+        months.end();
 
-        section(document, "Comisiones registradas en el período", h2);
-        PdfPTable commissions = table(new float[]{3, 5, 2}, bold, "Persona", "Detalle", "Valor");
+        ExportDesign.PdfTable commissions = pdf.table("Comisiones registradas", "Registradas como egreso en el período",
+                new float[]{3, 5, 2}, "Persona", "Detalle", "Valor");
         for (CommissionLine c : s.commissions()) {
-            cells(commissions, body, nullToEmpty(c.name()), nullToEmpty(c.description()), pesos(c.amount()));
+            commissions.row(nullToEmpty(c.name()), nullToEmpty(c.description()), pesos(c.amount()));
         }
         if (s.commissions().isEmpty()) {
-            cells(commissions, body, "Sin comisiones en el período", "", "");
+            commissions.empty("Sin comisiones en el período");
         }
-        document.add(commissions);
+        commissions.end();
 
-        section(document, "Reporte de ventas", h2);
         List<SaleLine> active = s.sales().stream().filter(l -> !l.voided()).toList();
+        ExportDesign.PdfTable kinds = pdf.table("Reporte de ventas", "Ventas vigentes del período por tipo",
+                new float[]{3, 1, 2}, "Tipo de venta", "Ventas", "Total");
         if (active.isEmpty()) {
-            document.add(new Paragraph("No hay ventas en el período seleccionado.", body));
+            kinds.empty("No hay ventas en el período seleccionado.");
         } else {
-            Map<String, BigDecimal[]> byKind = salesByKind(active);
-            PdfPTable kinds = table(new float[]{3, 1, 2}, bold, "Tipo de venta", "Ventas", "Total");
-            byKind.forEach((kind, v) -> cells(kinds, body, kind, v[0].toPlainString(), pesos(v[1])));
-            cells(kinds, bold, "Total", String.valueOf(active.size()),
+            salesByKind(active).forEach((kind, v) -> kinds.row(kind, v[0].toPlainString(), pesos(v[1])));
+            kinds.total("Total", String.valueOf(active.size()),
                     pesos(active.stream().map(SaleLine::total).reduce(BigDecimal.ZERO, BigDecimal::add)));
-            document.add(kinds);
-            document.add(new Paragraph(" ", small));
-            PdfPTable sales = table(new float[]{1.1f, 1.6f, 1.8f, 3.4f, 1.7f, 1.7f, 1.7f}, bold,
+        }
+        kinds.end();
+        if (!active.isEmpty()) {
+            ExportDesign.PdfTable sales = pdf.table("Detalle de ventas", null,
+                    new float[]{1.1f, 1.6f, 1.8f, 3.4f, 1.7f, 1.7f, 1.7f},
                     "N.°", "Fecha", "Tipo", "Difunto / cliente", "Total", "Abonado", "Saldo");
             for (SaleLine l : active) {
-                cells(sales, body, l.number(), l.date() == null ? "" : l.date().format(DATE), l.kind(),
+                sales.row(l.number(), l.date() == null ? "" : l.date().format(DATE), l.kind(),
                         l.title() + " · " + l.subtitle(), pesos(l.total()), pesos(l.paid()), pesos(l.balance()));
             }
-            document.add(sales);
+            sales.end();
         }
 
-        section(document, "Movimientos del período", h2);
-        PdfPTable moves = table(new float[]{1.3f, 1.8f, 1.2f, 3.4f, 2f, 1.8f, 1.2f}, bold,
+        ExportDesign.PdfTable moves = pdf.table("Movimientos del período",
+                s.activeMovements() + " vigentes · " + s.voidedMovements() + " anulados",
+                new float[]{1.3f, 1.8f, 1.2f, 3.4f, 2f, 1.8f, 1.2f},
                 "Código", "Fecha", "Tipo", "Descripción", "Cuenta", "Valor", "Estado");
         for (MovementRow m : s.movements()) {
-            cells(moves, body, m.code(), m.date() == null ? "" : m.date().format(DATE_HOUR),
+            String[] values = {m.code(), m.date() == null ? "" : m.date().format(DATE_HOUR),
                     m.type() == TransactionType.INCOME ? "Ingreso" : "Egreso", nullToEmpty(m.description()),
-                    accountText(m), pesos(m.amount()), m.voided() ? "Anulado" : "Vigente");
+                    accountText(m), pesos(m.amount()), m.voided() ? "Anulado" : "Vigente"};
+            if (m.voided()) {
+                moves.voided(values);
+            } else {
+                moves.row(values);
+            }
         }
         if (s.movements().isEmpty()) {
-            cells(moves, body, "", "", "", "Sin movimientos en el período", "", "", "");
+            moves.empty("Sin movimientos en el período");
         }
-        document.add(moves);
-        document.close();
+        moves.end();
+        pdf.close();
+    }
+
+    /** Los cuatro indicadores de la banda de Finanzas, con el mismo texto y tono que en la pantalla. */
+    static List<ExportDesign.Kpi> summaryKpis(Summary s) {
+        Totals t = s.totals();
+        return List.of(
+                new ExportDesign.Kpi("INGRESOS", pesos(t.income()), change(t.incomeChange(), s.previousLabel()),
+                        tone(t.incomeChange(), false)),
+                new ExportDesign.Kpi("EGRESOS", pesos(t.expense()), change(t.expenseChange(), s.previousLabel()),
+                        tone(t.expenseChange(), true)),
+                new ExportDesign.Kpi("BALANCE", pesos(t.balance()), change(t.balanceChange(), s.previousLabel()),
+                        tone(t.balanceChange(), false)),
+                new ExportDesign.Kpi("POR COBRAR HOY", pesos(s.receivable()), credit(s.onCredit())));
+    }
+
+    /** "+20 % vs. septiembre 2026" o "sin datos de septiembre 2026". */
+    static String change(Double percent, String previous) {
+        if (percent == null) {
+            return "sin datos de " + previous;
+        }
+        String sign = percent > 0 ? "+" : "";
+        return sign + new java.text.DecimalFormat("0.#", java.text.DecimalFormatSymbols.getInstance(ES)).format(percent)
+                + " % vs. " + previous;
+    }
+
+    /** Verde si mejora y terracota si empeora; para egresos, subir es empeorar. */
+    static ExportDesign.Tone tone(Double percent, boolean expense) {
+        if (percent == null || percent == 0) {
+            return ExportDesign.Tone.NEUTRAL;
+        }
+        boolean good = expense ? percent < 0 : percent > 0;
+        return good ? ExportDesign.Tone.UP : ExportDesign.Tone.DOWN;
+    }
+
+    private static String credit(long count) {
+        return count + (count == 1 ? " venta a crédito" : " ventas a crédito");
+    }
+
+    private static String periodText(Summary s) {
+        return "Período: " + s.periodLabel() + " · del " + s.period().from().format(DATE) + " al "
+                + s.period().to().format(DATE);
+    }
+
+    private static double fraction(BigDecimal part, BigDecimal whole) {
+        if (part == null || whole == null || whole.signum() == 0) {
+            return 0;
+        }
+        return part.doubleValue() / whole.doubleValue();
     }
 
     /** Cuenta de un movimiento: vacía en ingresos y "Sin cuenta" en egresos que no la tienen. */
@@ -506,178 +545,111 @@ public class ReportService {
         return m.account() == null ? FinancialTransactionService.NO_ACCOUNT : m.account();
     }
 
-    static void section(Document document, String text, Font font) {
-        Paragraph p = new Paragraph(text, font);
-        p.setSpacingBefore(14);
-        p.setSpacingAfter(6);
-        document.add(p);
-    }
-
-    static PdfPTable table(float[] widths, Font font, String... headers) {
-        PdfPTable table = new PdfPTable(widths);
-        table.setWidthPercentage(100);
-        for (String header : headers) {
-            PdfPCell cell = new PdfPCell(new Phrase(header, font));
-            cell.setBackgroundColor(new Color(0xEE, 0xF0, 0xE6));
-            cell.setPadding(5);
-            table.addCell(cell);
-        }
-        table.setHeaderRows(1);
-        return table;
-    }
-
-    static void cells(PdfPTable table, Font font, String... values) {
-        for (int i = 0; i < values.length; i++) {
-            PdfPCell cell = new PdfPCell(new Phrase(values[i], font));
-            cell.setPadding(4);
-            if (i > 0 && values[i].startsWith("$")) {
-                cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
-            }
-            table.addCell(cell);
-        }
-    }
-
     static void writeExcel(Summary s, OutputStream out) throws IOException {
-        writeExcel(s, out, BrandingService.defaults().fullName());
+        writeExcel(s, out, BrandingService.defaults(), BrandingService.defaults().fullName());
     }
 
-    /** Excel del resumen con el nombre de la funeraria en el título. */
-    static void writeExcel(Summary s, OutputStream out, String funeralHome) throws IOException {
+    /**
+     * Excel del resumen con el mismo diseño: banda de la marca en cada hoja, tarjetas de indicadores en
+     * Balance y tablas con encabezado del color principal, filas alternas y filtro.
+     */
+    static void writeExcel(Summary s, OutputStream out, BrandView brand, String funeralHome) throws IOException {
         try (XSSFWorkbook book = new XSSFWorkbook()) {
-            DataFormat format = book.createDataFormat();
-            CellStyle header = book.createCellStyle();
-            org.apache.poi.ss.usermodel.Font bold = book.createFont();
-            bold.setBold(true);
-            header.setFont(bold);
-            header.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
-            header.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-            header.setBorderBottom(BorderStyle.THIN);
-            CellStyle money = book.createCellStyle();
-            money.setDataFormat(format.getFormat("\"$\" #,##0"));
-            CellStyle date = book.createCellStyle();
-            date.setDataFormat(format.getFormat("dd/mm/yyyy hh:mm"));
+            ExportDesign.XlsxReport x = ExportDesign.xlsx(brand, funeralHome, book, "Resumen financiero");
+            String period = periodText(s);
 
-            Sheet balance = book.createSheet("Balance");
-            text(balance, 0, funeralHome + " · Resumen financiero");
-            text(balance, 1, "Período: " + s.periodLabel() + " (" + s.period().from().format(DATE) + " a "
-                    + s.period().to().format(DATE) + "). Los movimientos anulados no cuentan.");
-            head(balance, 3, header, "Concepto", "Período", "Período anterior");
-            moneyRow(balance, 4, money, "Ingresos", s.totals().income(), s.totals().previousIncome());
-            moneyRow(balance, 5, money, "Egresos", s.totals().expense(), s.totals().previousExpense());
-            moneyRow(balance, 6, money, "Saldo", s.totals().balance(), s.totals().previousBalance());
-            moneyRow(balance, 7, money, "Por cobrar hoy (" + s.onCredit() + " ventas a crédito)", s.receivable());
-            head(balance, 9, header, "Ingresos por origen", "Valor");
-            int r = 10;
+            XSSFSheet balance = book.createSheet("Balance");
+            x.widths(balance, 40, 22, 22, 22);
+            int r = x.banner(balance, "Resumen financiero", period + " · los movimientos anulados no cuentan", 4);
+            r = x.kpis(balance, r, 0, 1, summaryKpis(s), true);
+            r = x.section(balance, r, 0, "Balance del período", "Comparado con " + s.previousLabel());
+            ExportDesign.XlsxTable t = x.table(balance, r, 0, "Concepto", "Período", "Período anterior");
+            t.row().text("Ingresos").money(s.totals().income()).money(s.totals().previousIncome());
+            t.row().text("Egresos").money(s.totals().expense()).money(s.totals().previousExpense());
+            t.totalRow().text("Saldo").money(s.totals().balance()).money(s.totals().previousBalance());
+            t.row().text("Por cobrar hoy (" + credit(s.onCredit()) + ")").money(s.receivable()).text("");
+            r = t.end(false);
+            r = x.section(balance, r, 0, "Ingresos por origen", null);
+            t = x.table(balance, r, 0, "Origen", "Valor", "%");
             for (Slice slice : s.incomeByOrigin()) {
-                moneyRow(balance, r++, money, slice.label(), slice.amount());
+                t.row().text(slice.label()).money(slice.amount()).percent(fraction(slice.amount(), s.totals().income()));
             }
-            head(balance, ++r, header, "Egresos por cuenta", "Valor");
-            r++;
+            if (s.incomeByOrigin().isEmpty()) {
+                t.empty("Sin ingresos en el período");
+            }
+            r = t.end(false);
+            r = x.section(balance, r, 0, "Egresos por cuenta", null);
+            t = x.table(balance, r, 0, "Cuenta", "Valor", "%");
             for (Slice slice : s.expenseByAccount()) {
-                moneyRow(balance, r++, money, slice.label(), slice.amount());
+                t.row().text(slice.label()).money(slice.amount()).percent(fraction(slice.amount(), s.totals().expense()));
             }
-            autosize(balance, 3);
+            if (s.expenseByAccount().isEmpty()) {
+                t.empty("Sin egresos en el período");
+            }
+            t.end(false);
 
-            Sheet months = book.createSheet("Balance por mes");
-            head(months, 0, header, "Mes " + s.year(), "Ingresos", "Egresos", "Saldo");
-            r = 1;
+            XSSFSheet months = book.createSheet("Balance por mes");
+            x.widths(months, 22, 22, 22, 22);
+            r = x.banner(months, "Balance por mes · " + s.year(), "Ingresos, egresos y saldo de cada mes", 4);
+            t = x.table(months, r, 0, "Mes " + s.year(), "Ingresos", "Egresos", "Saldo");
+            BigDecimal yearIncome = BigDecimal.ZERO;
+            BigDecimal yearExpense = BigDecimal.ZERO;
             for (MonthBalance m : s.months()) {
-                moneyRow(months, r++, money, m.month(), m.income(), m.expense(), m.balance());
+                t.row().text(m.month()).money(m.income()).money(m.expense()).money(m.balance());
+                yearIncome = yearIncome.add(orZero(m.income()));
+                yearExpense = yearExpense.add(orZero(m.expense()));
             }
-            autosize(months, 4);
+            t.totalRow().text("Total " + s.year()).money(yearIncome).money(yearExpense).money(yearIncome.subtract(yearExpense));
+            t.end(false);
+            months.createFreezePane(0, r + 1);
 
-            Sheet commissions = book.createSheet("Comisiones");
-            head(commissions, 0, header, "Persona", "Detalle", "Valor");
-            r = 1;
+            XSSFSheet commissions = book.createSheet("Comisiones");
+            x.widths(commissions, 30, 50, 18);
+            r = x.banner(commissions, "Comisiones registradas", period, 3);
+            t = x.table(commissions, r, 0, "Persona", "Detalle", "Valor");
             for (CommissionLine c : s.commissions()) {
-                Row row = commissions.createRow(r++);
-                row.createCell(0).setCellValue(nullToEmpty(c.name()));
-                row.createCell(1).setCellValue(nullToEmpty(c.description()));
-                moneyCell(row, 2, money, c.amount());
+                t.row().text(nullToEmpty(c.name())).text(nullToEmpty(c.description())).money(c.amount());
             }
-            autosize(commissions, 3);
+            if (s.commissions().isEmpty()) {
+                t.empty("Sin comisiones en el período");
+            }
+            t.end(!s.commissions().isEmpty());
+            commissions.createFreezePane(0, r + 1);
 
-            Sheet sales = book.createSheet("Ventas");
-            head(sales, 0, header, "N.°", "Fecha", "Tipo", "Difunto / cliente", "Total", "Abonado", "Saldo", "Estado");
-            r = 1;
+            XSSFSheet sales = book.createSheet("Ventas");
+            x.widths(sales, 10, 18, 20, 46, 16, 16, 16, 12);
+            r = x.banner(sales, "Reporte de ventas", period, 8);
+            t = x.table(sales, r, 0, "N.°", "Fecha", "Tipo", "Difunto / cliente", "Total", "Abonado", "Saldo", "Estado");
             for (SaleLine l : s.sales()) {
-                Row row = sales.createRow(r++);
-                row.createCell(0).setCellValue(l.number());
-                dateCell(row, 1, date, l.date());
-                row.createCell(2).setCellValue(l.kind());
-                row.createCell(3).setCellValue(l.title() + " · " + l.subtitle());
-                moneyCell(row, 4, money, l.total());
-                moneyCell(row, 5, money, l.paid());
-                moneyCell(row, 6, money, l.balance());
-                row.createCell(7).setCellValue(l.voided() ? "Anulada" : "Vigente");
+                (l.voided() ? t.voidedRow() : t.row()).text(l.number()).date(l.date()).text(l.kind())
+                        .text(l.title() + " · " + l.subtitle()).money(l.total()).money(l.paid()).money(l.balance())
+                        .text(l.voided() ? "Anulada" : "Vigente");
             }
             if (s.sales().isEmpty()) {
-                text(sales, 1, "No hay ventas en el período seleccionado.");
+                t.empty("No hay ventas en el período seleccionado.");
             }
-            autosize(sales, 8);
+            t.end(!s.sales().isEmpty());
+            sales.createFreezePane(0, r + 1);
 
-            Sheet moves = book.createSheet("Movimientos");
-            head(moves, 0, header, "Código", "Fecha", "Tipo", "Origen", "Descripción", "Cuenta", "Registró", "Valor",
+            XSSFSheet moves = book.createSheet("Movimientos");
+            x.widths(moves, 12, 18, 10, 22, 46, 22, 22, 16, 11);
+            r = x.banner(moves, "Movimientos del período", period + " · " + s.activeMovements() + " vigentes · "
+                    + s.voidedMovements() + " anulados", 9);
+            t = x.table(moves, r, 0, "Código", "Fecha", "Tipo", "Origen", "Descripción", "Cuenta", "Registró", "Valor",
                     "Estado");
-            r = 1;
             for (MovementRow m : s.movements()) {
-                Row row = moves.createRow(r++);
-                row.createCell(0).setCellValue(m.code());
-                dateCell(row, 1, date, m.date());
-                row.createCell(2).setCellValue(m.type() == TransactionType.INCOME ? "Ingreso" : "Egreso");
-                row.createCell(3).setCellValue(m.origin().getLabel());
-                row.createCell(4).setCellValue(nullToEmpty(m.description()));
-                row.createCell(5).setCellValue(accountText(m));
-                row.createCell(6).setCellValue(nullToEmpty(m.registeredBy()));
-                moneyCell(row, 7, money, m.amount());
-                row.createCell(8).setCellValue(m.voided() ? "Anulado" : "Vigente");
+                (m.voided() ? t.voidedRow() : t.row()).text(m.code()).date(m.date())
+                        .text(m.type() == TransactionType.INCOME ? "Ingreso" : "Egreso").text(m.origin().getLabel())
+                        .text(nullToEmpty(m.description())).text(accountText(m)).text(nullToEmpty(m.registeredBy()))
+                        .money(m.amount()).text(m.voided() ? "Anulado" : "Vigente");
             }
-            autosize(moves, 9);
+            if (s.movements().isEmpty()) {
+                t.empty("Sin movimientos en el período");
+            }
+            t.end(!s.movements().isEmpty());
+            moves.createFreezePane(0, r + 1);
             book.write(out);
         }
-    }
-
-    private static void text(Sheet sheet, int rowIndex, String value) {
-        Row row = sheet.getRow(rowIndex) == null ? sheet.createRow(rowIndex) : sheet.getRow(rowIndex);
-        row.createCell(0).setCellValue(value);
-    }
-
-    private static void head(Sheet sheet, int rowIndex, CellStyle style, String... values) {
-        Row row = sheet.createRow(rowIndex);
-        for (int i = 0; i < values.length; i++) {
-            var cell = row.createCell(i);
-            cell.setCellValue(values[i]);
-            cell.setCellStyle(style);
-        }
-    }
-
-    private static void moneyRow(Sheet sheet, int rowIndex, CellStyle money, String label, BigDecimal... values) {
-        Row row = sheet.createRow(rowIndex);
-        row.createCell(0).setCellValue(label);
-        for (int i = 0; i < values.length; i++) {
-            moneyCell(row, i + 1, money, values[i]);
-        }
-    }
-
-    private static void moneyCell(Row row, int column, CellStyle money, BigDecimal value) {
-        var cell = row.createCell(column);
-        cell.setCellValue(value == null ? 0 : value.doubleValue());
-        cell.setCellStyle(money);
-    }
-
-    private static void dateCell(Row row, int column, CellStyle style, LocalDateTime value) {
-        var cell = row.createCell(column);
-        if (value != null) {
-            cell.setCellValue(value);
-            cell.setCellStyle(style);
-        }
-    }
-
-    private static void autosize(Sheet sheet, int columns) {
-        for (int i = 0; i < columns; i++) {
-            sheet.setColumnWidth(i, Math.max(sheet.getColumnWidth(i), 14 * 256));
-        }
-        sheet.setColumnWidth(0, Math.max(sheet.getColumnWidth(0), 34 * 256));
     }
 
     private static Map<String, BigDecimal[]> salesByKind(List<SaleLine> lines) {
@@ -708,7 +680,10 @@ public class ReportService {
     }
 
     static String pesos(BigDecimal value) {
-        return "$ " + NumberFormat.getIntegerInstance(ES).format(orZero(value).setScale(0, RoundingMode.HALF_UP));
+        // El signo va antes del símbolo (-$ 9.997.000), igual que en las tablas del Excel.
+        BigDecimal rounded = orZero(value).setScale(0, RoundingMode.HALF_UP);
+        String digits = NumberFormat.getIntegerInstance(ES).format(rounded.abs());
+        return (rounded.signum() < 0 ? "-$ " : "$ ") + digits;
     }
 
     private static String percent(BigDecimal part, BigDecimal whole) {

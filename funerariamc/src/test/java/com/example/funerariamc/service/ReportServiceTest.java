@@ -62,9 +62,17 @@ class ReportServiceTest {
                 }
             }
             assertTrue(accounts);
-            assertEquals("Cuenta", book.getSheet("Movimientos").getRow(0).getCell(5).getStringCellValue());
-            assertEquals("Sin cuenta", book.getSheet("Movimientos").getRow(2).getCell(5).getStringCellValue());
-            assertEquals("", book.getSheet("Movimientos").getRow(1).getCell(5).getStringCellValue());
+            // La tabla va debajo de la banda de la marca: se busca la fila del encabezado.
+            var moves = book.getSheet("Movimientos");
+            int header = -1;
+            for (var row : moves) {
+                if (row.getCell(5) != null && "CUENTA".equals(row.getCell(5).getStringCellValue())) {
+                    header = row.getRowNum();
+                }
+            }
+            assertTrue(header > 0);
+            assertEquals("", moves.getRow(header + 1).getCell(5).getStringCellValue());
+            assertEquals("Sin cuenta", moves.getRow(header + 2).getCell(5).getStringCellValue());
         }
     }
 

@@ -112,13 +112,21 @@ public class FxmlViewLoader {
     /** Reemplaza la escena de la ventana donde está. */
     public void switchScene(Node source, String fxmlPath, String title) {
         Stage stage = (Stage) source.getScene().getWindow();
-        stage.setScene(new Scene(load(fxmlPath)));
+        Scene current = stage.getScene();
+        boolean maximized = stage.isMaximized();
+        // Si la ventana está en ventana completa, la escena nueva toma el mismo tamaño y sigue así.
+        stage.setScene(maximized ? new Scene(load(fxmlPath), current.getWidth(), current.getHeight())
+                : new Scene(load(fxmlPath)));
         stage.setTitle(BrandTheme.title(title));
         // La ventana del menú no se deja achicar tanto que los módulos queden ilegibles
         boolean main = MAIN.equals(fxmlPath);
         stage.setMinWidth(main ? MAIN_MIN_WIDTH : 0);
         stage.setMinHeight(main ? MAIN_MIN_HEIGHT : 0);
-        stage.sizeToScene();
-        stage.centerOnScreen();
+        if (maximized) {
+            stage.setMaximized(true);
+        } else {
+            stage.sizeToScene();
+            stage.centerOnScreen();
+        }
     }
 }
