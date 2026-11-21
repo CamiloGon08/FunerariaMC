@@ -49,6 +49,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -63,8 +64,11 @@ public class AnalyticsService {
     private static final Logger log = LoggerFactory.getLogger(AnalyticsService.class);
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter DATE_HOUR = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
-    /** Meses que muestra la gráfica "Servicios por tipo". */
-    static final int KIND_MONTHS = 6;
+    /** Hasta esta cantidad de días la gráfica "Servicios por tipo" muestra una barra por día. */
+    static final int KIND_DAYS = 7;
+    /** Hasta esta cantidad de días muestra una barra por semana; con más, una por mes. */
+    static final int KIND_WEEKS_DAYS = 62;
+    private static final DateTimeFormatter DAY_NAME = DateTimeFormatter.ofPattern("EEE d", Locale.forLanguageTag("es-CO"));
     public static final String[] KINDS = {"Contrato · plan", "Contrato · pensión", "Particular", "Venta de productos"};
     public static final String[] WEEKDAYS = {"Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"};
 
@@ -73,8 +77,11 @@ public class AnalyticsService {
                        int vaultOccupancy, long vaults, BigDecimal commissions, long commissionPeople) {
     }
 
-    /** Cantidad de ventas de cada tipo (en el orden de KINDS) en un mes. */
-    public record KindMonth(YearMonth month, String label, long[] counts) {
+    /**
+     * Cantidad de ventas de cada tipo (en el orden de KINDS) en un tramo del período: un día, una semana o
+     * un mes, según lo largo del período. from y to son el primer y el último día del tramo.
+     */
+    public record KindBucket(LocalDate from, LocalDate to, String label, long[] counts) {
 
         public long total() {
             long total = 0;
@@ -108,7 +115,7 @@ public class AnalyticsService {
     }
 
     public record Overview(FinancePeriod period, String periodLabel, String previousLabel, Kpis kpis,
-                           List<KindMonth> kindMonths, List<CemeteryOccupancy> cemeteries, List<RoomHeat> rooms,
+                           List<KindBucket> kindBuckets, List<CemeteryOccupancy> cemeteries, List<RoomHeat> rooms,
                            List<SellerLine> sellers, List<ThanatoLine> thanatologists, LocalDateTime generatedAt) {
     }
 
@@ -179,7 +186,7 @@ public class AnalyticsService {
 
         var salesRead = ParallelReads.start(() -> activeSales(period));
         var previousRead = ParallelReads.start(() -> activeSales(period.previous()));
-        var kindsRead = ParallelReads.start(() -> kindMonths(period));
+        var kindsRead = ParallelReads.start(() -> kindBuckets(period));
         var cemeteriesRead = ParallelReads.start(this::cemeteries);
         int[] roomTotal = new int[1];
         var roomsRead = ParallelReads.start(() -> rooms(period, now, roomTotal));
@@ -229,26 +236,67 @@ public class AnalyticsService {
         };
     }
 
-    /** Los últimos meses hasta el del final del período (sin pasar del mes actual), con las ventas de cada tipo. */
-    private List<KindMonth> kindMonths(FinancePeriod period) {
-        YearMonth current = YearMonth.from(today());
-        YearMonth last = YearMonth.from(period.to()).isAfter(current) ? current : YearMonth.from(period.to());
-        YearMonth first = last.minusMonths(KIND_MONTHS - 1L);
-        FinancePeriod range = new FinancePeriod(first.atDay(1), last.atEndOfMonth());
-        Map<YearMonth, long[]> counts = new LinkedHashMap<>();
-        for (YearMonth m = first; !m.isAfter(last); m = m.plusMonths(1)) {
-            counts.put(m, new long[KINDS.length]);
+    /** Cómo se agrupan las barras de "Servicios por tipo" según lo largo del período. */
+    public enum KindGrouping { DAY, WEEK, MONTH }
+
+    public static KindGrouping groupingOf(FinancePeriod period) {
+        if (period.days() <= KIND_DAYS) {
+            return KindGrouping.DAY;
         }
-        for (SaleRepository.SaleRow r : activeSales(range)) {
-            YearMonth m = YearMonth.from(AccessLogService.toAppTime(r.getSaleDate()));
-            long[] row = counts.get(m);
-            if (row != null) {
-                row[kindIndex(r)]++;
+        return period.days() <= KIND_WEEKS_DAYS ? KindGrouping.WEEK : KindGrouping.MONTH;
+    }
+
+    /**
+     * Ventas de cada tipo dentro del período elegido, sin pasar de hoy: por día en 7 días, por semana
+     * (desde el primer día del período, de 7 en 7) en un mes y por mes en un año. Así la gráfica cambia
+     * con el filtro igual que los indicadores.
+     */
+    private List<KindBucket> kindBuckets(FinancePeriod period) {
+        LocalDate today = today();
+        LocalDate last = period.to().isAfter(today) ? today : period.to();
+        List<KindBucket> buckets = new ArrayList<>();
+        if (last.isBefore(period.from())) {
+            return buckets;
+        }
+        KindGrouping grouping = groupingOf(period);
+        for (LocalDate start = period.from(); !start.isAfter(last); ) {
+            LocalDate end = switch (grouping) {
+                case DAY -> start;
+                case WEEK -> start.plusDays(6);
+                case MONTH -> YearMonth.from(start).atEndOfMonth();
+            };
+            if (end.isAfter(last)) {
+                end = last;
+            }
+            buckets.add(new KindBucket(start, end, bucketLabel(grouping, start, end), new long[KINDS.length]));
+            start = end.plusDays(1);
+        }
+        for (SaleRepository.SaleRow r : activeSales(new FinancePeriod(period.from(), last))) {
+            LocalDate day = AccessLogService.toAppTime(r.getSaleDate()).toLocalDate();
+            for (KindBucket b : buckets) {
+                if (!day.isBefore(b.from()) && !day.isAfter(b.to())) {
+                    b.counts()[kindIndex(r)]++;
+                    break;
+                }
             }
         }
-        List<KindMonth> months = new ArrayList<>();
-        counts.forEach((m, c) -> months.add(new KindMonth(m, shortMonth(m), c)));
-        return months;
+        return buckets;
+    }
+
+    /** "Jue 12" para un día, "1–7 nov" para una semana y "Nov" para un mes. */
+    static String bucketLabel(KindGrouping grouping, LocalDate from, LocalDate to) {
+        return switch (grouping) {
+            case DAY -> {
+                String text = from.format(DAY_NAME).replace(".", "");
+                yield Character.toUpperCase(text.charAt(0)) + text.substring(1);
+            }
+            case WEEK -> {
+                String month = shortMonth(YearMonth.from(to)).toLowerCase(Locale.ROOT);
+                yield from.equals(to) ? to.getDayOfMonth() + " " + month
+                        : from.getDayOfMonth() + "–" + to.getDayOfMonth() + " " + month;
+            }
+            case MONTH -> shortMonth(YearMonth.from(from));
+        };
     }
 
     private List<CemeteryOccupancy> cemeteries() {
@@ -444,11 +492,17 @@ public class AnalyticsService {
                 + k.commissionPeople() + (k.commissionPeople() == 1 ? " persona" : " personas"));
         document.add(kpis);
 
-        ReportService.section(document, "Servicios y ventas por tipo (últimos " + KIND_MONTHS + " meses)", h2);
+        KindGrouping grouping = groupingOf(o.period());
+        String unit = switch (grouping) {
+            case DAY -> "Día";
+            case WEEK -> "Semana";
+            case MONTH -> "Mes";
+        };
+        ReportService.section(document, "Servicios y ventas por tipo (" + o.periodLabel() + ")", h2);
         PdfPTable kinds = ReportService.table(new float[]{1.4f, 1.6f, 1.6f, 1.4f, 1.6f, 1}, bold,
-                "Mes", KINDS[0], KINDS[1], KINDS[2], KINDS[3], "Total");
-        for (KindMonth m : o.kindMonths()) {
-            ReportService.cells(kinds, body, m.label() + " " + m.month().getYear(), String.valueOf(m.counts()[0]),
+                unit, KINDS[0], KINDS[1], KINDS[2], KINDS[3], "Total");
+        for (KindBucket m : o.kindBuckets()) {
+            ReportService.cells(kinds, body, m.label(), String.valueOf(m.counts()[0]),
                     String.valueOf(m.counts()[1]), String.valueOf(m.counts()[2]), String.valueOf(m.counts()[3]),
                     String.valueOf(m.total()));
         }

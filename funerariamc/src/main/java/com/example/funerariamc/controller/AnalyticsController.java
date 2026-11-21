@@ -3,7 +3,7 @@ package com.example.funerariamc.controller;
 import com.example.funerariamc.exception.BusinessException;
 import com.example.funerariamc.service.AnalyticsService;
 import com.example.funerariamc.service.AnalyticsService.CemeteryOccupancy;
-import com.example.funerariamc.service.AnalyticsService.KindMonth;
+import com.example.funerariamc.service.AnalyticsService.KindBucket;
 import com.example.funerariamc.service.AnalyticsService.Kpis;
 import com.example.funerariamc.service.AnalyticsService.Overview;
 import com.example.funerariamc.service.AnalyticsService.RoomHeat;
@@ -197,17 +197,25 @@ public class AnalyticsController implements RefreshableView {
         int request = ++generation;
         if (overview == null) {
             content.getChildren().setAll(label("Cargando…", "empty-board"));
+        } else {
+            // Mientras llega el nuevo período lo anterior queda atenuado, para que se note que cambió.
+            kpiRow.setOpacity(0.45);
+            content.setOpacity(0.45);
         }
         async("analytics-load", () -> analyticsService.overview(period), result -> {
             if (request != generation) {
                 return;
             }
             overview = result;
+            kpiRow.setOpacity(1);
+            content.setOpacity(1);
             exportButton.setDisable(false);
             drawKpis(result);
             drawTab();
         }, failure -> {
             if (request == generation) {
+                kpiRow.setOpacity(1);
+                content.setOpacity(1);
                 content.getChildren().setAll(label(message(failure,
                         "No se pudo cargar el panel. Revise la conexión."), "empty-board"));
             }
@@ -219,10 +227,11 @@ public class AnalyticsController implements RefreshableView {
     private void drawKpis(Overview o) {
         Kpis k = o.kpis();
         long diff = k.services() - k.servicesPrevious();
+        // El detalle compara con el período anterior y lo dice, para no confundirlo con el período elegido.
         String change = k.servicesPrevious() == 0
-                ? "0 en " + o.previousLabel()
+                ? "Período anterior (" + o.previousLabel() + "): 0"
                 : (diff >= 0 ? "▲ " : "▼ ") + Math.abs(Math.round(diff * 100.0 / k.servicesPrevious()))
-                + " % vs. " + o.previousLabel();
+                + " % vs. período anterior (" + o.previousLabel() + ": " + k.servicesPrevious() + ")";
         VBox services = kpi("SERVICIOS DEL PERÍODO", String.valueOf(k.services()), change, true);
         if (k.servicesPrevious() > 0) {
             services.getChildren().get(2).getStyleClass().add(diff >= 0 ? "up" : "down");
@@ -237,9 +246,11 @@ public class AnalyticsController implements RefreshableView {
 
     private void drawTab() {
         if (tabGroup.getSelectedToggle() == occupancyTab) {
-            content.getChildren().setAll(heatCard(overview.rooms()), vaultsCard(overview.cemeteries()));
+            content.getChildren().setAll(heatCard(overview.rooms(), overview.periodLabel()),
+                    vaultsCard(overview.cemeteries()));
         } else if (tabGroup.getSelectedToggle() == teamTab) {
-            content.getChildren().setAll(sellersCard(overview.sellers()), thanatologistsCard(overview.thanatologists()));
+            content.getChildren().setAll(sellersCard(overview.sellers(), overview.periodLabel()),
+                    thanatologistsCard(overview.thanatologists(), overview.periodLabel()));
         } else {
             GridPane grid = new GridPane();
             grid.setHgap(16);
@@ -248,7 +259,7 @@ public class AnalyticsController implements RefreshableView {
             ColumnConstraints right = new ColumnConstraints();
             right.setPercentWidth(38);
             grid.getColumnConstraints().addAll(left, right);
-            Node kinds = kindsCard(overview.kindMonths());
+            Node kinds = kindsCard(overview.kindBuckets(), overview.period());
             Node vaults = vaultsCard(overview.cemeteries());
             grid.add(kinds, 0, 0);
             grid.add(vaults, 1, 0);
@@ -259,9 +270,15 @@ public class AnalyticsController implements RefreshableView {
 
     // ---------- Ventas y servicios ----------
 
-    private Node kindsCard(List<KindMonth> months) {
-        VBox card = card("Servicios por tipo", "Ventas de los últimos " + months.size()
-                + " meses, sin contar las anuladas");
+    /** Barras del período elegido: por día en 7 días, por semana en un mes y por mes en un año. */
+    private Node kindsCard(List<KindBucket> months, FinancePeriod period) {
+        String unit = switch (AnalyticsService.groupingOf(period)) {
+            case DAY -> "por día";
+            case WEEK -> "por semana";
+            case MONTH -> "por mes";
+        };
+        VBox card = card("Servicios por tipo", "Ventas de " + period.label() + " " + unit
+                + ", sin contar las anuladas");
         CategoryAxis x = new CategoryAxis();
         NumberAxis y = new NumberAxis();
         y.setMinorTickVisible(false);
@@ -277,12 +294,12 @@ public class AnalyticsController implements RefreshableView {
         for (int kind = 0; kind < AnalyticsService.KINDS.length; kind++) {
             XYChart.Series<String, Number> series = new XYChart.Series<>();
             series.setName(AnalyticsService.KINDS[kind]);
-            for (KindMonth m : months) {
+            for (KindBucket m : months) {
                 series.getData().add(new XYChart.Data<>(m.label(), m.counts()[kind]));
             }
             chart.getData().add(series);
         }
-        for (KindMonth m : months) {
+        for (KindBucket m : months) {
             max = Math.max(max, m.total());
         }
         // Escala de números enteros: no hay "medio servicio".
@@ -350,9 +367,9 @@ public class AnalyticsController implements RefreshableView {
         return bar;
     }
 
-    private Node heatCard(List<RoomHeat> rooms) {
-        VBox card = card("Ocupación de salas por día", "Porcentaje de las horas en que cada sala estuvo en velación,"
-                + " por día de la semana, hasta hoy");
+    private Node heatCard(List<RoomHeat> rooms, String periodLabel) {
+        VBox card = card("Ocupación de salas por día", "Porcentaje de las horas en que cada sala estuvo en velación"
+                + " en " + periodLabel + ", por día de la semana, hasta hoy");
         if (rooms.isEmpty()) {
             card.getChildren().add(label("No hay salas registradas.", "empty-board"));
             return card;
@@ -417,9 +434,9 @@ public class AnalyticsController implements RefreshableView {
 
     // ---------- Equipo ----------
 
-    private Node sellersCard(List<SellerLine> sellers) {
-        VBox card = card("Vendedores", "Ventas del período sin contar las anuladas; la comisión es la registrada en"
-                + " Finanzas");
+    private Node sellersCard(List<SellerLine> sellers, String periodLabel) {
+        VBox card = card("Vendedores", "Ventas de " + periodLabel + " sin contar las anuladas; la comisión es la"
+                + " registrada en Finanzas");
         if (sellers.isEmpty()) {
             card.getChildren().add(label("No hay vendedores con ventas en este período.", "empty-board"));
             return card;
@@ -432,8 +449,9 @@ public class AnalyticsController implements RefreshableView {
         return card;
     }
 
-    private Node thanatologistsCard(List<ThanatoLine> lines) {
-        VBox card = card("Tanatólogos", "Preparaciones terminadas en el período y comisión registrada en Finanzas");
+    private Node thanatologistsCard(List<ThanatoLine> lines, String periodLabel) {
+        VBox card = card("Tanatólogos", "Preparaciones terminadas en " + periodLabel
+                + " y comisión registrada en Finanzas");
         if (lines.isEmpty()) {
             card.getChildren().add(label("No hay tanatólogos con preparaciones en este período.", "empty-board"));
             return card;
