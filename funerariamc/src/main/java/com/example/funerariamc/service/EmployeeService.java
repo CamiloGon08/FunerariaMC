@@ -237,13 +237,13 @@ public class EmployeeService {
     }
 
     private void copyData(Employee employee, EmployeeData data, String document) {
-        employee.setName(data.name().trim());
-        employee.setLastname(data.lastname().trim());
-        employee.setDocumentType(data.documentType().trim());
+        employee.setName(ClientService.normalizeSpaces(data.name()));
+        employee.setLastname(ClientService.normalizeSpaces(data.lastname()));
+        employee.setDocumentType(data.documentType().trim().toUpperCase(Locale.ROOT));
         employee.setDocumentNumber(document);
-        employee.setPhone(blankToNull(data.phone()));
-        employee.setEmail(blankToNull(data.email()));
-        employee.setAddress(blankToNull(data.address()));
+        employee.setPhone(blankToNull(ClientService.normalizePhone(data.phone())));
+        employee.setEmail(blankToNull(ClientService.normalizeEmail(data.email())));
+        employee.setAddress(blankToNull(ClientService.normalizeSpaces(data.address())));
         employee.setBirthDate(data.birthDate());
         employee.setSex(data.sex());
         employee.setHireDate(data.hireDate());
@@ -272,17 +272,27 @@ public class EmployeeService {
         require(data.lastname(), "Los apellidos son obligatorios.");
         require(data.documentType(), "El tipo de documento es obligatorio.");
         require(data.documentNumber(), "El número de documento es obligatorio.");
+        String documentType = data.documentType().trim().toUpperCase(Locale.ROOT);
+        if (!ClientService.NATURAL_DOCUMENT_TYPES.contains(documentType)) {
+            throw new InvalidDataException("Seleccione cédula, cédula de extranjería o pasaporte para el empleado.");
+        }
         String document = normalizeDocument(data.documentNumber());
         if (!document.matches("[A-Za-z0-9]+")) {
             throw new InvalidDataException("El número de documento debe contener letras o dígitos.");
         }
-        maxLength(data.name(), 100, "Los nombres");
-        maxLength(data.lastname(), 100, "Los apellidos");
+        if ("CC".equals(documentType) && !document.matches("\\d{6,10}")) {
+            throw new InvalidDataException("La cédula debe tener entre 6 y 10 dígitos.");
+        }
+        ClientService.validatePersonName(data.name(), 100, "Los nombres");
+        ClientService.validatePersonName(data.lastname(), 100, "Los apellidos");
         maxLength(data.documentType(), 20, "El tipo de documento");
         maxLength(document, 30, "El número de documento");
-        maxLength(data.phone(), 20, "El teléfono");
-        maxLength(data.email(), 120, "El correo");
-        maxLength(data.address(), 200, "La dirección");
+        if (!ClientService.normalizeSpaces(data.phone()).isEmpty()
+                && !ClientService.normalizePhone(data.phone()).matches("\\d{7,10}")) {
+            throw new InvalidDataException("El teléfono debe tener entre 7 y 10 dígitos.");
+        }
+        ClientService.validateEmail(data.email(), false, 120);
+        maxLength(ClientService.normalizeSpaces(data.address()), 200, "La dirección");
         if (data.sex() == null) {
             throw new InvalidDataException("Seleccione el sexo del empleado.");
         }
@@ -298,10 +308,6 @@ public class EmployeeService {
         if (data.salary() == null || data.salary().signum() <= 0) {
             throw new InvalidDataException("El salario debe ser mayor que cero.");
         }
-        if (data.email() != null && !data.email().isBlank() && !data.email().trim().matches("[^@\\s]+@[^@\\s]+\\.[^@\\s]+")) {
-            throw new InvalidDataException("El correo no es válido.");
-        }
-
         switch (data.position()) {
             case FUNERAL_SALESPERSON -> {
                 BigDecimal rate = data.commissionRate();
@@ -358,17 +364,12 @@ public class EmployeeService {
 
     /** "1.065.234.118" y "1065234118" son el mismo documento. */
     private static String normalizeDocument(String document) {
-        return document.replaceAll("[.\\s-]", "").trim();
+        return ClientService.normalizeDocument(document);
     }
 
     /** "%texto%" en minúsculas; "1.065.234" se busca como "1065234". */
     private static String searchPattern(String text) {
-        if (text == null || text.isBlank()) {
-            return "%";
-        }
-        String trimmed = text.trim();
-        String value = trimmed.matches("[\\d.\\s-]+") ? normalizeDocument(trimmed) : trimmed.toLowerCase(Locale.ROOT);
-        return "%" + value + "%";
+        return ClientService.searchPattern(text);
     }
 
     private static String blankToNull(String value) {

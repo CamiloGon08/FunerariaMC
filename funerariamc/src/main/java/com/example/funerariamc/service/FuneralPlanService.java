@@ -29,6 +29,7 @@ import com.example.funerariamc.persistence.PlanPaymentRepository.MonthTotal;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Example;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -191,6 +192,14 @@ public class FuneralPlanService {
 
     public record PaymentInfo(Long id, YearMonth period, BigDecimal amount, LocalDateTime paidAt,
                               PlanPaymentStatus status, String registeredBy) {
+    }
+
+    /** Saldo de un mes calculado por importes, sin confundir un abono con una cuota saldada. */
+    public record PaymentBalance(YearMonth period, BigDecimal monthlyFee, BigDecimal paid,
+                                 BigDecimal outstandingBalance) {
+        public boolean isSettled() {
+            return outstandingBalance.signum() == 0;
+        }
     }
 
     /** Difunto atendido con el plan; contractNumber y wakeRoom van en null si aún no hay contrato. */
@@ -534,11 +543,43 @@ public class FuneralPlanService {
     /** Clientes para los diálogos de afiliación y cambio de titular, por nombre o documento. */
     @Transactional(readOnly = true)
     public List<Option> searchClients(String text) {
+        return searchClients(text, 0, 20).getContent();
+    }
+
+    /** Selector paginado: conserva el total y evita cargar todos los titulares en el formulario. */
+    @Transactional(readOnly = true)
+    public Page<Option> searchClients(String text, int page, int size) {
         requireAccess();
-        return clientRepository.search(pattern(text), List.of(ClientType.values()), PageRequest.of(0, 20))
-                .getContent().stream()
-                .map(c -> new Option(c.getId(), ClientService.displayName(c), document(c)))
-                .toList();
+        PageRequest request = PageRequest.of(Math.max(0, page), Math.min(Math.max(1, size), ClientService.MAX_PAGE_SIZE));
+        return clientRepository.search(ClientService.searchPattern(text), List.of(ClientType.values()), request)
+                .map(c -> new Option(c.getId(), ClientService.displayName(c), document(c)));
+    }
+
+    /**
+     * Consulta de saldo para preparar el cobro. No sustituye la comprobación transaccional al guardar:
+     * la habilitación de abonos requiere actualizar la restricción por mes y las consultas de mora.
+     */
+    @Transactional(readOnly = true)
+    public PaymentBalance paymentBalance(Long planId, YearMonth period) {
+        requireAccess();
+        if (planId == null || period == null) {
+            throw new InvalidDataException("Seleccione el plan y el mes que paga.");
+        }
+        FuneralPlan plan = getPlan(planId);
+        if (plan.getStartDate() != null && period.isBefore(YearMonth.from(plan.getStartDate()))) {
+            throw new InvalidDataException("El mes no puede ser anterior al inicio del plan.");
+        }
+        BigDecimal fee = plan.getMonthlyFee();
+        if (fee == null || fee.signum() <= 0) {
+            throw new InvalidDataException("El plan no tiene una cuota mensual válida.");
+        }
+        BigDecimal paid = paymentRepository.findHistory(planId).stream()
+                .filter(payment -> payment.getStatus() == PlanPaymentStatus.PAID)
+                .filter(payment -> payment.getPeriodMonth() != null
+                        && YearMonth.from(payment.getPeriodMonth()).equals(period))
+                .map(PlanPayment::getAmount).filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        return new PaymentBalance(period, fee, paid, fee.subtract(paid).max(BigDecimal.ZERO));
     }
 
     /** Recargo que tendría el siguiente beneficiario del plan con ese parentesco. */
@@ -600,6 +641,14 @@ public class FuneralPlanService {
         return saved;
     }
 
+    /** Afiliación y primera cuota completa: ambas escrituras se confirman o se revierten juntas. */
+    @Transactional
+    public FuneralPlan registerWithInitialPayment(PlanData data) {
+        FuneralPlan plan = register(data);
+        registerPayment(new PlanPaymentData(plan.getId(), YearMonth.from(plan.getStartDate()), plan.getMonthlyFee()));
+        return plan;
+    }
+
     /**
      * Agrega un beneficiario a un plan ACTIVO. Si corresponde recargo (parentesco no
      * directo o por encima del tope) el vendedor debe haberlo aceptado antes.
@@ -615,9 +664,11 @@ public class FuneralPlanService {
         if (plan.getStatus() != PlanStatus.ACTIVE) {
             throw new InvalidDataException("Solo se agregan beneficiarios a un plan activo.");
         }
-        String name = required(data.name(), "el nombre", 25);
-        String lastname = required(data.lastname(), "el apellido", 25);
-        String document = data.documentNumber() == null ? "" : data.documentNumber().trim();
+        ClientService.validatePersonName(data.name(), 25, "Los nombres del beneficiario");
+        ClientService.validatePersonName(data.lastname(), 25, "Los apellidos del beneficiario");
+        String name = ClientService.normalizeSpaces(data.name());
+        String lastname = ClientService.normalizeSpaces(data.lastname());
+        String document = ClientService.normalizeDocument(data.documentNumber());
         if (!document.matches("\\d{5,11}")) {
             throw new InvalidDataException("El documento del beneficiario debe tener entre 5 y 11 dígitos.");
         }
@@ -1104,17 +1155,6 @@ public class FuneralPlanService {
         return MONTH.format(month);
     }
 
-    private static String required(String value, String what, int max) {
-        String clean = value == null ? "" : value.trim();
-        if (clean.isEmpty()) {
-            throw new InvalidDataException("Ingrese " + what + " del beneficiario.");
-        }
-        if (clean.length() > max) {
-            throw new InvalidDataException("El campo " + what + " admite máximo " + max + " caracteres.");
-        }
-        return clean;
-    }
-
     private static String initials(String name, String lastname) {
         String first = name == null || name.isBlank() ? "" : name.trim().substring(0, 1);
         String second = lastname == null || lastname.isBlank() ? "" : lastname.trim().substring(0, 1);
@@ -1145,10 +1185,6 @@ public class FuneralPlanService {
         }
         return java.text.Normalizer.normalize(text.trim().toLowerCase(Locale.ROOT), java.text.Normalizer.Form.NFD)
                 .replaceAll("\\p{M}", "");
-    }
-
-    private static String pattern(String text) {
-        return "%" + (text == null ? "" : text.trim().toLowerCase(Locale.ROOT)) + "%";
     }
 
     private FuneralPlan getPlan(Long id) {

@@ -15,6 +15,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -58,7 +59,7 @@ class ClientServiceTest {
         assertEquals(ClientType.NATURAL, saved.getClientType());
         assertEquals("Martha Cecilia", saved.getName());
         assertEquals("Durán Araújo", saved.getLastname());
-        assertNull(saved.getEmail());
+        assertEquals("martha@example.com", saved.getEmail());
         assertEquals(LocalDate.now(AccessLogService.APP_ZONE), saved.getRegistrationDate());
         verify(accessLog).record(5L, "CLIENT_CREATED: 1065832417");
     }
@@ -153,7 +154,7 @@ class ClientServiceTest {
     @Test
     void passportKeepsLettersInUpperCase() {
         Client saved = service.register(new ClientData(ClientType.NATURAL, "PA", "ab-123456",
-                "John", "Smith", "301 556 2087", null, "Calle 1"));
+                "John", "Smith", "301 556 2087", "john@example.com", "Calle 1"));
 
         assertEquals("AB123456", saved.getDocumentNumber());
     }
@@ -355,7 +356,7 @@ class ClientServiceTest {
     @ValueSource(strings = {"(301) 556-2087", "301.556.2087", " 301 556 2087 "})
     void storesFormattedPhoneAsDigits(String phone) {
         Client saved = service.register(new ClientData(ClientType.NATURAL, "CC", "1065832417",
-                "Martha", "Durán", phone, null, "Calle 1"));
+                "Martha", "Durán", phone, "martha@example.com", "Calle 1"));
 
         assertEquals("3015562087", saved.getPhone());
     }
@@ -450,8 +451,93 @@ class ClientServiceTest {
         session.start(user);
     }
 
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {" ", "\t", "\u00a0"})
+    void emailIsRequiredBeforeAnyClientIsWritten(String email) {
+        ClientData data = new ClientData(ClientType.NATURAL, "CC", "1065832417",
+                "Ana", "Pérez", "3015562087", email, "Calle 1");
+
+        InvalidDataException failure = assertThrows(InvalidDataException.class, () -> service.register(data));
+        assertEquals("El correo es obligatorio.", failure.getMessage());
+        verifyNoInteractions(clients, persons, accessLog);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"ana@gmail.com", "ana@outlook.com", "ana+plan@empresa.co"})
+    void acceptsValidEmailFromAnyProvider(String email) {
+        Client saved = service.register(new ClientData(ClientType.NATURAL, "CC", "1065832417",
+                "Ana", "Pérez", "3015562087", email, "Calle 1"));
+
+        assertEquals(email, saved.getEmail());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"a..b@gmail.com", ".ana@gmail.com", "ana.@gmail.com", "ana@-gmail.com",
+            "ana@gmail..com", "ana@gmail.com.", "ana@correo", "ana @gmail.com", "ana@correo_com.co"})
+    void malformedEmailsDoNotReachPersistence(String email) {
+        assertThrows(InvalidDataException.class, () -> service.register(new ClientData(ClientType.NATURAL,
+                "CC", "1065832417", "Ana", "Pérez", "3015562087", email, "Calle 1")));
+        verifyNoInteractions(clients, persons, accessLog);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"Ana123", "***", "Ana<svg>", "Ana--María", "\u200b"})
+    void personNamesCannotContainDigitsOrInvalidCharacters(String name) {
+        assertThrows(InvalidDataException.class, () -> service.register(new ClientData(ClientType.NATURAL,
+                "CC", "1065832417", name, "Pérez", "3015562087", "ana@example.com", "Calle 1")));
+        verifyNoInteractions(clients, persons, accessLog);
+    }
+
+    @Test
+    void normalizesPastedNamesAddressAndEmailWithoutLosingAccents() {
+        Client saved = service.register(new ClientData(ClientType.NATURAL, "CC", "1.065.832.417",
+                "  Mari\u0301a\u00a0  del\tMar  ", " O’Neill-Ñáñez ", "(301)\u00a0556-2087",
+                "  Maria@EMPRESA.CO  ", " Calle\u00a0  1  "));
+
+        assertEquals("María del Mar", saved.getName());
+        assertEquals("O’Neill-Ñáñez", saved.getLastname());
+        assertEquals("3015562087", saved.getPhone());
+        assertEquals("Maria@empresa.co", saved.getEmail());
+        assertEquals("Calle 1", saved.getAddress());
+    }
+
+    @Test
+    void corporateNamesKeepNumbersAndBusinessPunctuation() {
+        Client saved = service.register(new ClientData(ClientType.CORPORATE, "NIT", "8001972684",
+                "  Servicios  123 & Cía. ", null, "6055804411", "info@empresa.co", "Calle 1"));
+
+        assertEquals("Servicios 123 & Cía.", saved.getName());
+        assertEquals("", saved.getLastname());
+    }
+
+    @Test
+    void invalidUpdateLeavesExistingContactDetailsUnchanged() {
+        Client existing = new Client();
+        existing.setName("Ana");
+        existing.setEmail("ana@example.com");
+        when(clients.findById(40L)).thenReturn(Optional.of(existing));
+
+        assertThrows(InvalidDataException.class, () -> service.update(40L, new ClientData(ClientType.NATURAL,
+                "CC", "1065832417", "Ana123", "Pérez", "3015562087", "", "Calle 1")));
+        assertEquals("Ana", existing.getName());
+        assertEquals("ana@example.com", existing.getEmail());
+        verifyNoInteractions(persons, accessLog);
+    }
+
+    @Test
+    void searchesNamesWithNormalizedSpacesAndFormattedDocuments() {
+        when(clients.search(anyString(), any(), any())).thenReturn(Page.empty());
+
+        service.search("  María\u00a0  del\tMar ", null, 0, 10);
+        service.search("1.065\u00a0832-417", null, 0, 10);
+
+        verify(clients).search(eq("%maría del mar%"), any(), eq(PageRequest.of(0, 10)));
+        verify(clients).search(eq("%1065832417%"), any(), eq(PageRequest.of(0, 10)));
+    }
+
     private static ClientData natural(String document) {
         return new ClientData(ClientType.NATURAL, "CC", document, " Martha Cecilia ", "Durán Araújo",
-                "301 556 2087", " ", "Cra. 9 # 16-42, Centro, Valledupar");
+                "301 556 2087", "martha@example.com", "Cra. 9 # 16-42, Centro, Valledupar");
     }
 }

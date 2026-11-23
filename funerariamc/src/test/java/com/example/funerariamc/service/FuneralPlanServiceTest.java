@@ -37,6 +37,13 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.data.domain.Example;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.aop.framework.ProxyFactory;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.annotation.AnnotationTransactionAttributeSource;
+import org.springframework.transaction.interceptor.TransactionInterceptor;
 
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -1043,6 +1050,174 @@ class FuneralPlanServiceTest {
         session.clear();
         assertThrows(UnauthorizedActionException.class, () -> service.detail(412L));
         verifyNoInteractions(plans, beneficiaries, payments);
+    }
+
+    @Test
+    void clientSelectorKeepsDatabasePaginationTotalsAndNormalizesTheDocument() {
+        Client holder = client(40L, "1065832417", ClientType.NATURAL);
+        PageRequest request = PageRequest.of(2, 5);
+        when(clients.search(anyString(), any(), eq(request)))
+                .thenReturn(new PageImpl<>(List.of(holder), request, 26));
+
+        var page = service.searchClients("1.065\u00a0832-417", 2, 5);
+
+        assertEquals(26, page.getTotalElements());
+        assertEquals(6, page.getTotalPages());
+        assertEquals(2, page.getNumber());
+        assertEquals(40L, page.getContent().getFirst().id());
+        verify(clients).search(eq("%1065832417%"), eq(List.of(ClientType.values())), eq(request));
+    }
+
+    @Test
+    void legacyClientSelectorKeepsItsTwentyResultLimit() {
+        when(clients.search(anyString(), any(), any())).thenReturn(new PageImpl<>(List.of()));
+
+        assertTrue(service.searchClients(" María  del Mar ").isEmpty());
+
+        verify(clients).search(eq("%maría del mar%"), any(), eq(PageRequest.of(0, 20)));
+    }
+
+    @Test
+    void clientSelectorBoundsPageSizeAndRequiresAnAuthorizedSession() {
+        when(clients.search(anyString(), any(), any())).thenReturn(new PageImpl<>(List.of()));
+        service.searchClients("", -1, 1000);
+        verify(clients).search(eq("%"), any(), eq(PageRequest.of(0, ClientService.MAX_PAGE_SIZE)));
+        service.searchClients("", 0, 0);
+        verify(clients).search(eq("%"), any(), eq(PageRequest.of(0, 1)));
+
+        session.clear();
+        assertThrows(UnauthorizedActionException.class, () -> service.searchClients("Ana", 0, 10));
+        verify(clients, times(2)).search(anyString(), any(), any());
+    }
+
+    @Test
+    void beneficiaryNamesAndDocumentAreNormalizedBeforeDuplicateChecks() {
+        when(plans.findDetailById(412L)).thenReturn(Optional.of(
+                plan(412L, client(40L, "49786112", ClientType.NATURAL), TODAY)));
+
+        Beneficiary saved = service.addBeneficiary(new BeneficiaryData(412L, "  Mari\u0301a   del Mar ",
+                " O’Neill-Ñáñez ", "1.065\u00a0223-901", Relationship.CHILD, true));
+
+        assertEquals("María del Mar", saved.getName());
+        assertEquals("O’Neill-Ñáñez", saved.getLastname());
+        assertEquals("1065223901", saved.getDocumentNumber());
+        verify(beneficiaries).existsByFuneralPlanIdAndDocumentNumber(412L, "1065223901");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"Tomás123", "***", "Ana--María"})
+    void invalidBeneficiaryNamesDoNotCreateRecordsOrAuditEntries(String name) {
+        when(plans.findDetailById(412L)).thenReturn(Optional.of(
+                plan(412L, client(40L, "49786112", ClientType.NATURAL), TODAY)));
+
+        assertThrows(InvalidDataException.class, () -> service.addBeneficiary(
+                new BeneficiaryData(412L, name, "Pinto", "1065223901", Relationship.CHILD, true)));
+        verifyNoInteractions(beneficiaries, accessLog);
+    }
+
+    @Test
+    void initialPaymentRegistersThePlanItsFirstMonthAndItsIncome() {
+        Client holder = client(40L, "49786112", ClientType.NATURAL);
+        FuneralPlan saved = plan(412L, holder, TODAY);
+        when(clients.findById(40L)).thenReturn(Optional.of(holder));
+        doReturn(saved).when(plans).save(any());
+        when(plans.findDetailById(412L)).thenReturn(Optional.of(saved));
+        when(parameters.arrearsResetMonths()).thenReturn(2);
+
+        FuneralPlan result = service.registerWithInitialPayment(
+                new PlanData(40L, "Plan Normal", new BigDecimal("52000"), TODAY));
+
+        assertSame(saved, result);
+        ArgumentCaptor<PlanPayment> payment = ArgumentCaptor.forClass(PlanPayment.class);
+        verify(payments).save(payment.capture());
+        assertEquals(TODAY.withDayOfMonth(1), payment.getValue().getPeriodMonth());
+        assertEquals(0, new BigDecimal("52000").compareTo(payment.getValue().getAmount()));
+        assertEquals(payment.getValue().getAmount(), payment.getValue().getFinancialTransaction().getAmount());
+        verify(accessLog).record(5L, AccessLogService.PLAN_REGISTERED + "PL-0412");
+        verify(accessLog).record(5L, AccessLogService.PLAN_PAYMENT_REGISTERED + "PL-0412 " + YearMonth.from(TODAY));
+    }
+
+    @Test
+    void initialPaymentFailureRollsBackTheTransactionContainingTheNewPlan() {
+        Client holder = client(40L, "49786112", ClientType.NATURAL);
+        FuneralPlan saved = plan(412L, holder, TODAY);
+        when(clients.findById(40L)).thenReturn(Optional.of(holder));
+        doReturn(saved).when(plans).save(any());
+        when(plans.findDetailById(412L)).thenReturn(Optional.of(saved));
+        InvalidDataException failure = new InvalidDataException("No se pudo registrar el ingreso.");
+        when(transactions.save(any())).thenThrow(failure);
+
+        PlatformTransactionManager manager = mock(PlatformTransactionManager.class);
+        org.springframework.transaction.TransactionStatus status = mock(org.springframework.transaction.TransactionStatus.class);
+        when(manager.getTransaction(any(TransactionDefinition.class))).thenReturn(status);
+        TransactionInterceptor advice = new TransactionInterceptor();
+        advice.setTransactionManager(manager);
+        advice.setTransactionAttributeSource(new AnnotationTransactionAttributeSource());
+        ProxyFactory factory = new ProxyFactory(service);
+        factory.addAdvice(advice);
+        FuneralPlanService proxy = (FuneralPlanService) factory.getProxy();
+
+        assertSame(failure, assertThrows(InvalidDataException.class, () -> proxy.registerWithInitialPayment(
+                new PlanData(40L, "Plan Normal", new BigDecimal("52000"), TODAY))));
+
+        verify(plans).save(any());
+        verify(manager).rollback(status);
+        verify(manager, never()).commit(any());
+        verify(manager, times(1)).getTransaction(any());
+        verify(payments, never()).save(any());
+    }
+
+    @Test
+    void paymentBalanceSumsOnlyActiveReceiptsForTheRequestedMonth() {
+        FuneralPlan plan = plan(412L, client(40L, "49786112", ClientType.NATURAL), TODAY);
+        when(plans.findDetailById(412L)).thenReturn(Optional.of(plan));
+        PlanPayment first = receipt("20000", YearMonth.from(TODAY), PlanPaymentStatus.PAID);
+        PlanPayment second = receipt("10000", YearMonth.from(TODAY), PlanPaymentStatus.PAID);
+        PlanPayment voided = receipt("22000", YearMonth.from(TODAY), PlanPaymentStatus.VOIDED);
+        PlanPayment otherMonth = receipt("52000", YearMonth.from(TODAY).plusMonths(1), PlanPaymentStatus.PAID);
+        when(payments.findHistory(412L)).thenReturn(List.of(first, second, voided, otherMonth));
+
+        var balance = service.paymentBalance(412L, YearMonth.from(TODAY));
+
+        assertEquals(0, new BigDecimal("30000").compareTo(balance.paid()));
+        assertEquals(0, new BigDecimal("22000").compareTo(balance.outstandingBalance()));
+        assertFalse(balance.isSettled());
+        verifyNoInteractions(transactions, accessLog);
+    }
+
+    @Test
+    void aMonthIsSettledOnlyWhenTheAmountsCoverTheMonthlyFee() {
+        FuneralPlan plan = plan(412L, client(40L, "49786112", ClientType.NATURAL), TODAY);
+        when(plans.findDetailById(412L)).thenReturn(Optional.of(plan));
+        when(payments.findHistory(412L)).thenReturn(List.of(
+                receipt("20000", YearMonth.from(TODAY), PlanPaymentStatus.PAID),
+                receipt("32000", YearMonth.from(TODAY), PlanPaymentStatus.PAID)));
+
+        var balance = service.paymentBalance(412L, YearMonth.from(TODAY));
+
+        assertEquals(0, balance.outstandingBalance().signum());
+        assertTrue(balance.isSettled());
+    }
+
+    @Test
+    void paymentBalanceRejectsInvalidPeriodsAndUnauthenticatedReads() {
+        when(plans.findDetailById(412L)).thenReturn(Optional.of(
+                plan(412L, client(40L, "49786112", ClientType.NATURAL), TODAY)));
+        assertThrows(InvalidDataException.class, () -> service.paymentBalance(412L, null));
+        assertThrows(InvalidDataException.class, () -> service.paymentBalance(null, YearMonth.from(TODAY)));
+        assertThrows(InvalidDataException.class,
+                () -> service.paymentBalance(412L, YearMonth.from(TODAY).minusMonths(1)));
+        session.clear();
+        assertThrows(UnauthorizedActionException.class, () -> service.paymentBalance(412L, YearMonth.from(TODAY)));
+        verifyNoInteractions(payments, transactions, accessLog);
+    }
+
+    private static PlanPayment receipt(String amount, YearMonth month, PlanPaymentStatus status) {
+        PlanPayment payment = new PlanPayment();
+        payment.setPeriodMonth(month.atDay(1));
+        payment.setAmount(new BigDecimal(amount));
+        payment.setStatus(status);
+        return payment;
     }
 
     private FuneralPlanService withEvents(org.springframework.context.ApplicationEventPublisher events) {

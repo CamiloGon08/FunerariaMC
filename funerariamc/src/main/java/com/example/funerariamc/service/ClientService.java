@@ -15,6 +15,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.text.Normalizer;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
@@ -213,12 +214,12 @@ public class ClientService {
         client.setClientType(data.clientType());
         client.setDocumentType(data.documentType());
         client.setDocumentNumber(document);
-        client.setName(data.name().trim());
+        client.setName(normalizeSpaces(data.name()));
         // person.lastname es NOT NULL: una empresa no tiene apellidos, se guarda vacío.
-        client.setLastname(corporate ? "" : data.lastname().trim());
+        client.setLastname(corporate ? "" : normalizeSpaces(data.lastname()));
         client.setPhone(normalizePhone(data.phone()));
-        client.setEmail(blankToNull(data.email()));
-        client.setAddress(data.address().trim());
+        client.setEmail(normalizeEmail(data.email()));
+        client.setAddress(normalizeSpaces(data.address()));
     }
 
     private void validate(ClientData data) {
@@ -240,10 +241,19 @@ public class ClientService {
         validateDocument(data.documentType(), normalizeDocument(data.documentNumber()));
 
         require(data.name(), corporate ? "La razón social es obligatoria." : "Los nombres son obligatorios.");
-        maxLength(data.name(), MAX_NAME, corporate ? "La razón social" : "Los nombres");
+        if (corporate) {
+            String businessName = normalizeSpaces(data.name());
+            maxLength(businessName, MAX_NAME, "La razón social");
+            if (businessName.codePoints().noneMatch(Character::isLetterOrDigit)
+                    || businessName.codePoints().anyMatch(Character::isISOControl)) {
+                throw new InvalidDataException("La razón social debe contener letras o números válidos.");
+            }
+        } else {
+            validatePersonName(data.name(), MAX_NAME, "Los nombres");
+        }
         if (!corporate) {
             require(data.lastname(), "Los apellidos son obligatorios.");
-            maxLength(data.lastname(), MAX_NAME, "Los apellidos");
+            validatePersonName(data.lastname(), MAX_NAME, "Los apellidos");
         }
 
         require(data.phone(), "El teléfono es obligatorio.");
@@ -251,14 +261,9 @@ public class ClientService {
         if (!normalizePhone(data.phone()).matches("\\d{7,10}")) {
             throw new InvalidDataException("El teléfono debe tener entre 7 y 10 dígitos.");
         }
-        if (data.email() != null && !data.email().isBlank()) {
-            if (!data.email().trim().matches("[^@\\s]+@[^@\\s]+\\.[^@\\s]+")) {
-                throw new InvalidDataException("El correo no es válido.");
-            }
-            maxLength(data.email(), MAX_EMAIL, "El correo");
-        }
+        validateEmail(data.email(), true, MAX_EMAIL);
         require(data.address(), "La dirección es obligatoria.");
-        maxLength(data.address(), MAX_ADDRESS, "La dirección");
+        maxLength(normalizeSpaces(data.address()), MAX_ADDRESS, "La dirección");
     }
 
     private static void validateDocument(String type, String document) {
@@ -307,7 +312,7 @@ public class ClientService {
     }
 
     private static void require(String value, String message) {
-        if (value == null || value.isBlank()) {
+        if (normalizeSpaces(value).isEmpty()) {
             throw new InvalidDataException(message);
         }
     }
@@ -320,25 +325,63 @@ public class ClientService {
 
     /** "1.065.832.417", "800 197 268-4" y "8001972684" se guardan sin puntos, espacios ni guiones. */
     static String normalizeDocument(String document) {
-        return document.replaceAll("[.\\s-]", "").trim().toUpperCase(Locale.ROOT);
+        return document == null ? "" : document.replaceAll("[.\\p{Z}\\s-]", "").toUpperCase(Locale.ROOT);
     }
 
     /** "301 556 2087" y "(605) 580-4411" se guardan como "3015562087" y "6055804411". */
     static String normalizePhone(String phone) {
-        return phone == null ? "" : phone.replaceAll("[\\s().-]", "");
+        return phone == null ? "" : phone.replaceAll("[\\p{Z}\\s().-]", "");
     }
 
     /** "%texto%" en minúsculas; "1.065.832" se busca como "1065832". */
-    private static String searchPattern(String text) {
-        if (text == null || text.isBlank()) {
+    static String searchPattern(String text) {
+        String trimmed = normalizeSpaces(text);
+        if (trimmed.isEmpty()) {
             return "%";
         }
-        String trimmed = text.trim();
         String value = trimmed.matches("[\\d.\\s-]+") ? normalizeDocument(trimmed) : trimmed.toLowerCase(Locale.ROOT);
         return "%" + value + "%";
     }
 
-    private static String blankToNull(String value) {
-        return value == null || value.isBlank() ? null : value.trim();
+    /** Conserva tildes y ñ, y convierte espacios repetidos o pegados desde documentos en uno solo. */
+    static String normalizeSpaces(String value) {
+        return value == null ? "" : Normalizer.normalize(value, Normalizer.Form.NFC)
+                .replaceAll("[\\p{Z}\\s]+", " ").strip();
+    }
+
+    /** Regla compartida para personas; las razones sociales admiten números y puntuación. */
+    static void validatePersonName(String value, int max, String label) {
+        String name = normalizeSpaces(value);
+        if (name.isEmpty()) {
+            throw new InvalidDataException(label + " son obligatorios.");
+        }
+        maxLength(name, max, label);
+        if (!name.matches("\\p{L}[\\p{L}\\p{M}]*(?:[ '\u2019-]\\p{L}[\\p{L}\\p{M}]*)*")) {
+            throw new InvalidDataException(label + " solo pueden contener letras, espacios, guiones o apóstrofos.");
+        }
+    }
+
+    /** Comprueba estructura y longitud sin restringir el proveedor ni consultar servicios externos. */
+    static void validateEmail(String value, boolean required, int max) {
+        String email = normalizeEmail(value);
+        if (email.isEmpty()) {
+            if (required) {
+                throw new InvalidDataException("El correo es obligatorio.");
+            }
+            return;
+        }
+        maxLength(email, max, "El correo");
+        String atom = "[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+";
+        String domainLabel = "[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?";
+        if (!email.matches(atom + "(?:\\." + atom + ")*@(?:" + domainLabel + "\\.)+[A-Za-z]{2,63}")) {
+            throw new InvalidDataException("El correo no es válido.");
+        }
+    }
+
+    static String normalizeEmail(String value) {
+        String email = normalizeSpaces(value);
+        int separator = email.lastIndexOf('@');
+        return separator < 0 ? email
+                : email.substring(0, separator + 1) + email.substring(separator + 1).toLowerCase(Locale.ROOT);
     }
 }

@@ -582,6 +582,64 @@ class EmployeeServiceTest {
         verifyNoInteractions(employees, persons, users, accessLog);
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"12345", "12345678901", "AB123456", "---"})
+    void cedulaMustContainSixToTenDigits(String document) {
+        assertThrows(InvalidDataException.class, () -> service.register(receptionist(document, null)));
+        verifyNoInteractions(employees, persons, users, accessLog);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"Ana123", "***", "Ana--María"})
+    void invalidPersonalNamesCannotBeSaved(String name) {
+        EmployeeData original = receptionist("77000111", null);
+        EmployeeData invalid = personalData(original, name, "Mejía", "CC", "77000111", null);
+
+        assertThrows(InvalidDataException.class, () -> service.register(invalid));
+        verifyNoInteractions(employees, persons, users, accessLog);
+    }
+
+    @Test
+    void normalizesPersonnelNamesPhoneAndPassport() {
+        EmployeeData data = personalData(receptionist("77000111", " Ana@EMPRESA.CO "),
+                " Ana\u00a0  Mari\u0301a ", " O’Neill-Ñáñez ", " pa ", "ab-123456", "(301) 556-2087");
+
+        Employee saved = service.register(data);
+
+        assertEquals("Ana María", saved.getName());
+        assertEquals("O’Neill-Ñáñez", saved.getLastname());
+        assertEquals("PA", saved.getDocumentType());
+        assertEquals("AB123456", saved.getDocumentNumber());
+        assertEquals("3015562087", saved.getPhone());
+        assertEquals("Ana@empresa.co", saved.getEmail());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"123456", "12345678901", "301ABC1234", "---"})
+    void invalidPersonnelPhonesDoNotReachPersistence(String phone) {
+        EmployeeData invalid = personalData(receptionist("77000111", null),
+                "Ana", "Mejía", "CC", "77000111", phone);
+
+        assertThrows(InvalidDataException.class, () -> service.register(invalid));
+        verifyNoInteractions(employees, persons, users, accessLog);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"a..b@gmail.com", "ana@-correo.com", "ana@correo..com"})
+    void personnelUsesTheSameEmailStructureChecksAsClients(String email) {
+        assertThrows(InvalidDataException.class, () -> service.register(receptionist("77000111", email)));
+        verifyNoInteractions(employees, persons, users, accessLog);
+    }
+
+    private static EmployeeData personalData(EmployeeData original, String name, String lastname,
+                                              String documentType, String document, String phone) {
+        return new EmployeeData(name, lastname, documentType, document, phone, original.email(), original.address(),
+                original.birthDate(), original.sex(), original.position(), original.hireDate(), original.salary(),
+                original.commissionRate(), original.trainingInstitution(), original.certificationDate(),
+                original.certificateFileUrl(), original.commissionPerCase(), original.licenseCategory(),
+                original.licenseNumber(), original.licenseExpiryDate(), original.licenseFileUrl());
+    }
+
     private static EmployeeData receptionist(String document, String email) {
         return new EmployeeData(" Ana ", " Mejía ", " CC ", document, " 3001234567 ", email,
                 " Calle 1 ", null, Sex.FEMALE, EmployeePosition.RECEPTIONIST, LocalDate.of(2024, 3, 1),
