@@ -430,7 +430,7 @@ public class ParametersController implements RefreshableView {
             description.setWrapText(true);
             card.getChildren().add(description);
         }
-        card.getChildren().add(label(v.name(), "param-code"));
+        // El nombre técnico de la fila en la base de datos no se muestra
         return card;
     }
 
