@@ -107,7 +107,7 @@ public final class FormShell {
         field.setTextFormatter(new TextFormatter<String>(change -> {
             String kind = type == null ? null : type.get();
             boolean numeric = kind == null || "CC".equals(kind) || "NIT".equals(kind);
-            int max = "CC".equals(kind) || "NIT".equals(kind) ? 10 : kind == null ? 11 : otherMax;
+            int max = "CC".equals(kind) || "NIT".equals(kind) || kind == null ? 10 : otherMax;
             String clean = change.getControlNewText().replaceAll("[.\\s-]", "");
             String problem = null;
             if (numeric && !clean.matches("\\d*")) {
@@ -118,7 +118,7 @@ public final class FormShell {
                 problem = switch (kind == null ? "" : kind) {
                     case "CC" -> "La cédula tiene máximo 10 dígitos.";
                     case "NIT" -> "El NIT tiene 10 dígitos, con el de verificación.";
-                    case "" -> "El documento tiene máximo 11 dígitos.";
+                    case "" -> "El documento tiene máximo 10 dígitos.";
                     default -> "Máximo " + max + " caracteres.";
                 };
             }
@@ -151,6 +151,33 @@ public final class FormShell {
                     return change;
                 }
                 showWarning(field, warning, problem);
+                return null;
+            }));
+            hideWhenLeaving(field, warning);
+            field.setText(current == null ? "" : current);
+        }
+    }
+
+    /** Nombres y apellidos de personas: solo letras (con tildes y ñ), espacios, guion y apóstrofo. */
+    public static void personName(TextField... fields) {
+        personName(() -> true, fields);
+    }
+
+    /**
+     * Igual, pero solo mientras {@code active} diga que sí: por ejemplo, el nombre de un cliente
+     * empresa es la razón social y ahí sí van números.
+     */
+    public static void personName(java.util.function.BooleanSupplier active, TextField... fields) {
+        for (TextField field : fields) {
+            Tooltip warning = new Tooltip();
+            warning.getStyleClass().add("field-warning");
+            String current = field.getText();
+            field.setTextFormatter(new TextFormatter<String>(change -> {
+                if (!active.getAsBoolean() || change.getControlNewText().matches("[\\p{L}\\p{M} '\u2019-]*")) {
+                    warning.hide();
+                    return change;
+                }
+                showWarning(field, warning, "Solo letras, espacios, guion o apóstrofo.");
                 return null;
             }));
             hideWhenLeaving(field, warning);

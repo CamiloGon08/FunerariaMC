@@ -30,6 +30,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
@@ -225,7 +226,9 @@ public class AlliedNetworkController implements RefreshableView {
         pendingDetail.setText(o.homesWithBalance() == 0 ? "nada por pagar"
                 : "en " + o.homesWithBalance() + (o.homesWithBalance() == 1 ? " funeraria" : " funerarias"));
         openValue.setText(String.valueOf(o.pendingPayments()));
-        openDetail.setText(o.oldestPending() == null ? "sin pagos pendientes"
+        // Un pago viejo puede no tener fecha: entonces solo se dice que hay pagos por hacer
+        openDetail.setText(o.pendingPayments() == 0 ? "sin pagos pendientes"
+                : o.oldestPending() == null ? "por pagar a las aliadas"
                 : "el más antiguo del " + clean(o.oldestPending().format(LONG_DAY)));
     }
 
@@ -331,15 +334,21 @@ public class AlliedNetworkController implements RefreshableView {
         Button detail = new Button("Ver detalle");
         detail.getStyleClass().add("card-button");
         detail.setOnAction(e -> openDrawer(h.id()));
+        // Servicio: lo que prestó la aliada. Pago: salda sus servicios pendientes.
+        Button service = new Button("Registrar servicio");
+        service.getStyleClass().add("card-button");
+        service.setDisable(!h.active());
+        service.setOnAction(e -> registerService(h));
         Button pay = new Button("Registrar pago");
         pay.getStyleClass().addAll("card-button", "strong");
-        pay.setDisable(!h.active());
-        pay.setOnAction(e -> registerPayment(h));
-        HBox.setHgrow(detail, Priority.ALWAYS);
-        HBox.setHgrow(pay, Priority.ALWAYS);
-        detail.setMaxWidth(Double.MAX_VALUE);
-        pay.setMaxWidth(Double.MAX_VALUE);
-        HBox buttons = new HBox(10, detail, pay);
+        pay.setDisable(h.pendingCount() == 0);
+        pay.setOnAction(e -> payServices(h));
+        for (Button b : List.of(detail, service, pay)) {
+            HBox.setHgrow(b, Priority.ALWAYS);
+            b.setMaxWidth(Double.MAX_VALUE);
+            b.setMinWidth(Region.USE_PREF_SIZE);
+        }
+        HBox buttons = new HBox(8, detail, service, pay);
 
         Region rule = new Region();
         rule.getStyleClass().add("card-rule");
@@ -461,10 +470,12 @@ public class AlliedNetworkController implements RefreshableView {
         Button toggle = h.active() ? DetailShell.danger("Desactivar", () -> toggleActive(h))
                 : DetailShell.secondary("Activar", () -> toggleActive(h));
         Button edit = DetailShell.secondary("Editar", () -> editHome(h));
-        Button pay = DetailShell.primary("Registrar pago", () -> registerPayment(h));
-        pay.setDisable(!h.active());
-        detail.show(h.id(), hero, sections, List.of(toggle, edit, pay),
-                h.active() ? null : "Registrar pago: active el convenio primero");
+        Button service = DetailShell.secondary("Registrar servicio", () -> registerService(h));
+        service.setDisable(!h.active());
+        Button pay = DetailShell.primary("Registrar pago", () -> payServices(h));
+        pay.setDisable(h.pendingCount() == 0);
+        detail.show(h.id(), hero, sections, List.of(toggle, edit, service, pay),
+                h.active() ? null : "Registrar servicio: active el convenio primero");
     }
 
     /** Un pago a la aliada en el historial: valor, servicio, estado y sus enlaces (marcar pagado, anular). */
@@ -578,8 +589,11 @@ public class AlliedNetworkController implements RefreshableView {
         });
     }
 
-    /** Pago por un servicio prestado: contrato, monto y fecha. Queda pendiente. */
-    private void registerPayment(HomeCard h) {
+    /**
+     * Servicio que prestó la aliada: contrato, monto y fecha. Queda pendiente, o pagado de una vez si se
+     * marca "Ya se le pagó" con el medio de pago.
+     */
+    private void registerService(HomeCard h) {
         Form form = new Form();
         TextField search = new TextField();
         search.setPromptText("Número del contrato, difunto o cliente");
@@ -598,7 +612,7 @@ public class AlliedNetworkController implements RefreshableView {
             }
         });
         PauseTransition delay = new PauseTransition(Duration.millis(250));
-        Runnable reload = () -> async("allied-contracts", () -> service.searchContracts(search.getText()), options -> {
+        Runnable reload = () -> async("allied-contracts", () -> service.searchContracts(h.id(), search.getText()), options -> {
             ContractOption chosen = contract.getValue();
             contract.getItems().setAll(options);
             if (chosen != null && options.stream().anyMatch(o -> o.id().equals(chosen.id()))) {
@@ -610,31 +624,120 @@ public class AlliedNetworkController implements RefreshableView {
         delay.setOnFinished(e -> reload.run());
         search.textProperty().addListener((obs, old, text) -> delay.playFromStart());
         reload.run();
+        // Quién está en el contrato elegido (difunto y cliente), completo aunque el combo lo corte
+        Label contractNote = note("Salen los contratos de esta funeraria (primero) y los que aún no tienen aliada; "
+                + "los de otras aliadas no aparecen.");
+        contractNote.setWrapText(true);
+        contract.valueProperty().addListener((obs, old, o) -> contractNote.setText(o == null
+                ? "Salen los contratos de esta funeraria (primero) y los que aún no tienen aliada; "
+                + "los de otras aliadas no aparecen."
+                : o.label()));
         TextField amount = new TextField();
         amount.setPromptText("$ 0");
         DatePicker date = new DatePicker(service.today());
         date.setConverter(dateConverter());
+        CheckBox paidNow = new CheckBox("Ya se le pagó");
+        paidNow.getStyleClass().add("form-check");
+        ComboBox<PaymentMethod> method = methodCombo();
+        method.disableProperty().bind(paidNow.selectedProperty().not());
+        Label hint = note("");
+        Runnable explain = () -> hint.setText(paidNow.isSelected()
+                ? "Queda pagado y se registra el egreso en Finanzas con la fecha y hora de ahora."
+                : "Queda pendiente en el saldo de la funeraria. Cuando se le pague, use «Registrar pago».");
+        paidNow.selectedProperty().addListener((obs, old, on) -> explain.run());
+        explain.run();
         form.section("Funeraria", 1)
                 .field("FUNERARIA ALIADA", lockedField(h.name() + " · NIT " + h.nit()));
         form.section("Servicio prestado", 2)
                 .field("BUSCAR CONTRATO", search)
                 .field("CONTRATO *", contract)
+                .note(contractNote)
                 .field("MONTO *", amount)
                 .field("FECHA DEL SERVICIO *", date);
-        form.note(note("El pago queda pendiente. Cuando se le pague a la funeraria, márquelo como pagado en su"
-                + " detalle: ahí se registra el egreso en Finanzas."));
-        Dialog<ButtonType> dialog = formDialog("Registrar pago", "Los campos con * son obligatorios.", form, 700);
+        form.section("Pago", 2)
+                .field("¿SE PAGÓ?", paidNow)
+                .field("MEDIO DE PAGO", method);
+        form.note(hint);
+        Dialog<ButtonType> dialog = formDialog("Registrar servicio", "Los campos con * son obligatorios.", form, 700);
         FormShell.panel(dialog, "Red de funerarias aliadas");
         FormShell.money(amount);
-        runForm(dialog, form, "Registrar pago", () -> {
+        runForm(dialog, form, "Registrar servicio", () -> {
             BigDecimal value = parseAmount(amount.getText(), "El monto");
             if (value == null) {
                 throw new InvalidDataException("Escriba el monto.");
             }
-            return service.registerPayment(new AlliedPaymentData(h.id(),
-                    contract.getValue() == null ? null : contract.getValue().id(), value, date.getValue()));
+            if (paidNow.isSelected() && method.getValue() == null) {
+                throw new InvalidDataException("Elija si se pagó por transferencia o por consignación.");
+            }
+            return service.registerService(new AlliedPaymentData(h.id(),
+                    contract.getValue() == null ? null : contract.getValue().id(), value, date.getValue()),
+                    paidNow.isSelected() ? method.getValue() : null);
         }, id -> {
-            showToast("Pago registrado como pendiente.");
+            showToast(paidNow.isSelected() ? "Servicio registrado y pagado; el egreso quedó en Finanzas."
+                    : "Servicio registrado como pendiente.");
+            load();
+            if (drawerHomeId != null) {
+                openDrawer(drawerHomeId);
+            }
+        });
+    }
+
+    /**
+     * Pagar a la aliada: se ven solo sus servicios pendientes (contrato, difunto, fecha y valor), se marcan
+     * los que se pagan y quedan pagados, cada uno con su egreso en Finanzas.
+     */
+    private void payServices(HomeCard h) {
+        Form form = new Form();
+        VBox list = new VBox(8);
+        Label total = new Label("$ 0");
+        total.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
+        ComboBox<PaymentMethod> method = methodCombo();
+        List<CheckBox> checks = new ArrayList<>();
+        Runnable sum = () -> total.setText(pesos(checks.stream().filter(CheckBox::isSelected)
+                .map(c -> ((PaymentRow) c.getUserData()).amount()).reduce(BigDecimal.ZERO, BigDecimal::add)));
+        list.getChildren().add(note("Cargando los servicios pendientes…"));
+        async("allied-pending", () -> service.pendingServices(h.id()), rows -> {
+            list.getChildren().clear();
+            if (rows.isEmpty()) {
+                list.getChildren().add(note("Esta funeraria no tiene servicios pendientes por pagar."));
+                return;
+            }
+            for (PaymentRow r : rows) {
+                String text = (r.contractNumber() == null ? "Sin contrato" : r.contractNumber())
+                        + (r.deceasedName() == null || r.deceasedName().isBlank() ? "" : " · " + r.deceasedName())
+                        + (r.serviceDate() == null ? "" : " · " + clean(r.serviceDate().format(SHORT_DAY)))
+                        + "   " + pesos(r.amount());
+                CheckBox check = new CheckBox(text);
+                check.getStyleClass().add("form-check");
+                check.setUserData(r);
+                check.setSelected(rows.size() == 1); // si debe uno solo, ya viene marcado
+                check.selectedProperty().addListener((obs, old, on) -> sum.run());
+                checks.add(check);
+                list.getChildren().add(check);
+            }
+            sum.run();
+        }, failure -> {
+            list.getChildren().setAll(note("No se pudieron cargar los servicios pendientes."));
+        });
+        form.section("Funeraria", 1)
+                .field("FUNERARIA ALIADA", lockedField(h.name() + " · NIT " + h.nit()));
+        form.section("Servicios pendientes", 1)
+                .field("MARQUE LOS QUE SE PAGAN", list);
+        form.section("Pago", 2)
+                .field("TOTAL A PAGAR", total)
+                .field("MEDIO DE PAGO *", method);
+        form.note(note("Cada servicio marcado queda pagado y se registra su egreso en Finanzas con la fecha y hora"
+                + " de ahora."));
+        Dialog<ButtonType> dialog = formDialog("Registrar pago", "Los campos con * son obligatorios.", form, 700);
+        FormShell.panel(dialog, "Red de funerarias aliadas");
+        runForm(dialog, form, "Registrar pago", () -> {
+            List<Long> ids = checks.stream().filter(CheckBox::isSelected)
+                    .map(c -> ((PaymentRow) c.getUserData()).id()).toList();
+            service.markPaid(ids, method.getValue());
+            return ids.size();
+        }, count -> {
+            showToast(count == 1 ? "Pago registrado; el egreso quedó en Finanzas."
+                    : count + " servicios pagados; sus egresos quedaron en Finanzas.");
             load();
             if (drawerHomeId != null) {
                 openDrawer(drawerHomeId);

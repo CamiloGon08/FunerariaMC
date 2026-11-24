@@ -278,8 +278,10 @@ public class EmployeeService {
         }
         maxLength(data.name(), 100, "Los nombres");
         maxLength(data.lastname(), 100, "Los apellidos");
+        PersonNames.validate(data.name(), "Los nombres");
+        PersonNames.validate(data.lastname(), "Los apellidos");
         maxLength(data.documentType(), 20, "El tipo de documento");
-        maxLength(document, 30, "El número de documento");
+        maxLength(document, 10, "El número de documento");
         maxLength(data.phone(), 20, "El teléfono");
         maxLength(data.email(), 120, "El correo");
         maxLength(data.address(), 200, "La dirección");

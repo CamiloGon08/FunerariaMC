@@ -45,7 +45,7 @@ public class ClientService {
 
     /** Límites de almacenamiento de person indicados en el contrato del módulo de Clientes. */
     static final int MAX_NAME = 25;
-    static final int MAX_DOCUMENT = 11;
+    static final int MAX_DOCUMENT = 10;
     static final int MAX_EMAIL = 30;
     /**
      * Correo bien escrito: usuario, @, dominio y una extensión de al menos dos letras
@@ -261,6 +261,8 @@ public class ClientService {
         client.setPhone(normalizePhone(data.phone()));
         client.setEmail(blankToNull(data.email()));
         client.setAddress(data.address().trim());
+        // Una empresa no tiene fecha de nacimiento
+        client.setBirthDate(corporate ? null : data.birthDate());
     }
 
     private void validate(ClientData data) {
@@ -272,6 +274,9 @@ public class ClientService {
         }
         boolean corporate = data.clientType().isCorporate();
         require(data.documentType(), "El tipo de documento es obligatorio.");
+        if (!corporate && data.birthDate() != null && data.birthDate().isAfter(LocalDate.now(AccessLogService.APP_ZONE))) {
+            throw new InvalidDataException("La fecha de nacimiento no puede ser futura.");
+        }
         if (corporate && !NIT.equals(data.documentType())) {
             throw new InvalidDataException("Una empresa se registra con su NIT.");
         }
@@ -283,9 +288,14 @@ public class ClientService {
 
         require(data.name(), corporate ? "La razón social es obligatoria." : "Los nombres son obligatorios.");
         maxLength(data.name(), MAX_NAME, corporate ? "La razón social" : "Los nombres");
+        // La razón social puede llevar números; los nombres de una persona, no
+        if (!corporate) {
+            PersonNames.validate(data.name(), "Los nombres");
+        }
         if (!corporate) {
             require(data.lastname(), "Los apellidos son obligatorios.");
             maxLength(data.lastname(), MAX_NAME, "Los apellidos");
+            PersonNames.validate(data.lastname(), "Los apellidos");
         }
 
         require(data.phone(), "El teléfono es obligatorio.");

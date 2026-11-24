@@ -36,6 +36,8 @@ import com.example.funerariamc.ui.ModuleLink;
 import com.example.funerariamc.ui.ModuleIcons;
 import com.example.funerariamc.ui.BrandTheme;
 import com.example.funerariamc.ui.PlanOfferCard;
+import com.example.funerariamc.ui.MonthPicker;
+import com.example.funerariamc.model.Client;
 import com.example.funerariamc.ui.SearchField;
 import com.example.funerariamc.service.DeathDocumentData;
 import com.example.funerariamc.service.DeceasedData;
@@ -47,6 +49,7 @@ import com.example.funerariamc.utils.enums.DeathType;
 import com.example.funerariamc.utils.enums.DocumentType;
 import com.example.funerariamc.utils.enums.ExternalCause;
 import com.example.funerariamc.utils.enums.Relationship;
+import javafx.animation.Animation;
 import javafx.animation.FadeTransition;
 import javafx.animation.PauseTransition;
 import javafx.animation.SequentialTransition;
@@ -142,6 +145,7 @@ public class ContractController implements RefreshableView {
     private final ContractService contractService;
     private final FuneralPlanService planService;
     private final PlanDeathService planDeathService;
+    private final ClientService clientService;
     private final DetailCache<SaleView> details;
     /** Verdadero en ventana angosta: Tipo y Abonado se ocultan (siguen en el detalle de la venta). */
     private ObservableBooleanValue narrow;
@@ -214,10 +218,11 @@ public class ContractController implements RefreshableView {
     private volatile List<PlanOffer> offerCache;
 
     public ContractController(ContractService contractService, FuneralPlanService planService,
-                              PlanDeathService planDeathService) {
+                              PlanDeathService planDeathService, ClientService clientService) {
         this.contractService = contractService;
         this.planService = planService;
         this.planDeathService = planDeathService;
+        this.clientService = clientService;
         this.details = new DetailCache<>(contractService::detail, "sale-detail");
     }
 
@@ -719,8 +724,10 @@ public class ContractController implements RefreshableView {
 
     /** Afiliación a un plan exequial: se elige en el paso 1 como un tipo más, pero no es una venta. */
     private static final String AFFILIATION = "AFFILIATION";
-    /** Alto de las tarjetas del paso 1. */
-    private static final double CARD_HEIGHT = 178;
+    /** Alto de las tarjetas del paso 1: grandes, para aprovechar el espacio de la ventana. */
+    private static final double CARD_HEIGHT = 196;
+    /** Columnas de tarjetas del paso 1. */
+    private static final int KIND_COLUMNS = 2;
     /** Alto de cada persona del plan en "Contrato · plan". */
     private static final double PERSON_HEIGHT = 60;
 
@@ -732,7 +739,7 @@ public class ContractController implements RefreshableView {
             new KindInfo(AFFILIATION, "PLANES", "Plan exequial",
                     "Si el cliente no tiene plan, lo afilia aquí (Normal o Premium y sus beneficiarios). Si ya "
                             + "tiene, ve su plan, lo cambia o le agrega o quita personas.",
-                    "Cliente → Plan y beneficiarios → Resumen"),
+                    "Cliente y plan → Beneficiarios"),
             new KindInfo(SaleKind.PLAN, "CONTRATOS", "Registrar difunto del plan",
                     "Falleció alguien del plan: se escoge a esa persona, se llenan los datos de la muerte y el "
                             + "certificado, y el servicio pasa a preparación.",
@@ -755,9 +762,9 @@ public class ContractController implements RefreshableView {
         GridPane grid = new GridPane();
         grid.setHgap(14);
         grid.setVgap(14);
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < KIND_COLUMNS; i++) {
             ColumnConstraints constraints = new ColumnConstraints();
-            constraints.setPercentWidth(100.0 / 3);
+            constraints.setPercentWidth(100.0 / KIND_COLUMNS);
             grid.getColumnConstraints().add(constraints);
         }
         for (int i = 0; i < KINDS.size(); i++) {
@@ -768,14 +775,16 @@ public class ContractController implements RefreshableView {
             StackPane icon = new StackPane(ModuleIcons.of(info.icon()));
             icon.getStyleClass().add("choice-card-icon");
             icon.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
-            HBox top = new HBox(icon);
+            // Ícono y nombre en la misma fila: deja más alto para la descripción
+            Region gap = new Region();
+            HBox.setHgrow(gap, Priority.ALWAYS);
+            HBox top = new HBox(14, icon, title, gap);
+            top.setAlignment(Pos.CENTER_LEFT);
             if (info.choice() == AFFILIATION || info.choice() == SaleKind.PENSION) {
-                Region gap = new Region();
-                HBox.setHgrow(gap, Priority.ALWAYS);
-                top.getChildren().addAll(gap, label(info.choice() == AFFILIATION ? "AFILIAR O ACTUALIZAR"
+                top.getChildren().add(label(info.choice() == AFFILIATION ? "AFILIAR O ACTUALIZAR"
                         : "SOLO EMPRESAS", "choice-card-badge"));
             }
-            VBox content = new VBox(6, top, title, text, flow);
+            VBox content = new VBox(12, top, text, flow);
             VBox.setVgrow(text, Priority.ALWAYS);
             ToggleButton card = new ToggleButton();
             card.setGraphic(content);
@@ -787,7 +796,7 @@ public class ContractController implements RefreshableView {
             card.setMinHeight(CARD_HEIGHT);
             card.setPrefHeight(CARD_HEIGHT);
             card.setMaxHeight(CARD_HEIGHT);
-            content.prefWidthProperty().bind(card.widthProperty().subtract(32));
+            content.prefWidthProperty().bind(card.widthProperty().subtract(48));
             card.setSelected(info.choice() == selected);
             card.setOnAction(e -> {
                 if (!card.isSelected()) {
@@ -795,7 +804,7 @@ public class ContractController implements RefreshableView {
                 }
                 onPick.accept(info.choice());
             });
-            grid.add(card, i % 3, i / 3);
+            grid.add(card, i % KIND_COLUMNS, i / KIND_COLUMNS);
         }
         return grid;
     }
@@ -809,7 +818,7 @@ public class ContractController implements RefreshableView {
                 card.setManaged(shown);
             }
             if (card.isManaged()) {
-                GridPane.setConstraints(card, index % 3, index / 3);
+                GridPane.setConstraints(card, index % KIND_COLUMNS, index / KIND_COLUMNS);
                 index++;
             }
         }
@@ -989,6 +998,11 @@ public class ContractController implements RefreshableView {
             deathNames.setText(person == null ? "" : orEmpty(person.firstName()));
             deathLastnames.setText(person == null ? "" : orEmpty(person.lastName()));
             deathDocument.setText(person == null ? "" : orEmpty(person.document()));
+            // La fecha de nacimiento registrada al afiliarla se usa tal cual y no se cambia aquí;
+            // si no se registró (planes antiguos), se escribe a mano
+            LocalDate born = person == null ? null : person.birthDate();
+            birth.setValue(born);
+            birth.setDisable(born != null);
             deathTitle.setText(person == null ? "" : person.name() + " · " + person.role());
         };
 
@@ -1373,15 +1387,15 @@ public class ContractController implements RefreshableView {
         };
         FormShell.steps(dialog, side,
                 new FormShell.Step("Tipo", "Tipo de venta"),
-                new FormShell.Step("Cliente", "Cliente titular"),
-                new FormShell.Step("Plan y beneficiarios", "Plan exequial", "Beneficiarios"),
+                new FormShell.Step("Cliente y plan", "Cliente titular"),
+                new FormShell.Step("Beneficiarios", "Beneficiarios"),
                 new FormShell.Step("Cliente y difunto", "Cliente y difunto"),
                 new FormShell.Step("Fallecimiento y certificado", "Fallecimiento y certificado"),
                 new FormShell.Step("Servicio", "Servicio"),
                 new FormShell.Step("Fuera del plan", "Fuera del plan"),
                 new FormShell.Step("Sala y cementerio", "Sala de velación", "Cementerio"),
                 new FormShell.Step("Productos y pago", "Productos", "Abono"));
-        // "Plan exequial" solo pasa por Cliente y Plan y beneficiarios (la vista previa queda a la derecha). Registrar difunto del plan
+        // "Plan exequial" solo pasa por Cliente y plan, y Beneficiarios (la vista previa queda a la derecha). Registrar difunto del plan
         // no pasa por Servicio (el plan lo cubre) y llena el fallecimiento solo si la persona no está en Difuntos;
         // los demás no tienen "Fuera del plan". La venta no lleva sala ni cementerio.
         FormShell.stepRules(dialog, step -> {
@@ -1390,7 +1404,7 @@ public class ContractController implements RefreshableView {
             if ("Tipo".equals(step)) {
                 return false;
             }
-            if (List.of("Cliente", "Plan y beneficiarios").contains(step)) {
+            if (List.of("Cliente y plan", "Beneficiarios").contains(step)) {
                 return !plan;
             }
             if (plan) {
@@ -1509,6 +1523,11 @@ public class ContractController implements RefreshableView {
                 ? input.getParent() : input;
         box.setVisible(shown);
         box.setManaged(shown);
+        // Si se ocultó antes de estar en el formulario, el campo mismo quedó oculto: se vuelve a mostrar
+        if (box != input) {
+            input.setVisible(true);
+            input.setManaged(true);
+        }
     }
 
     /**
@@ -1737,9 +1756,10 @@ public class ContractController implements RefreshableView {
             FormShell.refreshSteps(dialog);
         };
         FormShell.steps(dialog, aff.side,
-                new FormShell.Step("Cliente", "Cliente titular"),
-                new FormShell.Step("Plan y beneficiarios", "Plan exequial", "Beneficiarios"));
-        FormShell.stepRules(dialog, "Cliente"::equals, aff::check);
+                new FormShell.Step("Cliente y plan", "Cliente titular"),
+                new FormShell.Step("Beneficiarios", "Beneficiarios"));
+        // El plan se elige junto a la ficha del cliente, así que ese paso ya no se salta
+        FormShell.stepRules(dialog, step -> false, aff::check);
         runForm(dialog, form, "Registrar", aff::save,
                 planId -> Notice.success(window(), MODULE_NAME, aff.savedTitle(), aff.savedMessage(planId)));
     }
@@ -1760,6 +1780,7 @@ public class ContractController implements RefreshableView {
         final TextField document = new TextField();
         final TextField names = new TextField();
         final TextField lastnames = new TextField();
+        final DatePicker holderBirth = new DatePicker();
         final TextField phone = new TextField();
         final TextField email = new TextField();
         final TextField address = new TextField();
@@ -1780,14 +1801,21 @@ public class ContractController implements RefreshableView {
         final TextField benName = new TextField();
         final TextField benLastname = new TextField();
         final TextField benDocument = new TextField();
+        final DatePicker benBirth = new DatePicker();
         final ComboBox<Relationship> relationship = new ComboBox<>();
         final Button addBeneficiary = new Button("+ Agregar");
         final Label beneficiaryError = note("");
         final VBox preview = new VBox(4);
         final Label feeTotal = label("—", "form-summary-value");
         final VBox side;
+        /** Ficha del titular y su plan (o los planes que se ofrecen), debajo del buscador. */
+        final VBox overview = new VBox(14);
         /** Plan activo del titular elegido; null si no tiene (entonces se afilia). */
         FuneralPlanService.PlanDetail current;
+        /** Datos del titular elegido; null mientras llegan o si es cliente nuevo. */
+        Client holderInfo;
+        /** Lo que mostraba la ficha la última vez, para no redibujarla sin necesidad. */
+        String overviewKey;
         /** Titular cuyo plan se está buscando, para no pintar una respuesta vieja. */
         Option loading;
         Runnable onChange = () -> { };
@@ -1815,13 +1843,16 @@ public class ContractController implements RefreshableView {
             documentType.setConverter(converter(code -> CLIENT_DOCUMENTS.getOrDefault(code, code), ""));
             FormShell.choose(documentType);
             document.setPromptText("Solo números");
-            FormShell.document(document, documentType::getValue, 11);
+            FormShell.document(document, documentType::getValue, 10);
             names.setPromptText("Nombres");
             lastnames.setPromptText("Apellidos");
+            // Nombres y apellidos sin números ni símbolos (la razón social de una empresa sí los admite)
+            FormShell.personName(() -> clientType.getValue() == null || !clientType.getValue().isCorporate(), names);
+            FormShell.personName(lastnames);
             phone.setPromptText("3001234567");
             FormShell.phone(phone);
             email.setPromptText("nombre@gmail.com");
-            address.setPromptText("Opcional");
+            address.setPromptText("Cra. 9 # 16-42, Valledupar");
             for (ComboBox<?> box : List.of(clientType, documentType)) {
                 box.getStyleClass().add("form-combo");
             }
@@ -1831,7 +1862,19 @@ public class ContractController implements RefreshableView {
                 documentType.setValue(corporate ? ClientService.NIT : null);
                 names.setPromptText(corporate ? "Razón social" : "Nombres");
                 lastnames.setDisable(corporate);
+                // Una empresa no tiene fecha de nacimiento
+                holderBirth.setDisable(corporate);
+                if (corporate) {
+                    holderBirth.setValue(null);
+                }
             });
+            // La fecha de nacimiento queda en el plan: si la persona fallece se llena sola en el contrato
+            for (DatePicker picker : List.of(holderBirth, benBirth)) {
+                picker.setEditable(false);
+                picker.setConverter(dateConverter());
+                picker.setPromptText("dd/mm/aaaa");
+                picker.setMaxWidth(Double.MAX_VALUE);
+            }
 
             fee.setPromptText("Se llena al elegir el plan");
             lockFee(fee);
@@ -1848,8 +1891,9 @@ public class ContractController implements RefreshableView {
 
             benName.setPromptText("Nombres");
             benLastname.setPromptText("Apellidos");
+            FormShell.personName(benName, benLastname);
             benDocument.setPromptText("Solo números");
-            FormShell.document(benDocument, null, 11);
+            FormShell.document(benDocument, null, 10);
             relationship.getItems().setAll(Relationship.values());
             relationship.setConverter(converter(Relationship::getDisplayName, ""));
             FormShell.choose(relationship);
@@ -1882,23 +1926,23 @@ public class ContractController implements RefreshableView {
                     .field("N.° DE DOCUMENTO *", document)
                     .field("NOMBRES O RAZÓN SOCIAL *", names)
                     .field("APELLIDOS *", lastnames)
+                    .field("FECHA DE NACIMIENTO *", holderBirth)
                     .field("TELÉFONO *", phone)
                     .field("CORREO *", email)
-                    .wideFrom("DIRECCIÓN", address)
-                    .section("Plan exequial", 2)
-                    .wide(null, planCards)
-                    .note(planHint)
-                    .field("CUOTA MENSUAL (COP) *", new VBox(4, fee, feeHint))
-                    .field("FECHA DE INICIO *", startBox)
-                    .section("Beneficiarios", 4)
+                    .wideFrom("DIRECCIÓN *", address)
+                    .wide(null, overview)
+                    .section("Beneficiarios", 3)
                     .wide(null, beneficiaryList)
                     .field("NOMBRES", benName)
                     .field("APELLIDOS", benLastname)
                     .field("DOCUMENTO", benDocument)
+                    .field("FECHA DE NACIMIENTO", benBirth)
                     .field("PARENTESCO", relationship)
                     .note(new HBox(addBeneficiary))
                     .note(beneficiaryError)
                     .note(note("Los recargos (parentesco no directo o por encima del tope) salen de Parámetros."));
+            // Ya con los campos en el formulario se ocultan los que no tocan (con su etiqueta)
+            refresh();
         }
 
         void preset(Option client) {
@@ -1913,7 +1957,7 @@ public class ContractController implements RefreshableView {
 
         /** Por qué no se puede salir del paso (null si se puede). */
         String check(String step) {
-            if ("Cliente".equals(step)) {
+            if ("Cliente y plan".equals(step)) {
                 if (existing.isSelected() && holder.getValue() == null) {
                     return "Busque y elija el cliente titular, o elija «Cliente nuevo».";
                 }
@@ -1921,7 +1965,7 @@ public class ContractController implements RefreshableView {
                     return "Buscando el plan del cliente…";
                 }
             }
-            if ("Plan y beneficiarios".equals(step) && planName[0] == null) {
+            if ("Cliente y plan".equals(step) && planName[0] == null) {
                 return "Elija el plan: Normal o Premium.";
             }
             return null;
@@ -1937,9 +1981,14 @@ public class ContractController implements RefreshableView {
                 planService.updatePlan(planId, planName[0], List.copyOf(removed), List.copyOf(added));
                 return planId;
             }
+            boolean natural = fresh.isSelected() && clientType.getValue() != null && !clientType.getValue().isCorporate();
+            if (natural && holderBirth.getValue() == null) {
+                throw new InvalidDataException("Elija la fecha de nacimiento del titular.");
+            }
             ClientData newClient = fresh.isSelected() ? new ClientData(clientType.getValue(), documentType.getValue(),
                     document.getText(), names.getText(), lastnames.isDisable() ? null : lastnames.getText(),
-                    phone.getText(), email.getText(), address.getText()) : null;
+                    phone.getText(), email.getText(), address.getText(), natural ? holderBirth.getValue() : null)
+                    : null;
             return planService.affiliate(new FuneralPlanService.AffiliationData(
                     fresh.isSelected() ? null : idOf(holder.getValue()), newClient, planName[0],
                     start.getValue(), List.copyOf(added))).getId();
@@ -1960,6 +2009,15 @@ public class ContractController implements RefreshableView {
             removed.clear();
             Option client = fresh.isSelected() ? null : holder.getValue();
             loading = client;
+            holderInfo = null;
+            if (client != null) {
+                async("affiliation-holder", () -> clientService.findById(client.id()), info -> {
+                    if (client == holder.getValue()) {
+                        holderInfo = info;
+                        drawOverview();
+                    }
+                }, failure -> { });
+            }
             if (client == null) {
                 pickPlan(null);
                 onChange.run();
@@ -1985,6 +2043,234 @@ public class ContractController implements RefreshableView {
             });
         }
 
+        /**
+         * Llena el espacio bajo el buscador: a la izquierda la ficha del titular y a la derecha su plan;
+         * si no tiene plan (o es cliente nuevo) se muestran los planes que se ofrecen.
+         */
+        void drawOverview() {
+            Option chosen = fresh.isSelected() ? null : holder.getValue();
+            // Solo se vuelve a dibujar si cambió algo de lo que muestra (no con cada letra escrita)
+            String key = fresh.isSelected() + "|" + (chosen == null ? null : chosen.id()) + "|" + (current != null)
+                    + "|" + (loading != null) + "|" + (holderInfo != null);
+            if (key.equals(overviewKey)) {
+                return;
+            }
+            overviewKey = key;
+            boolean wasLoading = overview.lookup(".holder-skeleton") != null;
+            overview.getChildren().clear();
+            if (fresh.isSelected()) {
+                overview.getChildren().add(choiceCard());
+                return;
+            }
+            Node left = chosen == null ? emptyHolderCard() : holderCard(chosen);
+            Node right = chosen != null && loading != null
+                    ? infoCard("PLAN EXEQUIAL", skeleton(true, 3), skeleton(false, 6))
+                    : current != null ? planCard(current) : choiceCard();
+            HBox row = new HBox(16, left, right);
+            HBox.setHgrow(left, Priority.ALWAYS);
+            HBox.setHgrow(right, Priority.ALWAYS);
+            // La ficha ocupa 2 partes y el plan 3: las tarjetas de los planes necesitan más ancho
+            ((Region) left).setPrefWidth(20);
+            ((Region) right).setPrefWidth(30);
+            ((Region) left).setMaxWidth(Double.MAX_VALUE);
+            ((Region) right).setMaxWidth(Double.MAX_VALUE);
+            overview.getChildren().add(row);
+            // Con plan: debajo, a todo el ancho, el tipo de plan para cambiarlo si hace falta
+            if (current != null && loading == null) {
+                overview.getChildren().add(choiceCard());
+            }
+            // Cuando llegan los datos, la tarjeta aparece suave (como al abrir cada pantalla)
+            if (wasLoading && left.lookup(".holder-skeleton") == null && right.lookup(".holder-skeleton") == null) {
+                FadeTransition in = new FadeTransition(Duration.millis(320), row);
+                in.setFromValue(0.35);
+                in.setToValue(1);
+                in.play();
+            }
+        }
+
+        /**
+         * Donde se elige el plan (o se cambia el tipo si ya tiene uno), con la cuota y la fecha de inicio.
+         * Es el único lugar donde aparecen los planes: el paso siguiente es solo de beneficiarios.
+         */
+        private VBox choiceCard() {
+            boolean changing = current != null;
+            GridPane extra = factsGrid();
+            extra.add(new VBox(6, label("CUOTA MENSUAL (COP) *", "field-label"), fee, feeHint), 0, 0);
+            if (!changing) {
+                extra.add(new VBox(6, label("FECHA DE INICIO *", "field-label"), startBox), 1, 0);
+            }
+            return infoCard(changing ? "TIPO DE PLAN · PUEDE CAMBIARLO" : "ELIJA EL PLAN *", planCards, extra, planHint);
+        }
+
+        /**
+         * Barras de carga con los colores del sistema (las mismas de las pantallas): head = barra de
+         * título más ancha; si no, filas en dos columnas como la ficha. Laten hasta que llegan los datos.
+         */
+        private VBox skeleton(boolean head, int rows) {
+            VBox box = new VBox(head ? 8 : 14);
+            box.getStyleClass().add("holder-skeleton");
+            if (head) {
+                box.getChildren().add(bar(220, 18, "rgba(196,175,132,0.55)"));
+                for (int i = 1; i < rows; i++) {
+                    box.getChildren().add(bar(140 - i * 20, 12, "rgba(110,140,100,0.28)"));
+                }
+            } else {
+                GridPane grid = factsGrid();
+                for (int i = 0; i < rows; i++) {
+                    VBox cell = new VBox(6, bar(70, 9, "rgba(110,140,100,0.20)"), bar(i % 3 == 0 ? 150 : 110, 13,
+                            "rgba(110,140,100,0.28)"));
+                    grid.add(cell, i % 2, i / 2);
+                }
+                box.getChildren().add(grid);
+            }
+            FadeTransition pulse = new FadeTransition(Duration.millis(650), box);
+            pulse.setFromValue(1);
+            pulse.setToValue(0.45);
+            pulse.setAutoReverse(true);
+            pulse.setCycleCount(Animation.INDEFINITE);
+            pulse.play();
+            box.sceneProperty().addListener((obs, old, scene) -> {
+                if (scene == null) {
+                    pulse.stop();
+                }
+            });
+            return box;
+        }
+
+        private Region bar(double width, double height, String color) {
+            Region bar = new Region();
+            bar.setMinSize(width, height);
+            bar.setPrefSize(width, height);
+            bar.setMaxSize(width, height);
+            bar.setStyle("-fx-background-color: " + color + "; -fx-background-radius: 6;");
+            return bar;
+        }
+
+        private VBox emptyHolderCard() {
+            StackPane icon = new StackPane(ModuleIcons.of("CLIENTES"));
+            icon.getStyleClass().add("holder-empty-icon");
+            VBox card = infoCard("FICHA DEL TITULAR", icon,
+                    wrapped("Busque al titular por nombre o documento. Aquí verá sus datos y si ya tiene un plan exequial.", "holder-empty"),
+                    wrapped("¿Todavía no está registrado? Elija «Cliente nuevo» y escriba sus datos aquí mismo.", "holder-empty-hint"));
+            card.setAlignment(Pos.TOP_LEFT);
+            return card;
+        }
+
+        private VBox holderCard(Option chosen) {
+            Client c = holderInfo != null && holderInfo.getId().equals(chosen.id()) ? holderInfo : null;
+            String name = c == null ? chosen.label() : ClientService.displayName(c);
+            String kind = c == null || c.getClientType() == null ? "" : c.getClientType().getDisplayName();
+            if (c == null) {
+                // Mientras llegan los datos se ve la misma animación de carga del resto del sistema
+                return infoCard("FICHA DEL TITULAR", label(PersonNames.titleCase(name), "holder-name"),
+                        skeleton(true, 1), skeleton(false, 6));
+            }
+            GridPane facts = factsGrid();
+            {
+                boolean corporate = c.getClientType() != null && c.getClientType().isCorporate();
+                fact(facts, 0, "Documento", orEmpty(c.getDocumentType()) + " " + orEmpty(c.getDocumentNumber()));
+                fact(facts, 1, corporate ? "Tipo" : "Fecha de nacimiento", corporate ? kind
+                        : c.getBirthDate() == null ? "Sin registrar" : DATE.format(c.getBirthDate()));
+                fact(facts, 2, "Teléfono", c.getPhone());
+                fact(facts, 3, "Correo", c.getEmail());
+                fact(facts, 4, "Dirección", c.getAddress());
+                fact(facts, 5, "Cliente desde", c.getRegistrationDate() == null ? null : DATE.format(c.getRegistrationDate()));
+            }
+            return infoCard("FICHA DEL TITULAR", label(PersonNames.titleCase(name), "holder-name"),
+                    label(kind.isBlank() ? "Cliente registrado" : kind, "holder-sub"), facts);
+        }
+
+        private VBox planCard(FuneralPlanService.PlanDetail d) {
+            FuneralPlanService.PlanCard p = d.card();
+            Label title = label(p.planName() + " · " + p.code(), "plan-board-title");
+            HBox chips = new HBox(6, chip(p.overdueMonths() == 0 ? "Al día" : p.overdueMonths() + " cuotas atrasadas",
+                    p.overdueMonths() == 0), chip(p.inWaiting() ? "En carencia hasta "
+                    + (p.waitingEnds() == null ? "—" : DATE.format(p.waitingEnds())) : "Carencia cumplida", !p.inWaiting()));
+            StackPane icon = new StackPane(ModuleIcons.of("PLANES"));
+            icon.getStyleClass().add("plan-board-icon");
+            VBox text = new VBox(6, title, chips);
+            HBox head = new HBox(14, icon, text);
+            head.setAlignment(Pos.CENTER_LEFT);
+            head.getStyleClass().add("plan-board-card");
+            GridPane facts = factsGrid();
+            fact(facts, 0, "Cuota mensual", pesos(p.monthlyFee()));
+            fact(facts, 1, "Desde", p.startDate() == null ? null : DATE.format(p.startDate()));
+            fact(facts, 2, "Personas", (p.beneficiaries() + 1) + " (titular y " + p.beneficiaries() + " de "
+                    + d.beneficiaryLimit() + " beneficiarios)");
+            fact(facts, 3, "Próxima cuota", d.nextDue() == null ? "—" : MonthPicker.label(d.nextDue()));
+            fact(facts, 4, "Último pago", p.lastPaidAt() == null ? "Sin pagos" : DATE.format(p.lastPaidAt().toLocalDate()));
+            fact(facts, 5, "Servicios usados", String.valueOf(p.servicesUsed()));
+            return infoCard("PLAN EXEQUIAL ACTUAL", head, facts, monthStrip(d));
+        }
+
+        /** Cuotas de los últimos 12 meses: a tiempo, con retraso, sin pagar o aún no vencidas. */
+        private VBox monthStrip(FuneralPlanService.PlanDetail d) {
+            HBox cells = new HBox(6);
+            for (FuneralPlanService.MonthCell cell : d.grid()) {
+                String color = switch (cell.state()) {
+                    case PAID_ON_TIME -> "-color-primary";
+                    case PAID_LATE -> "-color-detail";
+                    case UNPAID -> "#9E3B32";
+                    case UPCOMING, BEFORE_START -> "rgba(110,140,100,0.18)";
+                };
+                Region box = new Region();
+                box.setMinHeight(22);
+                box.setPrefHeight(22);
+                box.setMaxWidth(Double.MAX_VALUE);
+                box.setStyle("-fx-background-color: " + color + "; -fx-background-radius: 5;");
+                String name = cell.month().getMonth().getDisplayName(java.time.format.TextStyle.SHORT,
+                        Locale.forLanguageTag("es-CO")).replace(".", "");
+                Label month = label(Character.toUpperCase(name.charAt(0)) + name.substring(1), "holder-fact-label");
+                VBox column = new VBox(4, box, month);
+                column.setAlignment(Pos.CENTER);
+                HBox.setHgrow(column, Priority.ALWAYS);
+                column.setPrefWidth(10);
+                column.setMaxWidth(Double.MAX_VALUE);
+                javafx.scene.control.Tooltip.install(column, new javafx.scene.control.Tooltip(MonthPicker.label(cell.month())));
+                cells.getChildren().add(column);
+            }
+            HBox legend = new HBox(14, legendItem("-color-primary", "A tiempo"), legendItem("-color-detail", "Con retraso"),
+                    legendItem("#9E3B32", "Sin pagar"), legendItem("rgba(110,140,100,0.18)", "Por vencer"));
+            return new VBox(8, label("CUOTAS DE LOS ÚLTIMOS 12 MESES", "holder-fact-label"), cells, legend);
+        }
+
+        private HBox legendItem(String color, String text) {
+            Region dot = new Region();
+            dot.setMinSize(10, 10);
+            dot.setMaxSize(10, 10);
+            dot.setStyle("-fx-background-color: " + color + "; -fx-background-radius: 3;");
+            HBox item = new HBox(6, dot, label(text, "holder-empty-hint"));
+            item.setAlignment(Pos.CENTER_LEFT);
+            return item;
+        }
+
+        private VBox infoCard(String caption, Node... content) {
+            VBox card = new VBox(10);
+            card.getChildren().add(label(caption, "holder-card-title"));
+            card.getChildren().addAll(content);
+            card.getStyleClass().add("holder-card");
+            return card;
+        }
+
+        private GridPane factsGrid() {
+            GridPane grid = new GridPane();
+            grid.setHgap(18);
+            grid.setVgap(12);
+            for (int i = 0; i < 2; i++) {
+                ColumnConstraints column = new ColumnConstraints();
+                column.setPercentWidth(50);
+                grid.getColumnConstraints().add(column);
+            }
+            return grid;
+        }
+
+        private void fact(GridPane grid, int index, String caption, String value) {
+            boolean empty = value == null || value.isBlank();
+            Label text = label(empty ? "—" : value, "holder-fact-value");
+            text.setWrapText(true);
+            grid.add(new VBox(2, label(caption.toUpperCase(Locale.ROOT), "holder-fact-label"), text), index % 2, index / 2);
+        }
+
         private void pickPlan(PlanOffer offer) {
             planName[0] = offer == null ? null : offer.name();
             for (int i = 0; i < cards.size(); i++) {
@@ -2006,8 +2292,16 @@ public class ContractController implements RefreshableView {
                 beneficiaryError.setText("Escriba los nombres y los apellidos del beneficiario.");
                 return;
             }
-            if (!doc.matches("\\d{5,11}")) {
-                beneficiaryError.setText("El documento del beneficiario debe tener entre 5 y 11 dígitos.");
+            if (!doc.matches("\\d{5,10}")) {
+                beneficiaryError.setText("El documento del beneficiario debe tener entre 5 y 10 dígitos.");
+                return;
+            }
+            if (benBirth.getValue() == null) {
+                beneficiaryError.setText("Elija la fecha de nacimiento del beneficiario.");
+                return;
+            }
+            if (benBirth.getValue().isAfter(today())) {
+                beneficiaryError.setText("La fecha de nacimiento no puede ser futura.");
                 return;
             }
             if (relationship.getValue() == null) {
@@ -2022,7 +2316,7 @@ public class ContractController implements RefreshableView {
                 return;
             }
             FuneralPlanService.NewBeneficiary b = new FuneralPlanService.NewBeneficiary(benName.getText().trim(),
-                    benLastname.getText().trim(), doc, relationship.getValue());
+                    benLastname.getText().trim(), doc, relationship.getValue(), benBirth.getValue());
             boolean corporate = current != null ? current.card().corporate()
                     : fresh.isSelected() && clientType.getValue() != null && clientType.getValue().isCorporate();
             long kept = current == null ? 0 : current.beneficiaries().size() - removed.size();
@@ -2034,6 +2328,7 @@ public class ContractController implements RefreshableView {
                         benName.clear();
                         benLastname.clear();
                         benDocument.clear();
+                        benBirth.setValue(null);
                         relationship.setValue(null);
                         refresh();
                     }, failure -> beneficiaryError.setText(message(failure, "No se pudo calcular el recargo.")));
@@ -2042,11 +2337,15 @@ public class ContractController implements RefreshableView {
         /** Muestra los campos que tocan y vuelve a dibujar la lista de personas y la vista previa. */
         void refresh() {
             boolean isNew = fresh.isSelected();
+            // Si el titular elegido ya tiene plan, no se ofrece «Cliente nuevo»: solo se ve su plan
+            showField(modes, current == null);
             showField(holder.node(), !isNew);
-            for (Node n : List.of(clientType, documentType, document, names, lastnames, phone, email, address)) {
+            for (Node n : List.of(clientType, documentType, document, names, lastnames, holderBirth, phone, email,
+                    address)) {
                 showField(n, isNew);
             }
             showField(startBox, current == null);
+            drawOverview();
             String holderName = isNew ? (names.getText() + " " + lastnames.getText()).trim()
                     : holder.getValue() == null ? "" : holder.getValue().label();
             String holderDoc = isNew ? (documentType.getValue() == null ? "" : documentType.getValue() + " ")
@@ -2080,7 +2379,8 @@ public class ContractController implements RefreshableView {
                 FuneralPlanService.NewBeneficiary b = added.get(i);
                 int index = i;
                 beneficiaryList.getChildren().add(personRow(PersonNames.titleCase(b.name() + " " + b.lastname()),
-                        "Doc. " + b.documentNumber() + " · " + b.relationship().getDisplayName() + " · nuevo",
+                        "Doc. " + b.documentNumber() + " · " + b.relationship().getDisplayName()
+                                + (b.birthDate() == null ? "" : " · nació " + DATE.format(b.birthDate())) + " · nuevo",
                         surcharges.get(i), () -> {
                             added.remove(index);
                             surcharges.remove(index);

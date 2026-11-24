@@ -979,8 +979,10 @@ public class DeceasedController implements RefreshableView {
         TextField lastname = new TextField();
         lastname.setPromptText("Apellidos");
         TextField document = new TextField();
-        document.setPromptText("Solo números, 5 a 11 dígitos");
-        FormShell.document(document, null, 11);
+        document.setPromptText("Solo números, 5 a 10 dígitos");
+        FormShell.document(document, null, 10);
+        // Nombres y apellidos sin números ni símbolos
+        FormShell.personName(name, lastname);
         DatePicker birth = new DatePicker();
         DatePicker death = new DatePicker(LocalDate.now(AccessLogService.APP_ZONE));
 
@@ -1068,7 +1070,7 @@ public class DeceasedController implements RefreshableView {
 
     private void refreshPlans(String document, LocalDate deathDate, ComboBox<PlanSuggestion> box, Label hint) {
         String text = document == null ? "" : document.trim();
-        if (!text.matches("\\d{5,11}")) {
+        if (!text.matches("\\d{5,10}")) {
             box.getItems().setAll((PlanSuggestion) null);
             box.setValue(null);
             hint.setText("Escriba el documento para buscar planes donde sea titular o beneficiario.");

@@ -236,6 +236,75 @@ class AlliedNetworkServiceTest {
         verify(payments).save(payment);
     }
 
+    @Test
+    void aContractLinkedToAnotherHomeCannotBeUsed() {
+        when(payments.findOtherHomeNames(9L, 3L, AlliedPaymentStatus.VOIDED)).thenReturn(List.of("Exequiales San José"));
+        InvalidDataException error = assertThrows(InvalidDataException.class,
+                () -> service.registerPayment(new AlliedPaymentData(3L, 9L, BigDecimal.TEN, LocalDate.now())));
+        assertEquals("El contrato CT-2026-0402 ya está vinculado a Exequiales San José.", error.getMessage());
+        verify(payments, never()).save(any());
+    }
+
+    @Test
+    void contractSearchHidesOtherHomesAndPutsOwnFirst() {
+        ServiceContract other = new ServiceContract();
+        other.setId(10L);
+        other.setContractNumber("CT-2026-0403");
+        ServiceContract own = new ServiceContract();
+        own.setId(11L);
+        own.setContractNumber("CT-2026-0404");
+        when(contracts.searchNotCancelled(eq(ContractStatus.CANCELLED), anyString(), any()))
+                .thenReturn(List.of(contract, other, own));
+        when(payments.findContractIdsOfOtherHomes(3L, AlliedPaymentStatus.VOIDED)).thenReturn(List.of(10L));
+        when(payments.findContractIdsOfHome(3L, AlliedPaymentStatus.VOIDED)).thenReturn(List.of(11L));
+        assertEquals(List.of(11L, 9L), service.searchContracts(3L, "").stream()
+                .map(AlliedNetworkService.ContractOption::id).toList());
+    }
+
+    @Test
+    void aServiceAlreadyPaidIsSavedPaidWithItsExpense() {
+        AlliedPayment payment = payment(AlliedPaymentStatus.PENDING);
+        when(payments.findDetailById(20L)).thenReturn(Optional.of(payment));
+        assertEquals(20L, service.registerService(new AlliedPaymentData(3L, 9L, new BigDecimal("3200000"),
+                LocalDate.of(2026, 10, 9)), PaymentMethod.TRANSFER));
+        assertEquals(AlliedPaymentStatus.PAID, payment.getStatus());
+        verify(transactions).save(any());
+    }
+
+    @Test
+    void aServiceNotPaidStaysPending() {
+        service.registerService(new AlliedPaymentData(3L, 9L, new BigDecimal("3200000"), LocalDate.of(2026, 10, 9)), null);
+        verify(transactions, never()).save(any());
+        verify(payments, never()).findDetailById(any());
+    }
+
+    @Test
+    void pendingServicesListsOnlyUnpaidOnesOldestFirst() {
+        AlliedPayment newer = payment(AlliedPaymentStatus.PENDING);
+        newer.setId(21L);
+        newer.setPaymentDate(LocalDate.of(2026, 11, 1));
+        AlliedPayment paid = payment(AlliedPaymentStatus.PAID);
+        paid.setId(22L);
+        AlliedPayment older = payment(AlliedPaymentStatus.PENDING);
+        when(payments.findByHome(3L)).thenReturn(List.of(newer, paid, older));
+        assertEquals(List.of(20L, 21L), service.pendingServices(3L).stream().map(AlliedNetworkService.PaymentRow::id).toList());
+    }
+
+    @Test
+    void payingSeveralServicesRequiresSelectionAndMethod() {
+        assertThrows(InvalidDataException.class, () -> service.markPaid(List.of(), PaymentMethod.TRANSFER));
+        assertThrows(InvalidDataException.class, () -> service.markPaid(List.of(20L), null));
+        AlliedPayment first = payment(AlliedPaymentStatus.PENDING);
+        AlliedPayment second = payment(AlliedPaymentStatus.PENDING);
+        second.setId(21L);
+        when(payments.findDetailById(20L)).thenReturn(Optional.of(first));
+        when(payments.findDetailById(21L)).thenReturn(Optional.of(second));
+        service.markPaid(List.of(20L, 21L), PaymentMethod.DEPOSIT);
+        assertEquals(AlliedPaymentStatus.PAID, first.getStatus());
+        assertEquals(AlliedPaymentStatus.PAID, second.getStatus());
+        verify(transactions, times(2)).save(any());
+    }
+
     @ParameterizedTest
     @CsvSource({
             "MONTHLY,2026-11,Mensual noviembre 2026",

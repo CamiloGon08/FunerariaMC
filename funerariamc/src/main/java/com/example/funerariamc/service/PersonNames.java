@@ -1,5 +1,7 @@
 package com.example.funerariamc.service;
 
+import com.example.funerariamc.exception.InvalidDataException;
+
 import java.util.Locale;
 
 /**
@@ -12,6 +14,17 @@ public final class PersonNames {
     private static final Locale SPANISH = Locale.forLanguageTag("es-CO");
 
     private PersonNames() {
+    }
+
+    /**
+     * Revisa que un nombre o apellido de persona tenga solo letras (con tildes y ñ), separadas por un
+     * espacio, guion o apóstrofo: sin números ni símbolos. Vacío no se revisa aquí (eso es "obligatorio").
+     */
+    public static void validate(String value, String label) {
+        String clean = value == null ? "" : value.trim().replaceAll("\\s+", " ");
+        if (!clean.isEmpty() && !clean.matches("\\p{L}[\\p{L}\\p{M}]*(?:[ '\u2019-]\\p{L}[\\p{L}\\p{M}]*)*")) {
+            throw new InvalidDataException(label + " solo pueden tener letras, espacios, guion o apóstrofo.");
+        }
     }
 
     /** El nombre con cada palabra en mayúscula inicial; los espacios repetidos quedan en uno solo. */

@@ -56,7 +56,7 @@ class AuthServiceTest {
 
         assertSame(user, service.login(" salesperson ", "secret"));
 
-        verify(users).findByUsernameWithEmployeeAndRole("salesperson");
+        verify(users).findByExactUsernameWithEmployeeAndRole("salesperson");
         verify(encoder).matches("secret", "stored-hash");
         verify(audit).record(42L, "LOGIN_SUCCESS");
         assertFalse(user.getLastLogin().isBefore(before));
@@ -64,21 +64,21 @@ class AuthServiceTest {
     }
 
     @Test
-    void usernameWithAccentsAndUppercaseFindsTheAsciiAccount() {
+    void usernameMustBeTypedWithTheSameCaseItWasCreated() {
         validCredentials();
+        when(users.findByExactUsernameWithEmployeeAndRole("Salesperson")).thenReturn(Optional.empty());
 
-        // El usuario se guarda sin tildes ni eñes; "Salespérson" debe encontrar "salesperson".
-        assertSame(user, service.login(" Salespérson ", "secret"));
-
-        verify(users).findByUsernameWithEmployeeAndRole("salesperson");
+        // "salesperson" entra; "Salesperson" no, aunque la contraseña sea correcta.
+        assertSame(user, service.login(" salesperson ", "secret"));
+        assertThrows(AuthenticationFailedException.class, () -> service.login("Salesperson", "secret"));
     }
 
     @Test
     void unknownUserAndWrongPasswordHaveTheSamePublicMessage() {
-        when(users.findByUsernameWithEmployeeAndRole("missing")).thenReturn(Optional.empty());
+        when(users.findByExactUsernameWithEmployeeAndRole("missing")).thenReturn(Optional.empty());
         String unknown = assertThrows(AuthenticationFailedException.class,
                 () -> service.login("missing", "secret")).getMessage();
-        when(users.findByUsernameWithEmployeeAndRole("salesperson")).thenReturn(Optional.of(user));
+        when(users.findByExactUsernameWithEmployeeAndRole("salesperson")).thenReturn(Optional.of(user));
 
         String wrong = assertThrows(AuthenticationFailedException.class,
                 () -> service.login("salesperson", "wrong")).getMessage();
@@ -229,7 +229,7 @@ class AuthServiceTest {
     }
 
     private void validCredentials() {
-        when(users.findByUsernameWithEmployeeAndRole("salesperson")).thenReturn(Optional.of(user));
+        when(users.findByExactUsernameWithEmployeeAndRole("salesperson")).thenReturn(Optional.of(user));
         when(encoder.matches("secret", "stored-hash")).thenReturn(true);
     }
 }
