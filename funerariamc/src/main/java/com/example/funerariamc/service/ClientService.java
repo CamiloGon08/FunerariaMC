@@ -261,6 +261,8 @@ public class ClientService {
         client.setPhone(normalizePhone(data.phone()));
         client.setEmail(blankToNull(data.email()));
         client.setAddress(data.address().trim());
+        // Una empresa no tiene fecha de nacimiento
+        client.setBirthDate(corporate ? null : data.birthDate());
     }
 
     private void validate(ClientData data) {
@@ -272,6 +274,9 @@ public class ClientService {
         }
         boolean corporate = data.clientType().isCorporate();
         require(data.documentType(), "El tipo de documento es obligatorio.");
+        if (!corporate && data.birthDate() != null && data.birthDate().isAfter(LocalDate.now(AccessLogService.APP_ZONE))) {
+            throw new InvalidDataException("La fecha de nacimiento no puede ser futura.");
+        }
         if (corporate && !NIT.equals(data.documentType())) {
             throw new InvalidDataException("Una empresa se registra con su NIT.");
         }
