@@ -4,7 +4,6 @@ import com.example.funerariamc.exception.BusinessException;
 import com.example.funerariamc.exception.InvalidDataException;
 import com.example.funerariamc.utils.enums.AlliedPaymentStatus;
 import com.example.funerariamc.utils.enums.PaymentMethod;
-import com.example.funerariamc.service.WordSearch;
 import com.example.funerariamc.service.AlliedHomeData;
 import com.example.funerariamc.service.AlliedNetworkService;
 import com.example.funerariamc.service.AlliedNetworkService.ContractOption;
@@ -257,15 +256,15 @@ public class AlliedNetworkController implements RefreshableView {
         String digits = text.replaceAll("[^0-9]", "");
         String city = cityFilter.getValue();
         Object state = stateGroup.getSelectedToggle();
-        List<HomeCard> shown = WordSearch.startsFirst(homes.stream()
-                .filter(h -> WordSearch.matches(h.name(), text)
+        List<HomeCard> shown = homes.stream()
+                .filter(h -> text.isEmpty() || normalize(h.name()).contains(text)
                         || (!digits.isEmpty() && h.nit() != null && h.nit().replaceAll("[^0-9]", "").contains(digits)))
                 .filter(h -> city == null || ALL_CITIES.equals(city) || city.equalsIgnoreCase(h.city() == null ? "" : h.city().trim()))
                 .filter(h -> state == allState
                         || (state == upToDateState && h.state() == HomeState.UP_TO_DATE)
                         || (state == balanceState && h.state() == HomeState.WITH_BALANCE)
                         || (state == inactiveState && h.state() == HomeState.INACTIVE))
-                .toList(), text, HomeCard::name);
+                .toList();
         shownHomes = shown;
         // Un filtro nuevo vuelve a la página 1; recargar tras guardar se queda en la misma página.
         String filterKey = text + "|" + city + "|" + state;

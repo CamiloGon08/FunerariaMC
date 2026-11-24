@@ -46,6 +46,7 @@ public class ClientFormController {
 
     static {
         DOCUMENT_TYPES.put("CC", "CC · Cédula de ciudadanía");
+        DOCUMENT_TYPES.put("TI", "TI · Tarjeta de identidad");
         DOCUMENT_TYPES.put("CE", "CE · Cédula de extranjería");
         DOCUMENT_TYPES.put("PA", "PA · Pasaporte");
         DOCUMENT_TYPES.put(ClientService.NIT, "NIT · Número de identificación tributaria");
@@ -165,6 +166,8 @@ public class ClientFormController {
         clientTypeCombo.setValue(null);
         showFieldsFor(null);
         FormShell.choose(documentTypeCombo);
+        // Con cédula, mayor de edad; con tarjeta de identidad, de 7 a 17 años
+        FormShell.ageByDocument(documentTypeCombo, birthPicker);
     }
 
     /**

@@ -1,5 +1,6 @@
 package com.example.funerariamc.ui;
 
+import com.example.funerariamc.service.ClientService;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -18,6 +19,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.DatePicker;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.DialogEvent;
 import javafx.scene.control.DialogPane;
@@ -98,7 +100,7 @@ public final class FormShell {
      * Campo de número de documento: no deja escribir más de lo que admite el tipo y lo avisa al lado
      * del campo. Cédula y NIT: 10 dígitos; sin tipo (beneficiario, difunto): 11, porque puede ser una
      * tarjeta de identidad. Los puntos, espacios y guiones que pegue el usuario no cuentan.
-     * {@code type} da el tipo elegido en el formulario (CC, CE, PA, NIT) o null si el campo no tiene tipo;
+     * {@code type} da el tipo elegido en el formulario (CC, TI, CE, PA, NIT) o null si el campo no tiene tipo;
      * {@code otherMax} es el máximo de cédula de extranjería y pasaporte, que llevan letras y dígitos.
      */
     public static void document(TextField field, java.util.function.Supplier<String> type, int otherMax) {
@@ -106,8 +108,8 @@ public final class FormShell {
         warning.getStyleClass().add("field-warning");
         field.setTextFormatter(new TextFormatter<String>(change -> {
             String kind = type == null ? null : type.get();
-            boolean numeric = kind == null || "CC".equals(kind) || "NIT".equals(kind);
-            int max = "CC".equals(kind) || "NIT".equals(kind) || kind == null ? 10 : otherMax;
+            boolean numeric = kind == null || "CC".equals(kind) || "TI".equals(kind) || "NIT".equals(kind);
+            int max = numeric ? 10 : otherMax;
             String clean = change.getControlNewText().replaceAll("[.\\s-]", "");
             String problem = null;
             if (numeric && !clean.matches("\\d*")) {
@@ -117,6 +119,7 @@ public final class FormShell {
             } else if (clean.length() > max) {
                 problem = switch (kind == null ? "" : kind) {
                     case "CC" -> "La cédula tiene máximo 10 dígitos.";
+                    case "TI" -> "La tarjeta de identidad tiene máximo 10 dígitos.";
                     case "NIT" -> "El NIT tiene 10 dígitos, con el de verificación.";
                     case "" -> "El documento tiene máximo 10 dígitos.";
                     default -> "Máximo " + max + " caracteres.";
@@ -239,6 +242,33 @@ public final class FormShell {
             hide.setOnFinished(e -> warning.hide());
             hide.play();
         }
+    }
+
+    /**
+     * Revisa la edad apenas se elige el tipo de documento o la fecha de nacimiento: con cédula la persona
+     * debe ser mayor de edad y con tarjeta de identidad tener de 7 a 17 años. El aviso sale debajo de la
+     * fecha; al guardar, el servicio vuelve a revisarlo.
+     */
+    public static void ageByDocument(ComboBox<String> type, DatePicker birth) {
+        Tooltip warning = new Tooltip();
+        warning.getStyleClass().add("field-warning");
+        warning.setWrapText(true);
+        warning.setMaxWidth(380);
+        javafx.animation.PauseTransition hide = new javafx.animation.PauseTransition(javafx.util.Duration.seconds(6));
+        hide.setOnFinished(e -> warning.hide());
+        Runnable check = () -> {
+            String problem = ClientService.ageProblem(type.getValue(), birth.getValue());
+            javafx.geometry.Bounds b = birth.localToScreen(birth.getBoundsInLocal());
+            if (problem == null || b == null || birth.getScene() == null) {
+                warning.hide();
+                return;
+            }
+            warning.setText(problem);
+            warning.show(birth, b.getMinX(), b.getMaxY() + 4);
+            hide.playFromStart();
+        };
+        type.valueProperty().addListener((obs, old, value) -> check.run());
+        birth.valueProperty().addListener((obs, old, value) -> check.run());
     }
 
     private static void hideWhenLeaving(TextField field, Tooltip warning) {
