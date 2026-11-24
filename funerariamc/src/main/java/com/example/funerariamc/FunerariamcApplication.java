@@ -22,6 +22,7 @@ public class FunerariamcApplication {
 	public static void main(String[] args) {
 		// Calendarios y fechas en español aunque Windows esté en otro idioma.
 		Locale.setDefault(Locale.forLanguageTag("es-CO"));
+		System.setProperty("com.zaxxer.hikari.aliveBypassWindowMs", "60000");
 		Application.launch(JavaFxApplication.class, args);
 	}
 

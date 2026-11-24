@@ -83,4 +83,26 @@ public interface AlliedPaymentRepository extends JpaRepository<AlliedPayment, Lo
     List<Long> findTransactionIds(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
 
     boolean existsByFinancialTransactionId(Long transactionId);
+
+    /** Contratos con servicios no anulados de la aliada indicada (vinculados a ella). */
+    @Query("""
+            select distinct p.relatedServiceContract.id from AlliedPayment p
+            where p.alliedFuneralHome.id = :homeId and p.status <> :voided and p.relatedServiceContract is not null
+            """)
+    List<Long> findContractIdsOfHome(@Param("homeId") Long homeId, @Param("voided") AlliedPaymentStatus voided);
+
+    /** Contratos ya vinculados a otra aliada por un servicio no anulado. */
+    @Query("""
+            select distinct p.relatedServiceContract.id from AlliedPayment p
+            where p.alliedFuneralHome.id <> :homeId and p.status <> :voided and p.relatedServiceContract is not null
+            """)
+    List<Long> findContractIdsOfOtherHomes(@Param("homeId") Long homeId, @Param("voided") AlliedPaymentStatus voided);
+
+    /** Nombre de la aliada a la que ya está vinculado el contrato (servicio no anulado), si hay alguna distinta. */
+    @Query("""
+            select p.alliedFuneralHome.name from AlliedPayment p
+            where p.relatedServiceContract.id = :contractId and p.alliedFuneralHome.id <> :homeId and p.status <> :voided
+            """)
+    List<String> findOtherHomeNames(@Param("contractId") Long contractId, @Param("homeId") Long homeId,
+                                    @Param("voided") AlliedPaymentStatus voided);
 }
