@@ -34,14 +34,14 @@ public class ClientService {
     /** Máximo de filas por página que acepta la búsqueda. */
     public static final int MAX_PAGE_SIZE = 50;
 
-    /** Documentos de una persona natural: cédula, cédula de extranjería y pasaporte. */
-    public static final List<String> NATURAL_DOCUMENT_TYPES = List.of("CC", "CE", "PA");
+    /** Documentos de una persona natural: cédula, tarjeta de identidad, cédula de extranjería y pasaporte. */
+    public static final List<String> NATURAL_DOCUMENT_TYPES = List.of("CC", "TI", "CE", "PA");
     /** Una empresa se identifica con su NIT. */
     public static final String NIT = "NIT";
 
     /** Pesos del dígito de verificación del NIT (DIAN), del dígito de la derecha hacia la izquierda. */
     private static final int[] NIT_WEIGHTS = {3, 7, 13, 17, 19, 23, 29, 37, 41, 43, 47, 53, 59, 67, 71};
-    private static final Set<String> NUMERIC_DOCUMENTS = Set.of("CC", NIT);
+    private static final Set<String> NUMERIC_DOCUMENTS = Set.of("CC", "TI", NIT);
 
     /** Límites de almacenamiento de person indicados en el contrato del módulo de Clientes. */
     static final int MAX_NAME = 25;
@@ -265,6 +265,31 @@ public class ClientService {
         client.setBirthDate(corporate ? null : data.birthDate());
     }
 
+    /** Edad desde la que se tiene cédula de ciudadanía (mayoría de edad en Colombia). */
+    public static final int ADULT_AGE = 18;
+    /** Edad desde la que la Registraduría expide la tarjeta de identidad (antes es el registro civil). */
+    public static final int IDENTITY_CARD_MIN_AGE = 7;
+
+    /**
+     * La edad debe corresponder al documento: con cédula de ciudadanía, 18 años o más; con tarjeta de
+     * identidad, de 7 a 17 años. Devuelve el aviso, o null si está bien (o si no hay fecha de nacimiento).
+     */
+    public static String ageProblem(String documentType, LocalDate birthDate) {
+        if (birthDate == null) {
+            return null;
+        }
+        int age = java.time.Period.between(birthDate, LocalDate.now(AccessLogService.APP_ZONE)).getYears();
+        if ("CC".equals(documentType) && age < ADULT_AGE) {
+            return "Con cédula de ciudadanía la persona debe tener " + ADULT_AGE + " años o más. "
+                    + "Si es menor de edad, regístrela con tarjeta de identidad.";
+        }
+        if ("TI".equals(documentType) && (age < IDENTITY_CARD_MIN_AGE || age >= ADULT_AGE)) {
+            return "La tarjeta de identidad es para personas de " + IDENTITY_CARD_MIN_AGE + " a " + (ADULT_AGE - 1)
+                    + " años. " + (age >= ADULT_AGE ? "Mayor de edad: regístrela con cédula." : "Revise la fecha de nacimiento.");
+        }
+        return null;
+    }
+
     private void validate(ClientData data) {
         if (data == null) {
             throw new InvalidDataException("Los datos del cliente son obligatorios.");
@@ -277,11 +302,19 @@ public class ClientService {
         if (!corporate && data.birthDate() != null && data.birthDate().isAfter(LocalDate.now(AccessLogService.APP_ZONE))) {
             throw new InvalidDataException("La fecha de nacimiento no puede ser futura.");
         }
+        if (!corporate && "TI".equals(data.documentType()) && data.birthDate() == null) {
+            throw new InvalidDataException("Con tarjeta de identidad escriba la fecha de nacimiento.");
+        }
+        String age = ageProblem(data.documentType(), corporate ? null : data.birthDate());
+        if (age != null) {
+            throw new InvalidDataException(age);
+        }
         if (corporate && !NIT.equals(data.documentType())) {
             throw new InvalidDataException("Una empresa se registra con su NIT.");
         }
         if (!corporate && !NATURAL_DOCUMENT_TYPES.contains(data.documentType())) {
-            throw new InvalidDataException("Una persona natural se registra con cédula, cédula de extranjería o pasaporte.");
+            throw new InvalidDataException("Una persona natural se registra con cédula, tarjeta de identidad, "
+                    + "cédula de extranjería o pasaporte.");
         }
         require(data.documentNumber(), "El número de documento es obligatorio.");
         validateDocument(data.documentType(), normalizeDocument(data.documentNumber()));
@@ -325,6 +358,9 @@ public class ClientService {
         }
         if ("CC".equals(type) && (document.length() < 6 || document.length() > 10)) {
             throw new InvalidDataException("La cédula debe tener entre 6 y 10 dígitos.");
+        }
+        if ("TI".equals(type) && (document.length() < 6 || document.length() > 10)) {
+            throw new InvalidDataException("La tarjeta de identidad debe tener entre 6 y 10 dígitos.");
         }
         if (NIT.equals(type)) {
             // Se escribe con el dígito de verificación: 800.197.268-4 → 8001972684.

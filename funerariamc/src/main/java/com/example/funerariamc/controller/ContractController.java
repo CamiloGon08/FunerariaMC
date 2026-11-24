@@ -1895,6 +1895,8 @@ public class ContractController implements RefreshableView {
                 picker.setPromptText("dd/mm/aaaa");
                 picker.setMaxWidth(Double.MAX_VALUE);
             }
+            // Con cédula, mayor de edad; con tarjeta de identidad, de 7 a 17 años
+            FormShell.ageByDocument(documentType, holderBirth);
 
             fee.setPromptText("Se llena al elegir el plan");
             lockFee(fee);
@@ -2511,9 +2513,13 @@ public class ContractController implements RefreshableView {
     private static HBox previewRow(String caption, String value) {
         boolean empty = value == null || value.isBlank();
         Label left = label(caption, "contract-preview-label");
-        left.setMinWidth(Region.USE_PREF_SIZE);
         Label right = label(empty ? "________" : value, empty ? "contract-preview-blank" : "contract-preview-value");
-        right.setWrapText(true);
+        // Los dos lados pasan a otra línea si no caben, pero nunca parten una palabra: antes, con un
+        // nombre largo a la izquierda, «Titular» se partía letra por letra
+        for (Label side : List.of(left, right)) {
+            side.setWrapText(true);
+            keepWordsWhole(side);
+        }
         right.setTextAlignment(javafx.scene.text.TextAlignment.RIGHT);
         right.setAlignment(Pos.CENTER_RIGHT);
         Region gap = new Region();
@@ -2521,6 +2527,23 @@ public class ContractController implements RefreshableView {
         HBox row = new HBox(8, left, gap, right);
         row.getStyleClass().add("contract-preview-row");
         return row;
+    }
+
+    /** El ancho mínimo de la etiqueta es el de su palabra más larga, con la letra que le da el CSS. */
+    private static void keepWordsWhole(Label label) {
+        Runnable measure = () -> {
+            javafx.scene.text.Text probe = new javafx.scene.text.Text();
+            probe.setFont(label.getFont());
+            double widest = 0;
+            for (String word : label.getText().split("\\s+")) {
+                probe.setText(word);
+                widest = Math.max(widest, probe.getLayoutBounds().getWidth());
+            }
+            label.setMinWidth(Math.ceil(widest) + 2);
+        };
+        label.fontProperty().addListener((obs, old, font) -> measure.run());
+        label.textProperty().addListener((obs, old, text) -> measure.run());
+        measure.run();
     }
 
     /** La cuota del campo ("$ 35.000" o "35000") escrita en pesos; null si está vacía. */
@@ -2550,6 +2573,7 @@ public class ContractController implements RefreshableView {
     /** Documentos del cliente nuevo en la afiliación (los mismos de "Nuevo cliente"). */
     private static final Map<String, String> CLIENT_DOCUMENTS = Map.of(
             "CC", "CC · Cédula de ciudadanía",
+            "TI", "TI · Tarjeta de identidad",
             "CE", "CE · Cédula de extranjería",
             "PA", "PA · Pasaporte",
             ClientService.NIT, "NIT · Número de identificación tributaria");

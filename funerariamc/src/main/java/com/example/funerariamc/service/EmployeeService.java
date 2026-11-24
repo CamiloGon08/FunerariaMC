@@ -285,6 +285,11 @@ public class EmployeeService {
         maxLength(data.phone(), 20, "El teléfono");
         maxLength(data.email(), 120, "El correo");
         maxLength(data.address(), 200, "La dirección");
+        // Con cédula de ciudadanía el empleado es mayor de edad
+        String age = ClientService.ageProblem(data.documentType(), data.birthDate());
+        if (age != null) {
+            throw new InvalidDataException(age);
+        }
         if (data.sex() == null) {
             throw new InvalidDataException("Seleccione el sexo del empleado.");
         }

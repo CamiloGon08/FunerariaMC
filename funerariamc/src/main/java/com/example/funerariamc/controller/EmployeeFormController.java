@@ -210,6 +210,8 @@ public class EmployeeFormController {
         });
         // Ninguna lista viene con un valor ya elegido: el usuario escoge el tipo de documento.
         FormShell.choose(documentTypeCombo);
+        // Con cédula el empleado debe ser mayor de edad
+        FormShell.ageByDocument(documentTypeCombo, birthDatePicker);
         FormShell.choose(licenseCategoryCombo);
         sexCombo.getItems().setAll(Sex.values());
         sexCombo.setButtonCell(sexCell());
@@ -451,6 +453,10 @@ public class EmployeeFormController {
             }
             if (text(documentField) == null) {
                 return "El número de documento es obligatorio.";
+            }
+            String age = ClientService.ageProblem(documentTypeCombo.getValue(), birthDatePicker.getValue());
+            if (age != null) {
+                return age;
             }
             if (sexCombo.getValue() == null) {
                 return "Seleccione el sexo del empleado.";
