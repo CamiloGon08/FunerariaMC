@@ -2,6 +2,7 @@
 package com.example.funerariamc.model;
 
 import jakarta.persistence.*;
+import java.time.LocalDate;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
@@ -37,4 +38,6 @@ public class Beneficiary {
 
     @Column(name = "document_number")
     private String documentNumber;
+    @Column(name = "birth_date")
+    private LocalDate birthDate;
 }

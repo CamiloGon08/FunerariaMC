@@ -23,6 +23,15 @@ public interface AppUserRepository extends JpaRepository<AppUser, Long>{
 
     Optional<AppUser> findByUsernameWithEmployeeAndRole(@Param("username") String username);
 
+    /** igual que la anterior pero distingue mayusculas y minusculas: el usuario se escribe tal como se creo */
+    @Query("""
+        select u from AppUser u
+        join fetch u.employee e
+        left join fetch e.role
+        where u.username = :username
+        """)
+    Optional<AppUser> findByExactUsernameWithEmployeeAndRole(@Param("username") String username);
+
     boolean existsByUsername(String username);
     boolean existsByEmployee_Id(Long employeeId);
 

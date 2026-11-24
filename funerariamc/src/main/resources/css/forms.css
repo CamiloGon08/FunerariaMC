@@ -367,7 +367,7 @@
 /* ---------- Nuevo contrato: tarjetas del tipo (paso 1) ---------- */
 .form-shell .choice-card {
     -fx-background-color: white; -fx-background-radius: 14; -fx-border-radius: 14;
-    -fx-border-color: -color-line; -fx-border-width: 1.5; -fx-padding: 14 16;
+    -fx-border-color: -color-line; -fx-border-width: 1.5; -fx-padding: 22 24;
     -fx-alignment: top-left; -fx-cursor: hand;
 }
 .form-shell .choice-card:hover { -fx-border-color: -color-sage-mid; }
@@ -376,19 +376,21 @@
     -fx-effect: dropshadow(gaussian, rgba(24,47,37,0.12), 8, 0, 0, 0);
 }
 .form-shell .choice-card-icon {
-    -fx-background-color: -color-soft; -fx-background-radius: 10; -fx-padding: 8;
-    -fx-min-width: 36; -fx-min-height: 36;
+    -fx-background-color: -color-soft; -fx-background-radius: 12; -fx-padding: 12;
+    -fx-min-width: 48; -fx-min-height: 48;
 }
 .form-shell .choice-card:selected .choice-card-icon { -fx-background-color: -color-primary; }
 .form-shell .choice-card-icon .nav-icon { -fx-stroke: -color-accent; }
 .form-shell .choice-card:selected .choice-card-icon .nav-icon { -fx-stroke: -color-detail; }
-.form-shell .choice-card-title { -fx-text-fill: -color-primary; -fx-font-family: "Montserrat SemiBold"; -fx-font-size: 13.5px; -fx-padding: 4 0 0 0; }
-.form-shell .choice-card-text { -fx-text-fill: -color-text-strong; -fx-font-size: 12px; }
-.form-shell .choice-card-flow { -fx-text-fill: -color-gold-text; -fx-font-size: 11px; -fx-font-family: "Montserrat SemiBold"; }
+.form-shell .choice-card-title { -fx-text-fill: -color-primary; -fx-font-family: "Montserrat SemiBold"; -fx-font-size: 18px; }
+.form-shell .choice-card-text { -fx-text-fill: -color-text-strong; -fx-font-size: 14px; }
+.form-shell .choice-card-flow { -fx-text-fill: -color-gold-text; -fx-font-size: 12.5px; -fx-font-family: "Montserrat SemiBold"; }
 .form-shell .choice-card-badge {
     -fx-background-color: -color-gold-wash; -fx-background-radius: 10; -fx-padding: 2 8;
-    -fx-text-fill: -color-gold-deep; -fx-font-size: 10px; -fx-font-family: "Montserrat SemiBold";
+    -fx-text-fill: -color-gold-deep; -fx-font-size: 11px; -fx-font-family: "Montserrat SemiBold";
 }
+/* Ícono del tipo un poco más grande, a la medida de la tarjeta */
+.form-shell .choice-card-icon .nav-icon { -fx-scale-x: 1.3; -fx-scale-y: 1.3; }
 
 /* ---------- Contrato · plan: plan del titular y las personas que cubre ---------- */
 .form-shell .plan-board-card {
@@ -458,3 +460,21 @@
 .form-shell .file-name { -fx-text-fill: -color-secondary; }
 .form-shell .text-field.form-readonly,
 .form-shell .text-field.form-readonly:focused { -fx-background-color: -color-surface; -fx-text-fill: -color-primary; }
+
+/* Paso «Cliente» de Plan exequial: ficha del titular y su plan bajo el buscador */
+.form-shell .holder-card {
+    -fx-background-color: white; -fx-background-radius: 14; -fx-border-color: -color-soft;
+    -fx-border-radius: 14; -fx-border-width: 1; -fx-padding: 18 20;
+}
+.form-shell .holder-card-title { -fx-text-fill: -color-gold-text; -fx-font-family: "Montserrat SemiBold"; -fx-font-size: 11px; }
+.form-shell .holder-name { -fx-text-fill: -color-ink; -fx-font-family: "Montserrat SemiBold"; -fx-font-size: 19px; }
+.form-shell .holder-sub { -fx-text-fill: -color-text-muted; -fx-font-size: 12.5px; }
+.form-shell .holder-fact-label { -fx-text-fill: -color-text-muted; -fx-font-size: 10.5px; -fx-font-family: "Montserrat SemiBold"; }
+.form-shell .holder-fact-value { -fx-text-fill: -color-ink; -fx-font-size: 13.5px; }
+.form-shell .holder-empty { -fx-text-fill: -color-ink; -fx-font-size: 14px; }
+.form-shell .holder-empty-hint { -fx-text-fill: -color-text-muted; -fx-font-size: 12.5px; }
+.form-shell .holder-empty-icon {
+    -fx-background-color: -color-soft; -fx-background-radius: 12; -fx-min-width: 52; -fx-min-height: 52;
+    -fx-max-width: 52; -fx-max-height: 52;
+}
+.form-shell .holder-empty-icon .nav-icon { -fx-stroke: -color-primary; }
