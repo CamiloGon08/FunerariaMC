@@ -13,8 +13,9 @@
 
 <!--
   Panel de análisis (solo el Administrador Maestro, solo lectura): banda verde con 5 indicadores,
-  pestañas Ventas y servicios / Ocupación / Equipo, período (7 días, Mes o Año con flechas) y
-  exportación a PDF. Se muestra dentro del contentPane de main.fxml (RefreshableView).
+  pestañas Ventas y servicios / Planes exequiales / Ocupación / Equipo, período (Semana, Mes,
+  Trimestre, Año o Rango con flechas, el mismo de las pestañas de Finanzas) y exportación a PDF.
+  Dentro de Finanzas y análisis las pestañas las pone el menú y estas se esconden. Se muestra dentro del contentPane de main.fxml (RefreshableView).
 -->
 <StackPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
            fx:id="root" fx:controller="com.example.funerariamc.controller.AnalyticsController"
@@ -35,15 +36,18 @@
             </VBox>
 
             <HBox styleClass="filter-card">
-                <HBox styleClass="segmented" minWidth="-Infinity">
+                <HBox fx:id="tabBar" styleClass="segmented" minWidth="-Infinity">
                     <ToggleButton fx:id="salesTab" text="Ventas y servicios" toggleGroup="$tabGroup" selected="true" styleClass="segment"/>
+                    <ToggleButton fx:id="plansTab" text="Planes exequiales" toggleGroup="$tabGroup" styleClass="segment"/>
                     <ToggleButton fx:id="occupancyTab" text="Ocupación" toggleGroup="$tabGroup" styleClass="segment"/>
                     <ToggleButton fx:id="teamTab" text="Equipo" toggleGroup="$tabGroup" styleClass="segment"/>
                 </HBox>
                 <HBox styleClass="segmented" minWidth="-Infinity">
-                    <ToggleButton fx:id="weekRange" text="7 días" toggleGroup="$rangeGroup" styleClass="segment"/>
+                    <ToggleButton fx:id="weekRange" text="Semana" toggleGroup="$rangeGroup" styleClass="segment"/>
                     <ToggleButton fx:id="monthRange" text="Mes" toggleGroup="$rangeGroup" selected="true" styleClass="segment"/>
+                    <ToggleButton fx:id="quarterRange" text="Trimestre" toggleGroup="$rangeGroup" styleClass="segment"/>
                     <ToggleButton fx:id="yearRange" text="Año" toggleGroup="$rangeGroup" styleClass="segment"/>
+                    <ToggleButton fx:id="customRange" text="Rango" toggleGroup="$rangeGroup" styleClass="segment"/>
                 </HBox>
                 <HBox spacing="6" alignment="CENTER_LEFT" minWidth="-Infinity">
                     <Button fx:id="previousButton" onAction="#onPrevious" styleClass="period-arrow" text="‹"/>

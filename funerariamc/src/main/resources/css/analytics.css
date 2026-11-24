@@ -111,7 +111,7 @@
 /* Barra de búsqueda y filtros */
 .analytics-root .filter-card {
     -fx-background-color: -eden-card; -fx-border-color: transparent;
-    -fx-background-radius: 18; -fx-border-radius: 18; -fx-padding: 10 12; -fx-spacing: 10;
+    -fx-background-radius: 18; -fx-border-radius: 18; -fx-padding: 12 16; -fx-spacing: 16;
     -fx-alignment: center-left;
 }
 .analytics-root .search-box { -fx-background-color: -eden-tint; -fx-background-radius: 12; }
@@ -312,3 +312,16 @@
 .analytics-root .heat-text { -fx-font-size: 11.5px; -fx-font-weight: bold; }
 .analytics-root .heat-head { -fx-text-fill: -eden-muted; -fx-font-size: 11.5px; -fx-alignment: center; }
 .analytics-root .heat-room { -fx-text-fill: -eden-text; -fx-font-size: 13px; -fx-font-weight: bold; }
+
+/* Pestaña Planes exequiales: recaudo de cuotas, planes por tipo, mora y carencia */
+.analytics-root .collection-chart .default-color0.chart-series-line { -fx-stroke: -color-forest; -fx-stroke-width: 2.4px; }
+.analytics-root .collection-chart .default-color0.chart-line-symbol { -fx-background-color: -color-forest, -color-paper-white; -fx-background-insets: 0, 2; -fx-background-radius: 6; -fx-padding: 4.5; }
+.analytics-root .collection-chart .default-color1.chart-series-line { -fx-stroke: -color-detail; -fx-stroke-width: 2px; -fx-stroke-dash-array: 6 4; }
+.analytics-root .collection-chart .default-color1.chart-line-symbol { -fx-background-color: transparent; -fx-padding: 0; }
+.analytics-root .donut-track { -fx-stroke: -color-panel; -fx-fill: transparent; }
+.analytics-root .donut-arc { -fx-fill: transparent; }
+.analytics-root .plan-row { -fx-padding: 8 0; -fx-border-color: transparent transparent -color-panel transparent; -fx-border-width: 0 0 1 0; }
+.analytics-root .row-title { -fx-text-fill: -eden-text; -fx-font-size: 13.5px; -fx-font-weight: bold; }
+.analytics-root .row-detail { -fx-text-fill: -eden-muted; -fx-font-size: 11.5px; }
+.analytics-root .row-value { -fx-text-fill: -eden-text; -fx-font-size: 13px; -fx-font-weight: bold; }
+.analytics-root .row-value-alert { -fx-text-fill: -color-alert; -fx-font-size: 13px; -fx-font-weight: bold; }
