@@ -5,6 +5,7 @@ import com.example.funerariamc.utils.enums.CremationBatchStatus;
 import com.example.funerariamc.utils.enums.CremationPurchaseStatus;
 import com.example.funerariamc.utils.enums.DeathType;
 import com.example.funerariamc.service.AppModule;
+import com.example.funerariamc.ui.SearchField;
 import com.example.funerariamc.ui.ModuleLink;
 import com.example.funerariamc.service.AccessLogService;
 import com.example.funerariamc.service.AssignCremationData;
@@ -812,15 +813,9 @@ public class CremationController implements RefreshableView {
      * cuándo terminó. Muerte no natural sin orden de entrega: no se puede agregar.
      */
     private void openAssignDialog(Batch b) {
-        TextField search = new TextField();
-        search.setPromptText("Nombre, apellido o documento");
-        ComboBox<Candidate> deceased = new ComboBox<>();
-        deceased.setPromptText("Seleccione el difunto");
-        deceased.getStyleClass().add("form-combo");
-        deceased.setMaxWidth(Double.MAX_VALUE);
-        deceased.setConverter(converter(c -> c.code() + " · " + c.name()
-                + (c.documentNumber() == null ? "" : " · " + c.documentNumber()), ""));
-
+        SearchField<Candidate> deceased = new SearchField<>("Escriba el nombre, apellido o documento del difunto",
+                "difuntos", cremationService::searchCandidates, c -> c.code() + " · " + c.name(),
+                Candidate::documentNumber);
         ComboBox<Option> thanatopractor = new ComboBox<>();
         thanatopractor.setPromptText("Cargando tanatólogos…");
         thanatopractor.getStyleClass().add("form-combo");
@@ -838,8 +833,7 @@ public class CremationController implements RefreshableView {
                 .field("LOTE", readOnly(b.code() + " · " + b.furnaceCode()))
                 .field("PROGRAMADO", readOnly(b.scheduledAt() == null ? "—" : DATE_HOUR.format(b.scheduledAt())))
                 .section("Difunto", 2)
-                .field("BUSCAR DIFUNTO", search)
-                .field("DIFUNTO *", deceased)
+                .span("DIFUNTO *", deceased.node(), 2)
                 .note(status)
                 .note(alert)
                 .section("Preparación del cuerpo", 3)
@@ -865,7 +859,6 @@ public class CremationController implements RefreshableView {
 
         deceased.valueProperty().addListener((obs, old, c) ->
                 applyCandidate(c, thanatopractor, prepDateField, prepTimeField, status, alert));
-        bindSearch(search, deceased, cremationService::searchCandidates, status);
 
         Dialog<ButtonType> dialog = formDialog("Agregar difunto al lote " + b.code(),
                 "Los campos con * son obligatorios.", form, 820);
@@ -1002,7 +995,16 @@ public class CremationController implements RefreshableView {
         List<String> warnings = providers.stream().filter(ProviderStock::atMinimum)
                 .map(p -> p.code() + " (" + p.available() + " de mínimo " + p.minimumAvailable() + ")").toList();
         StringBuilder alert = new StringBuilder();
+        // Se usaron más cupos de los comprados: se dice cuántos faltan en vez de esconderlo con un 0
+        List<String> overused = providers.stream().filter(p -> p.missing() > 0)
+                .map(p -> p.code() + " usó " + count((int) p.missing(), "cupo", "cupos") + " más de los comprados")
+                .toList();
+        if (!overused.isEmpty()) {
+            alert.append(String.join("; ", overused))
+                    .append(". La próxima compra que se reciba cubre primero esos cupos.");
+        }
         if (!warnings.isEmpty()) {
+            alert.append(alert.isEmpty() ? "" : " ");
             alert.append("Llegó al mínimo de cupos: ").append(String.join(", ", warnings))
                     .append(". Solicite una compra para reponerlos.");
         }
@@ -1028,7 +1030,8 @@ public class CremationController implements RefreshableView {
         VBox name = new VBox(1, wrapped(p.code(), "agenda-batch"), wrapped(p.name() + " · mínimo "
                 + p.minimumAvailable(), "agenda-muted"));
         grow(name);
-        Label available = label(String.valueOf(p.available()), "stock-number");
+        Label available = label(p.missing() > 0 ? "Faltan " + p.missing() : String.valueOf(p.available()),
+                "stock-number");
         if (p.atMinimum()) {
             available.getStyleClass().add("low");
         }
@@ -1213,8 +1216,16 @@ public class CremationController implements RefreshableView {
     }
 
     private void receivePurchase(Purchase p) {
-        if (confirm("¿Llegaron los cupos de la compra " + p.code() + "?", count(p.quantity(), "cremación queda",
-                "cremaciones quedan") + " disponibles en " + p.providerCode() + ".", "Recibir cupos")) {
+        // Si ya se usaron cupos sin compra, esta compra los cubre primero y quedan menos disponibles
+        long owed = provider(p.providerCode()).map(ProviderStock::missing).orElse(0L);
+        long left = Math.max(0, p.quantity() - owed);
+        String detail = owed == 0
+                ? count(p.quantity(), "cremación queda", "cremaciones quedan") + " disponibles en " + p.providerCode() + "."
+                : p.providerCode() + " ya había usado " + count((int) owed, "cupo", "cupos") + " sin compra: "
+                + (left == 0 ? "esta compra solo alcanza a cubrirlos y no quedan cupos nuevos."
+                : "esta compra los cubre primero y quedan " + count((int) left, "cremación disponible",
+                "cremaciones disponibles") + ".");
+        if (confirm("¿Llegaron los cupos de la compra " + p.code() + "?", detail, "Recibir cupos")) {
             purchaseAction(() -> stockService.receive(p.id()), "Compra " + p.code() + " recibida.");
         }
     }
@@ -1339,6 +1350,18 @@ public class CremationController implements RefreshableView {
             return this;
         }
 
+        /** Campo que ocupa varias columnas (por ejemplo un buscador que necesita ancho). */
+        Form span(String label, Node input, int span) {
+            if (column + span > columns) {
+                column = 0;
+                row++;
+            }
+            field(label, input);
+            GridPane.setColumnSpan(grid.getChildren().get(grid.getChildren().size() - 1), span);
+            column += span - 1;
+            return this;
+        }
+
         Form field(String label, Node input) {
             fieldBox(label, input);
             return this;
@@ -1435,36 +1458,6 @@ public class CremationController implements RefreshableView {
             T result = (T) saved[0];
             onSaved.accept(result);
         }
-    }
-
-    /** Buscador del diálogo: espera a que el usuario deje de escribir y consulta en otro hilo. */
-    private void bindSearch(TextField field, ComboBox<Candidate> box, Function<String, List<Candidate>> search,
-                            Label emptyHint) {
-        PauseTransition delay = new PauseTransition(Duration.millis(250));
-        int[] requestNumber = new int[1];
-        Runnable refresh = () -> {
-            String text = field.getText();
-            int request = ++requestNumber[0];
-            box.setPromptText("Buscando…");
-            async("cremation-dialog-search", () -> search.apply(text), options -> {
-                if (request != requestNumber[0]) {
-                    return;
-                }
-                box.setPromptText(options.isEmpty() ? "Sin resultados" : "Seleccione de la lista");
-                box.getItems().setAll(options);
-                box.setValue(options.size() == 1 ? options.get(0) : null);
-                if (options.isEmpty() && (text == null || text.isBlank())) {
-                    emptyHint.setText("No hay difuntos para cremar. Regístrelos primero en Difuntos.");
-                }
-            }, failure -> {
-                if (request == requestNumber[0]) {
-                    box.setPromptText("No se pudo buscar");
-                }
-            });
-        };
-        delay.setOnFinished(e -> refresh.run());
-        field.textProperty().addListener((obs, old, text) -> delay.playFromStart());
-        refresh.run();
     }
 
     /** Confirmación con la pregunta arriba, Cancelar a la izquierda y la acción con su nombre. */

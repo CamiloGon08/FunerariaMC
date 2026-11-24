@@ -9,6 +9,7 @@ import com.example.funerariamc.exception.WaitingPeriodException;
 import com.example.funerariamc.model.AppUser;
 import com.example.funerariamc.model.Thanatopractor;
 import com.example.funerariamc.model.Client;
+import com.example.funerariamc.model.AlliedFuneralHome;
 import com.example.funerariamc.model.Deceased;
 import com.example.funerariamc.model.FinancialTransaction;
 import com.example.funerariamc.model.FuneralPlan;
@@ -27,6 +28,7 @@ import com.example.funerariamc.utils.enums.SaleStatus;
 import com.example.funerariamc.utils.enums.SaleType;
 import com.example.funerariamc.utils.enums.TransactionStatus;
 import com.example.funerariamc.utils.enums.TransactionType;
+import com.example.funerariamc.persistence.AlliedFuneralHomeRepository;
 import com.example.funerariamc.persistence.FinancialTransactionRepository;
 import com.example.funerariamc.persistence.InventoryItemRepository;
 import com.example.funerariamc.persistence.SaleDetailRepository;
@@ -79,8 +81,9 @@ class ContractServiceTest {
     private final SaleParameters parameters = mock(SaleParameters.class);
     private final AccessLogService accessLog = mock(AccessLogService.class);
     private final SessionContext session = new SessionContext();
+    private final AlliedFuneralHomeRepository alliedHomes = mock(AlliedFuneralHomeRepository.class);
     private final ContractService service = new ContractService(sales, details, transactions, contracts, items,
-            staff, rooms, wakeRooms, plans, parameters, accessLog, session,
+            staff, rooms, wakeRooms, plans, parameters, accessLog, session, alliedHomes,
             Clock.fixed(TODAY.atTime(10, 0).atZone(BOGOTA).toInstant(), BOGOTA));
 
     @BeforeEach
@@ -606,6 +609,43 @@ class ContractServiceTest {
         assertEquals(TransactionType.INCOME, income.getValue().getTransactionType());
         assertEquals(0, new BigDecimal("100000").compareTo(income.getValue().getAmount()));
         verify(accessLog).record(eq(5L), anyString());
+    }
+
+    @Test
+    void theContractKeepsTheAlliedHomeThatProvidesTheService() {
+        AlliedFuneralHome home = new AlliedFuneralHome();
+        home.setId(4L);
+        home.setName("Funeraria La Esperanza");
+        home.setActive(true);
+        when(alliedHomes.findById(4L)).thenReturn(Optional.of(home));
+        ContractData base = privateService(new BigDecimal("300000"), null, 0, new BigDecimal("100000"));
+        ContractData data = new ContractData(base.kind(), base.clientId(), base.deceasedId(), base.planId(),
+                base.salespersonId(), base.baseAmount(), base.pensionWages(), base.roomId(), base.wakeStart(),
+                base.wakeEnd(), base.coffinItemId(), base.extraBuses(), base.products(), base.initialPayment(),
+                base.homeWake(), base.intercityKm(), base.cemetery(), base.lotConstructions(), base.lotPreparation(), 4L);
+
+        service.register(data);
+
+        ArgumentCaptor<ServiceContract> contract = ArgumentCaptor.forClass(ServiceContract.class);
+        verify(contracts).save(contract.capture());
+        assertSame(home, contract.getValue().getAlliedFuneralHome());
+    }
+
+    @Test
+    void anInactiveAlliedHomeCannotProvideTheService() {
+        AlliedFuneralHome home = new AlliedFuneralHome();
+        home.setId(4L);
+        home.setName("Funeraria La Esperanza");
+        home.setActive(false);
+        when(alliedHomes.findById(4L)).thenReturn(Optional.of(home));
+        ContractData base = privateService(new BigDecimal("300000"), null, 0, new BigDecimal("100000"));
+        ContractData data = new ContractData(base.kind(), base.clientId(), base.deceasedId(), base.planId(),
+                base.salespersonId(), base.baseAmount(), base.pensionWages(), base.roomId(), base.wakeStart(),
+                base.wakeEnd(), base.coffinItemId(), base.extraBuses(), base.products(), base.initialPayment(),
+                base.homeWake(), base.intercityKm(), base.cemetery(), base.lotConstructions(), base.lotPreparation(), 4L);
+
+        assertThrows(InvalidDataException.class, () -> service.register(data));
+        verify(contracts, never()).save(any());
     }
 
     // ---------- abonos ----------

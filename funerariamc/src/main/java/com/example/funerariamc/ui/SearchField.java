@@ -49,6 +49,8 @@ public final class SearchField<T> {
     private List<T> results = List.of();
     private int highlighted = -1;
     private int request;
+    /** Mensaje cuando la lista completa está vacía; si no es null, el campo vacío muestra todo (listas cortas). */
+    private String emptyListMessage;
     /** Evita que poner el texto de la elección se tome como una búsqueda nueva. */
     private boolean choosing;
 
@@ -84,7 +86,7 @@ public final class SearchField<T> {
             value.set(null); // el texto ya no es el de la elección
             delay.playFromStart();
         });
-        // Al entrar al campo vacío se muestran los primeros resultados
+        // Al volver a un campo que ya tiene texto se repite la búsqueda (vacío no muestra nada)
         field.focusedProperty().addListener((obs, old, focused) -> {
             if (focused && value.get() == null) {
                 delay.playFromStart();
@@ -124,6 +126,15 @@ public final class SearchField<T> {
         popup.hide();
     }
 
+    /**
+     * Para listas cortas (por ejemplo, los contratos de una aliada): al entrar al campo vacío se ven todos.
+     * emptyMessage se muestra si no hay ninguno.
+     */
+    public SearchField<T> listWhenEmpty(String emptyMessage) {
+        this.emptyListMessage = emptyMessage;
+        return this;
+    }
+
     public void clear() {
         setValue(null);
     }
@@ -131,6 +142,11 @@ public final class SearchField<T> {
     private void runSearch() {
         String text = field.getText() == null ? "" : field.getText();
         int mine = ++request;
+        // Sin texto no se muestra a nadie: la lista aparece al empezar a escribir
+        if (text.isBlank() && emptyListMessage == null) {
+            popup.hide();
+            return;
+        }
         Thread thread = new Thread(() -> {
             List<T> found;
             try {
@@ -159,10 +175,10 @@ public final class SearchField<T> {
         list.getChildren().clear();
         String query = normalize(text).trim();
         if (results.isEmpty()) {
-            showMessage(query.isEmpty() ? "No hay " + plural + " registrados." : "Ningún resultado con “" + text.trim() + "”.");
+            showMessage(query.isEmpty() ? (emptyListMessage != null ? emptyListMessage : "No hay " + plural + " registrados.") : "Ningún resultado con “" + text.trim() + "”.");
             return;
         }
-        count.setText(query.isEmpty() ? "Escriba para buscar · " + results.size() + " " + plural
+        count.setText(query.isEmpty() ? results.size() + " " + plural + " · escriba para filtrar"
                 : results.size() + " " + plural + " con “" + text.trim() + "”");
         for (int i = 0; i < results.size(); i++) {
             T item = results.get(i);

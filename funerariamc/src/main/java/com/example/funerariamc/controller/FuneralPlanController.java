@@ -24,6 +24,7 @@ import com.example.funerariamc.service.FuneralPlanService.SurchargePreview;
 import com.example.funerariamc.service.FuneralPlanService.UsedService;
 import com.example.funerariamc.service.PlanParameters;
 import com.example.funerariamc.service.PlanPaymentData;
+import com.example.funerariamc.ui.SearchField;
 import com.example.funerariamc.ui.Pager;
 import com.example.funerariamc.ui.DetailShell;
 import com.example.funerariamc.ui.Notice;
@@ -918,12 +919,11 @@ public class FuneralPlanController implements RefreshableView {
     }
 
     private void openChangeHolderDialog(PlanCard c) {
-        TextField clientSearch = searchInput("Buscar cliente por nombre o documento");
-        ComboBox<Option> clientBox = optionCombo("Seleccione el nuevo titular");
-        bindSearch(clientSearch, clientBox, planService::searchClients);
+        SearchField<Option> clientBox = new SearchField<>("Escriba el nombre o documento del nuevo titular",
+                "clientes", planService::searchClients, Option::label, Option::detail);
         Form form = new Form()
                 .section(null, 1)
-                .field("NUEVO TITULAR *", new VBox(6, clientSearch, clientBox))
+                .field("NUEVO TITULAR *", clientBox.node())
                 .note(note("Si no está registrado, regístrelo primero en Clientes."));
 
         Dialog<ButtonType> dialog = formDialog("Cambiar titular", "Plan " + c.code() + " · titular actual "
@@ -1109,37 +1109,6 @@ public class FuneralPlanController implements RefreshableView {
         icon.setContent("M8 1a7 7 0 1 1 0 14A7 7 0 0 1 8 1z M8 7v4.5 M8 4.6v.2");
         icon.getStyleClass().add("note-icon");
         return icon;
-    }
-
-    private static TextField searchInput(String prompt) {
-        TextField field = new TextField();
-        field.setPromptText(prompt);
-        return field;
-    }
-
-    private static ComboBox<Option> optionCombo(String prompt) {
-        ComboBox<Option> box = new ComboBox<>();
-        box.setPromptText(prompt);
-        box.getStyleClass().add("form-combo");
-        box.setMaxWidth(Double.MAX_VALUE);
-        box.setConverter(converter(o -> o.detail() == null ? o.label() : o.label() + " · " + o.detail(), ""));
-        return box;
-    }
-
-    private void bindSearch(TextField field, ComboBox<Option> box, Function<String, List<Option>> search) {
-        PauseTransition delay = new PauseTransition(Duration.millis(250));
-        Runnable refresh = () -> {
-            try {
-                List<Option> options = search.apply(field.getText());
-                box.getItems().setAll(options);
-                box.setValue(options.size() == 1 ? options.get(0) : null);
-            } catch (BusinessException e) {
-                showError(e.getMessage());
-            }
-        };
-        delay.setOnFinished(e -> refresh.run());
-        field.textProperty().addListener((obs, old, text) -> delay.playFromStart());
-        refresh.run();
     }
 
     /** Diálogo de formulario: título, subtítulo, el formulario y abajo Cancelar y la acción. */

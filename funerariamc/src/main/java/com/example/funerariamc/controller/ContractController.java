@@ -553,6 +553,7 @@ public class ContractController implements RefreshableView {
                     "Estado del contrato", contractStatus(c.status()),
                     "Difunto", orDash(c.deceasedName()),
                     "Plan exequial", c.planLabel() == null ? "Sin plan" : c.planLabel(),
+                    "Lo atiende", c.alliedHome() == null ? "La funeraria" : "Funeraria aliada · " + c.alliedHome(),
                     "Sala de velación", c.roomName() == null ? "Sin sala asignada"
                             : c.roomName() + (c.wakeStart() == null ? "" : " · " + DATE_HOUR.format(c.wakeStart())
                             + (c.wakeEnd() == null ? "" : " a " + HOUR.format(c.wakeEnd()))),
@@ -859,10 +860,14 @@ public class ContractController implements RefreshableView {
         SearchField<Option> client = new SearchField<>("Buscar por nombre o documento", "clientes",
                 text -> entitiesOnly[0] ? contractService.searchClients(text).stream().filter(ContractController::isEntity)
                         .toList() : contractService.searchClients(text), Option::label, Option::detail);
-        TextField deceasedSearch = new TextField();
-        deceasedSearch.setPromptText("Nombre o documento del difunto");
-        ComboBox<Option> deceased = optionCombo("Seleccione el difunto");
+        SearchField<Option> deceased = new SearchField<>("Escriba el nombre o documento del difunto", "difuntos",
+                contractService::searchDeceased, Option::label, Option::detail);
         ComboBox<Option> salesperson = optionCombo("Seleccione el vendedor");
+        // Fallece o se entierra en otra ciudad: el servicio lo presta una funeraria de la red
+        CheckBox byAllied = new CheckBox("Lo atiende una funeraria aliada (otra ciudad)");
+        byAllied.getStyleClass().add("form-check");
+        SearchField<Option> allied = new SearchField<>("Escriba el nombre o la ciudad de la funeraria aliada",
+                "funerarias aliadas", contractService::alliedHomes, Option::label, Option::detail);
         // Contrato con plan: el plan del titular y la gente del plan (solo se elige a quien está en Difuntos)
         VBox planBox = new VBox(12);
         planBox.getStyleClass().add("plan-board");
@@ -871,7 +876,6 @@ public class ContractController implements RefreshableView {
         ContractService.PlanPerson[] planPerson = new ContractService.PlanPerson[1];
         Long[] wantedDeceased = new Long[1];
         Label planNote = note("");
-        bindSearch(deceasedSearch, deceased, contractService::searchDeceased);
         async("sale-salespeople", contractService::salespeople, list -> {
             salesperson.getItems().setAll(list);
             salesperson.setPromptText(list.isEmpty() ? "No hay vendedores activos" : "Seleccione el vendedor");
@@ -883,16 +887,12 @@ public class ContractController implements RefreshableView {
         TextField wages = new TextField();
         wages.setPromptText("Ej.: 4");
         TextField buses = new TextField("0");
-        TextField coffinSearch = new TextField();
-        coffinSearch.setPromptText("Buscar ataúd en inventario");
-        ComboBox<ItemOption> coffin = itemCombo("Sin ataúd del inventario");
-        bindItemSearch(coffinSearch, coffin);
+        // Si no se busca ninguno, el servicio va sin ataúd del inventario
+        SearchField<ItemOption> coffin = itemSearch("Escriba para buscar un ataúd en inventario (opcional)", "ataúdes");
 
         // Contrato · plan: el plan cubre el servicio; aquí solo va lo que se cobra por fuera
-        TextField planCoffinSearch = new TextField();
-        planCoffinSearch.setPromptText("Buscar ataúd superior en inventario");
-        ComboBox<ItemOption> planCoffin = itemCombo("El ataúd que cubre el plan");
-        bindItemSearch(planCoffinSearch, planCoffin);
+        // Vacío: va el ataúd que cubre el plan
+        SearchField<ItemOption> planCoffin = itemSearch("Escriba para buscar un ataúd superior (opcional)", "ataúdes");
         TextField planBuses = new TextField("0");
         TextField planKm = new TextField("0");
 
@@ -931,10 +931,7 @@ public class ContractController implements RefreshableView {
         }
 
         // Productos
-        TextField productSearch = new TextField();
-        productSearch.setPromptText("Buscar producto en inventario");
-        ComboBox<ItemOption> product = itemCombo("Seleccione el producto");
-        bindItemSearch(productSearch, product);
+        SearchField<ItemOption> product = itemSearch("Escriba el nombre del producto", "productos");
         TextField quantity = new TextField("1");
         Button addProduct = new Button("Agregar");
         addProduct.setMinWidth(Region.USE_PREF_SIZE);
@@ -1025,10 +1022,12 @@ public class ContractController implements RefreshableView {
                 .wide(null, new VBox(2, clientCaption, client.node()))
                 .note(planBox)
                 .grid(3)
-                .field("BUSCAR DIFUNTO", deceasedSearch)
-                .field("DIFUNTO *", deceased)
+                .span("DIFUNTO *", deceased.node(), 2)
                 .field("VENDEDOR *", salesperson)
                 .note(planNote)
+                .grid(3)
+                .field("FUNERARIA ALIADA", byAllied)
+                .span("ALIADA QUE PRESTA EL SERVICIO *", allied.node(), 2)
                 .section("Fallecimiento y certificado", 3)
                 .wide(null, deathTitle)
                 .field("NOMBRES", deathNames)
@@ -1049,15 +1048,13 @@ public class ContractController implements RefreshableView {
                 .field("CUOTA BASE DEL SERVICIO *", base)
                 .field("SALARIOS MÍNIMOS (PENSIÓN) *", wages)
                 .field("BUSES ADICIONALES", buses)
-                .field("BUSCAR ATAÚD", coffinSearch)
-                .field("ATAÚD", coffin)
+                .span("ATAÚD", coffin.node(), 2)
                 .field("TRASLADO DESDE OTRA CIUDAD (KM)", intercityKm)
                 .section("Fuera del plan", 3)
                 .note(note("Lo que cubre el plan no se cobra: el servicio funerario, el ataúd del plan y un bus. "
                         + "Aquí solo se registra lo que va por fuera: un ataúd superior (se cobra la diferencia), "
                         + "buses adicionales y kilómetros de traslado desde otra ciudad."))
-                .field("BUSCAR ATAÚD SUPERIOR", planCoffinSearch)
-                .field("ATAÚD", planCoffin)
+                .span("ATAÚD SUPERIOR", planCoffin.node(), 2)
                 .field("BUSES ADICIONALES", planBuses)
                 .field("TRASLADO DESDE OTRA CIUDAD (KM)", planKm)
                 .section("Sala de velación", 3)
@@ -1073,8 +1070,7 @@ public class ContractController implements RefreshableView {
                 .field("PUESTOS A CONSTRUIR", constructions)
                 .field("ADECUACIÓN", preparation)
                 .section("Productos", 3)
-                .field("BUSCAR PRODUCTO", productSearch)
-                .field("PRODUCTO", product)
+                .span("PRODUCTO", product.node(), 2)
                 .field("CANTIDAD", new HBox(8, quantity, addProduct))
                 .note(productList)
                 .note(productError)
@@ -1096,14 +1092,14 @@ public class ContractController implements RefreshableView {
             planBox.setManaged(withPlan);
             // Con plan el difunto se elige entre la gente del plan; particular y pensión buscan entre
             // todos los difuntos sin contrato (se registran en Difuntos sin cliente)
-            showField(deceasedSearch, kind == SaleKind.PENSION || kind == SaleKind.PRIVATE);
-            showField(deceased, service && !withPlan);
+            showField(deceased.node(), service && !withPlan);
             showField(salesperson, service);
+            showField(byAllied, service);
+            showField(allied.node(), service && byAllied.isSelected());
             base.setDisable(kind != SaleKind.PRIVATE);
             wages.setDisable(kind != SaleKind.PENSION);
             buses.setDisable(!service);
-            coffinSearch.setDisable(!service);
-            coffin.setDisable(!service);
+            coffin.node().setDisable(!service);
             homeWake.setDisable(!service);
             intercityKm.setDisable(!service);
             room.setDisable(!service || homeWake.isSelected());
@@ -1154,7 +1150,8 @@ public class ContractController implements RefreshableView {
                     kind == SaleKind.PENSION || !service ? ContractData.CemeteryCharge.NONE : cemetery.getValue(),
                     kind == SaleKind.PENSION || !service ? 0
                             : orZero(parseInteger(constructions.getText(), "Los puestos a construir")),
-                    kind != SaleKind.PENSION && service && preparation.isSelected());
+                    kind != SaleKind.PENSION && service && preparation.isSelected(),
+                    service && byAllied.isSelected() ? idOf(allied.getValue()) : null);
         };
 
         // Resumen en vivo: se recalcula en otro hilo cuando el usuario deja de cambiar datos
@@ -1311,7 +1308,8 @@ public class ContractController implements RefreshableView {
             applyKind.run();
             requote.run();
         });
-        for (ComboBox<?> box : List.of(coffin, startTime, endTime)) {
+        coffin.valueProperty().addListener((obs, old, value) -> requote.run());
+        for (ComboBox<?> box : List.of(startTime, endTime)) {
             box.valueProperty().addListener((obs, old, value) -> requote.run());
         }
         for (DatePicker picker : List.of(startDate, endDate)) {
@@ -1322,6 +1320,12 @@ public class ContractController implements RefreshableView {
             field.textProperty().addListener((obs, old, value) -> requote.run());
         }
         cemetery.valueProperty().addListener((obs, old, value) -> requote.run());
+        byAllied.selectedProperty().addListener((obs, old, on) -> {
+            applyKind.run();
+            if (!on) {
+                allied.clear();
+            }
+        });
         for (CheckBox box : List.of(homeWake, preparation)) {
             box.selectedProperty().addListener((obs, old, value) -> {
                 applyKind.run();
@@ -1458,6 +1462,9 @@ public class ContractController implements RefreshableView {
                 }
             } else if (deceased.getValue() == null) {
                 return "Busque y elija el difunto del servicio. Si no aparece, primero regístrelo en la pestaña Difuntos.";
+            }
+            if (byAllied.isSelected() && allied.getValue() == null) {
+                return "Elija la funeraria aliada que presta el servicio, o quite la marca.";
             }
             return salesperson.getValue() == null ? "Elija el vendedor que gestiona el contrato." : null;
         });
@@ -2696,6 +2703,17 @@ public class ContractController implements RefreshableView {
             return this;
         }
 
+        /** Campo que ocupa varias columnas (por ejemplo un buscador que necesita ancho). */
+        Form span(String label, Node input, int span) {
+            if (column + span > columns) {
+                column = 0;
+                row++;
+            }
+            spanning(label, input, span);
+            column += span;
+            return this;
+        }
+
         /** Campo que ocupa desde la columna actual hasta el final de la fila. */
         Form wideFrom(String label, Node input) {
             if (column >= columns) {
@@ -2811,44 +2829,10 @@ public class ContractController implements RefreshableView {
         }
     }
 
-    /** Buscador del diálogo: espera a que el usuario deje de escribir y consulta en otro hilo. */
-    private static void bindSearch(TextField field, ComboBox<Option> box, Function<String, List<Option>> search) {
-        bindGenericSearch(field, box, search);
-    }
-
-    private void bindItemSearch(TextField field, ComboBox<ItemOption> box) {
-        bindGenericSearch(field, box, contractService::searchItems);
-    }
-
-    private static <T> void bindGenericSearch(TextField field, ComboBox<T> box, Function<String, List<T>> search) {
-        PauseTransition delay = new PauseTransition(Duration.millis(250));
-        int[] requestNumber = new int[1];
-        String prompt = box.getPromptText();
-        Runnable refresh = () -> {
-            String text = field.getText();
-            int request = ++requestNumber[0];
-            box.setPromptText("Buscando…");
-            async("sale-dialog-search", () -> search.apply(text), options -> {
-                if (request != requestNumber[0]) {
-                    return;
-                }
-                box.setPromptText(options.isEmpty() ? "Sin resultados" : prompt);
-                T current = box.getValue();
-                box.getItems().setAll(options);
-                if (current != null && options.contains(current)) {
-                    box.setValue(current);
-                } else if (text != null && !text.isBlank() && options.size() == 1) {
-                    box.setValue(options.get(0));
-                }
-            }, failure -> {
-                if (request == requestNumber[0]) {
-                    box.setPromptText("No se pudo buscar");
-                }
-            });
-        };
-        delay.setOnFinished(e -> refresh.run());
-        field.textProperty().addListener((obs, old, text) -> delay.playFromStart());
-        refresh.run();
+    /** Buscador de inventario: no muestra nada hasta que se escribe; al lado, precio y existencias. */
+    private SearchField<ItemOption> itemSearch(String prompt, String plural) {
+        return new SearchField<>(prompt, plural, contractService::searchItems, ItemOption::name,
+                i -> pesos(i.price()) + " · " + i.stock() + " en existencia");
     }
 
     // ---------- piezas ----------
@@ -2939,15 +2923,6 @@ public class ContractController implements RefreshableView {
         box.getStyleClass().add("form-combo");
         box.setMaxWidth(Double.MAX_VALUE);
         box.setConverter(converter(o -> o.detail() == null ? o.label() : o.label() + " · " + o.detail(), ""));
-        return box;
-    }
-
-    private static ComboBox<ItemOption> itemCombo(String prompt) {
-        ComboBox<ItemOption> box = new ComboBox<>();
-        box.setPromptText(prompt);
-        box.getStyleClass().add("form-combo");
-        box.setMaxWidth(Double.MAX_VALUE);
-        box.setConverter(converter(i -> i.name() + " · " + pesos(i.price()) + " · " + i.stock() + " en existencia", ""));
         return box;
     }
 

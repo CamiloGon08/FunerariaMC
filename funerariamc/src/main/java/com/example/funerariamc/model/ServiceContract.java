@@ -49,6 +49,11 @@ public class ServiceContract {
     @JoinColumn(name = "thanatopractor_id")
     private Thanatopractor thanatopractor;
 
+    /** Funeraria aliada que presta el servicio en otra ciudad; null si lo presta la funeraria. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "allied_funeral_home_id")
+    private AlliedFuneralHome alliedFuneralHome;
+
     @Column(name = "contract_number", nullable = false, unique = true)
     private String contractNumber;
 

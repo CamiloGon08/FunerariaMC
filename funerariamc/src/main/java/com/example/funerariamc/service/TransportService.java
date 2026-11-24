@@ -3,6 +3,7 @@ package com.example.funerariamc.service;
 import com.example.funerariamc.exception.InvalidDataException;
 import com.example.funerariamc.exception.ResourceNotFoundException;
 import com.example.funerariamc.exception.UnauthorizedActionException;
+import com.example.funerariamc.model.AlliedFuneralHome;
 import com.example.funerariamc.model.Driver;
 import com.example.funerariamc.model.ServiceContract;
 import com.example.funerariamc.model.ServiceTransport;
@@ -36,6 +37,7 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.stream.Stream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -205,7 +207,8 @@ public class TransportService {
     /** Lo que ya tiene el contrato elegido. */
     public record ContractTransport(Long contractId, String contractNumber, String deceasedName,
                                     LocalDateTime suggestedDeparture, boolean hasIncludedHearse,
-                                    boolean hasIncludedBus, long additionalBuses, long chargedBuses) {
+                                    boolean hasIncludedBus, long additionalBuses, long chargedBuses,
+                                    String alliedName, String alliedAddress) {
     }
 
     /** Vehículo o conductor para el diálogo. blockedReason != null: no se puede elegir y por qué. */
@@ -531,8 +534,13 @@ public class TransportService {
         long charged = transportRepository.countChargedBuses(contractId, SaleStatus.ACTIVE, ContractService.BUS_LINE);
         String deceased = contract.getDeceased() == null ? null
                 : fullName(contract.getDeceased().getName(), contract.getDeceased().getLastname());
+        // Si el contrato lo atiende una funeraria aliada, el destino sugerido es esa funeraria
+        AlliedFuneralHome allied = contract.getAlliedFuneralHome();
+        String alliedAddress = allied == null ? null : String.join(", ", Stream.of(
+                allied.getAddress(), allied.getCity()).filter(v -> v != null && !v.isBlank()).toList());
         return new ContractTransport(contract.getId(), contract.getContractNumber(), deceased,
-                contract.getWakeEndAt(), hearse, bus, additional, charged);
+                contract.getWakeEndAt(), hearse, bus, additional, charged,
+                allied == null ? null : allied.getName(), alliedAddress);
     }
 
     /**

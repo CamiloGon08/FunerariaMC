@@ -73,6 +73,7 @@ class AlliedNetworkServiceTest {
         contract.setId(9L);
         contract.setContractNumber("CT-2026-0402");
         contract.setStatus(ContractStatus.ACTIVE);
+        contract.setAlliedFuneralHome(home);
         when(homes.findById(3L)).thenReturn(Optional.of(home));
         when(contracts.findById(9L)).thenReturn(Optional.of(contract));
         when(homes.save(any())).thenAnswer(call -> {
@@ -237,28 +238,34 @@ class AlliedNetworkServiceTest {
     }
 
     @Test
-    void aContractLinkedToAnotherHomeCannotBeUsed() {
-        when(payments.findOtherHomeNames(9L, 3L, AlliedPaymentStatus.VOIDED)).thenReturn(List.of("Exequiales San José"));
+    void aContractAttendedByAnotherHomeCannotBeUsed() {
+        AlliedFuneralHome other = new AlliedFuneralHome();
+        other.setId(7L);
+        other.setName("Exequiales San José");
+        contract.setAlliedFuneralHome(other);
         InvalidDataException error = assertThrows(InvalidDataException.class,
                 () -> service.registerPayment(new AlliedPaymentData(3L, 9L, BigDecimal.TEN, LocalDate.now())));
-        assertEquals("El contrato CT-2026-0402 ya está vinculado a Exequiales San José.", error.getMessage());
+        assertEquals("El contrato CT-2026-0402 no está a cargo de Funerales San José: lo atiende Exequiales San José.",
+                error.getMessage());
         verify(payments, never()).save(any());
     }
 
     @Test
-    void contractSearchHidesOtherHomesAndPutsOwnFirst() {
-        ServiceContract other = new ServiceContract();
-        other.setId(10L);
-        other.setContractNumber("CT-2026-0403");
-        ServiceContract own = new ServiceContract();
-        own.setId(11L);
-        own.setContractNumber("CT-2026-0404");
-        when(contracts.searchNotCancelled(eq(ContractStatus.CANCELLED), anyString(), any()))
-                .thenReturn(List.of(contract, other, own));
-        when(payments.findContractIdsOfOtherHomes(3L, AlliedPaymentStatus.VOIDED)).thenReturn(List.of(10L));
-        when(payments.findContractIdsOfHome(3L, AlliedPaymentStatus.VOIDED)).thenReturn(List.of(11L));
-        assertEquals(List.of(11L, 9L), service.searchContracts(3L, "").stream()
+    void aContractNotMarkedForAnAlliedHomeCannotBeUsed() {
+        contract.setAlliedFuneralHome(null);
+        InvalidDataException error = assertThrows(InvalidDataException.class,
+                () -> service.registerPayment(new AlliedPaymentData(3L, 9L, BigDecimal.TEN, LocalDate.now())));
+        assertTrue(error.getMessage().contains("Márquelo en el contrato"));
+        verify(payments, never()).save(any());
+    }
+
+    @Test
+    void contractSearchOnlyListsTheContractsOfThatHome() {
+        when(contracts.searchOfAlliedHome(eq(3L), eq(ContractStatus.CANCELLED), eq("%%"), any()))
+                .thenReturn(List.of(contract));
+        assertEquals(List.of(9L), service.searchContracts(3L, "").stream()
                 .map(AlliedNetworkService.ContractOption::id).toList());
+        assertEquals(List.of(), service.searchContracts(null, ""));
     }
 
     @Test

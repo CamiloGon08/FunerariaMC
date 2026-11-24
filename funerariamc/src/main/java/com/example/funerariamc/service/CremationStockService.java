@@ -50,6 +50,11 @@ public class CremationStockService {
             return Math.max(0, received - reserved - used);
         }
 
+        /** Cupos usados de más (separados o cremados sin compra recibida que los respalde); la próxima compra los cubre primero. */
+        public long missing() {
+            return Math.max(0, reserved + used - received);
+        }
+
         /** Llegó al mínimo: hay que reponer cupos. */
         public boolean atMinimum() {
             return active && available() <= minimumAvailable;

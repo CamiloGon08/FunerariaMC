@@ -17,6 +17,7 @@ import com.example.funerariamc.service.ReportService.MonthBalance;
 import com.example.funerariamc.service.ReportService.Slice;
 import com.example.funerariamc.service.ReportService.Summary;
 import com.example.funerariamc.ui.Pager;
+import com.example.funerariamc.ui.SearchField;
 import com.example.funerariamc.ui.RefreshableView;
 import com.example.funerariamc.ui.SectionView;
 import com.example.funerariamc.ui.SharedPeriod;
@@ -86,6 +87,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 /**
@@ -1023,31 +1025,18 @@ public class FinancesController implements RefreshableView, SectionView {
         amount.setPromptText("$ 0");
         TextField description = new TextField();
         description.setPromptText("Ej.: Pago de energía de octubre");
-        ComboBox<SaleOption> sale = new ComboBox<>();
-        sale.getStyleClass().add("form-combo");
-        sale.setPromptText("Ninguna (movimiento general)");
-        sale.setConverter(new StringConverter<>() {
-            @Override
-            public String toString(SaleOption o) {
-                return o == null ? "" : o.label() + " · saldo " + pesos(o.balance());
-            }
-
-            @Override
-            public SaleOption fromString(String s) {
-                return null;
-            }
-        });
-        sale.setButtonCell(new ListCell<>() {
-            @Override
-            protected void updateItem(SaleOption item, boolean empty) {
-                super.updateItem(item, empty);
-                setText(empty || item == null ? "Ninguna (movimiento general)" : sale.getConverter().toString(item));
-            }
-        });
-        async("finances-sales", transactionService::salesWithBalance, options -> {
-            sale.getItems().setAll(options);
-            sale.getItems().add(0, null);
-        }, failure -> { });
+        // Las ventas con saldo se cargan una vez y se filtran al escribir; vacío = movimiento general
+        AtomicReference<List<SaleOption>> sales = new AtomicReference<>();
+        SearchField<SaleOption> sale = new SearchField<>("Escriba el número o el cliente (vacío: movimiento general)",
+                "ventas con saldo", text -> {
+                    if (sales.get() == null) {
+                        sales.set(transactionService.salesWithBalance());
+                    }
+                    String query = text.trim().toLowerCase(Locale.ROOT);
+                    return sales.get().stream()
+                            .filter(o -> (o.number() + " " + o.label()).toLowerCase(Locale.ROOT).contains(query))
+                            .toList();
+                }, SaleOption::label, o -> "saldo " + pesos(o.balance()));
         ComboBox<AccountOption> account = new ComboBox<>();
         account.getStyleClass().add("form-combo");
         account.setPromptText(FinancialTransactionService.NO_ACCOUNT);
@@ -1076,7 +1065,7 @@ public class FinancesController implements RefreshableView, SectionView {
         }, failure -> { });
         Label saleHint = note("Si es el abono de una venta a crédito, elíjala: el abono baja su saldo y no puede superarlo.");
         expense.selectedProperty().addListener((obs, old, isExpense) -> {
-            sale.setDisable(isExpense);
+            sale.node().setDisable(isExpense);
             account.setDisable(!isExpense);
             if (isExpense) {
                 sale.setValue(null);
@@ -1089,7 +1078,7 @@ public class FinancesController implements RefreshableView, SectionView {
                 .field("MONTO *", amount);
         form.section("Detalle", 1)
                 .field("DESCRIPCIÓN *", description)
-                .field("VENTA ASOCIADA (SOLO INGRESOS)", sale)
+                .field("VENTA ASOCIADA (SOLO INGRESOS)", sale.node())
                 .field("CUENTA (SOLO EGRESOS)", account);
         form.note(saleHint);
         form.note(note("Se guarda con la fecha y hora de ahora. Un movimiento nunca se borra: si hay un error se anula."));
