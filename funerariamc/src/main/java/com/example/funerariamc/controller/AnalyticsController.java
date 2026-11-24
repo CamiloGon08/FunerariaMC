@@ -10,7 +10,10 @@ import com.example.funerariamc.service.AnalyticsService.RoomHeat;
 import com.example.funerariamc.service.AnalyticsService.SellerLine;
 import com.example.funerariamc.service.AnalyticsService.ThanatoLine;
 import com.example.funerariamc.service.FinancePeriod;
+import com.example.funerariamc.service.FuneralPlanService;
 import com.example.funerariamc.ui.RefreshableView;
+import com.example.funerariamc.ui.SectionView;
+import com.example.funerariamc.ui.SharedPeriod;
 import com.example.funerariamc.ui.Notice;
 import com.example.funerariamc.service.BrandPalette;
 import com.example.funerariamc.ui.BrandTheme;
@@ -60,16 +63,15 @@ import java.util.function.Consumer;
  */
 @Component
 @Scope("prototype")
-public class AnalyticsController implements RefreshableView {
+public class AnalyticsController implements RefreshableView, SectionView {
 
     /** Nombre del módulo que se muestra arriba del título en los avisos. */
-    private static final String MODULE_NAME = "Panel de análisis";
+    private static final String MODULE_NAME = "Finanzas y análisis";
 
     private static final Locale ES = Locale.forLanguageTag("es-CO");
 
-    private enum Range { WEEK, MONTH, YEAR }
-
     private final AnalyticsService analyticsService;
+    private final FuneralPlanService planService;
 
     @FXML private StackPane root;
     @FXML private ToggleGroup tabGroup;
@@ -77,9 +79,13 @@ public class AnalyticsController implements RefreshableView {
     @FXML private ToggleButton salesTab;
     @FXML private ToggleButton occupancyTab;
     @FXML private ToggleButton teamTab;
+    @FXML private ToggleButton plansTab;
+    @FXML private HBox tabBar;
     @FXML private ToggleButton weekRange;
     @FXML private ToggleButton monthRange;
+    @FXML private ToggleButton quarterRange;
     @FXML private ToggleButton yearRange;
+    @FXML private ToggleButton customRange;
     @FXML private Button previousButton;
     @FXML private Button nextButton;
     @FXML private Label periodLabel;
@@ -88,19 +94,78 @@ public class AnalyticsController implements RefreshableView {
     @FXML private VBox content;
     @FXML private Label toast;
 
-    private Range range = Range.MONTH;
-    /** Último día del período que se está viendo. */
-    private LocalDate anchor;
+    private SharedPeriod.Kind kind = SharedPeriod.Kind.MONTH;
+    /** Período que se está viendo; es el mismo de las pestañas de Finanzas (SharedPeriod). */
+    private FinancePeriod period;
+    /** true mientras se marca el botón del período sin volver a calcularlo. */
+    private boolean adopting;
     private Overview overview;
+    /** Planes exequiales: no dependen del período, se cargan al abrir esa pestaña. */
+    private FuneralPlanService.Overview plans;
     private int generation;
     private SequentialTransition toastMotion;
 
-    public AnalyticsController(AnalyticsService analyticsService) {
+    public AnalyticsController(AnalyticsService analyticsService, FuneralPlanService planService) {
         this.analyticsService = analyticsService;
+        this.planService = planService;
     }
 
     @Override
     public void refresh() {
+        adoptSharedPeriod();
+        plans = null; // al volver se recargan los planes
+        load();
+    }
+
+    /**
+     * Dentro de Finanzas y análisis las pestañas son las del menú: se esconden las de la pantalla y
+     * se muestra la parte pedida ("sales", "plans", "occupancy" o "team").
+     */
+    @Override
+    public void showSection(String section) {
+        tabBar.setVisible(false);
+        tabBar.setManaged(false);
+        (switch (section) {
+            case "plans" -> plansTab;
+            case "occupancy" -> occupancyTab;
+            case "team" -> teamTab;
+            default -> salesTab;
+        }).setSelected(true);
+    }
+
+    /** Toma el período elegido en otra pestaña y marca su botón (Semana, Mes, Trimestre, Año o Rango). */
+    private void adoptSharedPeriod() {
+        FinancePeriod shared = SharedPeriod.period();
+        if (shared != null) {
+            kind = SharedPeriod.kind();
+            period = shared;
+        }
+        adopting = true;
+        try {
+            toggleOf(kind).setSelected(true);
+        } finally {
+            adopting = false;
+        }
+    }
+
+    private ToggleButton toggleOf(SharedPeriod.Kind k) {
+        return switch (k) {
+            case WEEK -> weekRange;
+            case QUARTER -> quarterRange;
+            case YEAR -> yearRange;
+            case CUSTOM -> customRange;
+            default -> monthRange;
+        };
+    }
+
+    private SharedPeriod.Kind kindOf(Object toggle) {
+        return toggle == weekRange ? SharedPeriod.Kind.WEEK : toggle == quarterRange ? SharedPeriod.Kind.QUARTER
+                : toggle == yearRange ? SharedPeriod.Kind.YEAR : toggle == customRange ? SharedPeriod.Kind.CUSTOM
+                : SharedPeriod.Kind.MONTH;
+    }
+
+    private void periodChanged() {
+        SharedPeriod.set(kind, period);
         load();
     }
 
@@ -108,7 +173,8 @@ public class AnalyticsController implements RefreshableView {
     private void initialize() {
         toast.setOpacity(0);
         toast.setMouseTransparent(true);
-        anchor = analyticsService.today();
+        period = FinancePeriod.month(YearMonth.from(analyticsService.today()));
+        adoptSharedPeriod();
         // Un grupo de pestañas nunca queda sin selección.
         keepSelected(tabGroup);
         keepSelected(rangeGroup);
@@ -118,36 +184,49 @@ public class AnalyticsController implements RefreshableView {
             }
         });
         rangeGroup.selectedToggleProperty().addListener((obs, old, now) -> {
-            if (now == null) {
+            if (now == null || adopting) {
                 return;
             }
-            range = now == weekRange ? Range.WEEK : now == yearRange ? Range.YEAR : Range.MONTH;
-            anchor = analyticsService.today();
-            load();
+            SharedPeriod.Kind chosen = kindOf(now);
+            if (chosen == SharedPeriod.Kind.CUSTOM) {
+                java.util.Optional<FinancePeriod> range = SharedPeriod.askRange(window(), period, MODULE_NAME);
+                if (range.isEmpty()) {
+                    // Cancelado: vuelve el botón que estaba
+                    adopting = true;
+                    try {
+                        rangeGroup.selectToggle(old);
+                    } finally {
+                        adopting = false;
+                    }
+                    return;
+                }
+                period = range.get();
+            } else {
+                LocalDate today = analyticsService.today();
+                period = SharedPeriod.of(chosen, period.to().isAfter(today) ? today : period.to());
+            }
+            kind = chosen;
+            periodChanged();
         });
         load();
     }
 
     @FXML
     private void onPrevious() {
-        anchor = switch (range) {
-            case WEEK -> anchor.minusDays(7);
-            case MONTH -> YearMonth.from(anchor).minusMonths(1).atEndOfMonth();
-            case YEAR -> LocalDate.of(anchor.getYear() - 1, 12, 31);
-        };
-        load();
+        period = SharedPeriod.shift(kind, period, -1);
+        periodChanged();
     }
 
     @FXML
     private void onNext() {
-        LocalDate today = analyticsService.today();
-        LocalDate next = switch (range) {
-            case WEEK -> anchor.plusDays(7);
-            case MONTH -> YearMonth.from(anchor).plusMonths(1).atEndOfMonth();
-            case YEAR -> LocalDate.of(anchor.getYear() + 1, 12, 31);
-        };
-        anchor = next.isAfter(today) && range == Range.WEEK ? today : next;
-        load();
+        if (!nextStartsInFuture()) {
+            period = SharedPeriod.shift(kind, period, 1);
+            periodChanged();
+        }
+    }
+
+    private boolean nextStartsInFuture() {
+        return SharedPeriod.shift(kind, period, 1).from().isAfter(analyticsService.today());
     }
 
     @FXML
@@ -180,19 +259,10 @@ public class AnalyticsController implements RefreshableView {
         });
     }
 
-    /** Período que corresponde al rango y a la fecha ancla. */
-    private FinancePeriod period() {
-        return switch (range) {
-            case WEEK -> new FinancePeriod(anchor.minusDays(6), anchor);
-            case MONTH -> FinancePeriod.month(YearMonth.from(anchor));
-            case YEAR -> FinancePeriod.year(anchor.getYear());
-        };
-    }
-
     private void load() {
-        FinancePeriod period = period();
-        periodLabel.setText(period.label());
-        nextButton.setDisable(!period.to().isBefore(analyticsService.today()));
+        FinancePeriod period = this.period;
+        periodLabel.setText(capitalize(period.label()));
+        nextButton.setDisable(nextStartsInFuture());
         exportButton.setDisable(true);
         int request = ++generation;
         if (overview == null) {
@@ -245,7 +315,9 @@ public class AnalyticsController implements RefreshableView {
     }
 
     private void drawTab() {
-        if (tabGroup.getSelectedToggle() == occupancyTab) {
+        if (tabGroup.getSelectedToggle() == plansTab) {
+            drawPlans();
+        } else if (tabGroup.getSelectedToggle() == occupancyTab) {
             content.getChildren().setAll(heatCard(overview.rooms(), overview.periodLabel()),
                     vaultsCard(overview.cemeteries()));
         } else if (tabGroup.getSelectedToggle() == teamTab) {
@@ -322,6 +394,200 @@ public class AnalyticsController implements RefreshableView {
         }
         card.getChildren().addAll(chart, legend);
         return card;
+    }
+
+    // ---------- Planes exequiales ----------
+
+    /**
+     * Las gráficas que antes estaban en Planes exequiales: recaudo de cuotas de los últimos 6 meses,
+     * planes por tipo, planes en mora y los que terminan la carencia en los próximos 30 días.
+     */
+    private void drawPlans() {
+        if (plans != null) {
+            content.getChildren().setAll(plansGrid(plans));
+            return;
+        }
+        content.getChildren().setAll(label("Cargando planes…", "empty-board"));
+        async("analytics-plans", planService::overview, result -> {
+            plans = result;
+            if (tabGroup.getSelectedToggle() == plansTab) {
+                content.getChildren().setAll(plansGrid(result));
+            }
+        }, failure -> content.getChildren().setAll(label(message(failure,
+                "No se pudieron cargar los planes. Revise la conexión."), "empty-board")));
+    }
+
+    private Node plansGrid(FuneralPlanService.Overview o) {
+        GridPane grid = new GridPane();
+        grid.setHgap(16);
+        grid.setVgap(16);
+        ColumnConstraints left = new ColumnConstraints();
+        left.setPercentWidth(62);
+        ColumnConstraints right = new ColumnConstraints();
+        right.setPercentWidth(38);
+        grid.getColumnConstraints().addAll(left, right);
+        Node collection = collectionCard(o.collection());
+        Node types = typesCard(o.types(), o.cards());
+        grid.add(collection, 0, 0);
+        grid.add(types, 1, 0);
+        GridPane.setVgrow(types, Priority.ALWAYS);
+        Node overdue = overdueCard(o.kpis(), o.cards());
+        Node waiting = waitingCard(o.waitingSoon());
+        grid.add(overdue, 0, 1);
+        grid.add(waiting, 1, 1);
+        return grid;
+    }
+
+    private Node collectionCard(List<FuneralPlanService.MonthPoint> points) {
+        VBox card = card("Recaudo de cuotas", "Últimos 6 meses · lo cobrado frente a lo que debía entrar");
+        CategoryAxis x = new CategoryAxis();
+        NumberAxis y = new NumberAxis();
+        y.setMinorTickVisible(false);
+        y.setForceZeroInRange(true);
+        y.setTickLabelFormatter(new javafx.util.StringConverter<>() {
+            @Override
+            public String toString(Number value) {
+                return HomeController.shortPesos(BigDecimal.valueOf(value.doubleValue()));
+            }
+
+            @Override
+            public Number fromString(String text) {
+                return 0;
+            }
+        });
+        javafx.scene.chart.LineChart<String, Number> chart = new javafx.scene.chart.LineChart<>(x, y);
+        chart.getStyleClass().add("collection-chart");
+        chart.setLegendVisible(false);
+        chart.setAnimated(false);
+        chart.setPrefHeight(280);
+        chart.setMinHeight(240);
+        XYChart.Series<String, Number> collected = new XYChart.Series<>();
+        XYChart.Series<String, Number> expected = new XYChart.Series<>();
+        java.time.format.DateTimeFormatter shortMonth = java.time.format.DateTimeFormatter.ofPattern("MMM", ES);
+        for (FuneralPlanService.MonthPoint p : points) {
+            String month = capitalize(shortMonth.format(p.month()).replace(".", ""));
+            collected.getData().add(new XYChart.Data<>(month, p.collected()));
+            expected.getData().add(new XYChart.Data<>(month, p.expected()));
+        }
+        chart.getData().setAll(List.of(collected, expected));
+        HBox legend = new HBox(16, legendItem("Recaudado", "-color-forest"), legendItem("Esperado", "-color-detail"));
+        legend.setAlignment(Pos.CENTER_LEFT);
+        card.getChildren().addAll(legend, chart);
+        return card;
+    }
+
+    /** Dona con un color por nombre de plan y el total de planes activos en el centro. */
+    private Node typesCard(List<FuneralPlanService.TypeSlice> types, List<FuneralPlanService.PlanCard> cards) {
+        VBox card = card("Planes por tipo", "Afiliados activos");
+        String[] colors = {"-color-forest", "-color-detail", "-color-moss", "-color-sage-mid", "-color-sage-dark"};
+        double radius = 62;
+        javafx.scene.shape.Circle track = new javafx.scene.shape.Circle(75, 75, radius);
+        track.getStyleClass().add("donut-track");
+        track.setStrokeWidth(18);
+        javafx.scene.layout.Pane arcs = new javafx.scene.layout.Pane(track);
+        arcs.setPrefSize(150, 150);
+        arcs.setMinSize(150, 150);
+        long total = types.stream().mapToLong(FuneralPlanService.TypeSlice::plans).sum();
+        double start = 90;
+        VBox legend = new VBox(10);
+        for (int i = 0; i < types.size(); i++) {
+            FuneralPlanService.TypeSlice slice = types.get(i);
+            String color = colors[Math.min(i, colors.length - 1)];
+            double length = total == 0 ? 0 : 360.0 * slice.plans() / total;
+            javafx.scene.shape.Arc arc = new javafx.scene.shape.Arc(75, 75, radius, radius, start, -length);
+            arc.setType(javafx.scene.shape.ArcType.OPEN);
+            arc.setStrokeWidth(18);
+            arc.getStyleClass().add("donut-arc");
+            arc.setStyle("-fx-stroke: " + color + ";");
+            arcs.getChildren().add(arc);
+            start -= length;
+            legend.getChildren().add(legendItem(slice.name() + " · " + slice.plans(), color));
+        }
+        if (types.isEmpty()) {
+            legend.getChildren().add(label("Todavía no hay planes activos.", "chart-subtitle"));
+        }
+        VBox center = new VBox(-2, label(String.valueOf(total), "donut-value"), label("planes activos", "donut-caption"));
+        center.setAlignment(Pos.CENTER);
+        StackPane donut = new StackPane(arcs, center);
+        donut.setMinSize(150, 150);
+        HBox body = new HBox(20, donut, legend);
+        body.setAlignment(Pos.CENTER_LEFT);
+        card.getChildren().add(body);
+
+        List<FuneralPlanService.PlanCard> active = cards.stream().filter(FuneralPlanService.PlanCard::isActive).toList();
+        BigDecimal sum = active.stream().map(FuneralPlanService.PlanCard::monthlyFee)
+                .filter(java.util.Objects::nonNull).reduce(BigDecimal.ZERO, BigDecimal::add);
+        if (!active.isEmpty()) {
+            card.getChildren().add(label("Cuota promedio " + pesos(sum.divide(BigDecimal.valueOf(active.size()),
+                    RoundingMode.HALF_UP)) + " al mes", "chart-subtitle"));
+        }
+        return card;
+    }
+
+    /** Titulares con cuotas atrasadas, de la deuda más grande a la más pequeña. */
+    private Node overdueCard(FuneralPlanService.Kpis k, List<FuneralPlanService.PlanCard> cards) {
+        List<FuneralPlanService.PlanCard> overdue = cards.stream()
+                .filter(FuneralPlanService.PlanCard::isOverdue)
+                .sorted(java.util.Comparator.comparing(FuneralPlanService.PlanCard::overdueAmount,
+                        java.util.Comparator.nullsFirst(java.util.Comparator.naturalOrder())).reversed())
+                .toList();
+        VBox card = card("Planes en mora", overdue.isEmpty() ? "Todos los planes están al día"
+                : (overdue.size() == 1 ? "1 titular" : overdue.size() + " titulares") + " · "
+                + pesos(k.overdueAmount()) + " por cobrar");
+        for (FuneralPlanService.PlanCard c : overdue.stream().limit(6).toList()) {
+            card.getChildren().add(planRow(c.holderName(), c.code() + " · " + c.planName() + " · "
+                    + (c.overdueMonths() == 1 ? "1 cuota atrasada" : c.overdueMonths() + " cuotas atrasadas"),
+                    pesos(c.overdueAmount()), true));
+        }
+        if (overdue.size() > 6) {
+            card.getChildren().add(label("y " + (overdue.size() - 6) + " más en Clientes › Afiliados a planes.",
+                    "chart-subtitle"));
+        }
+        return card;
+    }
+
+    private Node waitingCard(List<FuneralPlanService.WaitingSoon> soon) {
+        VBox card = card("Terminan carencia", "Próximos 30 días");
+        if (soon.isEmpty()) {
+            card.getChildren().add(label("Ningún plan termina la carencia en los próximos 30 días.", "chart-subtitle"));
+        }
+        LocalDate today = analyticsService.today();
+        java.time.format.DateTimeFormatter date = java.time.format.DateTimeFormatter.ofPattern("d MMM", ES);
+        for (FuneralPlanService.WaitingSoon w : soon.stream().limit(6).toList()) {
+            long days = java.time.temporal.ChronoUnit.DAYS.between(today, w.waitingEnds());
+            card.getChildren().add(planRow(w.holderName(), w.code() + " · cubierto desde el "
+                    + date.format(w.waitingEnds()), days <= 0 ? "hoy" : days == 1 ? "en 1 día" : "en " + days + " días",
+                    false));
+        }
+        return card;
+    }
+
+    private static Node planRow(String name, String detail, String value, boolean alert) {
+        Label title = label(name, "row-title");
+        Label sub = label(detail, "row-detail");
+        sub.setWrapText(true);
+        VBox text = new VBox(2, title, sub);
+        HBox.setHgrow(text, Priority.ALWAYS);
+        text.setMinWidth(0);
+        Label amount = label(value, alert ? "row-value-alert" : "row-value");
+        amount.setMinWidth(Region.USE_PREF_SIZE);
+        HBox row = new HBox(12, text, amount);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.getStyleClass().add("plan-row");
+        return row;
+    }
+
+    private static HBox legendItem(String text, String color) {
+        Region dot = new Region();
+        dot.getStyleClass().add("legend-dot");
+        dot.setStyle("-fx-background-color: " + color + ";");
+        HBox item = new HBox(6, dot, label(text, "legend-text"));
+        item.setAlignment(Pos.CENTER_LEFT);
+        return item;
+    }
+
+    private static String capitalize(String text) {
+        return text.isEmpty() ? text : Character.toUpperCase(text.charAt(0)) + text.substring(1);
     }
 
     // ---------- Ocupación ----------

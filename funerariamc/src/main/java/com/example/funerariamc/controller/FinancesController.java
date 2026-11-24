@@ -16,7 +16,10 @@ import com.example.funerariamc.service.ReportService.FlowPoint;
 import com.example.funerariamc.service.ReportService.MonthBalance;
 import com.example.funerariamc.service.ReportService.Slice;
 import com.example.funerariamc.service.ReportService.Summary;
+import com.example.funerariamc.ui.Pager;
 import com.example.funerariamc.ui.RefreshableView;
+import com.example.funerariamc.ui.SectionView;
+import com.example.funerariamc.ui.SharedPeriod;
 import com.example.funerariamc.ui.Notice;
 import com.example.funerariamc.ui.FormShell;
 import com.example.funerariamc.ui.Responsive;
@@ -94,7 +97,7 @@ import java.util.function.Consumer;
  */
 @Component
 @Scope("prototype")
-public class FinancesController implements RefreshableView {
+public class FinancesController implements RefreshableView, SectionView {
 
     /** Nombre del módulo que se muestra arriba del título en los avisos. */
     private static final String MODULE_NAME = "Finanzas";
@@ -142,6 +145,7 @@ public class FinancesController implements RefreshableView {
     @FXML private ToggleButton expenseType;
     @FXML private ToggleButton voidedType;
     @FXML private HBox rangeBar;
+    @FXML private HBox tabBar;
     @FXML private Button previousButton;
     @FXML private Button nextButton;
     @FXML private VBox periodBox;
@@ -182,10 +186,17 @@ public class FinancesController implements RefreshableView {
 
     private final ObservableList<MovementRow> movementRows = FXCollections.observableArrayList();
     private final ObservableList<CommissionRow> commissionRows = FXCollections.observableArrayList();
+    private Pager<MovementRow> movementPager;
+    private Pager<CommissionRow> commissionPager;
+    /** Filtro y mes con que se armó cada tabla (para saber si hay que volver a la página 1). */
+    private String lastMovementFilter;
+    private YearMonth commissionPagerMonth;
     private List<MovementRow> allMovements = List.of();
     private FinancePeriod period;
     private YearMonth month;
     private boolean master;
+    /** true mientras se toma el período de otra pestaña: no se vuelve a calcular. */
+    private boolean adopting;
     private int generation;
     private SequentialTransition toastMotion;
     private final PauseTransition searchDelay = new PauseTransition(Duration.millis(200));
@@ -201,7 +212,52 @@ public class FinancesController implements RefreshableView {
 
     @Override
     public void refresh() {
+        adoptSharedPeriod();
         loadCurrent();
+    }
+
+    /**
+     * Dentro de Finanzas y análisis las pestañas son las del menú: se esconden las de la pantalla y
+     * se muestra la parte pedida ("summary", "movements" o "commissions").
+     */
+    @Override
+    public void showSection(String section) {
+        show(tabBar, false);
+        ToggleButton tab = switch (section) {
+            case "summary" -> master ? summaryTab : movementsTab;
+            case "commissions" -> commissionsTab;
+            default -> movementsTab;
+        };
+        tab.setSelected(true);
+    }
+
+    /** Si en otra pestaña se eligió otro período, se toma ese mismo. */
+    private void adoptSharedPeriod() {
+        FinancePeriod shared = SharedPeriod.period();
+        if (shared == null || shared.equals(period)) {
+            return;
+        }
+        adopting = true;
+        try {
+            (switch (SharedPeriod.kind()) {
+                case WEEK -> weekRange;
+                case QUARTER -> quarterRange;
+                case YEAR -> yearRange;
+                case CUSTOM -> customRange;
+                default -> monthRange;
+            }).setSelected(true);
+        } finally {
+            adopting = false;
+        }
+        period = shared;
+        nextButton.setDisable(nextStartsInFuture());
+    }
+
+    private SharedPeriod.Kind kind() {
+        Object kind = rangeGroup.getSelectedToggle();
+        return kind == weekRange ? SharedPeriod.Kind.WEEK : kind == quarterRange ? SharedPeriod.Kind.QUARTER
+                : kind == yearRange ? SharedPeriod.Kind.YEAR : kind == customRange ? SharedPeriod.Kind.CUSTOM
+                : SharedPeriod.Kind.MONTH;
     }
 
     @FXML
@@ -240,6 +296,11 @@ public class FinancesController implements RefreshableView {
         movementsList.setFixedCellSize(62);
         movementsList.setPlaceholder(new Label(""));
         movementsList.setPrefWidth(0);
+        // Paginación como la bitácora: 20 filas por página, debajo de cada tabla.
+        movementPager = Pager.<MovementRow>local(Pager.TABLE_PAGE, "movimiento", "movimientos", page -> {
+            movementRows.setAll(page);
+            movementsList.scrollTo(0);
+        }).below(movementsList.getParent());
 
         Node casesHead = cell(label("CASOS", "head-cell"), W_CASES);
         Node rateHead = cell(label("TARIFA", "head-cell"), W_CASES);
@@ -257,12 +318,17 @@ public class FinancesController implements RefreshableView {
         commissionsList.setFixedCellSize(62);
         commissionsList.setPlaceholder(new Label(""));
         commissionsList.setPrefWidth(0);
+        commissionPager = Pager.<CommissionRow>local(Pager.TABLE_PAGE, "persona", "personas", page -> {
+            commissionRows.setAll(page);
+            commissionsList.scrollTo(0);
+        }).below(commissionsList.getParent());
 
         toast.setOpacity(0);
         toast.setMouseTransparent(true);
         live.setCycleCount(Timeline.INDEFINITE);
         live.play();
 
+        adoptSharedPeriod();
         (master ? summaryTab : movementsTab).setSelected(true);
         applyTab();
     }
@@ -297,6 +363,9 @@ public class FinancesController implements RefreshableView {
     }
 
     private void onRangeKind() {
+        if (adopting) {
+            return;
+        }
         LocalDate anchor = period.to().isAfter(reportService.today()) ? reportService.today() : period.to();
         Object kind = rangeGroup.getSelectedToggle();
         if (kind == customRange) {
@@ -370,6 +439,7 @@ public class FinancesController implements RefreshableView {
     }
 
     private void periodChanged() {
+        SharedPeriod.set(kind(), period);
         nextButton.setDisable(nextStartsInFuture());
         loadCurrent();
     }
@@ -458,7 +528,13 @@ public class FinancesController implements RefreshableView {
             if (request != generation) {
                 return;
             }
-            commissionRows.setAll(overview.rows());
+            // Otro mes vuelve a la página 1; recalcular el mismo mes se queda en la página actual.
+            if (asked.equals(commissionPagerMonth)) {
+                commissionPager.setItems(overview.rows());
+            } else {
+                commissionPager.setItemsFromStart(overview.rows());
+            }
+            commissionPagerMonth = asked;
             long done = overview.rows().stream().filter(CommissionRow::liquidated).count();
             commissionsCount.setText(overview.rows().size() + (overview.rows().size() == 1 ? " persona" : " personas")
                     + " · " + done + " calculadas · " + pesos(overview.liquidated()) + " registrado como egreso");
@@ -823,7 +899,14 @@ public class FinancesController implements RefreshableView {
                         + r.origin().getLabel() + " " + (r.registeredBy() == null ? "" : r.registeredBy()) + " "
                         + (r.account() == null ? "" : r.account())).contains(query))
                 .toList();
-        movementRows.setAll(rows);
+        // Un filtro nuevo vuelve a la página 1; recargar tras guardar se queda en la misma página.
+        String filterKey = period + "|" + kind + "|" + query;
+        if (filterKey.equals(lastMovementFilter)) {
+            movementPager.setItems(rows);
+        } else {
+            movementPager.setItemsFromStart(rows);
+        }
+        lastMovementFilter = filterKey;
         BigDecimal in = rows.stream().filter(r -> !r.voided() && r.type() == TransactionType.INCOME)
                 .map(MovementRow::amount).reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal out = rows.stream().filter(r -> !r.voided() && r.type() == TransactionType.EXPENSE)

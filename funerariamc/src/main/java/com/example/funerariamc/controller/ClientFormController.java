@@ -141,7 +141,10 @@ public class ClientFormController {
         }
         errorLabel.visibleProperty().bind(errorLabel.textProperty().isNotEmpty());
         existingBox.setVisible(false);
-        clientTypeCombo.setValue(ClientType.NATURAL);
+        // Ninguna lista viene con un valor ya elegido: el usuario escoge el tipo de cliente y de documento.
+        clientTypeCombo.setValue(null);
+        showFieldsFor(null);
+        FormShell.choose(documentTypeCombo);
     }
 
     /**
@@ -195,8 +198,9 @@ public class ClientFormController {
         documentTypeCombo.getItems().setAll(corporate
                 ? List.of(ClientService.NIT)
                 : ClientService.NATURAL_DOCUMENT_TYPES);
-        documentTypeCombo.setValue(documentTypeCombo.getItems().contains(current)
-                ? current : documentTypeCombo.getItems().get(0));
+        // Si el tipo elegido sigue siendo válido se conserva; si solo hay una opción (NIT) se elige sola.
+        documentTypeCombo.setValue(documentTypeCombo.getItems().contains(current) ? current
+                : documentTypeCombo.getItems().size() == 1 ? documentTypeCombo.getItems().get(0) : null);
 
         nameLabel.setText(corporate ? "RAZÓN SOCIAL *" : "NOMBRES *");
         lastnameBox.setVisible(!corporate);
@@ -302,7 +306,8 @@ public class ClientFormController {
             @Override
             protected void updateItem(ClientType item, boolean empty) {
                 super.updateItem(item, empty);
-                setText(empty || item == null ? "Seleccione" : item.getDescription());
+                setText(empty || item == null ? FormShell.CHOOSE : item.getDescription());
+                FormShell.markPrompt(this, empty || item == null);
             }
         };
     }

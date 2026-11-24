@@ -54,12 +54,14 @@ public class AccessLogService {
     public static final String DECEASED_PLAN_LINKED = "DECEASED_PLAN_LINKED: ";
     public static final String PLAN_REGISTERED = "PLAN_REGISTERED: ";
     public static final String BENEFICIARY_ADDED = "BENEFICIARY_ADDED: ";
+    public static final String BENEFICIARY_REMOVED = "BENEFICIARY_REMOVED: ";
     public static final String PLAN_PAYMENT_REGISTERED = "PLAN_PAYMENT_REGISTERED: ";
     public static final String PLAN_PAYMENT_VOIDED = "PLAN_PAYMENT_VOIDED: ";
     public static final String PLAN_SUSPENDED = "PLAN_SUSPENDED: ";
     public static final String PLAN_REACTIVATED = "PLAN_REACTIVATED: ";
     public static final String PLAN_CANCELLED = "PLAN_CANCELLED: ";
     public static final String PLAN_HOLDER_CHANGED = "PLAN_HOLDER_CHANGED: ";
+    public static final String PLAN_TYPE_CHANGED = "PLAN_TYPE_CHANGED: ";
     public static final String PLAN_WAITING_RESTARTED = "PLAN_WAITING_RESTARTED: ";
     public static final String WAKE_ROOM_REGISTERED = "WAKE_ROOM_REGISTERED: ";
     public static final String WAKE_ROOM_ASSIGNED = "WAKE_ROOM_ASSIGNED: ";

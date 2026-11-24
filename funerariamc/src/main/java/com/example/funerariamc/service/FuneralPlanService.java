@@ -79,6 +79,8 @@ public class FuneralPlanService {
     private final SessionContext sessionContext;
     private final Clock clock;
     private final ApplicationEventPublisher eventPublisher;
+    /** Registra el cliente nuevo cuando se afilia desde Contratos (en la misma transacción). */
+    private ClientService clientService;
 
     // ---------- lo que recibe la pantalla ----------
 
@@ -179,7 +181,15 @@ public class FuneralPlanService {
     /** Beneficiario del panel. surcharge es el recargo que se cobra en la venta del servicio. */
     public record BeneficiaryInfo(Long id, String fullName, String documentNumber, Relationship relationship,
                                   String relationshipLabel, BigDecimal surcharge, String surchargeReason,
-                                  Long deceasedId, LocalDate deathDate) {
+                                  Long deceasedId, LocalDate deathDate, String name, String lastname) {
+
+        /** Sin los nombres y apellidos por separado (solo el nombre completo). */
+        public BeneficiaryInfo(Long id, String fullName, String documentNumber, Relationship relationship,
+                               String relationshipLabel, BigDecimal surcharge, String surchargeReason,
+                               Long deceasedId, LocalDate deathDate) {
+            this(id, fullName, documentNumber, relationship, relationshipLabel, surcharge, surchargeReason,
+                    deceasedId, deathDate, null, null);
+        }
 
         public boolean isDeceased() {
             return deceasedId != null;
@@ -203,6 +213,25 @@ public class FuneralPlanService {
                              List<BeneficiaryInfo> beneficiaries, BigDecimal totalSurcharge,
                              List<MonthCell> grid, List<PaymentInfo> payments, YearMonth nextDue,
                              List<UsedService> usedServices, boolean holderDeceased) {
+    }
+
+    /**
+     * Lo que ofrece un plan, para mostrarlo al afiliar o cambiar de plan. monthlyFee es la cuota de
+     * Parámetros; va en null si todavía no está definida.
+     */
+    public record PlanOffer(String name, BigDecimal monthlyFee, List<String> includes) {
+    }
+
+    /** Beneficiario que se agrega al afiliar desde Contratos. */
+    public record NewBeneficiary(String name, String lastname, String documentNumber, Relationship relationship) {
+    }
+
+    /**
+     * Afiliación desde "Nuevo contrato": el titular es un cliente registrado (clientId) o uno
+     * nuevo (newClient), con el plan y sus beneficiarios. Todo se guarda junto o no se guarda nada.
+     */
+    public record AffiliationData(Long clientId, ClientData newClient, String planName,
+                                  LocalDate startDate, List<NewBeneficiary> beneficiaries) {
     }
 
     /** Lo que se le muestra al vendedor antes de guardar un beneficiario. */
@@ -265,6 +294,11 @@ public class FuneralPlanService {
         this.sessionContext = sessionContext;
         this.clock = clock;
         this.eventPublisher = Objects.requireNonNull(eventPublisher);
+    }
+
+    @Autowired
+    void setClientService(ClientService clientService) {
+        this.clientService = clientService;
     }
 
     // ---------- consultas ----------
@@ -434,6 +468,13 @@ public class FuneralPlanService {
         return buildDetail(planId);
     }
 
+    /** Plan activo del cliente con sus beneficiarios, para actualizarlo desde Nuevo contrato. */
+    @Transactional(readOnly = true)
+    public Optional<PlanDetail> activePlanOf(Long clientId) {
+        requireAccess();
+        return holderPlan(clientId);
+    }
+
     /**
      * Plan ACTIVO del titular para el bot de Telegram. No pide sesión de empleado: el bot
      * solo lo llama después de que el titular validó su cédula con el código del correo.
@@ -478,7 +519,7 @@ public class FuneralPlanService {
             infos.add(new BeneficiaryInfo(b.getId(), fullName(b.getName(), b.getLastname()), b.getDocumentNumber(),
                     relationship, relationship == null ? orDash(b.getRelationship()) : relationship.getDisplayName(),
                     surcharge.total(), surchargeReason(surcharge), match == null ? null : match.getDeceasedId(),
-                    match == null ? null : match.getDeathDate()));
+                    match == null ? null : match.getDeathDate(), b.getName(), b.getLastname()));
         }
 
         List<PlanPayment> payments = paymentRepository.findHistory(planId);
@@ -535,10 +576,55 @@ public class FuneralPlanService {
     @Transactional(readOnly = true)
     public List<Option> searchClients(String text) {
         requireAccess();
-        return clientRepository.search(pattern(text), List.of(ClientType.values()), PageRequest.of(0, 20))
-                .getContent().stream()
+        // Solo nombres, apellidos o documentos que EMPIEZAN con lo escrito: "me" no trae "Romero".
+        String clean = normalize(text).replaceAll("[%_\\\\]", "");
+        return clientRepository.searchByWordStart("% " + clean + "%", clean + "%", PageRequest.of(0, 20)).stream()
                 .map(c -> new Option(c.getId(), ClientService.displayName(c), document(c)))
                 .toList();
+    }
+
+    /** Planes que maneja la funeraria con su cuota y lo que incluye cada uno (sale de Parámetros). */
+    @Transactional(readOnly = true)
+    public List<PlanOffer> planOffers() {
+        requireAccess();
+        BigDecimal room = optional(parameters::specialRoomSurcharge);
+        Integer limit = optional(parameters::beneficiaryLimit);
+        Integer waiting = optional(parameters::waitingDays);
+        List<PlanOffer> offers = new ArrayList<>();
+        for (String name : PlanParameters.PLAN_NAMES) {
+            boolean premium = PlanParameters.isPremium(name);
+            List<String> includes = new ArrayList<>();
+            BigDecimal coffin = optional(() -> parameters.coveredCoffinPrice(name));
+            if (coffin != null) {
+                includes.add((premium ? "Ataúd más grande, de hasta " : "Ataúd de hasta ") + pesos(coffin)
+                        + "; uno mejor paga solo la diferencia.");
+            }
+            if (premium) {
+                includes.add("Sala de velación especial sin recargo.");
+            } else {
+                includes.add("Sala de velación" + (room == null ? "." : "; la sala especial tiene un recargo de "
+                        + pesos(room) + "."));
+            }
+            includes.add("Carroza y un bus para el acompañamiento.");
+            if (limit != null) {
+                includes.add("El titular y hasta " + limit + " beneficiarios sin recargo.");
+            }
+            if (waiting != null) {
+                includes.add("Cubre servicios " + waiting + " días después de la afiliación (carencia).");
+            }
+            offers.add(new PlanOffer(name, optional(() -> parameters.monthlyFee(name)), List.copyOf(includes)));
+        }
+        return offers;
+    }
+
+    /** Recargo que tendría un beneficiario en esa posición de un plan que todavía no se ha guardado. */
+    @Transactional(readOnly = true)
+    public SurchargePreview previewNewSurcharge(long position, boolean corporate, Relationship relationship) {
+        requireAccess();
+        if (relationship == null) {
+            throw new InvalidDataException("Seleccione el parentesco con el titular.");
+        }
+        return surcharge(Math.max(position, 1), parameters.beneficiaryLimit(), corporate, relationship);
     }
 
     /** Recargo que tendría el siguiente beneficiario del plan con ese parentesco. */
@@ -567,14 +653,8 @@ public class FuneralPlanService {
         if (data == null || data.clientId() == null) {
             throw new InvalidDataException("Seleccione el cliente titular del plan.");
         }
-        String name = data.planName() == null ? "" : data.planName().trim();
-        // La funeraria maneja dos planes: el normal (servicios esenciales) y el premium (ataúd y sala más grandes).
-        String chosen = name;
-        name = PlanParameters.PLAN_NAMES.stream().filter(n -> n.equalsIgnoreCase(chosen)).findFirst().orElse("");
-        if (name.isEmpty()) {
-            throw new InvalidDataException("Elija el tipo de plan: " + String.join(" o ", PlanParameters.PLAN_NAMES) + ".");
-        }
-        validateAmount(data.monthlyFee(), "La cuota mensual");
+        String name = planName(data.planName());
+        BigDecimal fee = feeOf(name);
         if (data.startDate() == null) {
             throw new InvalidDataException("Ingrese la fecha de inicio del plan.");
         }
@@ -590,7 +670,7 @@ public class FuneralPlanService {
         FuneralPlan plan = new FuneralPlan();
         plan.setClient(client);
         plan.setPlanName(name);
-        plan.setMonthlyFee(data.monthlyFee());
+        plan.setMonthlyFee(fee);
         plan.setStartDate(data.startDate());
         plan.setStatus(PlanStatus.ACTIVE);
         FuneralPlan saved = planRepository.save(plan);
@@ -598,6 +678,87 @@ public class FuneralPlanService {
         // El correo de bienvenida sale después de guardar, en otro hilo (PlanNotificationService).
         eventPublisher.publishEvent(new PlanRegisteredEvent(saved.getId()));
         return saved;
+    }
+
+    /**
+     * Afiliación desde "Nuevo contrato": registra el cliente si es nuevo, el plan y sus
+     * beneficiarios en una sola transacción; si algo falla no queda nada guardado a medias.
+     * Los recargos de los beneficiarios ya se le mostraron al vendedor en el formulario.
+     */
+    @Transactional
+    public FuneralPlan affiliate(AffiliationData data) {
+        requireAccess();
+        if (data == null) {
+            throw new InvalidDataException("Complete los datos de la afiliación.");
+        }
+        Long clientId = data.clientId();
+        if (data.newClient() != null) {
+            if (clientService == null) {
+                throw new IllegalStateException("Falta el servicio de clientes para registrar al titular.");
+            }
+            clientId = clientService.register(data.newClient()).getId();
+        }
+        if (clientId == null) {
+            throw new InvalidDataException("Seleccione el cliente titular o registre uno nuevo.");
+        }
+        FuneralPlan plan = register(new PlanData(clientId, data.planName(), data.startDate()));
+        for (NewBeneficiary b : data.beneficiaries() == null ? List.<NewBeneficiary>of() : data.beneficiaries()) {
+            addBeneficiary(new BeneficiaryData(plan.getId(), b.name(), b.lastname(), b.documentNumber(),
+                    b.relationship(), true));
+        }
+        return plan;
+    }
+
+    /**
+     * Actualiza el plan de quien ya lo tiene, todo junto: cambia el tipo si newPlanName es otro
+     * (null o el mismo lo deja igual), quita los beneficiarios de removeIds y agrega los nuevos
+     * (con su recargo aceptado, porque el vendedor lo vio al agregarlos).
+     */
+    @Transactional
+    public void updatePlan(Long planId, String newPlanName, List<Long> removeIds, List<NewBeneficiary> add) {
+        requireAccess();
+        FuneralPlan plan = getPlan(planId);
+        boolean changes = false;
+        if (newPlanName != null && !newPlanName.equalsIgnoreCase(plan.getPlanName())) {
+            changePlan(planId, newPlanName);
+            changes = true;
+        }
+        for (Long id : removeIds == null ? List.<Long>of() : removeIds) {
+            removeBeneficiary(id);
+            changes = true;
+        }
+        for (NewBeneficiary b : add == null ? List.<NewBeneficiary>of() : add) {
+            addBeneficiary(new BeneficiaryData(planId, b.name(), b.lastname(), b.documentNumber(), b.relationship(),
+                    true));
+            changes = true;
+        }
+        if (!changes) {
+            throw new InvalidDataException("No hay cambios en el plan " + code(planId) + ".");
+        }
+    }
+
+    /**
+     * Cambia el tipo de plan (normal o premium); la cuota pasa a ser la del nuevo tipo en Parámetros.
+     * Los beneficiarios, las cuotas ya pagadas y la carencia se conservan; las cuotas que se paguen
+     * desde ahora usan la nueva cuota.
+     */
+    @Transactional
+    public void changePlan(Long planId, String planName) {
+        requireAccess();
+        Long actorId = currentUserId();
+        FuneralPlan plan = getPlan(planId);
+        if (plan.getStatus() != PlanStatus.ACTIVE) {
+            throw new InvalidDataException("Solo se puede cambiar el tipo de un plan activo.");
+        }
+        String name = planName(planName);
+        if (name.equalsIgnoreCase(plan.getPlanName())) {
+            throw new InvalidDataException("El plan " + code(planId) + " ya es " + name + ".");
+        }
+        BigDecimal fee = feeOf(name);
+        plan.setPlanName(name);
+        plan.setMonthlyFee(fee);
+        planRepository.save(plan);
+        accessLogService.record(actorId, AccessLogService.PLAN_TYPE_CHANGED + code(planId) + " " + name);
     }
 
     /**
@@ -615,8 +776,8 @@ public class FuneralPlanService {
         if (plan.getStatus() != PlanStatus.ACTIVE) {
             throw new InvalidDataException("Solo se agregan beneficiarios a un plan activo.");
         }
-        String name = required(data.name(), "el nombre", 25);
-        String lastname = required(data.lastname(), "el apellido", 25);
+        String name = PersonNames.titleCase(required(data.name(), "el nombre", 25));
+        String lastname = PersonNames.titleCase(required(data.lastname(), "el apellido", 25));
         String document = data.documentNumber() == null ? "" : data.documentNumber().trim();
         if (!document.matches("\\d{5,11}")) {
             throw new InvalidDataException("El documento del beneficiario debe tener entre 5 y 11 dígitos.");
@@ -650,6 +811,32 @@ public class FuneralPlanService {
         Beneficiary saved = beneficiaryRepository.save(beneficiary);
         accessLogService.record(actorId, AccessLogService.BENEFICIARY_ADDED + code(plan.getId()) + " " + document);
         return saved;
+    }
+
+    /**
+     * Quita a un beneficiario del plan (al actualizar el plan desde Nuevo contrato). No se puede quitar
+     * a quien ya está registrado como difunto del plan, porque su servicio quedó a cargo del plan.
+     */
+    @Transactional
+    public void removeBeneficiary(Long beneficiaryId) {
+        requireAccess();
+        Long actorId = currentUserId();
+        Beneficiary beneficiary = beneficiaryRepository.findById(beneficiaryId)
+                .orElseThrow(() -> new ResourceNotFoundException("Beneficiario", beneficiaryId));
+        FuneralPlan plan = beneficiary.getFuneralPlan();
+        if (plan.getStatus() != PlanStatus.ACTIVE) {
+            throw new InvalidDataException("Solo se quitan beneficiarios de un plan activo.");
+        }
+        String document = beneficiary.getDocumentNumber();
+        boolean deceased = document != null && planRepository.findUsedServices(plan.getId()).stream()
+                .anyMatch(d -> document.equals(d.getDocumentNumber()));
+        if (deceased) {
+            throw new InvalidDataException(fullName(beneficiary.getName(), beneficiary.getLastname())
+                    + " ya está registrado como difunto del plan: no se puede quitar.");
+        }
+        beneficiaryRepository.delete(beneficiary);
+        accessLogService.record(actorId, AccessLogService.BENEFICIARY_REMOVED + code(plan.getId()) + " "
+                + (document == null ? "" : document));
     }
 
     /**
@@ -1058,6 +1245,19 @@ public class FuneralPlanService {
                 });
     }
 
+    /**
+     * Cuota mensual del tipo de plan, tal como está en Parámetros. No se puede escribir otra en el
+     * formulario: si hace falta cambiarla, se cambia el valor en Parámetros.
+     */
+    private BigDecimal feeOf(String planName) {
+        BigDecimal fee = optional(() -> parameters.monthlyFee(planName));
+        if (fee == null || fee.signum() <= 0) {
+            throw new InvalidDataException("La cuota del " + planName + " no está definida en Parámetros. "
+                    + "Pídale al administrador que la registre allí.");
+        }
+        return fee;
+    }
+
     private static void validateAmount(BigDecimal amount, String what) {
         if (amount == null || amount.signum() <= 0) {
             throw new InvalidDataException(what + " debe ser mayor que cero.");
@@ -1132,6 +1332,31 @@ public class FuneralPlanService {
 
     private static String truncate(String text, int max) {
         return text.length() <= max ? text : text.substring(0, max);
+    }
+
+    /** La funeraria maneja dos planes: el normal (servicios esenciales) y el premium (ataúd y sala más grandes). */
+    private static String planName(String chosen) {
+        String clean = chosen == null ? "" : chosen.trim();
+        return PlanParameters.PLAN_NAMES.stream().filter(n -> n.equalsIgnoreCase(clean)).findFirst()
+                .orElseThrow(() -> new InvalidDataException("Elija el tipo de plan: "
+                        + String.join(" o ", PlanParameters.PLAN_NAMES) + "."));
+    }
+
+    /** Un parámetro que puede no estar definido todavía: en ese caso no se muestra. */
+    private static <T> T optional(java.util.function.Supplier<T> read) {
+        try {
+            return read.get();
+        } catch (com.example.funerariamc.exception.BusinessException missing) {
+            return null;
+        }
+    }
+
+    /** "$ 2.000.000", como se ven los valores en pantalla. */
+    static String pesos(BigDecimal value) {
+        java.text.DecimalFormatSymbols symbols = new java.text.DecimalFormatSymbols(Locale.ROOT);
+        symbols.setGroupingSeparator('.');
+        symbols.setDecimalSeparator(',');
+        return "$ " + new java.text.DecimalFormat("#,##0.##", symbols).format(value);
     }
 
     private static String orDash(String value) {

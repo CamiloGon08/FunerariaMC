@@ -66,7 +66,7 @@
 
             <!-- Pestañas, período y Exportar -->
             <HBox styleClass="filter-card">
-                <HBox styleClass="segmented" minWidth="-Infinity">
+                <HBox fx:id="tabBar" styleClass="segmented" minWidth="-Infinity">
                     <ToggleButton fx:id="summaryTab" text="Resumen" toggleGroup="$tabGroup" styleClass="segment"/>
                     <ToggleButton fx:id="movementsTab" text="Movimientos" toggleGroup="$tabGroup" styleClass="segment"/>
                     <ToggleButton fx:id="commissionsTab" text="Comisiones" toggleGroup="$tabGroup" styleClass="segment"/>

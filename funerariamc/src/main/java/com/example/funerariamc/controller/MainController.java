@@ -12,6 +12,9 @@ import com.example.funerariamc.service.RoleNames;
 import com.example.funerariamc.service.SessionContext;
 import com.example.funerariamc.ui.ModuleIcons;
 import com.example.funerariamc.ui.ModuleLink;
+import com.example.funerariamc.ui.ModuleTabs;
+import com.example.funerariamc.ui.SectionView;
+import com.example.funerariamc.ui.SharedPeriod;
 import com.example.funerariamc.ui.Notice;
 import com.example.funerariamc.ui.RefreshableView;
 import com.example.funerariamc.ui.Responsive;
@@ -26,7 +29,6 @@ import javafx.scene.Parent;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
-import javafx.geometry.Pos;
 import javafx.stage.Window;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
@@ -102,10 +104,6 @@ public class MainController {
     private boolean compactWindow;
     /** Primer ítem del menú: vuelve al saludo de inicio. */
     private Button homePill;
-    /** Grupo desplegable de Finanzas: Resumen financiero y Panel de análisis. */
-    private Button financeGroup;
-    private Node financeChevron;
-    private VBox financeItems;
     /** Pantallas ya abiertas en esta sesión; al cerrar sesión se descartan con este controlador. */
     private final Map<AppModule, FxmlViewLoader.View<Object>> openViews = new EnumMap<>(AppModule.class);
     /** Botón del menú de cada módulo, para marcarlo cuando otro módulo salta a él. */
@@ -116,6 +114,37 @@ public class MainController {
     private FxmlViewLoader.View<Object> homeView;
     /** Módulo que se está viendo, para no cerrar otro si falla la bitácora de uno anterior. */
     private AppModule currentModule;
+    /** Clientes reúne en pestañas a Afiliados a planes, Difuntos y Contratos y ventas, como Transporte. */
+    private static final List<ModuleTabs.Tab> CLIENT_TABS = List.of(
+            new ModuleTabs.Tab(AppModule.CLIENTES, "Clientes"),
+            new ModuleTabs.Tab(AppModule.PLANES, "Afiliados a planes"),
+            new ModuleTabs.Tab(AppModule.DIFUNTOS, "Difuntos"),
+            new ModuleTabs.Tab(AppModule.CONTRATOS, "Contratos y ventas"));
+    /** Pestañas del grupo que el rol puede abrir; con una sola no se muestran pestañas. */
+    private List<ModuleTabs.Tab> clientTabs = List.of();
+    /** Única entrada del menú para todo el grupo de Clientes. */
+    private Button clientPill;
+    /**
+     * Finanzas y análisis: una sola entrada del menú con las partes de Finanzas y del Panel de análisis
+     * como pestañas, más Planes exequiales (las gráficas que antes estaban en Planes).
+     */
+    private static final List<ModuleTabs.Tab> FINANCE_TABS = List.of(
+            new ModuleTabs.Tab(AppModule.FINANZAS, "summary", "Resumen"),
+            new ModuleTabs.Tab(AppModule.FINANZAS, "movements", "Movimientos"),
+            new ModuleTabs.Tab(AppModule.FINANZAS, "commissions", "Comisiones"),
+            new ModuleTabs.Tab(AppModule.ANALISIS, "sales", "Ventas y servicios"),
+            new ModuleTabs.Tab(AppModule.ANALISIS, "plans", "Planes exequiales"),
+            new ModuleTabs.Tab(AppModule.ANALISIS, "occupancy", "Ocupación"),
+            new ModuleTabs.Tab(AppModule.ANALISIS, "team", "Equipo"));
+    private static final String FINANCE_TITLE = "Finanzas y análisis";
+    private static final String FINANCE_SUBTITLE = "Todo lo estadístico en un solo lugar: dinero, ventas, planes, ocupación y equipo";
+    /** Pestañas de Finanzas y análisis que el rol puede abrir. */
+    private List<ModuleTabs.Tab> financeTabs = List.of();
+    private Button financePill;
+    /** Última pestaña de Finanzas y análisis que se vio. */
+    private ModuleTabs.Tab lastFinanceTab;
+    /** Pestaña que se vio por última vez: al volver por el menú se abre esa. */
+    private AppModule lastClientTab;
 
     public MainController(AuthService authService, SessionContext sessionContext, FxmlViewLoader viewLoader) {
         this.authService = authService;
@@ -150,18 +179,27 @@ public class MainController {
         menuBox.getChildren().add(homePill);
 
         List<AppModule> modules = authService.visibleModules();
-        // El grupo solo tiene sentido si el rol ve también el Panel de análisis (Administrador Maestro).
-        boolean financeGroupNeeded = modules.contains(AppModule.FINANZAS) && modules.contains(AppModule.ANALISIS);
+        clientTabs = CLIENT_TABS.stream().filter(tab -> modules.contains(tab.module())).toList();
+        // El Resumen, como el Panel de análisis, es solo del Administrador Maestro: la Secretaría ve
+        // Movimientos y Comisiones.
+        boolean master = modules.contains(AppModule.ANALISIS);
+        financeTabs = FINANCE_TABS.stream()
+                .filter(tab -> modules.contains(tab.module()))
+                .filter(tab -> master || !"summary".equals(tab.section()))
+                .toList();
         for (AppModule module : modules) {
-            if (financeGroupNeeded && module == AppModule.FINANZAS) {
-                addFinanceGroup();
-            } else if (!(financeGroupNeeded && module == AppModule.ANALISIS)) {
+            if (inClientGroup(module)) {
+                addClientPill(module);
+            } else if (inFinanceGroup(module)) {
+                addFinancePill(module, master);
+            } else {
                 menuBox.getChildren().add(modulePill(module, module.getLabel(), ModuleIcons.of(module), "nav-pill"));
             }
         }
         // Un módulo puede abrir otro con un dato, por ejemplo del plan a Contratos con el difunto
         ModuleLink.register(module -> openModule(module, pills.get(module)),
-                module -> pills.containsKey(module) && authService.canAccess(module));
+                module -> pills.containsKey(module) && authService.canAccess(module),
+                this::prepareInPlace);
         sidebarAnimator.showExpanded();
         watchWindowSize();
         onHome();
@@ -199,9 +237,6 @@ public class MainController {
             return;
         }
         compactWindow = compact;
-        if (compact) {
-            showFinanceItems(false);
-        }
         sidebarAnimator.setExpanded(!compact, null);
     }
 
@@ -214,42 +249,39 @@ public class MainController {
         return button;
     }
 
-    /** "Finanzas ›": al tocarlo baja la flecha y muestra Resumen financiero y Panel de análisis. */
-    private void addFinanceGroup() {
-        financeGroup = new Button(AppModule.FINANZAS.getLabel(), ModuleIcons.of(AppModule.FINANZAS));
-        financeGroup.getStyleClass().add("nav-pill");
-        sidebarAnimator.register(financeGroup, AppModule.FINANZAS.getLabel());
-        financeChevron = ModuleIcons.of("CHEVRON");
-        financeChevron.getStyleClass().add("nav-chevron");
-        financeChevron.setMouseTransparent(true);
-        StackPane groupRow = new StackPane(financeGroup, financeChevron);
-        groupRow.getStyleClass().add("nav-group");
-        StackPane.setAlignment(financeChevron, Pos.CENTER_RIGHT);
-
-        financeItems = new VBox(3,
-                modulePill(AppModule.FINANZAS, "Resumen financiero", ModuleIcons.of("RESUMEN"), "nav-sub-pill"),
-                modulePill(AppModule.ANALISIS, AppModule.ANALISIS.getLabel(), ModuleIcons.of(AppModule.ANALISIS), "nav-sub-pill"));
-        financeItems.setAlignment(Pos.TOP_RIGHT);
-        financeItems.getStyleClass().add("nav-sub-items");
-        financeItems.managedProperty().bind(financeItems.visibleProperty());
-        financeItems.setVisible(false);
-
-        // Con el menú contraído primero se expande y luego se despliega el grupo.
-        financeGroup.setOnAction(e -> sidebarAnimator.setExpanded(true, () -> showFinanceItems(!financeItems.isVisible())));
-        menuBox.getChildren().addAll(groupRow, financeItems);
+    private boolean inClientGroup(AppModule module) {
+        return clientTabs.stream().anyMatch(tab -> tab.module() == module);
     }
 
-    private void showFinanceItems(boolean show) {
-        if (financeItems == null) {
-            return;
+    /**
+     * Una sola entrada en el menú para Clientes y sus pestañas. Se llama como la primera pestaña que
+     * el rol puede ver (Clientes; el administrador del cementerio solo ve Difuntos).
+     */
+    private void addClientPill(AppModule module) {
+        if (clientPill == null) {
+            AppModule first = clientTabs.get(0).module();
+            lastClientTab = first;
+            clientPill = modulePill(first, first.getLabel(), ModuleIcons.of(first), "nav-pill");
+            clientPill.setOnAction(e -> onModuleSelected(lastClientTab, clientPill));
+            menuBox.getChildren().add(clientPill);
         }
-        financeItems.setVisible(show);
-        financeChevron.setRotate(show ? 90 : 0);
-        financeGroup.getStyleClass().remove("open");
-        if (show) {
-            financeGroup.getStyleClass().add("open");
-            SidebarAnimator.fadeIn(financeItems);
+        pills.put(module, clientPill);
+    }
+
+    private boolean inFinanceGroup(AppModule module) {
+        return financeTabs.stream().anyMatch(tab -> tab.module() == module);
+    }
+
+    /** Una sola entrada "Finanzas y análisis"; con solo Finanzas (Secretaría) se llama Finanzas. */
+    private void addFinancePill(AppModule module, boolean master) {
+        if (financePill == null) {
+            lastFinanceTab = financeTabs.get(0);
+            String text = master ? FINANCE_TITLE : AppModule.FINANZAS.getLabel();
+            financePill = modulePill(lastFinanceTab.module(), text, ModuleIcons.of(AppModule.FINANZAS), "nav-pill");
+            financePill.setOnAction(e -> onModuleSelected(lastFinanceTab.module(), financePill));
+            menuBox.getChildren().add(financePill);
         }
+        pills.put(module, financePill);
     }
 
     /** Como en el diseño: si el menú está contraído, primero se expande y luego abre el módulo (salvo en ventana angosta). */
@@ -314,9 +346,32 @@ public class MainController {
         }
         sidebarAnimator.markActive(button);
         currentModule = module;
+        ModuleLink.opened(module); // para volver aquí después de un salto (por ejemplo, Nuevo contrato)
         ModuleScreen screen = SCREENS.get(module);
         if (screen == null) {
             showMessage(module.getLabel(), "Este módulo se implementa en un próximo sprint.");
+        } else if (inClientGroup(module) && clientTabs.size() > 1) {
+            // Pestañas como en Transporte: el título queda en Clientes y cambia la pantalla de abajo
+            lastClientTab = module;
+            Node view = moduleView(module, screen);
+            ModuleTabs.show(view, clientTabs, clientTabs.stream().filter(t -> t.module() == module).findFirst()
+                    .orElseThrow(), tab -> openModule(tab.module(), clientPill));
+            showContent(AppModule.CLIENTES.getLabel(), screen.subtitle(), view);
+        } else if (inFinanceGroup(module) && financeTabs.size() > 1) {
+            // La última pestaña vista de ese módulo; si no, la primera que tenga
+            ModuleTabs.Tab tab = lastFinanceTab.module() == module ? lastFinanceTab
+                    : financeTabs.stream().filter(t -> t.module() == module).findFirst().orElseThrow();
+            lastFinanceTab = tab;
+            Node view = moduleView(module, screen);
+            if (openViews.get(module).controller() instanceof SectionView sections) {
+                sections.showSection(tab.section());
+            }
+            ModuleTabs.show(view, financeTabs, tab, chosen -> {
+                lastFinanceTab = chosen;
+                openModule(chosen.module(), financePill);
+            });
+            showContent(financePill.getText(), financePill.getText().equals(FINANCE_TITLE) ? FINANCE_SUBTITLE
+                    : screen.subtitle(), view);
         } else {
             showContent(screen.title(), screen.subtitle(), moduleView(module, screen));
         }
@@ -333,6 +388,17 @@ public class MainController {
             refreshable.refresh();
         }
         return view.root();
+    }
+
+    /**
+     * Deja lista la pantalla de otra pestaña sin cambiar la que se ve: por ejemplo "Nuevo contrato"
+     * desde la tarjeta de un cliente se abre encima de Clientes, sin pasar a Contratos y ventas.
+     */
+    private void prepareInPlace(AppModule module) {
+        ModuleScreen screen = SCREENS.get(module);
+        if (screen != null && authService.canAccess(module)) {
+            moduleView(module, screen);
+        }
     }
 
     private void recordAccess(AppModule module) {
@@ -368,6 +434,7 @@ public class MainController {
     @FXML
     private void onHome() {
         currentModule = null;
+        ModuleLink.opened(null);
         sidebarAnimator.markActive(homePill);
         String greeting = salutation(LocalDateTime.now(AccessLogService.APP_ZONE).getHour()) + ", " + firstName(sessionContext.getDisplayName());
         if (!seesHomeBoard()) {
@@ -395,10 +462,6 @@ public class MainController {
 
     @FXML
     private void onToggleSidebar() {
-        // Contraído no caben los subítems: el grupo se cierra.
-        if (sidebarAnimator.isExpanded()) {
-            showFinanceItems(false);
-        }
         sidebarAnimator.toggle();
     }
 
@@ -513,6 +576,7 @@ public class MainController {
     @FXML
     private void onLogout() {
         ModuleLink.clear();
+        SharedPeriod.clear();
         authService.logout();
         viewLoader.switchScene(contentPane, FxmlViewLoader.LOGIN, FxmlViewLoader.LOGIN_TITLE);
     }

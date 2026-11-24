@@ -58,7 +58,7 @@ class ClientServiceTest {
         assertEquals(ClientType.NATURAL, saved.getClientType());
         assertEquals("Martha Cecilia", saved.getName());
         assertEquals("Durán Araújo", saved.getLastname());
-        assertNull(saved.getEmail());
+        assertEquals("martha.duran@gmail.com", saved.getEmail()); // el correo se guarda sin espacios
         assertEquals(LocalDate.now(AccessLogService.APP_ZONE), saved.getRegistrationDate());
         verify(accessLog).record(5L, "CLIENT_CREATED: 1065832417");
     }
@@ -104,7 +104,7 @@ class ClientServiceTest {
     @Test
     void nitCheckDigitMustMatch() {
         ClientData data = new ClientData(ClientType.CORPORATE, "NIT", "800197268-5",
-                "Empresa", null, "6055804411", null, "Calle 1");
+                "Empresa", null, "6055804411", "cliente@correo.com", "Calle 1");
 
         InvalidDataException error = assertThrows(InvalidDataException.class, () -> service.register(data));
         assertTrue(error.getMessage().contains("dígito de verificación"));
@@ -120,9 +120,9 @@ class ClientServiceTest {
     @Test
     void companyMustUseNitAndPersonCannotUseNit() {
         ClientData companyWithCc = new ClientData(ClientType.CORPORATE, "CC", "1065832417",
-                "Empresa", null, "6055804411", null, "Calle 1");
+                "Empresa", null, "6055804411", "cliente@correo.com", "Calle 1");
         ClientData personWithNit = new ClientData(ClientType.NATURAL, "NIT", "8001972684",
-                "Ana", "Pérez", "3015562087", null, "Calle 1");
+                "Ana", "Pérez", "3015562087", "cliente@correo.com", "Calle 1");
 
         assertThrows(InvalidDataException.class, () -> service.register(companyWithCc));
         assertThrows(InvalidDataException.class, () -> service.register(personWithNit));
@@ -131,29 +131,39 @@ class ClientServiceTest {
     @Test
     void requiresNamesPhoneAndAddress() {
         assertThrows(InvalidDataException.class, () -> service.register(new ClientData(ClientType.NATURAL,
-                "CC", "1065832417", "Martha", null, "3015562087", null, "Calle 1")));
+                "CC", "1065832417", "Martha", null, "3015562087", "cliente@correo.com", "Calle 1")));
         assertThrows(InvalidDataException.class, () -> service.register(new ClientData(ClientType.NATURAL,
-                "CC", "1065832417", "Martha", "Durán", null, null, "Calle 1")));
+                "CC", "1065832417", "Martha", "Durán", null, "cliente@correo.com", "Calle 1")));
         assertThrows(InvalidDataException.class, () -> service.register(new ClientData(ClientType.NATURAL,
-                "CC", "1065832417", "Martha", "Durán", "3015562087", null, " ")));
+                "CC", "1065832417", "Martha", "Durán", "3015562087", "cliente@correo.com", " ")));
         assertThrows(InvalidDataException.class, () -> service.register(new ClientData(null,
-                "CC", "1065832417", "Martha", "Durán", "3015562087", null, "Calle 1")));
+                "CC", "1065832417", "Martha", "Durán", "3015562087", "cliente@correo.com", "Calle 1")));
+    }
+
+    @Test
+    void requiresAWellWrittenEmail() {
+        for (String email : new String[]{null, " ", "martha@gmail", "martha@.com", "martha gmail@correo.com"}) {
+            InvalidDataException error = assertThrows(InvalidDataException.class, () -> service.register(
+                    new ClientData(ClientType.NATURAL, "CC", "1065832417", "Martha", "Durán", "3015562087", email, "Calle 1")));
+            assertTrue(error.getMessage().startsWith("El correo"));
+        }
+        verifyNoInteractions(clients, persons, accessLog);
     }
 
     @Test
     void rejectsInvalidPhoneEmailAndCedula() {
         assertThrows(InvalidDataException.class, () -> service.register(new ClientData(ClientType.NATURAL,
-                "CC", "1065832417", "Martha", "Durán", "301-ABC", null, "Calle 1")));
+                "CC", "1065832417", "Martha", "Durán", "301-ABC", "cliente@correo.com", "Calle 1")));
         assertThrows(InvalidDataException.class, () -> service.register(new ClientData(ClientType.NATURAL,
                 "CC", "1065832417", "Martha", "Durán", "3015562087", "martha.gmail.com", "Calle 1")));
         assertThrows(InvalidDataException.class, () -> service.register(new ClientData(ClientType.NATURAL,
-                "CC", "12345", "Martha", "Durán", "3015562087", null, "Calle 1")));
+                "CC", "12345", "Martha", "Durán", "3015562087", "cliente@correo.com", "Calle 1")));
     }
 
     @Test
     void passportKeepsLettersInUpperCase() {
         Client saved = service.register(new ClientData(ClientType.NATURAL, "PA", "ab-123456",
-                "John", "Smith", "301 556 2087", null, "Calle 1"));
+                "John", "Smith", "301 556 2087", "cliente@correo.com", "Calle 1"));
 
         assertEquals("AB123456", saved.getDocumentNumber());
     }
@@ -338,15 +348,15 @@ class ClientServiceTest {
     void namesAndAddressesCannotExceedThePersonColumnLengths() {
         // Límites de person indicados en el contrato de Clientes.
         assertThrows(InvalidDataException.class, () -> service.register(new ClientData(ClientType.NATURAL,
-                "CC", "1065832417", "X".repeat(26), "Durán", "3015562087", null, "Calle 1")));
+                "CC", "1065832417", "X".repeat(26), "Durán", "3015562087", "cliente@correo.com", "Calle 1")));
         assertThrows(InvalidDataException.class, () -> service.register(new ClientData(ClientType.NATURAL,
-                "CC", "1065832417", "Martha", "X".repeat(26), "3015562087", null, "Calle 1")));
+                "CC", "1065832417", "Martha", "X".repeat(26), "3015562087", "cliente@correo.com", "Calle 1")));
         assertThrows(InvalidDataException.class, () -> service.register(new ClientData(ClientType.NATURAL,
                 "CC", "1065832417", "Martha", "Durán", "3015562087", "x".repeat(21) + "@correo.co", "Calle 1")));
         assertThrows(InvalidDataException.class, () -> service.register(new ClientData(ClientType.NATURAL,
-                "CC", "1065832417", "Martha", "Durán", "3015562087", null, "X".repeat(41))));
+                "CC", "1065832417", "Martha", "Durán", "3015562087", "cliente@correo.com", "X".repeat(41))));
         assertThrows(InvalidDataException.class, () -> service.register(new ClientData(ClientType.NATURAL,
-                "CC", "1065832417", "Martha", "Durán", "+57 301 556 2087", null, "Calle 1")));
+                "CC", "1065832417", "Martha", "Durán", "+57 301 556 2087", "cliente@correo.com", "Calle 1")));
 
         verifyNoInteractions(clients, persons, accessLog);
     }
@@ -355,7 +365,7 @@ class ClientServiceTest {
     @ValueSource(strings = {"(301) 556-2087", "301.556.2087", " 301 556 2087 "})
     void storesFormattedPhoneAsDigits(String phone) {
         Client saved = service.register(new ClientData(ClientType.NATURAL, "CC", "1065832417",
-                "Martha", "Durán", phone, null, "Calle 1"));
+                "Martha", "Durán", phone, "cliente@correo.com", "Calle 1"));
 
         assertEquals("3015562087", saved.getPhone());
     }
@@ -364,7 +374,7 @@ class ClientServiceTest {
     @ValueSource(strings = {"123456", "12345678901", "+573015562087"})
     void rejectsPhonesOutsideTheStorageLimit(String phone) {
         assertThrows(InvalidDataException.class, () -> service.register(new ClientData(ClientType.NATURAL,
-                "CC", "1065832417", "Martha", "Durán", phone, null, "Calle 1")));
+                "CC", "1065832417", "Martha", "Durán", phone, "cliente@correo.com", "Calle 1")));
 
         verifyNoInteractions(clients, persons, accessLog);
     }
@@ -384,7 +394,7 @@ class ClientServiceTest {
     @Test
     void passportCannotExceedTheStorageLimit() {
         assertThrows(InvalidDataException.class, () -> service.register(new ClientData(ClientType.NATURAL,
-                "PA", "AB1234567890", "John", "Smith", "3015562087", null, "Calle 1")));
+                "PA", "AB1234567890", "John", "Smith", "3015562087", "cliente@correo.com", "Calle 1")));
 
         verifyNoInteractions(clients, persons, accessLog);
     }
@@ -452,6 +462,6 @@ class ClientServiceTest {
 
     private static ClientData natural(String document) {
         return new ClientData(ClientType.NATURAL, "CC", document, " Martha Cecilia ", "Durán Araújo",
-                "301 556 2087", " ", "Cra. 9 # 16-42, Centro, Valledupar");
+                "301 556 2087", " martha.duran@gmail.com ", "Cra. 9 # 16-42, Centro, Valledupar");
     }
 }

@@ -15,6 +15,7 @@ import com.example.funerariamc.service.WakeRoomService.RoomCard;
 import com.example.funerariamc.service.WakeRoomService.RoomState;
 import com.example.funerariamc.service.WakeRoomService.Wake;
 import com.example.funerariamc.service.WakeRoomService.WakeDetail;
+import com.example.funerariamc.ui.Pager;
 import com.example.funerariamc.ui.DetailShell;
 import com.example.funerariamc.ui.Notice;
 import com.example.funerariamc.ui.Responsive;
@@ -143,6 +144,9 @@ public class WakeRoomController implements RefreshableView {
     private Button newRoomButton;
     @FXML
     private GridPane cardGrid;
+    private Pager<RoomCard> pager;
+    /** Estado con que se armó la página actual (para saber si hay que volver a la página 1). */
+    private RoomState lastFilter;
     @FXML
     private Label emptyLabel;
     @FXML
@@ -192,6 +196,8 @@ public class WakeRoomController implements RefreshableView {
 
         // Columnas según el ancho: en ventana angosta las tarjetas pasan a 2 (o 1) por fila
         Responsive.cardColumns(cardGrid, MIN_CARD_WIDTH, COLUMNS);
+        // Paginación como la bitácora: 12 tarjetas de salas por página, debajo de la cuadrícula.
+        pager = Pager.<RoomCard>local(Pager.CARD_PAGE, "sala", "salas", this::drawCards).below(cardGrid);
 
         datePicker.setConverter(dayConverter());
         datePicker.setValue(today());
@@ -295,17 +301,31 @@ public class WakeRoomController implements RefreshableView {
                     ? "No hay salas registradas. Use «Nueva sala» para registrar la primera."
                     : "No hay salas registradas. El Administrador Maestro las registra.");
             show(emptyLabel, true);
+            pager.setItemsFromStart(List.of());
             return;
         }
         if (cards.isEmpty()) {
             emptyLabel.setText("Ninguna sala está «" + filter.getLabel().toLowerCase(ES) + "» ese día.");
             show(emptyLabel, true);
+            pager.setItemsFromStart(List.of());
             return;
         }
         show(emptyLabel, false);
+        // Otro estado vuelve a la página 1; recargar el tablero se queda en la página actual.
+        if (filter == lastFilter) {
+            pager.setItems(cards);
+        } else {
+            pager.setItemsFromStart(cards);
+        }
+        lastFilter = filter;
+    }
+
+    /** Dibuja las tarjetas de la página visible. */
+    private void drawCards(List<RoomCard> page) {
+        cardGrid.getChildren().clear();
         LocalDateTime now = LocalDateTime.now(AccessLogService.APP_ZONE);
-        for (int i = 0; i < cards.size(); i++) {
-            VBox card = roomCard(cards.get(i), now);
+        for (int i = 0; i < page.size(); i++) {
+            VBox card = roomCard(page.get(i), now);
             GridPane.setFillWidth(card, true);
             card.setMaxWidth(Double.MAX_VALUE);
             cardGrid.add(card, i % COLUMNS, i / COLUMNS);
@@ -617,9 +637,9 @@ public class WakeRoomController implements RefreshableView {
 
         LocalDate day = datePicker.getValue() == null ? today() : datePicker.getValue();
         DatePicker startDate = new DatePicker(day);
-        ComboBox<LocalTime> startTime = timeCombo(LocalTime.of(8, 0));
+        ComboBox<LocalTime> startTime = timeCombo(null);
         DatePicker endDate = new DatePicker(day);
-        ComboBox<LocalTime> endTime = timeCombo(LocalTime.of(18, 0));
+        ComboBox<LocalTime> endTime = timeCombo(null);
 
         Form form = new Form()
                 .section("Sala", 1)
@@ -1028,9 +1048,14 @@ public class WakeRoomController implements RefreshableView {
         for (int minutes = 0; minutes < 24 * 60; minutes += 30) {
             box.getItems().add(LocalTime.of(minutes / 60, minutes % 60));
         }
-        box.setValue(initial);
         box.setVisibleRowCount(8);
         box.setConverter(converter(HOUR::format, ""));
+        // Al asignar no se pone una hora: el usuario la elige.
+        if (initial == null) {
+            FormShell.choose(box, "Seleccione la hora");
+        } else {
+            box.setValue(initial);
+        }
         return box;
     }
 

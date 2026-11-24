@@ -85,7 +85,7 @@ class EmployeeServiceTest {
         Employee saved = service.register(driver("12725893", "file:/C:/licencia.pdf", LocalDate.now().plusYears(2)));
         assertEquals(Sex.MALE, saved.getSex());
 
-        EmployeeData noSex = new EmployeeData("Jorge Luis", "Araújo", "CC", "12725894", null, null, null, null, null,
+        EmployeeData noSex = new EmployeeData("Jorge Luis", "Araújo", "CC", "12725894", null, "empleado@correo.com", null, null, null,
                 EmployeePosition.DRIVER, LocalDate.of(2021, 6, 20), new BigDecimal("1850000"),
                 null, null, null, null, null, "C2", "123-C2", LocalDate.now().plusYears(2), "file:/C:/licencia.pdf");
         clearInvocations(employees, persons, users, accessLog);
@@ -113,7 +113,7 @@ class EmployeeServiceTest {
 
     @Test
     void salespersonCommissionMustBeBetweenZeroAndHundred() {
-        EmployeeData data = new EmployeeData("Laura", "Daza", "CC", "1065000111", null, null, null, null, Sex.FEMALE,
+        EmployeeData data = new EmployeeData("Laura", "Daza", "CC", "1065000111", null, "empleado@correo.com", null, null, Sex.FEMALE,
                 EmployeePosition.FUNERAL_SALESPERSON, LocalDate.of(2024, 3, 1), new BigDecimal("1600000"),
                 new BigDecimal("120"), null, null, null, null, null, null, null, null);
 
@@ -122,7 +122,7 @@ class EmployeeServiceTest {
 
     @Test
     void salespersonKeepsCommissionRate() {
-        EmployeeData data = new EmployeeData("Laura", "Daza", "CC", "1065000111", null, null, null, null, Sex.FEMALE,
+        EmployeeData data = new EmployeeData("Laura", "Daza", "CC", "1065000111", null, "empleado@correo.com", null, null, Sex.FEMALE,
                 EmployeePosition.FUNERAL_SALESPERSON, LocalDate.of(2024, 3, 1), new BigDecimal("1600000"),
                 new BigDecimal("5.5"), null, null, null, null, null, null, null, null);
 
@@ -133,7 +133,7 @@ class EmployeeServiceTest {
 
     @Test
     void hireDateCannotBeInTheFuture() {
-        EmployeeData data = new EmployeeData("Ana", "Mejía", "CC", "77000111", null, null, null, null, Sex.FEMALE,
+        EmployeeData data = new EmployeeData("Ana", "Mejía", "CC", "77000111", null, "empleado@correo.com", null, null, Sex.FEMALE,
                 EmployeePosition.RECEPTIONIST, LocalDate.now(AccessLogService.APP_ZONE).plusDays(3), new BigDecimal("1423500"),
                 null, null, null, null, null, null, null, null, null);
 
@@ -144,7 +144,7 @@ class EmployeeServiceTest {
 
     @Test
     void thanatopractorWithoutLicenseNumberIsAccepted() {
-        EmployeeData data = new EmployeeData("Andrea", "Pumarejo", "CC", "1003418267", null, null, null, null, Sex.FEMALE,
+        EmployeeData data = new EmployeeData("Andrea", "Pumarejo", "CC", "1003418267", null, "empleado@correo.com", null, null, Sex.FEMALE,
                 EmployeePosition.THANATOPRACTOR, LocalDate.of(2023, 1, 15), new BigDecimal("2000000"),
                 null, "SENA", LocalDate.of(2022, 5, 1), "file:/C:/certificado.pdf", new BigDecimal("80000"),
                 null, null, null, null);
@@ -154,7 +154,7 @@ class EmployeeServiceTest {
 
     @Test
     void thanatopractorNeedsCertificateFile() {
-        EmployeeData data = new EmployeeData("Andrea", "Pumarejo", "CC", "1003418267", null, null, null, null, Sex.FEMALE,
+        EmployeeData data = new EmployeeData("Andrea", "Pumarejo", "CC", "1003418267", null, "empleado@correo.com", null, null, Sex.FEMALE,
                 EmployeePosition.THANATOPRACTOR, LocalDate.of(2023, 1, 15), new BigDecimal("2000000"),
                 null, "SENA", LocalDate.of(2022, 5, 1), null, new BigDecimal("80000"),
                 null, null, null, null);
@@ -359,7 +359,7 @@ class EmployeeServiceTest {
         when(persons.existsByDocumentNumberAndIdNot("77000111", 7L)).thenReturn(true);
 
         DuplicateDocumentException failure = assertThrows(DuplicateDocumentException.class,
-                () -> service.update(7L, receptionist("77.000.111", null)));
+                () -> service.update(7L, receptionist("77.000.111", "ana.mejia@correo.com")));
 
         assertEquals("1065999000", employee.getDocumentNumber());
         assertFalse(failure.getMessage().contains("77000111"));
@@ -370,7 +370,7 @@ class EmployeeServiceTest {
     void missingEmployeesRaiseBusinessErrorsForReadsAndWrites() {
         assertThrows(ResourceNotFoundException.class, () -> service.findById(7L));
         assertThrows(ResourceNotFoundException.class,
-                () -> service.update(7L, receptionist("77000111", null)));
+                () -> service.update(7L, receptionist("77000111", "ana.mejia@correo.com")));
         assertThrows(ResourceNotFoundException.class, () -> service.activate(7L));
         assertThrows(ResourceNotFoundException.class, () -> service.deactivate(7L));
 
@@ -382,9 +382,9 @@ class EmployeeServiceTest {
         session.getCurrentUser().orElseThrow().setId(null);
 
         assertThrows(UnauthorizedActionException.class,
-                () -> service.register(receptionist("77000111", null)));
+                () -> service.register(receptionist("77000111", "ana.mejia@correo.com")));
         assertThrows(UnauthorizedActionException.class,
-                () -> service.update(7L, receptionist("77000111", null)));
+                () -> service.update(7L, receptionist("77000111", "ana.mejia@correo.com")));
         assertThrows(UnauthorizedActionException.class, () -> service.activate(7L));
         assertThrows(UnauthorizedActionException.class, () -> service.deactivate(7L));
 
@@ -398,7 +398,7 @@ class EmployeeServiceTest {
         when(employees.findById(7L)).thenReturn(Optional.of(receptionistWithId(7L)));
 
         assertSame(failure, assertThrows(DataAccessResourceFailureException.class,
-                () -> service.register(receptionist("77000111", null))));
+                () -> service.register(receptionist("77000111", "ana.mejia@correo.com"))));
         assertSame(failure, assertThrows(DataAccessResourceFailureException.class,
                 () -> service.deactivate(7L)));
     }
@@ -441,9 +441,9 @@ class EmployeeServiceTest {
         assertThrows(UnauthorizedActionException.class, () -> service.hasLicenseExpiringSoon(new Driver()));
         assertThrows(UnauthorizedActionException.class, () -> service.findById(7L));
         assertThrows(UnauthorizedActionException.class,
-                () -> service.register(receptionist("77000111", null)));
+                () -> service.register(receptionist("77000111", "ana.mejia@correo.com")));
         assertThrows(UnauthorizedActionException.class,
-                () -> service.update(7L, receptionist("77000111", null)));
+                () -> service.update(7L, receptionist("77000111", "ana.mejia@correo.com")));
         assertThrows(UnauthorizedActionException.class, () -> service.activate(7L));
         assertThrows(UnauthorizedActionException.class, () -> service.deactivate(7L));
         verifyNoInteractions(employees, persons, users, accessLog, parameters);
@@ -582,6 +582,15 @@ class EmployeeServiceTest {
         verifyNoInteractions(employees, persons, users, accessLog);
     }
 
+    @Test
+    void requiresAWellWrittenEmail() {
+        for (String email : new String[]{null, "", "ana@correo", "ana.correo.com"}) {
+            InvalidDataException error = assertThrows(InvalidDataException.class,
+                    () -> service.register(receptionist("77000111", email)));
+            assertTrue(error.getMessage().startsWith("El correo"));
+        }
+    }
+
     private static EmployeeData receptionist(String document, String email) {
         return new EmployeeData(" Ana ", " Mejía ", " CC ", document, " 3001234567 ", email,
                 " Calle 1 ", null, Sex.FEMALE, EmployeePosition.RECEPTIONIST, LocalDate.of(2024, 3, 1),
@@ -589,7 +598,7 @@ class EmployeeServiceTest {
     }
 
     private static EmployeeData driver(String document, String licenseFile, LocalDate licenseExpiry) {
-        return new EmployeeData("Jorge Luis", "Araújo", "CC", document, null, null, null, null, Sex.MALE,
+        return new EmployeeData("Jorge Luis", "Araújo", "CC", document, null, "empleado@correo.com", null, null, Sex.MALE,
                 EmployeePosition.DRIVER, LocalDate.of(2021, 6, 20), new BigDecimal("1850000"),
                 null, null, null, null, null, "C2", "123-C2", licenseExpiry, licenseFile);
     }

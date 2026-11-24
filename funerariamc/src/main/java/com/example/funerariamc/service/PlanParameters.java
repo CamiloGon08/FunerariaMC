@@ -22,6 +22,9 @@ public class PlanParameters {
     public static final String MAX_START_MONTHS_AHEAD = "PLAN_MAX_START_MONTHS_AHEAD";
     public static final String ARREARS_RESET_MONTHS = "PLAN_ARREARS_RESET_MONTHS";
     public static final String OVERDUE_LETTER_DAYS = "PLAN_OVERDUE_LETTER_DAYS";
+    /** Cuota mensual de cada plan; al afiliar o cambiar de plan se llena sola con este valor. */
+    public static final String NORMAL_MONTHLY_FEE = "PLAN_NORMAL_MONTHLY_FEE";
+    public static final String PREMIUM_MONTHLY_FEE = "PLAN_PREMIUM_MONTHLY_FEE";
 
     /** Nombres de los dos planes que maneja la funeraria. */
     public static final String NORMAL_PLAN = "Plan Normal";
@@ -86,6 +89,22 @@ public class PlanParameters {
         }
     }
 
+    /** Cuota mensual del plan (normal o premium) guardada en Parámetros. */
+    public BigDecimal monthlyFee(String planName) {
+        return nonNegativeAmount(isPremium(planName) ? PREMIUM_MONTHLY_FEE : NORMAL_MONTHLY_FEE);
+    }
+
+    /** Valor del ataúd que cubre el plan: el premium cubre uno más grande. */
+    public BigDecimal coveredCoffinPrice(String planName) {
+        return nonNegativeAmount(isPremium(planName) ? SaleParameters.PLAN_PREMIUM_COFFIN_PRICE
+                : SaleParameters.PLAN_BASIC_COFFIN_PRICE);
+    }
+
+    /** Recargo de la sala especial; el plan premium no lo paga. */
+    public BigDecimal specialRoomSurcharge() {
+        return nonNegativeAmount(SaleParameters.WAKE_ROOM_SURCHARGE);
+    }
+
     /** El plan premium permite un ataúd y una sala más grandes. */
     public static boolean isPremium(String planName) {
         return planName != null && planName.trim().equalsIgnoreCase(PREMIUM_PLAN);
@@ -102,7 +121,7 @@ public class PlanParameters {
     private BigDecimal nonNegativeAmount(String name) {
         BigDecimal value = parameters.getBigDecimal(name);
         if (value.signum() < 0) {
-            throw new InvalidDataException("El recargo de planes no puede ser negativo.");
+            throw new InvalidDataException("Los valores de planes en Parámetros no pueden ser negativos.");
         }
         return value;
     }

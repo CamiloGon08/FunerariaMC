@@ -58,7 +58,7 @@
             </HBox>
         </VBox>
 
-        <!-- Búsqueda, tipo, saldo y nuevo cliente (.filter-card y .search-box en app.css) -->
+        <!-- Búsqueda, tipo, plan exequial, saldo y nuevo cliente (.filter-card y .search-box en app.css) -->
         <HBox styleClass="filter-card">
             <HBox styleClass="search-box" HBox.hgrow="ALWAYS" minWidth="180">
                 <SVGPath content="M7 1.5a5.5 5.5 0 1 1 0 11a5.5 5.5 0 0 1 0-11z M11.2 11.2 L15 15" styleClass="search-icon"/>
@@ -72,6 +72,7 @@
                 <ToggleButton fx:id="corporateToggle" text="Empresa" toggleGroup="$typeGroup"
                               styleClass="chip, area-chip" minWidth="-Infinity"/>
             </HBox>
+            <ComboBox fx:id="planFilter" styleClass="chip-combo" prefWidth="176" minWidth="176"/>
             <ComboBox fx:id="balanceFilter" styleClass="chip-combo" prefWidth="186" minWidth="186"/>
             <Button text="+  Nuevo cliente" onAction="#onRegister" styleClass="primary-button"
                     minWidth="-Infinity"/>
@@ -83,7 +84,7 @@
             <Label fx:id="showingLabel" styleClass="card-subtitle"/>
         </HBox>
 
-        <!-- Tarjetas: barra de desplazamiento visible; se cargan 12 más al llegar al final -->
+        <!-- Tarjetas: 12 por página; la barra de páginas se agrega debajo desde el controlador -->
         <ScrollPane fx:id="cardScroll" fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="ALWAYS"
                     styleClass="card-scroll" VBox.vgrow="ALWAYS">
             <VBox spacing="16" styleClass="card-scroll-content">
@@ -96,10 +97,6 @@
                 </GridPane>
                 <Label fx:id="emptyLabel" text="No hay clientes que coincidan con la búsqueda."
                        styleClass="card-subtitle" managed="false" visible="false"/>
-                <HBox alignment="CENTER">
-                    <Button fx:id="moreButton" text="Mostrar más clientes" onAction="#onLoadMore"
-                            styleClass="secondary-button" managed="false" visible="false"/>
-                </HBox>
             </VBox>
         </ScrollPane>
     </VBox>

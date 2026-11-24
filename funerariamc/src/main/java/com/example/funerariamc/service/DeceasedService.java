@@ -423,8 +423,8 @@ public class DeceasedService {
                 throw new InvalidDataException("Un cuerpo no identificado no se puede vincular a un plan.");
             }
         } else {
-            deceased.setName(required(data.name(), "los nombres", 25));
-            deceased.setLastname(required(data.lastname(), "los apellidos", 25));
+            deceased.setName(PersonNames.titleCase(required(data.name(), "los nombres", 25)));
+            deceased.setLastname(PersonNames.titleCase(required(data.lastname(), "los apellidos", 25)));
             String document = required(data.documentNumber(), "el número de documento", 11);
             if (!document.matches("\\d{5,11}")) {
                 throw new InvalidDataException("El documento debe tener entre 5 y 11 dígitos.");
@@ -447,11 +447,10 @@ public class DeceasedService {
         deceased.setDeathDate(data.deathDate());
         setDeathType(deceased, data.deathType(), data.externalCause());
 
+        // El cliente es opcional: en Difuntos se registra sin cliente y queda a nombre de quien hace el contrato
         if (data.clientId() != null) {
             deceased.setClient(clientRepository.findById(data.clientId())
                     .orElseThrow(() -> new ResourceNotFoundException("Cliente", data.clientId())));
-        } else if (!data.unidentified()) {
-            throw new InvalidDataException("Seleccione el cliente responsable del servicio.");
         }
         if (data.planId() != null) {
             deceased.setFuneralPlan(coveringPlan(data.planId(), deceased));

@@ -40,11 +40,11 @@
             </HBox>
             <VBox styleClass="form-field" GridPane.columnIndex="0" GridPane.rowIndex="1">
                 <Label styleClass="field-label" text="TIPO DE CLIENTE *"/>
-                <ComboBox fx:id="clientTypeCombo" maxWidth="Infinity" styleClass="form-combo"/>
+                <ComboBox fx:id="clientTypeCombo" maxWidth="Infinity" styleClass="form-combo" promptText="Seleccione…"/>
             </VBox>
             <VBox styleClass="form-field" GridPane.columnIndex="1" GridPane.rowIndex="1">
                 <Label styleClass="field-label" text="TIPO DE DOCUMENTO *"/>
-                <ComboBox fx:id="documentTypeCombo" maxWidth="Infinity" styleClass="form-combo"/>
+                <ComboBox fx:id="documentTypeCombo" maxWidth="Infinity" styleClass="form-combo" promptText="Seleccione…"/>
             </VBox>
             <VBox styleClass="form-field" GridPane.columnIndex="2" GridPane.rowIndex="1">
                 <Label styleClass="field-label" text="NÚMERO DE DOCUMENTO *"/>
@@ -72,8 +72,8 @@
                 <TextField fx:id="phoneField" promptText="301 556 2087"/>
             </VBox>
             <VBox styleClass="form-field" GridPane.columnIndex="1" GridPane.rowIndex="4">
-                <Label styleClass="field-label" text="CORREO"/>
-                <TextField fx:id="emailField"/>
+                <Label styleClass="field-label" text="CORREO *"/>
+                <TextField fx:id="emailField" promptText="nombre@gmail.com"/>
             </VBox>
             <VBox styleClass="form-field" GridPane.columnIndex="2" GridPane.rowIndex="4">
                 <Label styleClass="field-label" text="DIRECCIÓN *"/>

@@ -196,7 +196,7 @@
 /* Barra de búsqueda y filtros */
 .eden-green .filter-card {
     -fx-background-color: -eden-card; -fx-border-color: transparent;
-    -fx-background-radius: 18; -fx-border-radius: 18; -fx-padding: 10 12;
+    -fx-background-radius: 18; -fx-border-radius: 18; -fx-padding: 12 16; -fx-spacing: 16;
     -fx-effect: dropshadow(gaussian, -color-shadow-05, 12, 0, 0, 2);
 }
 .eden-green .search-box { -fx-background-color: -eden-tint; -fx-background-radius: 12; }
@@ -291,3 +291,9 @@
 /* Barra de desplazamiento fina en lino */
 .eden-green .card-scroll .scroll-bar:vertical { -fx-background-color: transparent; -fx-pref-width: 7; }
 .eden-green .card-scroll .scroll-bar:vertical .thumb { -fx-background-color: -color-mist; }
+/* Esperan destino y Disponible para destino (columna derecha) */
+.code-waiting { -fx-background-color: -color-surface; -fx-text-fill: -color-moss; }
+.waiting-detail { -fx-text-fill: -color-gold-text; -fx-font-size: 12px; }
+.availability-name { -fx-text-fill: -color-secondary; -fx-font-size: 12.5px; }
+.availability-value { -fx-text-fill: -color-primary; -fx-font-weight: bold; -fx-font-size: 12.5px; }
+.occupancy-bar.bar-gold > .bar { -fx-background-color: -color-gold-text; }

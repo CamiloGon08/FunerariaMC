@@ -11,7 +11,6 @@ import com.example.funerariamc.service.FuneralPlanService;
 import com.example.funerariamc.service.FuneralPlanService.BeneficiaryInfo;
 import com.example.funerariamc.service.FuneralPlanService.Kpis;
 import com.example.funerariamc.service.FuneralPlanService.MonthCell;
-import com.example.funerariamc.service.FuneralPlanService.MonthPoint;
 import com.example.funerariamc.service.FuneralPlanService.Option;
 import com.example.funerariamc.service.FuneralPlanService.Overview;
 import com.example.funerariamc.service.FuneralPlanService.PaymentFilter;
@@ -19,19 +18,19 @@ import com.example.funerariamc.service.FuneralPlanService.PaymentInfo;
 import com.example.funerariamc.service.FuneralPlanService.PlanCard;
 import com.example.funerariamc.service.FuneralPlanService.PlanDetail;
 import com.example.funerariamc.service.FuneralPlanService.PlanFilter;
+import com.example.funerariamc.service.FuneralPlanService.PlanOffer;
 import com.example.funerariamc.service.FuneralPlanService.SurchargePreview;
-import com.example.funerariamc.service.FuneralPlanService.TypeSlice;
 import com.example.funerariamc.service.FuneralPlanService.UsedService;
-import com.example.funerariamc.service.FuneralPlanService.WaitingSoon;
-import com.example.funerariamc.service.PlanData;
 import com.example.funerariamc.service.PlanParameters;
 import com.example.funerariamc.service.PlanPaymentData;
+import com.example.funerariamc.ui.Pager;
 import com.example.funerariamc.ui.DetailShell;
 import com.example.funerariamc.ui.Notice;
 import com.example.funerariamc.ui.DetailCache;
 import com.example.funerariamc.ui.RefreshableView;
 import com.example.funerariamc.ui.FormShell;
 import com.example.funerariamc.ui.ModuleLink;
+import com.example.funerariamc.ui.PlanOfferCard;
 import javafx.animation.PauseTransition;
 import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
@@ -39,16 +38,11 @@ import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
-import javafx.scene.chart.CategoryAxis;
-import javafx.scene.chart.LineChart;
-import javafx.scene.chart.NumberAxis;
-import javafx.scene.chart.XYChart;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
-import javafx.scene.control.DatePicker;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.DialogPane;
 import javafx.scene.control.Label;
@@ -60,7 +54,6 @@ import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
-import javafx.scene.control.Tooltip;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
@@ -69,9 +62,6 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
-import javafx.scene.shape.Arc;
-import javafx.scene.shape.ArcType;
-import javafx.scene.shape.Circle;
 import javafx.scene.shape.SVGPath;
 import javafx.stage.Window;
 import javafx.util.Duration;
@@ -80,7 +70,6 @@ import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -109,8 +98,6 @@ public class FuneralPlanController implements RefreshableView {
     private static final Locale ES = Locale.forLanguageTag("es-CO");
     private static final DateTimeFormatter MONTH = DateTimeFormatter.ofPattern("MMMM yyyy", ES);
     private static final DateTimeFormatter SHORT_MONTH = DateTimeFormatter.ofPattern("MMM", ES);
-    /** Tarjetas que se agregan cada vez que el usuario llega al final de la página. */
-    private static final int CARDS_STEP = 12;
     private static final int COLUMNS = 3;
 
     private final FuneralPlanService planService;
@@ -157,20 +144,6 @@ public class FuneralPlanController implements RefreshableView {
     @FXML
     private Label waitingDetail;
     @FXML
-    private LineChart<String, Number> collectionChart;
-    @FXML
-    private CategoryAxis monthAxis;
-    @FXML
-    private NumberAxis amountAxis;
-    @FXML
-    private StackPane donut;
-    @FXML
-    private VBox typeLegend;
-    @FXML
-    private Label averageFee;
-    @FXML
-    private VBox waitingBox;
-    @FXML
     private Label countLabel;
     @FXML
     private GridPane cardGrid;
@@ -183,7 +156,9 @@ public class FuneralPlanController implements RefreshableView {
 
     private Overview overview;
     private List<PlanCard> filtered = List.of();
-    private int shown;
+    private Pager<PlanCard> pager;
+    /** Filtros con que se armó la página actual (para saber si hay que volver a la página 1). */
+    private String lastFilter;
     /** Plan del panel abierto; null si está cerrado. */
     private Long drawerPlanId;
     private DetailShell detail;
@@ -237,24 +212,9 @@ public class FuneralPlanController implements RefreshableView {
             column.setPercentWidth(100.0 / COLUMNS);
             cardGrid.getColumnConstraints().add(column);
         }
-        // Al llegar al final de la página se agregan más tarjetas (sin paginación).
-        pageScroll.vvalueProperty().addListener((obs, old, value) -> {
-            if (value.doubleValue() >= 0.98 && shown < filtered.size()) {
-                appendCards();
-            }
-        });
+        // Paginación como la bitácora: 12 tarjetas por página, debajo de la cuadrícula.
+        pager = Pager.<PlanCard>local(Pager.CARD_PAGE, "plan", "planes", this::drawCards).below(cardGrid);
 
-        amountAxis.setTickLabelFormatter(new StringConverter<>() {
-            @Override
-            public String toString(Number value) {
-                return ClientController.shortPesos(BigDecimal.valueOf(value.doubleValue()));
-            }
-
-            @Override
-            public Number fromString(String string) {
-                return null;
-            }
-        });
         detail = DetailShell.install(drawer, veil, DetailShell.Kind.MODAL);
         loadOverview(null);
     }
@@ -273,9 +233,6 @@ public class FuneralPlanController implements RefreshableView {
             typeFilter.getItems().setAll(names);
             typeFilter.setValue(names.contains(type) ? type : null);
             renderKpis(result.kpis(), result.cards());
-            renderChart(result.collection());
-            renderTypes(result.types(), result.cards());
-            renderWaiting(result.waitingSoon());
             renderCards();
             if (reopenId != null) {
                 openDrawer(reopenId);
@@ -304,7 +261,7 @@ public class FuneralPlanController implements RefreshableView {
         thread.start();
     }
 
-    // ---------- indicadores, gráfica y columna derecha ----------
+    // ---------- indicadores ----------
 
     private void renderKpis(Kpis k, List<PlanCard> cards) {
         YearMonth now = YearMonth.now(AccessLogService.APP_ZONE);
@@ -331,104 +288,6 @@ public class FuneralPlanController implements RefreshableView {
         cancelledToggle.setText("Cancelados · " + cancelled);
     }
 
-    private void renderChart(List<MonthPoint> points) {
-        XYChart.Series<String, Number> collected = new XYChart.Series<>();
-        XYChart.Series<String, Number> expected = new XYChart.Series<>();
-        for (MonthPoint p : points) {
-            String month = capitalize(SHORT_MONTH.format(p.month()).replace(".", ""));
-            collected.getData().add(new XYChart.Data<>(month, p.collected()));
-            expected.getData().add(new XYChart.Data<>(month, p.expected()));
-        }
-        collectionChart.getData().setAll(List.of(collected, expected));
-        for (int i = 0; i < points.size(); i++) {
-            MonthPoint p = points.get(i);
-            Tooltip tip = new Tooltip(capitalize(MONTH.format(p.month())) + "\n"
-                    + ClientController.pesos(p.collected()) + " de " + ClientController.pesos(p.expected()));
-            Tooltip.install(collected.getData().get(i).getNode(), tip);
-            Tooltip.install(expected.getData().get(i).getNode(), tip);
-        }
-    }
-
-    /** Dona dibujada con arcos: un color por nombre de plan, total de activos en el centro. */
-    private void renderTypes(List<TypeSlice> types, List<PlanCard> cards) {
-        double radius = 54;
-        Circle track = new Circle(radius);
-        track.getStyleClass().add("donut-track");
-        track.setStrokeWidth(16);
-        Pane arcs = new Pane();
-        arcs.setPrefSize(130, 130);
-        track.setCenterX(65);
-        track.setCenterY(65);
-        arcs.getChildren().add(track);
-        long total = types.stream().mapToLong(TypeSlice::plans).sum();
-        double start = 90;
-        typeLegend.getChildren().clear();
-        for (int i = 0; i < types.size(); i++) {
-            TypeSlice slice = types.get(i);
-            int color = Math.min(i, 4);
-            double length = total == 0 ? 0 : 360.0 * slice.plans() / total;
-            Arc arc = new Arc(65, 65, radius, radius, start, -length);
-            arc.setType(ArcType.OPEN);
-            arc.setStrokeWidth(16);
-            arc.getStyleClass().addAll("donut-arc", "donut-" + color);
-            arcs.getChildren().add(arc);
-            start -= length;
-
-            Region swatch = new Region();
-            swatch.getStyleClass().addAll("legend-swatch", "swatch-" + color);
-            Label name = new Label(slice.name());
-            name.getStyleClass().add("type-name");
-            Pane gap = new Pane();
-            HBox.setHgrow(gap, Priority.ALWAYS);
-            Label count = new Label(String.valueOf(slice.plans()));
-            count.getStyleClass().add("type-count");
-            HBox row = new HBox(8, swatch, name, gap, count);
-            row.setAlignment(Pos.CENTER_LEFT);
-            typeLegend.getChildren().add(row);
-        }
-        if (types.isEmpty()) {
-            typeLegend.getChildren().add(wrapped("Todavía no hay planes activos.", "card-subtitle"));
-        }
-        Label value = new Label(String.valueOf(total));
-        value.getStyleClass().add("donut-value");
-        Label caption = new Label("planes activos");
-        caption.getStyleClass().add("donut-caption");
-        VBox center = new VBox(-2, value, caption);
-        center.setAlignment(Pos.CENTER);
-        donut.getChildren().setAll(arcs, center);
-
-        List<PlanCard> active = cards.stream().filter(PlanCard::isActive).toList();
-        BigDecimal sum = active.stream().map(PlanCard::monthlyFee).filter(java.util.Objects::nonNull)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        averageFee.setText(active.isEmpty() ? "" : "Cuota promedio "
-                + ClientController.pesos(sum.divide(BigDecimal.valueOf(active.size()), java.math.RoundingMode.HALF_UP))
-                + " al mes");
-    }
-
-    private void renderWaiting(List<WaitingSoon> soon) {
-        waitingBox.getChildren().clear();
-        if (soon.isEmpty()) {
-            waitingBox.getChildren().add(wrapped("Ningún plan termina la carencia en los próximos 30 días.",
-                    "card-subtitle"));
-            return;
-        }
-        LocalDate today = LocalDate.now(AccessLogService.APP_ZONE);
-        for (WaitingSoon w : soon.stream().limit(6).toList()) {
-            Label code = new Label(w.code());
-            code.getStyleClass().addAll("attention-code", "plan-code", "code-expiring");
-            long days = java.time.temporal.ChronoUnit.DAYS.between(today, w.waitingEnds());
-            VBox text = new VBox(1, wrapped(w.holderName(), "attention-name"),
-                    wrapped("Cubierto desde el " + DATE.format(w.waitingEnds()) + " · en " + count(days, "día"),
-                            "attention-detail-expiring"));
-            HBox row = new HBox(code, text);
-            row.getStyleClass().add("attention-row");
-            row.setStyle("-fx-cursor: hand;");
-            row.setOnMouseEntered(e -> details.prefetch(w.planId()));
-            row.setOnMouseClicked(e -> openDrawer(w.planId()));
-            waitingBox.getChildren().add(row);
-        }
-    }
-
     // ---------- tarjetas ----------
 
     private void renderCards() {
@@ -439,24 +298,28 @@ public class FuneralPlanController implements RefreshableView {
                 : (PlanStatus) statusGroup.getSelectedToggle().getUserData();
         filtered = FuneralPlanService.filter(overview.cards(),
                 new PlanFilter(status, paymentFilter.getValue(), typeFilter.getValue(), searchField.getText()));
-        cardGrid.getChildren().clear();
-        shown = 0;
-        appendCards();
+        // Un filtro nuevo vuelve a la página 1; recargar tras guardar se queda en la misma página.
+        String filterKey = status + "|" + paymentFilter.getValue() + "|" + typeFilter.getValue() + "|" + searchField.getText();
+        if (filterKey.equals(lastFilter)) {
+            pager.setItems(filtered);
+        } else {
+            pager.setItemsFromStart(filtered);
+        }
+        lastFilter = filterKey;
+        countLabel.setText(count(filtered.size(), "plan", "planes"));
         boolean empty = filtered.isEmpty();
-        emptyLabel.setText(overview.cards().isEmpty() ? "Todavía no hay planes. Use «Afiliar plan»."
+        emptyLabel.setText(overview.cards().isEmpty() ? "Todavía no hay planes. Se afilian desde la pestaña Clientes."
                 : "Ningún plan coincide con los filtros.");
         emptyLabel.setVisible(empty);
         emptyLabel.setManaged(empty);
     }
 
-    private void appendCards() {
-        int until = Math.min(filtered.size(), shown + CARDS_STEP);
-        for (int i = shown; i < until; i++) {
-            cardGrid.add(planCard(filtered.get(i)), i % COLUMNS, i / COLUMNS);
+    /** Dibuja las tarjetas de la página visible. */
+    private void drawCards(List<PlanCard> page) {
+        cardGrid.getChildren().clear();
+        for (int i = 0; i < page.size(); i++) {
+            cardGrid.add(planCard(page.get(i)), i % COLUMNS, i / COLUMNS);
         }
-        shown = until;
-        countLabel.setText(count(filtered.size(), "plan", "planes")
-                + (shown < filtered.size() ? " · desplace para ver más" : ""));
     }
 
     private VBox planCard(PlanCard c) {
@@ -653,12 +516,15 @@ public class FuneralPlanController implements RefreshableView {
         // "Más" abre un menú con las acciones menos frecuentes.
         MenuItem holder = new MenuItem("Cambiar titular");
         holder.setOnAction(e -> openChangeHolderDialog(c));
+        MenuItem change = new MenuItem("Cambiar plan");
+        change.setOnAction(e -> openChangePlanDialog(c));
+        change.setDisable(c.status() != PlanStatus.ACTIVE);
         MenuItem cancel = new MenuItem("Cancelar plan");
         cancel.getStyleClass().add("menu-danger");
         cancel.setOnAction(e -> confirmAndRun("Cancelar plan", "¿Cancelar definitivamente el plan " + c.code() + "?",
                 "No se borra: queda en «Cancelados» con sus cuotas.", "Cancelar plan", true,
                 () -> planService.cancel(c.id())));
-        ContextMenu menu = new ContextMenu(holder, cancel);
+        ContextMenu menu = new ContextMenu(change, holder, cancel);
         Button more = DetailShell.secondary("Más…", null);
         more.setOnAction(e -> menu.show(more, javafx.geometry.Side.TOP, 0, -4));
         more.setDisable(c.status() == PlanStatus.CANCELLED);
@@ -793,7 +659,7 @@ public class FuneralPlanController implements RefreshableView {
         if (deceasedId == null || !ModuleLink.canOpen(AppModule.CONTRATOS)) {
             return null;
         }
-        return DetailShell.link("Iniciar contrato", () -> ModuleLink.open(AppModule.CONTRATOS, deceasedId));
+        return DetailShell.link("Iniciar contrato", () -> ModuleLink.openInPlace(AppModule.CONTRATOS, deceasedId));
     }
 
     private static Node asideWithContract(Node chip, Long deceasedId) {
@@ -808,49 +674,90 @@ public class FuneralPlanController implements RefreshableView {
 
     // ---------- diálogos ----------
 
-    @FXML
-    private void onRegister() {
-        TextField clientSearch = searchInput("Buscar cliente por nombre o documento");
-        ComboBox<Option> clientBox = optionCombo("Seleccione el titular");
-        bindSearch(clientSearch, clientBox, planService::searchClients);
-        // Dos planes: el normal cubre los servicios esenciales; el premium da un ataúd y una sala más grandes.
-        ComboBox<String> name = new ComboBox<>();
-        name.getItems().setAll(PlanParameters.PLAN_NAMES);
-        name.setValue(PlanParameters.NORMAL_PLAN);
-        name.getStyleClass().add("form-combo");
-        name.setMaxWidth(Double.MAX_VALUE);
-        Label typeHint = wrapped("", "dialog-hint");
-        Runnable updateType = () -> typeHint.setText(PlanParameters.isPremium(name.getValue())
-                ? "Permite escoger un ataúd más grande y una sala más grande."
-                : "Cubre los servicios esenciales de la funeraria.");
-        name.valueProperty().addListener((obs, old, value) -> updateType.run());
-        updateType.run();
-        TextField fee = new TextField();
-        fee.setPromptText("Ej. 52.000");
-        DatePicker start = new DatePicker(LocalDate.now(AccessLogService.APP_ZONE));
-        Label hint = wrapped("", "dialog-hint");
-        Runnable updateHint = () -> hint.setText(start.getValue() == null ? "Ingrese la fecha de inicio."
-                : "Carencia: cubre servicios desde el "
-                + DATE.format(start.getValue().plusDays(overview == null ? 0 : overview.waitingDays()))
-                + ".");
-        start.valueProperty().addListener((obs, old, value) -> updateHint.run());
-        updateHint.run();
+    /** "Cambiar plan": pasa el plan de normal a premium (o al revés) con la cuota de Parámetros. */
+    private void openChangePlanDialog(PlanCard c) {
+        run(planService::planOffers, offers -> {
+            PlanOffer current = offerOf(offers, c.planName());
+            PlanOfferCard now = new PlanOfferCard(c.planName(), ClientController.pesos(c.monthlyFee()) + " / mes",
+                    current == null ? List.of() : current.includes());
+            ComboBox<String> name = new ComboBox<>();
+            name.getItems().setAll(offers.stream().map(PlanOffer::name)
+                    .filter(n -> !n.equalsIgnoreCase(c.planName())).toList());
+            FormShell.choose(name);
+            name.getStyleClass().add("form-combo");
+            name.setMaxWidth(Double.MAX_VALUE);
+            PlanOfferCard next = new PlanOfferCard("", null, List.of());
+            next.setSelected(true);
+            next.setVisible(false);
+            TextField fee = new TextField();
+            fee.setPromptText("Se llena al elegir el plan");
+            lockFee(fee);
+            Label feeHint = wrapped("", "dialog-hint");
+            name.valueProperty().addListener((obs, old, value) -> {
+                PlanOffer offer = offerOf(offers, value);
+                next.setVisible(offer != null);
+                if (offer != null) {
+                    next.show(offer.name(), feeText(offer.monthlyFee()), offer.includes());
+                    fillFee(fee, feeHint, offer);
+                }
+            });
+            HBox compare = new HBox(12, labeled("PLAN ACTUAL", now), labeled("NUEVO PLAN", next));
+            compare.getChildren().forEach(n -> HBox.setHgrow(n, Priority.ALWAYS));
+            Form form = new Form()
+                    .section(null, 2)
+                    .wide(null, compare)
+                    .field("NUEVO PLAN *", name)
+                    .field("NUEVA CUOTA MENSUAL (COP) *", new VBox(4, fee, feeHint))
+                    .note(note("Los beneficiarios, las cuotas ya pagadas y la carencia se conservan. "
+                            + "Las cuotas que se paguen desde ahora usan la nueva cuota."));
+            Dialog<ButtonType> dialog = formDialog("Cambiar plan", "Plan " + c.code() + " · titular "
+                    + c.holderName() + ".", form, 640, false);
+            FormShell.window(dialog, "Planes exequiales");
+            FormShell.money(fee);
+            if (runForm(dialog, form, "Cambiar plan",
+                    () -> planService.changePlan(c.id(), name.getValue()))) {
+                loadOverview(c.id());
+            }
+        }, "No se pudieron cargar los tipos de plan.");
+    }
 
-        Form form = new Form()
-                .section(null, 2)
-                .wide("CLIENTE TITULAR *", new VBox(6, clientSearch, clientBox))
-                .field("TIPO DE PLAN *", new VBox(4, name, typeHint))
-                .field("CUOTA MENSUAL (COP) *", fee)
-                .field("FECHA DE INICIO *", new VBox(4, start, hint));
+    private static PlanOffer offerOf(List<PlanOffer> offers, String name) {
+        return name == null ? null : offers.stream().filter(o -> o.name().equalsIgnoreCase(name)).findFirst()
+                .orElse(null);
+    }
 
-        Long[] savedId = new Long[1];
-        Dialog<ButtonType> dialog = formDialog("Afiliar plan", "Los campos con * son obligatorios.", form, 620, false);
-        FormShell.panel(dialog, "Planes exequiales");
-        FormShell.money(fee);
-        if (runForm(dialog, form, "Afiliar", () -> savedId[0] = planService.register(new PlanData(
-                idOf(clientBox.getValue()), name.getValue(), money(fee, "La cuota"), start.getValue())).getId())) {
-            loadOverview(savedId[0]);
+    private static String feeText(BigDecimal fee) {
+        return fee == null ? null : ClientController.pesos(fee) + " / mes";
+    }
+
+    /** Llena la cuota con el valor de Parámetros; el campo no se puede editar. */
+    /** La cuota sale de Parámetros: el campo se ve pero no se escribe en él. */
+    private static void lockFee(TextField fee) {
+        fee.setEditable(false);
+        fee.setFocusTraversable(false);
+    }
+
+    private static void fillFee(TextField fee, Label hint, PlanOffer offer) {
+        if (offer.monthlyFee() == null) {
+            fee.clear();
+            fee.getStyleClass().remove("auto-filled");
+            hint.setText("La cuota del " + offer.name() + " no está definida en Parámetros: pídale al "
+                    + "administrador que la registre allí.");
+            return;
         }
+        fee.setText(String.valueOf(offer.monthlyFee().longValue()));
+        if (!fee.getStyleClass().contains("auto-filled")) {
+            fee.getStyleClass().add("auto-filled");
+        }
+        hint.setText("Valor del " + offer.name() + " en Parámetros. Solo cambia si se cambia allí.");
+    }
+
+    private static VBox labeled(String caption, Node card) {
+        Label label = new Label(caption);
+        label.getStyleClass().add("field-label");
+        VBox box = new VBox(4, label, card);
+        box.setMaxWidth(Double.MAX_VALUE);
+        return box;
     }
 
     /** Afiliados atrasados a los que toca mandarles carta por correo certificado (30, 60 y 90 días). */
@@ -902,10 +809,12 @@ public class FuneralPlanController implements RefreshableView {
         }
         month.getItems().setAll(months);
         month.setConverter(converter(m -> capitalize(MONTH.format(m)), ""));
-        month.setValue(months.contains(first) ? first : months.isEmpty() ? null : months.get(0));
+        // Sin mes puesto: el usuario elige qué cuota paga (la próxima por vencer se indica abajo).
+        FormShell.choose(month);
         month.getStyleClass().add("form-combo");
         TextField amount = new TextField(c.monthlyFee() == null ? "" : String.valueOf(c.monthlyFee().longValue()));
-        Label hint = note("Se registra como ingreso en Finanzas (cuota del plan " + c.code() + ").");
+        Label hint = note((months.contains(first) ? "Próxima cuota por pagar: " + capitalize(MONTH.format(first)) + ". " : "")
+                + "Se registra como ingreso en Finanzas (cuota del plan " + c.code() + ").");
 
         Form form = new Form()
                 .section(null, 2)

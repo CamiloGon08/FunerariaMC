@@ -334,7 +334,7 @@
 /* Barra de búsqueda y filtros */
 .eden-green .filter-card {
     -fx-background-color: -eden-card; -fx-border-color: transparent;
-    -fx-background-radius: 18; -fx-border-radius: 18; -fx-padding: 10 12;
+    -fx-background-radius: 18; -fx-border-radius: 18; -fx-padding: 12 16; -fx-spacing: 16;
     -fx-effect: dropshadow(gaussian, -color-shadow-05, 12, 0, 0, 2);
 }
 .eden-green .search-box { -fx-background-color: -eden-tint; -fx-background-radius: 12; }

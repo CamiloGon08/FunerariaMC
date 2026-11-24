@@ -39,43 +39,6 @@
 .kpi-dark .kpi-value { -fx-text-fill: -color-background; }
 .kpi-dark .kpi-detail { -fx-text-fill: derive(-color-surface, -8%); }
 
-/* ---------- Gráfica de recaudo ---------- */
-.legend-line { -fx-min-width: 16; -fx-max-width: 16; -fx-min-height: 3; -fx-max-height: 3; -fx-background-radius: 2; }
-.line-collected { -fx-background-color: -color-accent; }
-.line-expected { -fx-background-color: -color-border; }
-.collection-chart { -fx-padding: 0; }
-.collection-chart .chart-plot-background { -fx-background-color: transparent; }
-.collection-chart .chart-vertical-grid-lines { -fx-stroke: transparent; }
-.collection-chart .chart-horizontal-grid-lines { -fx-stroke: -color-surface; -fx-stroke-dash-array: 3 4; }
-.collection-chart .chart-alternative-row-fill { -fx-fill: transparent; }
-.collection-chart .chart-vertical-zero-line, .collection-chart .chart-horizontal-zero-line { -fx-stroke: transparent; }
-.collection-chart .axis { -fx-tick-label-fill: -color-secondary; -fx-tick-label-font-size: 11px; }
-.collection-chart .axis:bottom, .collection-chart .axis:left { -fx-border-color: transparent; }
-.collection-chart .default-color0.chart-series-line { -fx-stroke: -color-accent; -fx-stroke-width: 2.5px; }
-.collection-chart .default-color0.chart-line-symbol { -fx-background-color: -color-accent, -color-card; -fx-background-insets: 0, 2.5; -fx-background-radius: 6; -fx-padding: 5; }
-.collection-chart .default-color1.chart-series-line { -fx-stroke: -color-border; -fx-stroke-width: 1.8px; -fx-stroke-dash-array: 6 4; }
-.collection-chart .default-color1.chart-line-symbol { -fx-background-color: -color-border, -color-card; -fx-background-insets: 0, 2; -fx-background-radius: 5; -fx-padding: 4; }
-
-/* ---------- Dona ---------- */
-.donut-track { -fx-stroke: -color-surface; -fx-fill: transparent; }
-.donut-arc { -fx-fill: transparent; -fx-stroke-line-cap: butt; }
-.donut-0 { -fx-stroke: -color-accent; }
-.donut-1 { -fx-stroke: -color-detail; }
-.donut-2 { -fx-stroke: -color-primary; }
-.donut-3 { -fx-stroke: -color-olive; }
-.donut-4 { -fx-stroke: -color-border; }
-.swatch-0 { -fx-background-color: -color-accent; }
-.swatch-1 { -fx-background-color: -color-detail; }
-.swatch-2 { -fx-background-color: -color-primary; }
-.swatch-3 { -fx-background-color: -color-olive; }
-.swatch-4 { -fx-background-color: -color-border; }
-.donut-value { -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif; -fx-font-size: 26px; -fx-text-fill: -color-primary; }
-.donut-caption { -fx-text-fill: -color-secondary; -fx-font-size: 10.5px; }
-.type-name { -fx-text-fill: -color-primary; -fx-font-size: 12.5px; }
-.type-count { -fx-text-fill: -color-primary; -fx-font-size: 12.5px; -fx-font-weight: bold; }
-
-.plan-code { -fx-min-width: 62; -fx-pref-width: 62; -fx-font-size: 11px; }
-
 /* ---------- Tarjetas de afiliados ---------- */
 .plan-card {
     -fx-background-color: -color-card; -fx-background-radius: 14; -fx-border-color: transparent;
@@ -192,7 +155,7 @@
 /* Barra de búsqueda y filtros */
 .eden-green .filter-card {
     -fx-background-color: -eden-card; -fx-border-color: transparent;
-    -fx-background-radius: 18; -fx-border-radius: 18; -fx-padding: 10 12;
+    -fx-background-radius: 18; -fx-border-radius: 18; -fx-padding: 12 16; -fx-spacing: 16;
     -fx-effect: dropshadow(gaussian, -color-shadow-05, 12, 0, 0, 2);
 }
 .eden-green .search-box { -fx-background-color: -eden-tint; -fx-background-radius: 12; }

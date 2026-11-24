@@ -18,6 +18,7 @@ import com.example.funerariamc.ui.Notice;
 import com.example.funerariamc.ui.Responsive;
 import com.example.funerariamc.ui.DetailShell;
 import com.example.funerariamc.ui.FormShell;
+import com.example.funerariamc.ui.Pager;
 import javafx.animation.PauseTransition;
 import javafx.concurrent.Task;
 import javafx.css.PseudoClass;
@@ -142,8 +143,6 @@ public class EmployeeController implements RefreshableView {
     @FXML
     private Label emptyLabel;
     @FXML
-    private Button moreButton;
-    @FXML
     private Region veil;
     @FXML
     private VBox drawer;
@@ -155,8 +154,7 @@ public class EmployeeController implements RefreshableView {
     /** Empleados ya cargados (en el orden de las tarjetas) y sus cuentas. */
     private final List<Employee> employees = new ArrayList<>();
     private final Map<Long, AccountSummary> accounts = new HashMap<>();
-    private long totalMatches;
-    private boolean loading;
+    private Pager<Employee> pager;
     /** Cada búsqueda nueva invalida las respuestas que aún vienen en camino. */
     private int generation;
     /** Empleado abierto en el panel lateral (null si está cerrado). */
@@ -194,7 +192,7 @@ public class EmployeeController implements RefreshableView {
             if (toggle == null) {
                 old.setSelected(true); // siempre queda un área elegida
             } else {
-                reload();
+                reloadFromStart();
             }
         });
 
@@ -202,20 +200,17 @@ public class EmployeeController implements RefreshableView {
         statusFilter.setValue(StatusOption.ACTIVE);
         statusFilter.setButtonCell(statusCell());
         statusFilter.setCellFactory(list -> statusCell());
-        statusFilter.valueProperty().addListener((obs, old, value) -> reload());
+        statusFilter.valueProperty().addListener((obs, old, value) -> reloadFromStart());
 
-        searchDelay.setOnFinished(e -> reload());
+        searchDelay.setOnFinished(e -> reloadFromStart());
         searchField.textProperty().addListener((obs, old, text) -> searchDelay.playFromStart());
 
-        // Al llegar al final de la barra de desplazamiento se piden las siguientes 12 tarjetas.
-        cardScroll.vvalueProperty().addListener((obs, old, value) -> {
-            if (value.doubleValue() >= cardScroll.getVmax() - 0.02 && hasMore()) {
-                loadMore();
-            }
-        });
+        // Paginación como la bitácora: cada página consulta sus 12 tarjetas en la BD.
+        pager = Pager.<Employee>remote(PAGE_SIZE, "empleado", "empleados", page -> query(page))
+                .scrollTopOf(cardScroll).below(cardScroll);
 
         detail = DetailShell.install(drawer, veil, DetailShell.Kind.PANEL);
-        reload();
+        reloadFromStart();
     }
 
     // ---------- carga ----------
@@ -225,41 +220,30 @@ public class EmployeeController implements RefreshableView {
                          long total, long active, long withAccount, long expiring) {
     }
 
-    /** Un filtro cambió o se guardó algo: vuelve a traer desde el principio lo que ya se veía. */
+    /** Se guardó algo o se volvió a la pantalla: vuelve a consultar la página que se está viendo. */
     private void reload() {
-        int size = Math.min(Math.max(PAGE_SIZE, employees.size()), EmployeeService.MAX_PAGE_SIZE);
-        query(0, size, true);
+        query(pager.page());
     }
 
-    @FXML
-    private void onLoadMore() {
-        loadMore();
-    }
-
-    private void loadMore() {
-        if (!loading) {
-            query(employees.size() / PAGE_SIZE, PAGE_SIZE, false);
-        }
-    }
-
-    private boolean hasMore() {
-        return employees.size() < totalMatches;
+    /** Un filtro o la búsqueda cambió: vuelve a la página 1. */
+    private void reloadFromStart() {
+        query(0);
     }
 
     /** Igual que la bitácora: la consulta corre en otro hilo para que la ventana no se congele. */
-    private void query(int pageIndex, int size, boolean replace) {
+    private void query(int pageIndex) {
         String text = searchField.getText();
         EmployeeStatus status = statusFilter.getValue() == null ? null : statusFilter.getValue().status;
         List<EmployeePosition> positions = selectedArea().positions();
-        int requestGeneration = replace ? ++generation : generation;
-        loading = true;
+        int requestGeneration = ++generation;
+        pager.setBusy(true);
         showingLabel.setText("Cargando empleados…");
         Task<Batch> task = new Task<>() {
             @Override
             protected Batch call() {
                 // Una sola transacción y los indicadores en una consulta: menos viajes a Supabase.
                 return readOnlyWork.run(() -> {
-                    Page<Employee> page = employeeService.searchByPositions(text, status, positions, pageIndex, size);
+                    Page<Employee> page = employeeService.searchByPositions(text, status, positions, pageIndex, PAGE_SIZE);
                     List<Long> ids = page.getContent().stream().map(Employee::getId).toList();
                     EmployeeService.StaffKpis kpis = employeeService.kpis();
                     return new Batch(page, userAccountService.findAccounts(ids),
@@ -269,11 +253,11 @@ public class EmployeeController implements RefreshableView {
         };
         task.setOnSucceeded(e -> {
             if (requestGeneration == generation) {
-                show(task.getValue(), replace);
+                show(task.getValue());
             }
         });
         task.setOnFailed(e -> {
-            loading = false;
+            pager.setBusy(false);
             showingLabel.setText("");
             showError(task.getException() instanceof BusinessException business
                     ? business.getMessage()
@@ -284,16 +268,20 @@ public class EmployeeController implements RefreshableView {
         thread.start();
     }
 
-    private void show(Batch batch, boolean replace) {
-        loading = false;
-        if (replace) {
-            employees.clear();
-            accounts.clear();
+    private void show(Batch batch) {
+        Page<Employee> page = batch.page();
+        // Si se filtró lo último de una página, se pasa a la última que sí tiene datos.
+        if (page.getContent().isEmpty() && page.getNumber() > 0 && page.getTotalPages() > 0) {
+            query(page.getTotalPages() - 1);
+            return;
         }
-        employees.addAll(batch.page().getContent());
+        pager.setBusy(false);
+        employees.clear();
+        accounts.clear();
+        employees.addAll(page.getContent());
         accounts.putAll(batch.accounts());
-        totalMatches = batch.page().getTotalElements();
         renderCards();
+        pager.show(page.getNumber(), page.getTotalPages(), page.getTotalElements());
 
         long inactive = batch.total() - batch.active();
         activeValue.setText(String.valueOf(batch.active()));
@@ -302,7 +290,7 @@ public class EmployeeController implements RefreshableView {
         expiringValue.setText(String.valueOf(batch.expiring()));
         expiringValue.pseudoClassStateChanged(PseudoClass.getPseudoClass("warning"), batch.expiring() > 0);
         inactiveValue.setText(String.valueOf(inactive));
-        showingLabel.setText(totalMatches == 0 ? "" : employees.size() + " de " + count(totalMatches, "empleado"));
+        showingLabel.setText("");
 
         // El panel abierto se vuelve a dibujar con los datos recién guardados.
         if (drawerEmployeeId != null) {
@@ -318,8 +306,6 @@ public class EmployeeController implements RefreshableView {
         boolean empty = employees.isEmpty();
         emptyLabel.setVisible(empty);
         emptyLabel.setManaged(empty);
-        moreButton.setVisible(hasMore());
-        moreButton.setManaged(hasMore());
     }
 
     private Optional<Employee> findLoaded(Long id) {

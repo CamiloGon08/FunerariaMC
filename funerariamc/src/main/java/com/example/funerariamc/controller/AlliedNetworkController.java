@@ -15,6 +15,7 @@ import com.example.funerariamc.service.AlliedNetworkService.Overview;
 import com.example.funerariamc.service.AlliedNetworkService.PaymentRow;
 import com.example.funerariamc.service.AlliedPaymentData;
 import com.example.funerariamc.service.SaleParameters;
+import com.example.funerariamc.ui.Pager;
 import com.example.funerariamc.ui.RefreshableView;
 import com.example.funerariamc.ui.Notice;
 import com.example.funerariamc.ui.FormShell;
@@ -123,6 +124,9 @@ public class AlliedNetworkController implements RefreshableView {
     private Long drawerHomeId;
     private DetailShell detail;
     private List<HomeCard> shownHomes = List.of();
+    private Pager<HomeCard> pager;
+    /** Filtros con que se armó la página actual (para saber si hay que volver a la página 1). */
+    private String lastFilter;
     private int generation;
     private SequentialTransition toastMotion;
     private final PauseTransition searchDelay = new PauseTransition(Duration.millis(200));
@@ -139,6 +143,15 @@ public class AlliedNetworkController implements RefreshableView {
 
     @FXML
     private void initialize() {
+        // Paginación como la bitácora: 12 tarjetas por página, debajo de la cuadrícula.
+        pager = Pager.<HomeCard>local(Pager.CARD_PAGE, "funeraria", "funerarias", page -> {
+            List<Node> cards = new ArrayList<>();
+            for (HomeCard h : page) {
+                cards.add(card(h));
+            }
+            cardsPane.getChildren().setAll(cards);
+            resizeCards();
+        }).scrollTopOf(cardsScroll).below(cardsScroll.getParent());
         stateGroup.selectedToggleProperty().addListener((obs, old, toggle) -> {
             if (toggle == null) {
                 if (old != null) {
@@ -248,12 +261,14 @@ public class AlliedNetworkController implements RefreshableView {
                         || (state == inactiveState && h.state() == HomeState.INACTIVE))
                 .toList();
         shownHomes = shown;
-        List<Node> cards = new ArrayList<>();
-        for (HomeCard h : shown) {
-            cards.add(card(h));
+        // Un filtro nuevo vuelve a la página 1; recargar tras guardar se queda en la misma página.
+        String filterKey = text + "|" + city + "|" + state;
+        if (filterKey.equals(lastFilter)) {
+            pager.setItems(shown);
+        } else {
+            pager.setItemsFromStart(shown);
         }
-        cardsPane.getChildren().setAll(cards);
-        resizeCards();
+        lastFilter = filterKey;
         countLabel.setText(shown.size() + (shown.size() == 1 ? " funeraria" : " funerarias") + " · ordenadas por saldo");
         setEmpty(homes.isEmpty() ? "Aún no hay funerarias aliadas. Registre la primera con «Nueva funeraria aliada»."
                 : shown.isEmpty() ? "Ninguna funeraria coincide con el filtro." : "");
@@ -654,7 +669,7 @@ public class AlliedNetworkController implements RefreshableView {
         ComboBox<PaymentMethod> method = new ComboBox<>();
         method.getStyleClass().add("form-combo");
         method.getItems().setAll(PaymentMethod.values());
-        method.setValue(PaymentMethod.TRANSFER);
+        FormShell.choose(method); // sin medio de pago puesto: el usuario lo elige
         method.setConverter(new StringConverter<>() {
             @Override
             public String toString(PaymentMethod m) {
@@ -679,7 +694,7 @@ public class AlliedNetworkController implements RefreshableView {
         ComboBox<FeeFrequency> frequency = new ComboBox<>();
         frequency.getStyleClass().add("form-combo");
         frequency.getItems().setAll(FeeFrequency.values());
-        frequency.setValue(FeeFrequency.ANNUAL);
+        FormShell.choose(frequency); // sin periodicidad puesta: el usuario la elige
         frequency.setConverter(new StringConverter<>() {
             @Override
             public String toString(FeeFrequency f) {
@@ -697,7 +712,7 @@ public class AlliedNetworkController implements RefreshableView {
         for (YearMonth m = now.minusMonths(12); !m.isAfter(now.plusMonths(12)); m = m.plusMonths(1)) {
             from.getItems().add(m);
         }
-        from.setValue(now);
+        FormShell.choose(from); // sin mes puesto: el usuario elige desde qué mes paga
         from.setConverter(new StringConverter<>() {
             @Override
             public String toString(YearMonth m) {
