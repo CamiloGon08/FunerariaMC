@@ -80,6 +80,8 @@ class FuneralPlanServiceTest {
         when(parameters.beneficiaryLimit()).thenReturn(7);
         when(parameters.nonDirectSurcharge()).thenReturn(new BigDecimal("150000"));
         when(parameters.extraBeneficiarySurcharge()).thenReturn(new BigDecimal("200000"));
+        when(parameters.monthlyFee("Plan Normal")).thenReturn(new BigDecimal("20000"));
+        when(parameters.monthlyFee("Plan Premium")).thenReturn(new BigDecimal("35000"));
         when(plans.save(any())).thenAnswer(invocation -> {
             FuneralPlan plan = invocation.getArgument(0);
             if (plan.getId() == null) {
@@ -99,7 +101,7 @@ class FuneralPlanServiceTest {
         when(clients.findById(40L)).thenReturn(Optional.of(client(40L, "49786112", ClientType.NATURAL)));
         when(plans.findByClientIdAndStatus(40L, PlanStatus.ACTIVE)).thenReturn(List.of());
 
-        FuneralPlan saved = service.register(new PlanData(40L, " Plan Normal ", new BigDecimal("52000"), TODAY));
+        FuneralPlan saved = service.register(new PlanData(40L, " Plan Normal ", TODAY));
 
         assertEquals(PlanStatus.ACTIVE, saved.getStatus());
         assertEquals("Plan Normal", saved.getPlanName());
@@ -110,11 +112,11 @@ class FuneralPlanServiceTest {
     void registerCanonicalizesPremiumAndRejectsAnUnknownPlanType() {
         when(clients.findById(40L)).thenReturn(Optional.of(client(40L, "49786112", ClientType.NATURAL)));
 
-        FuneralPlan premium = service.register(new PlanData(40L, "  plan PREMIUM  ", new BigDecimal("52000"), TODAY));
+        FuneralPlan premium = service.register(new PlanData(40L, "  plan PREMIUM  ", TODAY));
 
         assertEquals("Plan Premium", premium.getPlanName());
         assertThrows(InvalidDataException.class, () -> service.register(
-                new PlanData(40L, "Plan inventado", new BigDecimal("52000"), TODAY)));
+                new PlanData(40L, "Plan inventado", TODAY)));
         verify(plans, times(1)).save(any());
     }
 
@@ -125,16 +127,24 @@ class FuneralPlanServiceTest {
         when(plans.findByClientIdAndStatus(40L, PlanStatus.ACTIVE)).thenReturn(List.of(plan(300L, holder, TODAY)));
 
         assertThrows(InvalidDataException.class,
-                () -> service.register(new PlanData(40L, "Plan Normal", new BigDecimal("52000"), TODAY)));
+                () -> service.register(new PlanData(40L, "Plan Normal", TODAY)));
         verify(plans, never()).save(any());
     }
 
     @Test
-    void registerValidatesFeeAndStartDate() {
+    void registerTakesTheFeeFromParametersAndValidatesTheStartDate() {
+        when(clients.findById(40L)).thenReturn(Optional.of(client(40L, "49786112", ClientType.NATURAL)));
+        when(plans.findByClientIdAndStatus(40L, PlanStatus.ACTIVE)).thenReturn(List.of());
+
+        FuneralPlan premium = service.register(new PlanData(40L, "Plan Premium", TODAY));
+
+        assertEquals(0, new BigDecimal("35000").compareTo(premium.getMonthlyFee()));
+        when(parameters.monthlyFee("Plan Normal")).thenThrow(new InvalidDataException("Falta el parámetro."));
+        InvalidDataException missing = assertThrows(InvalidDataException.class,
+                () -> service.register(new PlanData(40L, "Plan Normal", TODAY)));
+        assertTrue(missing.getMessage().contains("Parámetros"));
         assertThrows(InvalidDataException.class,
-                () -> service.register(new PlanData(40L, "Plan Normal", BigDecimal.ZERO, TODAY)));
-        assertThrows(InvalidDataException.class,
-                () -> service.register(new PlanData(40L, "Plan Normal", new BigDecimal("52000"), TODAY.plusMonths(2))));
+                () -> service.register(new PlanData(40L, "Plan Normal", TODAY.plusMonths(2))));
     }
 
     @Test
@@ -537,7 +547,10 @@ class FuneralPlanServiceTest {
                 () -> service.registerPayment(null), () -> service.voidPayment(9L),
                 () -> service.suspend(412L), () -> service.reactivate(412L),
                 () -> service.cancel(412L), () -> service.changeHolder(412L, 41L),
-                () -> service.validateBenefitsAvailable(412L));
+                () -> service.validateBenefitsAvailable(412L), () -> service.planOffers(),
+                () -> service.changePlan(412L, "Plan Premium"),
+                () -> service.affiliate(null),
+                () -> service.previewNewSurcharge(1, false, Relationship.CHILD));
         for (Executable operation : operations) {
             assertThrows(UnauthorizedActionException.class, operation);
         }
@@ -737,7 +750,7 @@ class FuneralPlanServiceTest {
         when(plans.findByClientIdAndStatus(40L, PlanStatus.ACTIVE))
                 .thenReturn(List.of(plan(300L, holder, TODAY)));
         InvalidDataException error = assertThrows(InvalidDataException.class, () -> service.register(
-                new PlanData(40L, "Plan Normal", new BigDecimal("52000"), TODAY)));
+                new PlanData(40L, "Plan Normal", TODAY)));
         assertFalse(error.getMessage().contains(holder.getName()));
         assertFalse(error.getMessage().contains(holder.getDocumentNumber()));
     }
@@ -782,6 +795,103 @@ class FuneralPlanServiceTest {
     }
 
     @Test
+    void clientSearchMatchesTheStartOfNamesWithoutAccents() {
+        when(clients.searchByWordStart(any(), any(), any())).thenReturn(List.of(client(40L, "49786112", ClientType.NATURAL)));
+
+        List<FuneralPlanService.Option> found = service.searchClients(" Durán ");
+
+        assertEquals(1, found.size());
+        verify(clients).searchByWordStart("% duran%", "duran%", org.springframework.data.domain.PageRequest.of(0, 20));
+    }
+
+    @Test
+    void planOffersShowTheFeeAndWhatEachPlanIncludes() {
+        when(parameters.monthlyFee("Plan Normal")).thenReturn(new BigDecimal("20000"));
+        when(parameters.monthlyFee("Plan Premium")).thenReturn(new BigDecimal("35000"));
+        when(parameters.coveredCoffinPrice("Plan Normal")).thenReturn(new BigDecimal("2000000"));
+        when(parameters.coveredCoffinPrice("Plan Premium")).thenReturn(new BigDecimal("3500000"));
+        when(parameters.specialRoomSurcharge()).thenReturn(new BigDecimal("3000000"));
+
+        List<FuneralPlanService.PlanOffer> offers = service.planOffers();
+
+        assertEquals(List.of("Plan Normal", "Plan Premium"), offers.stream().map(FuneralPlanService.PlanOffer::name).toList());
+        assertEquals(0, new BigDecimal("20000").compareTo(offers.get(0).monthlyFee()));
+        assertTrue(offers.get(0).includes().contains("Ataúd de hasta $ 2.000.000; uno mejor paga solo la diferencia."));
+        assertTrue(offers.get(0).includes().contains("Sala de velación; la sala especial tiene un recargo de $ 3.000.000."));
+        assertTrue(offers.get(1).includes().contains("Sala de velación especial sin recargo."));
+        assertTrue(offers.get(1).includes().contains("El titular y hasta 7 beneficiarios sin recargo."));
+    }
+
+    @Test
+    void aMissingFeeParameterLeavesTheFeeEmptyInsteadOfInventingOne() {
+        when(parameters.monthlyFee(any())).thenThrow(new InvalidDataException("Falta el parámetro."));
+
+        List<FuneralPlanService.PlanOffer> offers = service.planOffers();
+
+        assertNull(offers.get(0).monthlyFee());
+        assertNull(offers.get(1).monthlyFee());
+    }
+
+    @Test
+    void changingThePlanTypeUpdatesNameAndFeeAndKeepsEverythingElse() {
+        FuneralPlan plan = plan(412L, client(40L, "49786112", ClientType.NATURAL), TODAY.minusYears(1));
+        when(plans.findDetailById(412L)).thenReturn(Optional.of(plan));
+
+        service.changePlan(412L, "plan premium");
+
+        assertEquals("Plan Premium", plan.getPlanName());
+        assertEquals(0, new BigDecimal("35000").compareTo(plan.getMonthlyFee()));
+        assertEquals(TODAY.minusYears(1), plan.getStartDate());
+        assertNull(plan.getWaitingRestartDate());
+        verify(accessLog).record(5L, "PLAN_TYPE_CHANGED: PL-0412 Plan Premium");
+        verifyNoInteractions(beneficiaries, payments, transactions);
+    }
+
+    @Test
+    void changingToTheSamePlanOrAnInactivePlanIsRejected() {
+        FuneralPlan plan = plan(412L, client(40L, "49786112", ClientType.NATURAL), TODAY.minusYears(1));
+        when(plans.findDetailById(412L)).thenReturn(Optional.of(plan));
+        assertThrows(InvalidDataException.class, () -> service.changePlan(412L, "Plan Normal"));
+        plan.setStatus(PlanStatus.SUSPENDED);
+        assertThrows(InvalidDataException.class, () -> service.changePlan(412L, "Plan Premium"));
+        verify(plans, never()).save(any());
+    }
+
+    @Test
+    void affiliationRegistersTheNewClientThePlanAndItsBeneficiariesTogether() {
+        ClientService clientService = mock(ClientService.class);
+        service.setClientService(clientService);
+        ClientData newClient = new ClientData(ClientType.NATURAL, "CC", "1065912245", "Rosa Elena", "Maestre Ariza",
+                "3014452871", "rosa.maestre@gmail.com", null);
+        Client saved = client(77L, "1065912245", ClientType.NATURAL);
+        when(clientService.register(newClient)).thenReturn(saved);
+        when(clients.findById(77L)).thenReturn(Optional.of(saved));
+        when(plans.findByClientIdAndStatus(77L, PlanStatus.ACTIVE)).thenReturn(List.of());
+        when(plans.findDetailById(412L)).thenAnswer(invocation -> {
+            FuneralPlan plan = plan(412L, saved, TODAY);
+            return Optional.of(plan);
+        });
+
+        FuneralPlan plan = service.affiliate(new FuneralPlanService.AffiliationData(null, newClient, "Plan Premium",
+                TODAY, List.of(new FuneralPlanService.NewBeneficiary("Ana Sofía",
+                "Pérez Maestre", "1065990031", Relationship.CHILD))));
+
+        assertEquals("Plan Premium", plan.getPlanName());
+        assertSame(saved, plan.getClient());
+        verify(clientService).register(newClient);
+        verify(beneficiaries).save(argThat(b -> "1065990031".equals(b.getDocumentNumber())));
+        verify(accessLog).record(5L, "PLAN_REGISTERED: PL-0412");
+        verify(accessLog).record(5L, "BENEFICIARY_ADDED: PL-0412 1065990031");
+    }
+
+    @Test
+    void affiliationWithoutAHolderIsRejected() {
+        assertThrows(InvalidDataException.class, () -> service.affiliate(new FuneralPlanService.AffiliationData(
+                null, null, "Plan Normal", TODAY, List.of())));
+        verifyNoInteractions(plans);
+    }
+
+    @Test
     void changingTheHolderKeepsThePlanIdAndItsBeneficiariesAndPayments() {
         FuneralPlan plan = plan(412L, client(40L, "49786112", ClientType.NATURAL), TODAY.minusYears(1));
         Client newHolder = client(41L, "10987654", ClientType.NATURAL);
@@ -801,7 +911,7 @@ class FuneralPlanServiceTest {
         InvalidDataException failure = new InvalidDataException("No se pudo registrar la acción");
         doThrow(failure).when(accessLog).record(anyLong(), anyString());
         assertSame(failure, assertThrows(InvalidDataException.class, () -> service.register(
-                new PlanData(40L, "Plan Normal", new BigDecimal("52000"), TODAY))));
+                new PlanData(40L, "Plan Normal", TODAY))));
     }
 
     @ParameterizedTest
@@ -938,10 +1048,10 @@ class FuneralPlanServiceTest {
         LocalDate lastAllowed = TODAY.plusMonths(monthsAhead);
 
         FuneralPlan saved = service.register(
-                new PlanData(40L, "Plan Normal", new BigDecimal("52000"), lastAllowed));
+                new PlanData(40L, "Plan Normal", lastAllowed));
         assertEquals(lastAllowed, saved.getStartDate());
         InvalidDataException error = assertThrows(InvalidDataException.class, () -> service.register(
-                new PlanData(40L, "Plan Normal", new BigDecimal("52000"), lastAllowed.plusDays(1))));
+                new PlanData(40L, "Plan Normal", lastAllowed.plusDays(1))));
         assertEquals("La fecha de inicio no puede ser más de " + monthsAhead + " mes(es) posterior a hoy.",
                 error.getMessage());
         verify(plans, times(1)).save(any());
@@ -953,7 +1063,7 @@ class FuneralPlanServiceTest {
         InvalidDataException missing = new InvalidDataException("Falta un parámetro");
         when(parameters.maxStartMonthsAhead()).thenThrow(missing);
         assertSame(missing, assertThrows(InvalidDataException.class, () -> service.register(
-                new PlanData(40L, "Plan Normal", new BigDecimal("52000"), TODAY))));
+                new PlanData(40L, "Plan Normal", TODAY))));
         verifyNoInteractions(clients, plans, beneficiaries, payments, transactions, accessLog);
     }
 
@@ -996,7 +1106,7 @@ class FuneralPlanServiceTest {
         FuneralPlanService eventService = withEvents(events);
         when(clients.findById(40L)).thenReturn(Optional.of(client(40L, "49786112", ClientType.NATURAL)));
 
-        FuneralPlan saved = eventService.register(new PlanData(40L, "Plan Normal", new BigDecimal("52000"), TODAY));
+        FuneralPlan saved = eventService.register(new PlanData(40L, "Plan Normal", TODAY));
 
         verify(events).publishEvent(new PlanRegisteredEvent(saved.getId()));
     }
@@ -1009,7 +1119,7 @@ class FuneralPlanServiceTest {
         doThrow(new InvalidDataException("Auditoría no disponible")).when(accessLog).record(anyLong(), anyString());
 
         assertThrows(InvalidDataException.class, () -> eventService.register(
-                new PlanData(40L, "Plan Normal", new BigDecimal("52000"), TODAY)));
+                new PlanData(40L, "Plan Normal", TODAY)));
 
         verifyNoInteractions(events);
     }

@@ -668,6 +668,61 @@ class ContractServiceTest {
                 .stream().map(row -> row.saleId()).toList());
     }
 
+    @Test
+    void planBoardListsOnlyThePeopleOfTheHoldersPlanAndWhoCanBeChosen() {
+        FuneralPlan plan = new FuneralPlan();
+        plan.setId(9L);
+        plan.setStatus(PlanStatus.ACTIVE);
+        when(contracts.findPlansOfClient(40L)).thenReturn(List.of(plan));
+        FuneralPlanService.PlanCard card = mock(FuneralPlanService.PlanCard.class);
+        when(card.holderName()).thenReturn("Abel Villazón");
+        when(card.holderDocument()).thenReturn("1065910020");
+        when(card.code()).thenReturn("PL-0009");
+        when(card.planName()).thenReturn("Plan Normal");
+        FuneralPlanService.PlanDetail detail = mock(FuneralPlanService.PlanDetail.class);
+        when(detail.card()).thenReturn(card);
+        when(detail.beneficiaries()).thenReturn(List.of(
+                new FuneralPlanService.BeneficiaryInfo(1L, "Gladys Durán", "26874102", null, "Madre",
+                        BigDecimal.ZERO, null, null, null),
+                new FuneralPlanService.BeneficiaryInfo(2L, "Luz Villazón", "1065910088", null, "Hermana",
+                        BigDecimal.ZERO, null, null, null)));
+        when(plans.detail(9L)).thenReturn(detail);
+        Deceased mother = new Deceased();
+        mother.setId(70L);
+        mother.setDocumentNumber("26874102");
+        mother.setDeathDate(LocalDate.of(2026, 11, 21));
+        when(contracts.findDeceasedOfPlan(9L, List.of("1065910020", "26874102", "1065910088")))
+                .thenReturn(List.of(mother));
+        when(contracts.existsByDeceasedIdAndStatusNot(70L, ContractStatus.CANCELLED)).thenReturn(false);
+
+        ContractService.PlanBoard board = service.planBoard(40L).orElseThrow();
+
+        assertEquals(9L, board.planId());
+        assertEquals(List.of("Titular", "Madre", "Hermana"),
+                board.people().stream().map(ContractService.PlanPerson::role).toList());
+        // Se puede escoger a cualquiera sin contrato; quien no está en Difuntos se registra en el mismo contrato
+        assertEquals(List.of(true, true, true),
+                board.people().stream().map(ContractService.PlanPerson::selectable).toList());
+        assertEquals(List.of(false, true, false),
+                board.people().stream().map(ContractService.PlanPerson::registered).toList());
+        assertEquals(70L, board.people().get(1).deceasedId());
+    }
+
+    @Test
+    void aClientWithoutAnActivePlanHasNoPlanBoard() {
+        FuneralPlan cancelled = new FuneralPlan();
+        cancelled.setId(9L);
+        cancelled.setStatus(PlanStatus.CANCELLED);
+        when(contracts.findPlansOfClient(40L)).thenReturn(List.of(cancelled));
+        assertTrue(service.planBoard(40L).isEmpty());
+    }
+
+    @Test
+    void clientSearchMatchesTheStartOfNamesWithoutAccents() {
+        service.searchClients(" Durán ");
+        verify(sales).searchClients(eq("% duran%"), eq("duran%"), any());
+    }
+
     // ---------- ayudas ----------
 
     private void planNamed(String name) {
