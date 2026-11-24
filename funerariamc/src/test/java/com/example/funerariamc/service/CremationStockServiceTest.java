@@ -79,6 +79,18 @@ class CremationStockServiceTest {
     }
 
     @Test
+    void slotsUsedBeyondThePurchasesAreReportedAsMissing() {
+        // 10 comprados, 2 separados y 16 cremados: faltan 8 y no hay disponibles
+        ProviderStock owing = new ProviderStock(1L, "JARDINES", "Crematorio Jardines de Paz", 4, true, 10, 2, 16, 0, 0);
+        assertEquals(0, owing.available());
+        assertEquals(8, owing.missing());
+        // Al recibir 10 más, 8 cubren lo usado y quedan 2
+        ProviderStock after = new ProviderStock(1L, "JARDINES", "Crematorio Jardines de Paz", 4, true, 20, 2, 16, 0, 0);
+        assertEquals(2, after.available());
+        assertEquals(0, after.missing());
+    }
+
+    @Test
     void newProviderIsSavedInUppercaseAndUnique() {
         CremationProvider saved = service.saveProvider(new CremationProviderData(null, " baq-crema1 ",
                 "Crematorio  Barranquilla", 2, true));

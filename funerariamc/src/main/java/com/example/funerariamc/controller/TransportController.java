@@ -27,6 +27,7 @@ import com.example.funerariamc.service.TransportService.VehicleCard;
 import com.example.funerariamc.service.TransportService.VehicleState;
 import com.example.funerariamc.service.VehicleData;
 import com.example.funerariamc.ui.Pager;
+import com.example.funerariamc.ui.SearchField;
 import com.example.funerariamc.ui.RefreshableView;
 import com.example.funerariamc.ui.Notice;
 import com.example.funerariamc.ui.BrandTheme;
@@ -1139,12 +1140,8 @@ public class TransportController implements RefreshableView {
     // ---------- Asignar traslado ----------
 
     private void openAssignDialog() {
-        TextField contractSearch = new TextField();
-        contractSearch.setPromptText("Número de contrato o difunto");
-        ComboBox<Option> contract = new ComboBox<>();
-        contract.setPromptText("Seleccione el contrato");
-        contract.getStyleClass().add("form-combo");
-        contract.setConverter(converter(o -> o.label() + " · " + o.detail(), ""));
+        SearchField<Option> contract = new SearchField<>("Escriba el número del contrato o el difunto",
+                "contratos", transportService::searchContracts, Option::label, Option::detail);
         DatePicker date = datePicker(today());
         ComboBox<LocalTime> time = timeCombo(null); // la hora se elige o la sugiere el contrato elegido
 
@@ -1234,6 +1231,19 @@ public class TransportController implements RefreshableView {
                     return;
                 }
                 applyContract(info, hearse, hearseDriver, bus, busDriver, contractNote, date, time);
+                // Lo atiende una funeraria aliada: el destino se llena con ella si todavía está vacío
+                if (info.alliedName() != null) {
+                    stops.stream().filter(r -> r.type.getValue() == StopType.DESTINATION)
+                            .reduce((first, second) -> second)
+                            .filter(r -> r.place.getText() == null || r.place.getText().isBlank())
+                            .ifPresent(r -> {
+                                r.place.setText(info.alliedName());
+                                r.address.setText(info.alliedAddress() == null ? "" : info.alliedAddress());
+                            });
+                    contractNote.setText(contractNote.getText() + " Lo atiende la funeraria aliada "
+                            + info.alliedName() + (info.alliedAddress() == null || info.alliedAddress().isBlank()
+                            ? "." : " (" + info.alliedAddress() + ")."));
+                }
             }, failure -> contractNote.setText(message(failure, "No se pudo leer el contrato.")));
         });
 
@@ -1257,13 +1267,11 @@ public class TransportController implements RefreshableView {
             }
             reloadCandidates[0].run();
         });
-        bindSearch(contractSearch, contract, transportService::searchContracts);
         reloadCandidates[0].run();
 
         Form form = new Form()
                 .section("Servicio", 4)
-                .field("BUSCAR CONTRATO", contractSearch)
-                .field("CONTRATO *", contract)
+                .span("CONTRATO *", contract.node(), 2)
                 .field("FECHA DE SALIDA *", date)
                 .field("HORA DE SALIDA *", time)
                 .note(contractNote)
@@ -1476,6 +1484,18 @@ public class TransportController implements RefreshableView {
             return this;
         }
 
+        /** Campo que ocupa varias columnas (por ejemplo un buscador que necesita ancho). */
+        Form span(String label, Node input, int span) {
+            if (column + span > columns) {
+                column = 0;
+                row++;
+            }
+            field(label, input);
+            GridPane.setColumnSpan(grid.getChildren().get(grid.getChildren().size() - 1), span);
+            column += span - 1;
+            return this;
+        }
+
         Form field(String label, Node input) {
             if (column >= columns) {
                 column = 0;
@@ -1575,38 +1595,6 @@ public class TransportController implements RefreshableView {
             T result = (T) saved[0];
             onSaved.accept(result);
         }
-    }
-
-    /** Buscador del diálogo: espera a que el usuario deje de escribir y consulta en otro hilo. */
-    private static void bindSearch(TextField field, ComboBox<Option> box, Function<String, List<Option>> search) {
-        PauseTransition delay = new PauseTransition(Duration.millis(250));
-        int[] requestNumber = new int[1];
-        String prompt = box.getPromptText();
-        Runnable refresh = () -> {
-            String text = field.getText();
-            int request = ++requestNumber[0];
-            box.setPromptText("Buscando…");
-            async("transport-dialog-search", () -> search.apply(text), options -> {
-                if (request != requestNumber[0]) {
-                    return;
-                }
-                box.setPromptText(options.isEmpty() ? "Sin resultados" : prompt);
-                Option current = box.getValue();
-                box.getItems().setAll(options);
-                if (current != null && options.contains(current)) {
-                    box.setValue(current);
-                } else if (text != null && !text.isBlank() && options.size() == 1) {
-                    box.setValue(options.get(0));
-                }
-            }, failure -> {
-                if (request == requestNumber[0]) {
-                    box.setPromptText("No se pudo buscar");
-                }
-            });
-        };
-        delay.setOnFinished(e -> refresh.run());
-        field.textProperty().addListener((obs, old, text) -> delay.playFromStart());
-        refresh.run();
     }
 
     /** Confirmación con la pregunta como encabezado y el botón con el nombre de la acción. */

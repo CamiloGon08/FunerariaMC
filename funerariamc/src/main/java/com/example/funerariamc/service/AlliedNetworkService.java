@@ -33,11 +33,9 @@ import java.time.format.TextStyle;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Red de funerarias aliadas: registro de las funerarias con convenio y de los pagos por los servicios que
@@ -218,22 +216,18 @@ public class AlliedNetworkService {
     }
 
     /**
-     * Contratos no cancelados que coinciden con el texto (número, difunto o cliente), máximo 20.
-     * Un contrato pertenece a una sola aliada: no salen los ya vinculados a otra; los de esta aliada van primero.
-     * Cada opción muestra el difunto y el cliente para encontrarla por nombre.
+     * Contratos no cancelados que atiende esta aliada (se marca al crear el contrato), máximo 20,
+     * filtrados por número, difunto o cliente. Cada opción muestra el difunto y el cliente.
      */
     @Transactional(readOnly = true)
     public List<ContractOption> searchContracts(Long homeId, String text) {
         requireMaster();
+        if (homeId == null) {
+            return List.of();
+        }
         String pattern = "%" + (text == null ? "" : text.trim().toLowerCase(Locale.ROOT)) + "%";
-        Set<Long> others = homeId == null ? Set.of()
-                : new HashSet<>(paymentRepository.findContractIdsOfOtherHomes(homeId, AlliedPaymentStatus.VOIDED));
-        Set<Long> own = homeId == null ? Set.of()
-                : new HashSet<>(paymentRepository.findContractIdsOfHome(homeId, AlliedPaymentStatus.VOIDED));
-        return contractRepository.searchNotCancelled(ContractStatus.CANCELLED, pattern, PageRequest.of(0, 60)).stream()
-                .filter(c -> !others.contains(c.getId()))
-                .sorted(Comparator.comparing((ServiceContract c) -> !own.contains(c.getId())))
-                .limit(20)
+        return contractRepository.searchOfAlliedHome(homeId, ContractStatus.CANCELLED, pattern, PageRequest.of(0, 20))
+                .stream()
                 .map(c -> new ContractOption(c.getId(), c.getContractNumber(),
                         c.getContractNumber() + " · " + fullName(c.getDeceased())
                                 + " · cliente " + clientName(c)))
@@ -384,11 +378,12 @@ public class AlliedNetworkService {
         if (contract.getStatus() == ContractStatus.CANCELLED) {
             throw new InvalidDataException("El contrato " + contract.getContractNumber() + " está cancelado.");
         }
-        List<String> otherHomes = paymentRepository.findOtherHomeNames(contract.getId(), home.getId(),
-                AlliedPaymentStatus.VOIDED);
-        if (!otherHomes.isEmpty()) {
-            throw new InvalidDataException("El contrato " + contract.getContractNumber() + " ya está vinculado a "
-                    + otherHomes.get(0) + ".");
+        // El contrato dice qué aliada presta el servicio: solo esa puede cobrarlo
+        AlliedFuneralHome attending = contract.getAlliedFuneralHome();
+        if (attending == null || !home.getId().equals(attending.getId())) {
+            throw new InvalidDataException("El contrato " + contract.getContractNumber() + " no está a cargo de "
+                    + home.getName() + (attending == null ? ". Márquelo en el contrato como atendido por esta aliada."
+                    : ": lo atiende " + attending.getName() + "."));
         }
         BigDecimal amount = data.amount() == null ? null : data.amount().setScale(2, RoundingMode.HALF_UP);
         if (amount == null || amount.signum() <= 0) {

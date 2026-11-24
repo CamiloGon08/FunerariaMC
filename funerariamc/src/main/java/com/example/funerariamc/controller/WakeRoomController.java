@@ -16,6 +16,7 @@ import com.example.funerariamc.service.WakeRoomService.RoomState;
 import com.example.funerariamc.service.WakeRoomService.Wake;
 import com.example.funerariamc.service.WakeRoomService.WakeDetail;
 import com.example.funerariamc.ui.Pager;
+import com.example.funerariamc.ui.SearchField;
 import com.example.funerariamc.ui.DetailShell;
 import com.example.funerariamc.ui.Notice;
 import com.example.funerariamc.ui.Responsive;
@@ -629,11 +630,10 @@ public class WakeRoomController implements RefreshableView {
     /** Contrato activo sin sala, hora de ingreso y de salida; rechaza cruces. */
     private void openAssignDialog(RoomCard room) {
         TextField roomField = readOnly(room.name() + (room.special() ? " · especial (con recargo)" : ""));
-        TextField search = new TextField();
-        search.setPromptText("Número de contrato, difunto o cliente");
-        ComboBox<Option> contract = optionCombo("Seleccione el contrato");
-        Label hint = note("");
-        bindSearch(search, contract, wakeRoomService::searchContractsWithoutRoom, hint);
+        // No se lista nada hasta que se escribe: aparecen los contratos sin sala que coinciden
+        SearchField<Option> contract = new SearchField<>("Escriba el número del contrato, el difunto o el cliente",
+                "contratos sin sala", wakeRoomService::searchContractsWithoutRoom, Option::label, Option::detail);
+        Label hint = note("Solo salen contratos activos que todavía no tienen sala.");
 
         LocalDate day = datePicker.getValue() == null ? today() : datePicker.getValue();
         DatePicker startDate = new DatePicker(day);
@@ -645,8 +645,7 @@ public class WakeRoomController implements RefreshableView {
                 .section("Sala", 1)
                 .field("SALA", roomField)
                 .section("Contrato del servicio", 2)
-                .field("BUSCAR CONTRATO", search)
-                .field("CONTRATO *", contract)
+                .span("CONTRATO *", contract.node(), 2)
                 .note(hint)
                 .section("Horario de la velación", 4)
                 .field("FECHA DE INGRESO *", startDate)
@@ -918,6 +917,18 @@ public class WakeRoomController implements RefreshableView {
             return this;
         }
 
+        /** Campo que ocupa varias columnas (por ejemplo un buscador que necesita ancho). */
+        Form span(String label, Node input, int span) {
+            if (column + span > columns) {
+                column = 0;
+                row++;
+            }
+            field(label, input);
+            GridPane.setColumnSpan(grid.getChildren().get(grid.getChildren().size() - 1), span);
+            column += span - 1;
+            return this;
+        }
+
         Form field(String label, Node input) {
             if (column >= columns) {
                 column = 0;
@@ -1009,37 +1020,6 @@ public class WakeRoomController implements RefreshableView {
             onSaved.accept(result);
         }
     }
-
-    /** Buscador del diálogo: espera a que el usuario deje de escribir y consulta en otro hilo. */
-    private void bindSearch(TextField field, ComboBox<Option> box, Function<String, List<Option>> search, Label emptyHint) {
-        PauseTransition delay = new PauseTransition(Duration.millis(250));
-        int[] requestNumber = new int[1];
-        Runnable refresh = () -> {
-            String text = field.getText();
-            int request = ++requestNumber[0];
-            box.setPromptText("Buscando…");
-            async("wake-dialog-search", () -> search.apply(text), options -> {
-                if (request != requestNumber[0]) {
-                    return;
-                }
-                box.setPromptText(options.isEmpty() ? "Sin resultados" : "Seleccione de la lista");
-                box.getItems().setAll(options);
-                box.setValue(options.size() == 1 ? options.get(0) : null);
-                if (emptyHint != null) {
-                    emptyHint.setText(options.isEmpty() && (text == null || text.isBlank())
-                            ? "No hay contratos activos sin sala. Regístrelos primero en Contratos y ventas." : "");
-                }
-            }, failure -> {
-                if (request == requestNumber[0]) {
-                    box.setPromptText("No se pudo buscar");
-                }
-            });
-        };
-        delay.setOnFinished(e -> refresh.run());
-        field.textProperty().addListener((obs, old, text) -> delay.playFromStart());
-        refresh.run();
-    }
-
     // ---------- piezas ----------
 
     private static ComboBox<LocalTime> timeCombo(LocalTime initial) {

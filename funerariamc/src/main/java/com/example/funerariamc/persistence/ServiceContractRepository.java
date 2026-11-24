@@ -129,6 +129,21 @@ public interface ServiceContractRepository extends JpaRepository<ServiceContract
     List<ServiceContract> searchNotCancelled(@Param("cancelled") ContractStatus cancelled, @Param("pattern") String pattern,
                                              Pageable pageable);
 
+    /** Contratos no cancelados que atiende la funeraria aliada y coinciden con el texto (vacío: todos). */
+    @Query("""
+            select c from ServiceContract c
+            join fetch c.deceased d
+            join fetch c.client cl
+            where c.alliedFuneralHome.id = :homeId
+              and c.status <> :cancelled
+              and (lower(c.contractNumber) like :pattern
+                   or lower(concat(coalesce(d.name, ''), ' ', coalesce(d.lastname, ''))) like :pattern
+                   or lower(concat(cl.name, ' ', coalesce(cl.lastname, ''))) like :pattern)
+            order by c.id desc
+            """)
+    List<ServiceContract> searchOfAlliedHome(@Param("homeId") Long homeId, @Param("cancelled") ContractStatus cancelled,
+                                             @Param("pattern") String pattern, Pageable pageable);
+
     /** Contrato completo para el panel de la sala y el detalle de la venta. */
     @Query("""
             select c from ServiceContract c

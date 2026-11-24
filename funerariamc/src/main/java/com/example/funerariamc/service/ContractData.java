@@ -21,13 +21,15 @@ import java.util.List;
  * @param cemetery         qué se cobra del cementerio: arriendo de bóveda, lote doble u osario
  * @param lotConstructions puestos del lote que se construyen
  * @param lotPreparation   se usa un puesto del lote: se cobra la adecuación (abrir, excavar, descensor)
+ * @param alliedHomeId     funeraria aliada que presta el servicio en otra ciudad; null si lo presta la funeraria
  */
 public record ContractData(ContractService.SaleKind kind, Long clientId, Long deceasedId, Long planId,
                            Long salespersonId, BigDecimal baseAmount, BigDecimal pensionWages,
                            Long roomId, LocalDateTime wakeStart, LocalDateTime wakeEnd,
                            Long coffinItemId, int extraBuses, List<ItemLine> products,
                            BigDecimal initialPayment, boolean homeWake, int intercityKm,
-                           CemeteryCharge cemetery, int lotConstructions, boolean lotPreparation) {
+                           CemeteryCharge cemetery, int lotConstructions, boolean lotPreparation,
+                           Long alliedHomeId) {
 
     /** Lo que se cobra del cementerio en la venta. */
     public enum CemeteryCharge {
@@ -47,6 +49,18 @@ public record ContractData(ContractService.SaleKind kind, Long clientId, Long de
         }
     }
 
+    /** Servicio que presta la propia funeraria (sin funeraria aliada). */
+    public ContractData(ContractService.SaleKind kind, Long clientId, Long deceasedId, Long planId,
+                        Long salespersonId, BigDecimal baseAmount, BigDecimal pensionWages,
+                        Long roomId, LocalDateTime wakeStart, LocalDateTime wakeEnd,
+                        Long coffinItemId, int extraBuses, List<ItemLine> products,
+                        BigDecimal initialPayment, boolean homeWake, int intercityKm,
+                        CemeteryCharge cemetery, int lotConstructions, boolean lotPreparation) {
+        this(kind, clientId, deceasedId, planId, salespersonId, baseAmount, pensionWages, roomId, wakeStart, wakeEnd,
+                coffinItemId, extraBuses, products, initialPayment, homeWake, intercityKm, cemetery, lotConstructions,
+                lotPreparation, null);
+    }
+
     /** Venta sin velación en casa, traslado desde otra ciudad ni cargos del cementerio. */
     public ContractData(ContractService.SaleKind kind, Long clientId, Long deceasedId, Long planId,
                         Long salespersonId, BigDecimal baseAmount, BigDecimal pensionWages,
@@ -60,7 +74,7 @@ public record ContractData(ContractService.SaleKind kind, Long clientId, Long de
     public ContractData withDeceased(Long id) {
         return new ContractData(kind, clientId, id, planId, salespersonId, baseAmount, pensionWages, roomId, wakeStart,
                 wakeEnd, coffinItemId, extraBuses, products, initialPayment, homeWake, intercityKm, cemetery,
-                lotConstructions, lotPreparation);
+                lotConstructions, lotPreparation, alliedHomeId);
     }
 
     /** Un artículo del inventario con la cantidad que se vende. */

@@ -6,6 +6,7 @@ import com.example.funerariamc.exception.InsufficientStockException;
 import com.example.funerariamc.exception.InvalidDataException;
 import com.example.funerariamc.exception.ResourceNotFoundException;
 import com.example.funerariamc.exception.UnauthorizedActionException;
+import com.example.funerariamc.model.AlliedFuneralHome;
 import com.example.funerariamc.model.Client;
 import com.example.funerariamc.model.Deceased;
 import com.example.funerariamc.model.Employee;
@@ -26,6 +27,7 @@ import com.example.funerariamc.utils.enums.SaleStatus;
 import com.example.funerariamc.utils.enums.SaleType;
 import com.example.funerariamc.utils.enums.TransactionStatus;
 import com.example.funerariamc.utils.enums.TransactionType;
+import com.example.funerariamc.persistence.AlliedFuneralHomeRepository;
 import com.example.funerariamc.persistence.FinancialTransactionRepository;
 import com.example.funerariamc.persistence.InventoryItemRepository;
 import com.example.funerariamc.persistence.SaleDetailRepository;
@@ -187,7 +189,8 @@ public class ContractService {
     /** Contrato de servicio de la venta (null en una venta de productos). */
     public record ContractInfo(Long id, String number, LocalDate contractDate, ContractStatus status,
                                String deceasedName, String planLabel, String roomName, LocalDateTime wakeStart,
-                               LocalDateTime wakeEnd, String thanatopractor, LocalDateTime preparationCompletedAt) {
+                               LocalDateTime wakeEnd, String thanatopractor, LocalDateTime preparationCompletedAt,
+                               String alliedHome) {
     }
 
     /** Panel "Ver" de una venta. */
@@ -208,6 +211,7 @@ public class ContractService {
     private final AccessLogService accessLogService;
     private final SessionContext sessionContext;
     private final Clock clock;
+    private final AlliedFuneralHomeRepository alliedHomeRepository;
 
     @Autowired
     public ContractService(SaleRepository saleRepository, SaleDetailRepository detailRepository,
@@ -216,10 +220,10 @@ public class ContractService {
                            StaffOptionRepository staffRepository, WakeRoomRepository roomRepository,
                            WakeRoomService wakeRoomService, FuneralPlanService planService,
                            SaleParameters parameters, AccessLogService accessLogService,
-                           SessionContext sessionContext) {
+                           SessionContext sessionContext, AlliedFuneralHomeRepository alliedHomeRepository) {
         this(saleRepository, detailRepository, transactionRepository, contractRepository, itemRepository,
                 staffRepository, roomRepository, wakeRoomService, planService, parameters, accessLogService,
-                sessionContext, Clock.system(AccessLogService.APP_ZONE));
+                sessionContext, alliedHomeRepository, Clock.system(AccessLogService.APP_ZONE));
     }
 
     /** Las pruebas fijan la fecha con un Clock. */
@@ -228,7 +232,8 @@ public class ContractService {
                     ServiceContractRepository contractRepository, InventoryItemRepository itemRepository,
                     StaffOptionRepository staffRepository, WakeRoomRepository roomRepository,
                     WakeRoomService wakeRoomService, FuneralPlanService planService, SaleParameters parameters,
-                    AccessLogService accessLogService, SessionContext sessionContext, Clock clock) {
+                    AccessLogService accessLogService, SessionContext sessionContext,
+                    AlliedFuneralHomeRepository alliedHomeRepository, Clock clock) {
         this.saleRepository = saleRepository;
         this.detailRepository = detailRepository;
         this.transactionRepository = transactionRepository;
@@ -241,6 +246,7 @@ public class ContractService {
         this.accessLogService = accessLogService;
         this.sessionContext = sessionContext;
         this.clock = clock;
+        this.alliedHomeRepository = alliedHomeRepository;
     }
 
     // ---------- pantalla ----------
@@ -325,7 +331,9 @@ public class ContractService {
                     c.getFuneralPlan() == null ? null : c.getFuneralPlan().getPlanName() + " · "
                             + FuneralPlanService.code(c.getFuneralPlan().getId()),
                     c.getWakeRoom() == null ? null : c.getWakeRoom().getName(), c.getWakeStartAt(), c.getWakeEndAt(),
-                    employeeName(c.getThanatopractor()), c.getPreparationCompletedAt());
+                    employeeName(c.getThanatopractor()), c.getPreparationCompletedAt(),
+                    c.getAlliedFuneralHome() == null ? null
+                            : c.getAlliedFuneralHome().getName() + " · " + c.getAlliedFuneralHome().getCity());
         }
         List<Line> lines = detailRepository.findBySale(saleId).stream()
                 .map(d -> new Line(d.getDescription(), d.getQuantity(), d.getUnitPrice(), d.getSubtotal(),
@@ -916,6 +924,7 @@ public class ContractService {
         contract.setStatus(ContractStatus.ACTIVE);
         contract.setThanatopractor(null);
         contract.setPreparationCompletedAt(null);
+        contract.setAlliedFuneralHome(alliedHome(data.alliedHomeId()));
 
         FuneralPlan plan = null;
         if (data.kind() == SaleKind.PLAN) {
@@ -947,6 +956,33 @@ public class ContractService {
             contract.setWakeEndAt(null);
         }
         return contract;
+    }
+
+    /** Funeraria aliada que presta el servicio en otra ciudad; tiene que estar activa en la red. */
+    private AlliedFuneralHome alliedHome(Long id) {
+        if (id == null) {
+            return null;
+        }
+        AlliedFuneralHome home = alliedHomeRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Funeraria aliada", id));
+        if (Boolean.FALSE.equals(home.getActive())) {
+            throw new InvalidDataException(home.getName() + " está inactiva en la red: elija otra funeraria aliada.");
+        }
+        return home;
+    }
+
+    /** Funerarias aliadas activas que coinciden con el texto (nombre o ciudad), para el contrato. */
+    @Transactional(readOnly = true)
+    public List<Option> alliedHomes(String text) {
+        requireAccess();
+        String query = text == null ? "" : text.trim().toLowerCase(Locale.ROOT);
+        return alliedHomeRepository.findAllByOrderByNameAsc().stream()
+                .filter(h -> !Boolean.FALSE.equals(h.getActive()))
+                .filter(h -> (h.getName() + " " + (h.getCity() == null ? "" : h.getCity()))
+                        .toLowerCase(Locale.ROOT).contains(query))
+                .limit(30)
+                .map(h -> new Option(h.getId(), h.getName(), h.getCity()))
+                .toList();
     }
 
     /** "CT-2026-0001": consecutivo del año; la columna unique impide repetidos. */

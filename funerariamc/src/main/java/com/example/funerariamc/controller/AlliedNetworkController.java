@@ -16,6 +16,7 @@ import com.example.funerariamc.service.AlliedNetworkService.PaymentRow;
 import com.example.funerariamc.service.AlliedPaymentData;
 import com.example.funerariamc.service.SaleParameters;
 import com.example.funerariamc.ui.Pager;
+import com.example.funerariamc.ui.SearchField;
 import com.example.funerariamc.ui.RefreshableView;
 import com.example.funerariamc.ui.Notice;
 import com.example.funerariamc.ui.FormShell;
@@ -595,43 +596,16 @@ public class AlliedNetworkController implements RefreshableView {
      */
     private void registerService(HomeCard h) {
         Form form = new Form();
-        TextField search = new TextField();
-        search.setPromptText("Número del contrato, difunto o cliente");
-        ComboBox<ContractOption> contract = new ComboBox<>();
-        contract.getStyleClass().add("form-combo");
-        contract.setPromptText("Elija el contrato");
-        contract.setConverter(new StringConverter<>() {
-            @Override
-            public String toString(ContractOption o) {
-                return o == null ? "" : o.label();
-            }
-
-            @Override
-            public ContractOption fromString(String s) {
-                return null;
-            }
-        });
-        PauseTransition delay = new PauseTransition(Duration.millis(250));
-        Runnable reload = () -> async("allied-contracts", () -> service.searchContracts(h.id(), search.getText()), options -> {
-            ContractOption chosen = contract.getValue();
-            contract.getItems().setAll(options);
-            if (chosen != null && options.stream().anyMatch(o -> o.id().equals(chosen.id()))) {
-                contract.setValue(chosen);
-            } else if (options.size() == 1) {
-                contract.setValue(options.get(0));
-            }
-        }, failure -> { });
-        delay.setOnFinished(e -> reload.run());
-        search.textProperty().addListener((obs, old, text) -> delay.playFromStart());
-        reload.run();
-        // Quién está en el contrato elegido (difunto y cliente), completo aunque el combo lo corte
-        Label contractNote = note("Salen los contratos de esta funeraria (primero) y los que aún no tienen aliada; "
-                + "los de otras aliadas no aparecen.");
+        // Solo salen los contratos que atiende esta aliada (son pocos): se ven al entrar al campo
+        String contractHint = "Solo salen los contratos marcados como atendidos por " + h.name()
+                + ". Se marca al crear el contrato, en «Lo atiende una funeraria aliada».";
+        SearchField<ContractOption> contract = new SearchField<>("Escriba el número del contrato, el difunto o el cliente",
+                "contratos de esta aliada", text -> service.searchContracts(h.id(), text), ContractOption::label, o -> null)
+                .listWhenEmpty("Ningún contrato está marcado como atendido por esta aliada.");
+        // Quién está en el contrato elegido (difunto y cliente), completo aunque el campo lo corte
+        Label contractNote = note(contractHint);
         contractNote.setWrapText(true);
-        contract.valueProperty().addListener((obs, old, o) -> contractNote.setText(o == null
-                ? "Salen los contratos de esta funeraria (primero) y los que aún no tienen aliada; "
-                + "los de otras aliadas no aparecen."
-                : o.label()));
+        contract.valueProperty().addListener((obs, old, o) -> contractNote.setText(o == null ? contractHint : o.label()));
         TextField amount = new TextField();
         amount.setPromptText("$ 0");
         DatePicker date = new DatePicker(service.today());
@@ -649,8 +623,7 @@ public class AlliedNetworkController implements RefreshableView {
         form.section("Funeraria", 1)
                 .field("FUNERARIA ALIADA", lockedField(h.name() + " · NIT " + h.nit()));
         form.section("Servicio prestado", 2)
-                .field("BUSCAR CONTRATO", search)
-                .field("CONTRATO *", contract)
+                .span("CONTRATO *", contract.node(), 2)
                 .note(contractNote)
                 .field("MONTO *", amount)
                 .field("FECHA DEL SERVICIO *", date);
@@ -978,6 +951,18 @@ public class AlliedNetworkController implements RefreshableView {
             column = 0;
             row = 0;
             body.getChildren().addAll(legend, grid);
+            return this;
+        }
+
+        /** Campo que ocupa varias columnas (por ejemplo un buscador que necesita ancho). */
+        Form span(String label, Node input, int span) {
+            if (column + span > columns) {
+                column = 0;
+                row++;
+            }
+            field(label, input);
+            GridPane.setColumnSpan(grid.getChildren().get(grid.getChildren().size() - 1), span);
+            column += span - 1;
             return this;
         }
 

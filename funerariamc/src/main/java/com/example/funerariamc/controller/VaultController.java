@@ -7,6 +7,7 @@ import com.example.funerariamc.utils.enums.NotificationChannel;
 import com.example.funerariamc.utils.enums.NotificationStatus;
 import com.example.funerariamc.utils.enums.NotificationType;
 import com.example.funerariamc.service.AppModule;
+import com.example.funerariamc.ui.SearchField;
 import com.example.funerariamc.ui.ModuleLink;
 import com.example.funerariamc.service.AccessLogService;
 import com.example.funerariamc.service.AssignVaultData;
@@ -1052,16 +1053,19 @@ public class VaultController implements RefreshableView {
         start.valueProperty().addListener((obs, old, value) -> updateEnd.run());
         updateEnd.run();
 
-        TextField clientSearch = searchInput("Nombre, razón social o documento");
-        ComboBox<Option> clientBox = optionCombo("Seleccione el titular");
-        TextField deceasedSearch = searchInput("Nombre o documento del difunto");
-        ComboBox<Option> deceasedBox = optionCombo("Seleccione el difunto");
-        Label deceasedHint = note("");
-        bindSearch(clientSearch, clientBox, cemeteryService::searchClients, null);
-        bindSearch(deceasedSearch, deceasedBox, cemeteryService::searchDeceasedWithoutVault, deceasedHint);
+        SearchField<Option> clientBox = new SearchField<>("Escriba el nombre, razón social o documento del titular",
+                "clientes", cemeteryService::searchClients, Option::label, Option::detail);
+        SearchField<Option> deceasedBox = new SearchField<>("Escriba el nombre o documento del difunto",
+                "difuntos sin bóveda", cemeteryService::searchDeceasedWithoutVault, Option::label, Option::detail);
         if (forDeceased != null) {
-            // Con un solo resultado la búsqueda lo deja elegido
-            deceasedSearch.setText(forDeceased.search());
+            // Llega desde Difuntos: si la búsqueda deja un solo difunto, queda elegido
+            async("vault-dialog-preset", () -> cemeteryService.searchDeceasedWithoutVault(forDeceased.search()), options -> {
+                if (options.size() == 1 && deceasedBox.getValue() == null) {
+                    deceasedBox.setValue(options.get(0));
+                } else if (deceasedBox.getValue() == null) {
+                    deceasedBox.field().setText(forDeceased.search());
+                }
+            }, failure -> deceasedBox.field().setText(forDeceased.search()));
         }
 
         Form form = new Form()
@@ -1070,12 +1074,9 @@ public class VaultController implements RefreshableView {
                 .field("INICIO DEL ARRIENDO *", start)
                 .field("VENCE", end)
                 .section("Titular del arriendo · familia vinculada", 2)
-                .field("BUSCAR TITULAR", clientSearch)
-                .field("TITULAR *", clientBox)
+                .span("TITULAR *", clientBox.node(), 2)
                 .section("Difunto que se inhuma", 2)
-                .field("BUSCAR DIFUNTO", deceasedSearch)
-                .field("DIFUNTO *", deceasedBox)
-                .note(deceasedHint)
+                .span("DIFUNTO *", deceasedBox.node(), 2)
                 .note(note("El arriendo dura " + CemeteryService.LEASE_YEARS + " años desde el inicio. "
                         + "Solo se listan difuntos que no están en otra bóveda, ni exhumados ni cremados."));
 
@@ -1582,6 +1583,18 @@ public class VaultController implements RefreshableView {
             return this;
         }
 
+        /** Campo que ocupa varias columnas (por ejemplo un buscador que necesita ancho). */
+        Form span(String label, Node input, int span) {
+            if (column + span > columns) {
+                column = 0;
+                row++;
+            }
+            field(label, input);
+            GridPane.setColumnSpan(grid.getChildren().get(grid.getChildren().size() - 1), span);
+            column += span - 1;
+            return this;
+        }
+
         Form field(String label, Node input) {
             if (column >= columns) {
                 column = 0;
@@ -1699,40 +1712,6 @@ public class VaultController implements RefreshableView {
         }
     }
 
-    /**
-     * Buscador del diálogo: espera a que el usuario deje de escribir y consulta en otro hilo.
-     * Si llega una respuesta vieja (el texto ya cambió) se descarta. Si queda un solo resultado, se elige.
-     */
-    private void bindSearch(TextField field, ComboBox<Option> box, Function<String, List<Option>> search, Label emptyHint) {
-        PauseTransition delay = new PauseTransition(Duration.millis(250));
-        int[] requestNumber = new int[1];
-        Runnable refresh = () -> {
-            String text = field.getText();
-            int request = ++requestNumber[0];
-            box.setPromptText("Buscando…");
-            async("vault-dialog-search", () -> search.apply(text), options -> {
-                if (request != requestNumber[0]) {
-                    return;
-                }
-                box.setPromptText(options.isEmpty() ? "Sin resultados" : "Seleccione de la lista");
-                box.getItems().setAll(options);
-                // Se elige sola solo si la búsqueda deja un único resultado; si no, la elige el usuario.
-                box.setValue(options.size() == 1 ? options.get(0) : null);
-                if (emptyHint != null) {
-                    emptyHint.setText(options.isEmpty() && (text == null || text.isBlank())
-                            ? "No hay difuntos sin bóveda. Regístrelos primero en Difuntos." : "");
-                }
-            }, failure -> {
-                if (request == requestNumber[0]) {
-                    box.setPromptText("No se pudo buscar");
-                }
-            });
-        };
-        delay.setOnFinished(e -> refresh.run());
-        field.textProperty().addListener((obs, old, text) -> delay.playFromStart());
-        refresh.run();
-    }
-
     /** Recuadro salvia de aviso con su ícono; se oculta mientras no tenga texto. */
     private static Label note(String text) {
         Label note = wrapped(text, "note-info");
@@ -1840,21 +1819,6 @@ public class VaultController implements RefreshableView {
         Label label = label(text, styleClass);
         label.setWrapText(true);
         return label;
-    }
-
-    private static TextField searchInput(String prompt) {
-        TextField field = new TextField();
-        field.setPromptText(prompt);
-        return field;
-    }
-
-    private static ComboBox<Option> optionCombo(String prompt) {
-        ComboBox<Option> box = new ComboBox<>();
-        box.setPromptText(prompt);
-        box.getStyleClass().add("form-combo");
-        box.setMaxWidth(Double.MAX_VALUE);
-        box.setConverter(converter(o -> o.detail() == null ? o.label() : o.label() + " · " + o.detail(), ""));
-        return box;
     }
 
     /** Las ventanas cargan app.css, personal.css (encabezado y botones) y cemetery.css (formulario El Edén). */
