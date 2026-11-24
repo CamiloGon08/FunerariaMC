@@ -28,67 +28,70 @@
         <ToggleGroup fx:id="stateGroup"/>
     </fx:define>
 
-    <VBox spacing="16">
-        <!-- Banda verde: arriba el encabezado del menú (MainController lo pone en #heroHeaderSlot) -->
-        <VBox styleClass="hero-band" spacing="18">
-            <StackPane id="heroHeaderSlot" alignment="TOP_LEFT"/>
-            <HBox spacing="16">
-                <VBox styleClass="hero-kpi,highlight" HBox.hgrow="ALWAYS" prefWidth="0">
-                    <Label text="ALIADAS ACTIVAS" styleClass="hero-kpi-caption"/>
-                    <Label fx:id="activeValue" text="—" styleClass="hero-kpi-value"/>
-                    <Label fx:id="activeDetail" styleClass="hero-kpi-detail"/>
-                </VBox>
-                <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
-                    <Label text="SERVICIOS ESTE MES" styleClass="hero-kpi-caption"/>
-                    <Label fx:id="servicesValue" text="—" styleClass="hero-kpi-value"/>
-                    <Label fx:id="servicesDetail" styleClass="hero-kpi-detail"/>
-                </VBox>
-                <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
-                    <Label text="SALDO POR PAGAR" styleClass="hero-kpi-caption"/>
-                    <Label fx:id="pendingValue" text="—" styleClass="hero-kpi-value"/>
-                    <Label fx:id="pendingDetail" styleClass="hero-kpi-detail"/>
-                </VBox>
-                <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
-                    <Label text="PAGOS PENDIENTES" styleClass="hero-kpi-caption"/>
-                    <Label fx:id="openValue" text="—" styleClass="hero-kpi-value"/>
-                    <Label fx:id="openDetail" styleClass="hero-kpi-detail"/>
-                </VBox>
-            </HBox>
-        </VBox>
+    <!-- Toda la pantalla se desplaza junta: banda verde, filtros, tarjetas y páginas -->
+    <ScrollPane fx:id="cardsScroll" fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED"
+                styleClass="card-scroll,page-scroll">
+        <VBox spacing="16" styleClass="page-content">
+            <!-- Banda verde: arriba el encabezado del menú (MainController lo pone en #heroHeaderSlot) -->
+            <VBox styleClass="hero-band" spacing="18">
+                <StackPane id="heroHeaderSlot" alignment="TOP_LEFT"/>
+                <HBox spacing="16">
+                    <VBox styleClass="hero-kpi,highlight" HBox.hgrow="ALWAYS" prefWidth="0">
+                        <Label text="ALIADAS ACTIVAS" styleClass="hero-kpi-caption"/>
+                        <Label fx:id="activeValue" text="—" styleClass="hero-kpi-value"/>
+                        <Label fx:id="activeDetail" styleClass="hero-kpi-detail"/>
+                    </VBox>
+                    <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
+                        <Label text="SERVICIOS ESTE MES" styleClass="hero-kpi-caption"/>
+                        <Label fx:id="servicesValue" text="—" styleClass="hero-kpi-value"/>
+                        <Label fx:id="servicesDetail" styleClass="hero-kpi-detail"/>
+                    </VBox>
+                    <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
+                        <Label text="SALDO POR PAGAR" styleClass="hero-kpi-caption"/>
+                        <Label fx:id="pendingValue" text="—" styleClass="hero-kpi-value"/>
+                        <Label fx:id="pendingDetail" styleClass="hero-kpi-detail"/>
+                    </VBox>
+                    <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
+                        <Label text="PAGOS PENDIENTES" styleClass="hero-kpi-caption"/>
+                        <Label fx:id="openValue" text="—" styleClass="hero-kpi-value"/>
+                        <Label fx:id="openDetail" styleClass="hero-kpi-detail"/>
+                    </VBox>
+                </HBox>
+            </VBox>
 
-        <!-- Buscador, ciudad, estado y Nueva funeraria aliada -->
-        <HBox styleClass="filter-card">
-            <HBox styleClass="search-box" HBox.hgrow="ALWAYS" minWidth="200">
-                <SVGPath content="M7 1.5a5.5 5.5 0 1 1 0 11a5.5 5.5 0 0 1 0-11z M11.2 11.2 L15 15" styleClass="search-icon"/>
-                <TextField fx:id="searchField" promptText="Buscar por nombre o NIT" HBox.hgrow="ALWAYS"/>
+            <!-- Buscador, ciudad, estado y Nueva funeraria aliada -->
+            <HBox styleClass="filter-card">
+                <HBox styleClass="search-box" HBox.hgrow="ALWAYS" minWidth="200">
+                    <SVGPath content="M7 1.5a5.5 5.5 0 1 1 0 11a5.5 5.5 0 0 1 0-11z M11.2 11.2 L15 15" styleClass="search-icon"/>
+                    <TextField fx:id="searchField" promptText="Buscar por nombre o NIT" HBox.hgrow="ALWAYS"/>
+                </HBox>
+                <ComboBox fx:id="cityFilter" styleClass="chip-combo" minWidth="-Infinity"/>
+                <HBox styleClass="segmented" minWidth="-Infinity">
+                    <ToggleButton fx:id="allState" text="Todas" toggleGroup="$stateGroup" selected="true" styleClass="segment"/>
+                    <ToggleButton fx:id="upToDateState" text="Al día" toggleGroup="$stateGroup" styleClass="segment"/>
+                    <ToggleButton fx:id="balanceState" text="Con saldo" toggleGroup="$stateGroup" styleClass="segment"/>
+                    <ToggleButton fx:id="inactiveState" text="Inactivas" toggleGroup="$stateGroup" styleClass="segment"/>
+                </HBox>
+                <Button text="Cuota del Remanso" onAction="#onNetworkFee" styleClass="secondary-button" minWidth="-Infinity"/>
+                <Button text="+  Nueva funeraria aliada" onAction="#onNewHome" styleClass="primary-button" minWidth="-Infinity"/>
             </HBox>
-            <ComboBox fx:id="cityFilter" styleClass="chip-combo" minWidth="-Infinity"/>
-            <HBox styleClass="segmented" minWidth="-Infinity">
-                <ToggleButton fx:id="allState" text="Todas" toggleGroup="$stateGroup" selected="true" styleClass="segment"/>
-                <ToggleButton fx:id="upToDateState" text="Al día" toggleGroup="$stateGroup" styleClass="segment"/>
-                <ToggleButton fx:id="balanceState" text="Con saldo" toggleGroup="$stateGroup" styleClass="segment"/>
-                <ToggleButton fx:id="inactiveState" text="Inactivas" toggleGroup="$stateGroup" styleClass="segment"/>
+
+            <HBox alignment="BOTTOM_LEFT">
+                <Label text="Funerarias de la red" styleClass="section-heading"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label fx:id="countLabel" styleClass="section-count"/>
             </HBox>
-            <Button text="Cuota del Remanso" onAction="#onNetworkFee" styleClass="secondary-button" minWidth="-Infinity"/>
-            <Button text="+  Nueva funeraria aliada" onAction="#onNewHome" styleClass="primary-button" minWidth="-Infinity"/>
-        </HBox>
 
-        <HBox alignment="BOTTOM_LEFT">
-            <Label text="Funerarias de la red" styleClass="section-heading"/>
-            <Region HBox.hgrow="ALWAYS"/>
-            <Label fx:id="countLabel" styleClass="section-count"/>
-        </HBox>
-
-        <StackPane VBox.vgrow="ALWAYS">
-            <ScrollPane fx:id="cardsScroll" fitToWidth="true" hbarPolicy="NEVER" styleClass="cards-scroll">
+            <!-- Tarjetas sin barra propia: bajan con el resto de la pantalla -->
+            <StackPane fx:id="cardsBox">
                 <FlowPane fx:id="cardsPane" hgap="16" vgap="16">
                     <padding><Insets bottom="8" right="6"/></padding>
                 </FlowPane>
-            </ScrollPane>
-            <Label fx:id="emptyLabel" styleClass="empty-board" wrapText="true" StackPane.alignment="TOP_LEFT"
-                   visible="false" mouseTransparent="true"/>
-        </StackPane>
-    </VBox>
+                <Label fx:id="emptyLabel" styleClass="empty-board" wrapText="true" StackPane.alignment="TOP_LEFT"
+                       visible="false" mouseTransparent="true"/>
+            </StackPane>
+        </VBox>
+    </ScrollPane>
 
     <!-- Panel lateral de la funeraria -->
     <Region fx:id="veil" styleClass="drawer-veil" visible="false" onMouseClicked="#onCloseDrawer"/>

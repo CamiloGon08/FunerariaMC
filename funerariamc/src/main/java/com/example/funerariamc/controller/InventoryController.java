@@ -14,6 +14,7 @@ import com.example.funerariamc.service.InventoryService.ItemView;
 import com.example.funerariamc.service.InventoryService.Kpis;
 import com.example.funerariamc.service.InventoryService.MovementResult;
 import com.example.funerariamc.service.InventoryService.Overview;
+import com.example.funerariamc.ui.FitRows;
 import com.example.funerariamc.ui.Pager;
 import com.example.funerariamc.ui.DetailShell;
 import com.example.funerariamc.ui.Notice;
@@ -184,6 +185,8 @@ public class InventoryController implements RefreshableView {
     @FXML
     private ScrollPane cardScroll;
     @FXML
+    private VBox cardBox;
+    @FXML
     private Label countLabel;
     @FXML
     private FlowPane cardFlow;
@@ -259,7 +262,7 @@ public class InventoryController implements RefreshableView {
 
         // Solo la vista elegida (tarjetas o tabla) ocupa espacio: la tabla oculta no ensancha la pantalla
         tableCard.managedProperty().bind(tableCard.visibleProperty());
-        cardScroll.managedProperty().bind(cardScroll.visibleProperty());
+        cardBox.managedProperty().bind(cardBox.visibleProperty());
         narrow = Responsive.narrowerThan(root, NARROW_MODULE);
         Node categoryHead = cell(label("CATEGORÍA", "head-cell"), W_CATEGORY);
         Node minimumHead = cell(label("MÍNIMO", "head-cell"), W_NUMBER);
@@ -275,14 +278,15 @@ public class InventoryController implements RefreshableView {
                 cell(label("ACCIONES", "head-cell"), W_ACTIONS));
         itemsList.setItems(tableRows);
         itemsList.setCellFactory(list -> new ItemCell());
-        itemsList.setFixedCellSize(65);
         itemsList.setPlaceholder(new Label(""));
         itemsList.setMinWidth(0);
         itemsList.setPrefWidth(0); // la tabla toma el ancho disponible, no el de su contenido
+        // La lista mide lo que sus filas de la página: sin barra propia, baja con toda la pantalla
+        FitRows.apply(itemsList, 65);
         tablePager = Pager.<ItemRow>local(Pager.TABLE_PAGE, "artículo", "artículos", page -> {
             tableRows.setAll(page);
             itemsList.scrollTo(0);
-        }).below(itemsList.getParent());
+        }).scrollTopOf(cardScroll).below(itemsList.getParent());
 
         detail = DetailShell.install(drawer, veil, DetailShell.Kind.PANEL);
         toast.setOpacity(0);
@@ -386,7 +390,7 @@ public class InventoryController implements RefreshableView {
     private void applyView() {
         boolean table = viewGroup.getSelectedToggle() == tableToggle;
         tableCard.setVisible(table);
-        cardScroll.setVisible(!table);
+        cardBox.setVisible(!table);
     }
 
     private void setEmpty(String text) {

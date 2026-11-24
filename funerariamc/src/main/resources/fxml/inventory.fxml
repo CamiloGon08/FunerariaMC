@@ -29,64 +29,67 @@
         <ToggleGroup fx:id="filterGroup"/>
     </fx:define>
 
-    <VBox spacing="16">
-        <!-- Banda verde: arriba el encabezado del menú (MainController lo pone en #heroHeaderSlot) -->
-        <VBox styleClass="hero-band" spacing="18">
-            <StackPane id="heroHeaderSlot" alignment="TOP_LEFT"/>
-            <HBox spacing="16">
-                <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
-                    <Label text="ARTÍCULOS" styleClass="hero-kpi-caption"/>
-                    <Label fx:id="itemsValue" text="—" styleClass="hero-kpi-value"/>
-                    <Label fx:id="itemsDetail" styleClass="hero-kpi-detail"/>
-                </VBox>
-                <VBox fx:id="lowCard" styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
-                    <Label text="EN NIVEL MÍNIMO" styleClass="hero-kpi-caption"/>
-                    <Label fx:id="lowValue" text="—" styleClass="hero-kpi-value"/>
-                    <Label fx:id="lowDetail" styleClass="hero-kpi-detail"/>
-                </VBox>
-                <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
-                    <Label text="VALOR DEL INVENTARIO" styleClass="hero-kpi-caption"/>
-                    <Label fx:id="valueValue" text="—" styleClass="hero-kpi-value"/>
-                    <Label text="a precio de venta" styleClass="hero-kpi-detail"/>
-                </VBox>
-                <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
-                    <Label fx:id="movesCaption" text="MOVIMIENTOS DEL MES" styleClass="hero-kpi-caption"/>
-                    <Label fx:id="movesValue" text="—" styleClass="hero-kpi-value"/>
-                    <Label fx:id="movesDetail" styleClass="hero-kpi-detail"/>
-                </VBox>
-            </HBox>
-        </VBox>
+    <!-- Toda la pantalla se desplaza junta: banda verde, filtros, artículos y páginas -->
+    <ScrollPane fx:id="cardScroll" fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED"
+                styleClass="card-scroll,page-scroll">
+        <VBox spacing="16" styleClass="page-content">
+            <!-- Banda verde: arriba el encabezado del menú (MainController lo pone en #heroHeaderSlot) -->
+            <VBox styleClass="hero-band" spacing="18">
+                <StackPane id="heroHeaderSlot" alignment="TOP_LEFT"/>
+                <HBox spacing="16">
+                    <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
+                        <Label text="ARTÍCULOS" styleClass="hero-kpi-caption"/>
+                        <Label fx:id="itemsValue" text="—" styleClass="hero-kpi-value"/>
+                        <Label fx:id="itemsDetail" styleClass="hero-kpi-detail"/>
+                    </VBox>
+                    <VBox fx:id="lowCard" styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
+                        <Label text="EN NIVEL MÍNIMO" styleClass="hero-kpi-caption"/>
+                        <Label fx:id="lowValue" text="—" styleClass="hero-kpi-value"/>
+                        <Label fx:id="lowDetail" styleClass="hero-kpi-detail"/>
+                    </VBox>
+                    <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
+                        <Label text="VALOR DEL INVENTARIO" styleClass="hero-kpi-caption"/>
+                        <Label fx:id="valueValue" text="—" styleClass="hero-kpi-value"/>
+                        <Label text="a precio de venta" styleClass="hero-kpi-detail"/>
+                    </VBox>
+                    <VBox styleClass="hero-kpi" HBox.hgrow="ALWAYS" prefWidth="0">
+                        <Label fx:id="movesCaption" text="MOVIMIENTOS DEL MES" styleClass="hero-kpi-caption"/>
+                        <Label fx:id="movesValue" text="—" styleClass="hero-kpi-value"/>
+                        <Label fx:id="movesDetail" styleClass="hero-kpi-detail"/>
+                    </VBox>
+                </HBox>
+            </VBox>
 
-        <!-- Buscador, vista, filtro y Nuevo artículo -->
-        <HBox styleClass="filter-card">
-            <HBox styleClass="search-box" HBox.hgrow="ALWAYS" minWidth="180">
-                <SVGPath content="M7 1.5a5.5 5.5 0 1 1 0 11a5.5 5.5 0 0 1 0-11z M11.2 11.2 L15 15" styleClass="search-icon"/>
-                <TextField fx:id="searchField" promptText="Buscar artículo o código" HBox.hgrow="ALWAYS"/>
+            <!-- Buscador, vista, filtro y Nuevo artículo -->
+            <HBox styleClass="filter-card">
+                <HBox styleClass="search-box" HBox.hgrow="ALWAYS" minWidth="180">
+                    <SVGPath content="M7 1.5a5.5 5.5 0 1 1 0 11a5.5 5.5 0 0 1 0-11z M11.2 11.2 L15 15" styleClass="search-icon"/>
+                    <TextField fx:id="searchField" promptText="Buscar artículo o código" HBox.hgrow="ALWAYS"/>
+                </HBox>
+                <HBox styleClass="segmented" minWidth="-Infinity">
+                    <ToggleButton fx:id="cardsToggle" text="Tarjetas" toggleGroup="$viewGroup" selected="true" styleClass="segment"/>
+                    <ToggleButton fx:id="tableToggle" text="Tabla" toggleGroup="$viewGroup" styleClass="segment"/>
+                </HBox>
+                <HBox styleClass="segmented" minWidth="-Infinity">
+                    <ToggleButton fx:id="allToggle" text="Todos" toggleGroup="$filterGroup" selected="true" styleClass="segment"/>
+                    <ToggleButton fx:id="saleToggle" text="Para la venta" toggleGroup="$filterGroup" styleClass="segment"/>
+                    <ToggleButton fx:id="useToggle" text="Uso de la funeraria" toggleGroup="$filterGroup" styleClass="segment"/>
+                    <ToggleButton fx:id="lowToggle" text="Bajo mínimo" toggleGroup="$filterGroup" styleClass="segment"/>
+                </HBox>
+                <Button fx:id="newButton" text="+  Nuevo artículo" onAction="#onNewItem" styleClass="primary-button" minWidth="-Infinity"/>
             </HBox>
-            <HBox styleClass="segmented" minWidth="-Infinity">
-                <ToggleButton fx:id="cardsToggle" text="Tarjetas" toggleGroup="$viewGroup" selected="true" styleClass="segment"/>
-                <ToggleButton fx:id="tableToggle" text="Tabla" toggleGroup="$viewGroup" styleClass="segment"/>
-            </HBox>
-            <HBox styleClass="segmented" minWidth="-Infinity">
-                <ToggleButton fx:id="allToggle" text="Todos" toggleGroup="$filterGroup" selected="true" styleClass="segment"/>
-                <ToggleButton fx:id="saleToggle" text="Para la venta" toggleGroup="$filterGroup" styleClass="segment"/>
-                <ToggleButton fx:id="useToggle" text="Uso de la funeraria" toggleGroup="$filterGroup" styleClass="segment"/>
-                <ToggleButton fx:id="lowToggle" text="Bajo mínimo" toggleGroup="$filterGroup" styleClass="segment"/>
-            </HBox>
-            <Button fx:id="newButton" text="+  Nuevo artículo" onAction="#onNewItem" styleClass="primary-button" minWidth="-Infinity"/>
-        </HBox>
 
-        <!-- Aviso de reposición: solo aparece si hay artículos en nivel mínimo -->
-        <HBox fx:id="restockBanner" styleClass="restock-banner" managed="false" visible="false">
-            <SVGPath content="M8 1.5 L15 14 L1 14 Z M8 6v3.6 M8 11.6v.2" styleClass="restock-icon"/>
-            <Label fx:id="restockText" styleClass="restock-text" wrapText="true" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
-            <Button text="Ver cuáles" onAction="#onShowLow" styleClass="restock-link" minWidth="-Infinity"/>
-        </HBox>
+            <!-- Aviso de reposición: solo aparece si hay artículos en nivel mínimo -->
+            <HBox fx:id="restockBanner" styleClass="restock-banner" managed="false" visible="false">
+                <SVGPath content="M8 1.5 L15 14 L1 14 Z M8 6v3.6 M8 11.6v.2" styleClass="restock-icon"/>
+                <Label fx:id="restockText" styleClass="restock-text" wrapText="true" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+                <Button text="Ver cuáles" onAction="#onShowLow" styleClass="restock-link" minWidth="-Infinity"/>
+            </HBox>
 
-        <StackPane VBox.vgrow="ALWAYS">
-            <!-- Tarjetas: 12 por página; la barra de páginas se agrega debajo desde el controlador -->
-            <ScrollPane fx:id="cardScroll" fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="ALWAYS" styleClass="card-scroll">
-                <VBox styleClass="card-scroll-content" spacing="12">
+            <StackPane>
+                <!-- Tarjetas: 12 por página; la barra de páginas se agrega debajo desde el controlador.
+                     No llevan barra propia: bajan con el resto de la pantalla. -->
+                <VBox fx:id="cardBox" styleClass="card-scroll-content" spacing="12">
                     <VBox spacing="2">
                         <Label text="Artículos en inventario" styleClass="grid-title"/>
                         <Label fx:id="countLabel" styleClass="grid-subtitle"/>
@@ -94,23 +97,23 @@
                     <FlowPane fx:id="cardFlow" hgap="18" vgap="18"/>
                     <Label fx:id="emptyLabel" styleClass="empty-board" wrapText="true" managed="false" visible="false"/>
                 </VBox>
-            </ScrollPane>
 
-            <!-- Vista tabla: la lista solo dibuja las filas visibles -->
-            <VBox fx:id="tableCard" styleClass="table-card" spacing="12" visible="false">
-                <VBox spacing="2">
-                    <Label text="Artículos en inventario" styleClass="grid-title"/>
-                    <Label fx:id="tableCountLabel" styleClass="grid-subtitle"/>
+                <!-- Vista tabla: la lista mide lo que sus filas, así baja con la pantalla -->
+                <VBox fx:id="tableCard" styleClass="table-card" spacing="12" visible="false">
+                    <VBox spacing="2">
+                        <Label text="Artículos en inventario" styleClass="grid-title"/>
+                        <Label fx:id="tableCountLabel" styleClass="grid-subtitle"/>
+                    </VBox>
+                    <HBox fx:id="tableHead" styleClass="table-head"/>
+                    <StackPane>
+                        <ListView fx:id="itemsList" styleClass="items-list"/>
+                        <Label fx:id="tableEmptyLabel" styleClass="empty-board" wrapText="true" StackPane.alignment="TOP_LEFT"
+                               visible="false" mouseTransparent="true"/>
+                    </StackPane>
                 </VBox>
-                <HBox fx:id="tableHead" styleClass="table-head"/>
-                <StackPane VBox.vgrow="ALWAYS">
-                    <ListView fx:id="itemsList" styleClass="items-list"/>
-                    <Label fx:id="tableEmptyLabel" styleClass="empty-board" wrapText="true" StackPane.alignment="TOP_LEFT"
-                           visible="false" mouseTransparent="true"/>
-                </StackPane>
-            </VBox>
-        </StackPane>
-    </VBox>
+            </StackPane>
+        </VBox>
+    </ScrollPane>
 
     <!-- Panel lateral del artículo: foto, datos e historial de movimientos -->
     <Region fx:id="veil" styleClass="drawer-veil" visible="false" onMouseClicked="#onCloseDrawer"/>

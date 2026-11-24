@@ -191,7 +191,7 @@ public class ClientController implements RefreshableView {
 
         // Paginación como la bitácora: cada página consulta sus 12 tarjetas en la BD.
         pager = Pager.<Client>remote(PAGE_SIZE, "cliente", "clientes", page -> query(page))
-                .scrollTopOf(cardScroll).below(cardScroll);
+                .scrollTopOf(cardScroll).below(cardGrid.getParent());
 
         detail = DetailShell.install(drawer, veil, DetailShell.Kind.PANEL);
         reloadFromStart();
