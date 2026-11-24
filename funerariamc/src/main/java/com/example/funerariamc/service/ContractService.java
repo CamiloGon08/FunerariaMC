@@ -420,10 +420,17 @@ public class ContractService {
     /**
      * Persona del plan en "Registrar difunto del plan". deceasedId va solo si ya está registrada en
      * Difuntos; si no, se registra ahí mismo con los datos del fallecimiento. Se puede elegir si no
-     * tiene un contrato vigente. firstName y lastName sirven para registrarla como difunto.
+     * tiene un contrato vigente. firstName, lastName y birthDate (la que quedó al afiliarla) sirven para
+     * registrarla como difunto; birthDate va en null si no se registró.
      */
     public record PlanPerson(String name, String document, String role, Long deceasedId, LocalDate deathDate,
-                             boolean hasContract, String firstName, String lastName) {
+                             boolean hasContract, String firstName, String lastName, LocalDate birthDate) {
+
+        /** Sin fecha de nacimiento conocida. */
+        public PlanPerson(String name, String document, String role, Long deceasedId, LocalDate deathDate,
+                          boolean hasContract, String firstName, String lastName) {
+            this(name, document, role, deceasedId, deathDate, hasContract, firstName, lastName, null);
+        }
 
         public boolean selectable() {
             return !hasContract;
@@ -465,11 +472,12 @@ public class ContractService {
         // Una empresa titular no fallece: solo sus beneficiarios pueden ser difuntos del plan
         if (!corporate) {
             people.add(new PlanPerson(card.holderName(), card.holderDocument(), "Titular", null, null, false,
-                    holder == null ? null : holder.getName(), holder == null ? null : holder.getLastname()));
+                    holder == null ? null : holder.getName(), holder == null ? null : holder.getLastname(),
+                    holder == null ? null : holder.getBirthDate()));
         }
         for (FuneralPlanService.BeneficiaryInfo b : detail.beneficiaries()) {
             people.add(new PlanPerson(b.fullName(), b.documentNumber(), b.relationshipLabel(), null, null, false,
-                    b.name(), b.lastname()));
+                    b.name(), b.lastname(), b.birthDate()));
         }
         for (PlanPerson person : people) {
             if (person.document() != null && !person.document().isBlank()) {
@@ -490,7 +498,8 @@ public class ContractService {
             } else {
                 used.add(match.getId());
                 board.add(new PlanPerson(person.name(), person.document(), person.role(), match.getId(),
-                        match.getDeathDate(), hasActiveContract(match.getId()), person.firstName(), person.lastName()));
+                        match.getDeathDate(), hasActiveContract(match.getId()), person.firstName(), person.lastName(),
+                        match.getBirthDate() != null ? match.getBirthDate() : person.birthDate()));
             }
         }
         // Difuntos vinculados al plan en Difuntos con un documento que no es del titular ni de un beneficiario
@@ -498,7 +507,7 @@ public class ContractService {
             if (used.add(d.getId())) {
                 board.add(new PlanPerson(fullName(d.getName(), d.getLastname()), d.getDocumentNumber(),
                         "Vinculado al plan en Difuntos", d.getId(), d.getDeathDate(), hasActiveContract(d.getId()),
-                        d.getName(), d.getLastname()));
+                        d.getName(), d.getLastname(), d.getBirthDate()));
             }
         }
         return Optional.of(new PlanBoard(plan.getId(), card.code(), card.planName(), card.monthlyFee(),
