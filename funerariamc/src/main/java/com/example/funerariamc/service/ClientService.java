@@ -47,6 +47,11 @@ public class ClientService {
     static final int MAX_NAME = 25;
     static final int MAX_DOCUMENT = 11;
     static final int MAX_EMAIL = 30;
+    /**
+     * Correo bien escrito: usuario, @, dominio y una extensión de al menos dos letras
+     * (nombre@gmail.com, nombre@hotmail.com, nombre@unicesar.edu.co). Lo usan clientes y empleados.
+     */
+    public static final String EMAIL_PATTERN = "[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\\.[A-Za-z0-9-]+)*\\.[A-Za-z]{2,}";
     static final int MAX_ADDRESS = 40;
 
     /** Filtro de saldo de la pantalla (propuesta P-11): todos, con saldo pendiente o al día. */
@@ -59,6 +64,25 @@ public class ClientService {
         private final String code;
 
         BalanceFilter(String label, String code) {
+            this.label = label;
+            this.code = code;
+        }
+
+        public String getLabel() {
+            return label;
+        }
+    }
+
+    /** Filtro de plan exequial de las tarjetas: todos, con plan (no cancelado) o sin plan. */
+    public enum PlanFilter {
+        ALL("Plan: todos", "ALL"),
+        WITH_PLAN("Con plan exequial", "WITH"),
+        WITHOUT_PLAN("Sin plan exequial", "WITHOUT");
+
+        private final String label;
+        private final String code;
+
+        PlanFilter(String label, String code) {
             this.label = label;
             this.code = code;
         }
@@ -108,6 +132,23 @@ public class ClientService {
         int safePage = Math.max(page, 0);
         int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
         return clientRepository.searchByBalance(searchPattern(text), types, balance.code,
+                TransactionType.INCOME, TransactionStatus.ACTIVE, PageRequest.of(safePage, safeSize));
+    }
+
+    /**
+     * Igual que la búsqueda anterior, más el filtro de plan exequial. plan en null equivale a ALL.
+     */
+    @Transactional(readOnly = true)
+    public Page<Client> search(String text, ClientType type, BalanceFilter balance, PlanFilter plan, int page, int size) {
+        if (plan == null || plan == PlanFilter.ALL) {
+            return search(text, type, balance, page, size);
+        }
+        requireAccess();
+        Collection<ClientType> types = type == null ? List.of(ClientType.values()) : List.of(type);
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
+        String balanceCode = balance == null ? BalanceFilter.ALL.code : balance.code;
+        return clientRepository.searchByPlanAndBalance(searchPattern(text), types, plan.code, balanceCode,
                 TransactionType.INCOME, TransactionStatus.ACTIVE, PageRequest.of(safePage, safeSize));
     }
 
@@ -213,9 +254,10 @@ public class ClientService {
         client.setClientType(data.clientType());
         client.setDocumentType(data.documentType());
         client.setDocumentNumber(document);
-        client.setName(data.name().trim());
+        // Una persona queda con mayúscula inicial en cada nombre y apellido; la razón social, tal como se escribió
+        client.setName(corporate ? data.name().trim() : PersonNames.titleCase(data.name()));
         // person.lastname es NOT NULL: una empresa no tiene apellidos, se guarda vacío.
-        client.setLastname(corporate ? "" : data.lastname().trim());
+        client.setLastname(corporate ? "" : PersonNames.titleCase(data.lastname()));
         client.setPhone(normalizePhone(data.phone()));
         client.setEmail(blankToNull(data.email()));
         client.setAddress(data.address().trim());
@@ -251,12 +293,12 @@ public class ClientService {
         if (!normalizePhone(data.phone()).matches("\\d{7,10}")) {
             throw new InvalidDataException("El teléfono debe tener entre 7 y 10 dígitos.");
         }
-        if (data.email() != null && !data.email().isBlank()) {
-            if (!data.email().trim().matches("[^@\\s]+@[^@\\s]+\\.[^@\\s]+")) {
-                throw new InvalidDataException("El correo no es válido.");
-            }
-            maxLength(data.email(), MAX_EMAIL, "El correo");
+        // El correo es obligatorio para registrar al cliente y debe estar bien escrito.
+        require(data.email(), "El correo es obligatorio.");
+        if (!data.email().trim().matches(EMAIL_PATTERN)) {
+            throw new InvalidDataException("El correo no es válido. Escríbalo como nombre@gmail.com.");
         }
+        maxLength(data.email(), MAX_EMAIL, "El correo");
         require(data.address(), "La dirección es obligatoria.");
         maxLength(data.address(), MAX_ADDRESS, "La dirección");
     }

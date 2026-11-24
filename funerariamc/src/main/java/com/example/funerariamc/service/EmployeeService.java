@@ -237,8 +237,8 @@ public class EmployeeService {
     }
 
     private void copyData(Employee employee, EmployeeData data, String document) {
-        employee.setName(data.name().trim());
-        employee.setLastname(data.lastname().trim());
+        employee.setName(PersonNames.titleCase(data.name()));
+        employee.setLastname(PersonNames.titleCase(data.lastname()));
         employee.setDocumentType(data.documentType().trim());
         employee.setDocumentNumber(document);
         employee.setPhone(blankToNull(data.phone()));
@@ -298,8 +298,10 @@ public class EmployeeService {
         if (data.salary() == null || data.salary().signum() <= 0) {
             throw new InvalidDataException("El salario debe ser mayor que cero.");
         }
-        if (data.email() != null && !data.email().isBlank() && !data.email().trim().matches("[^@\\s]+@[^@\\s]+\\.[^@\\s]+")) {
-            throw new InvalidDataException("El correo no es válido.");
+        // El correo es obligatorio para registrar al empleado y debe estar bien escrito.
+        require(data.email(), "El correo es obligatorio.");
+        if (!data.email().trim().matches(ClientService.EMAIL_PATTERN)) {
+            throw new InvalidDataException("El correo no es válido. Escríbalo como nombre@gmail.com.");
         }
 
         switch (data.position()) {
