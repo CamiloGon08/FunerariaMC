@@ -428,26 +428,40 @@
 /* Deja espacio a la derecha para que el texto no quede debajo del ojito */
 .password-box .text-field, .password-box .password-field { -fx-padding: 8 36 8 2; }
 
-/* ---------- Paginación de la bitácora ---------- */
-.log-pagination { -fx-padding: 0; -fx-page-information-visible: false; -fx-arrows-visible: true; }
-.log-pagination .page { -fx-pref-height: 0; -fx-max-height: 0; }
-.log-pagination .pagination-control { -fx-padding: 0; -fx-background-color: transparent; }
-.log-pagination .pagination-control .number-button {
-    -fx-background-color: transparent; -fx-background-radius: 14;
-    -fx-text-fill: -color-primary; -fx-font-size: 13px; -fx-padding: 4 10; -fx-cursor: hand;
+/* ---------- Paginación de las listas (bitácora, tablas y tarjetas) ---------- */
+/* Barra que pone ui/Pager debajo de cada lista: botones centrados y el conteo debajo */
+.list-pager { -fx-padding: 12 2 4 2; -fx-spacing: 4; }
+.list-pager .pager-info { -fx-text-fill: -color-text-muted; -fx-font-size: 12px; }
+.pager-buttons { -fx-spacing: 4; }
+.pager-number, .pager-arrow, .pager-dots {
+    -fx-background-color: transparent; -fx-background-radius: 999; -fx-border-radius: 999;
+    -fx-border-color: transparent; -fx-border-width: 1;
+    -fx-min-width: 34; -fx-min-height: 34; -fx-pref-height: 34; -fx-padding: 0 8;
+    -fx-text-fill: -color-primary; -fx-font-size: 13.5px; -fx-cursor: hand;
 }
-.log-pagination .pagination-control .number-button:hover { -fx-background-color: -color-surface; }
-.log-pagination .pagination-control .number-button:selected {
-    -fx-background-color: -color-accent; -fx-text-fill: -color-background;
+.pager-number:hover, .pager-arrow:hover { -fx-background-color: -color-surface; }
+.pager-number.pager-current, .pager-number.pager-current:hover {
+    -fx-background-color: -color-primary; -fx-text-fill: -color-paper; -fx-font-family: "Montserrat SemiBold";
 }
-.log-pagination .pagination-control .left-arrow-button,
-.log-pagination .pagination-control .right-arrow-button {
-    -fx-background-color: transparent; -fx-background-radius: 14; -fx-padding: 6 10; -fx-cursor: hand;
+.pager-arrow { -fx-font-size: 12px; }
+.pager-arrow:disabled { -fx-opacity: 0.35; }
+.pager-dots { -fx-text-fill: -color-text-muted; }
+.pager-dots:hover { -fx-border-color: -color-detail; -fx-background-color: -color-card; }
+/* Cuadrito "Ir a la página" que abre el "…" */
+.context-menu.pager-jump-menu { -fx-padding: 4; }
+.context-menu.pager-jump-menu .menu-item,
+.context-menu.pager-jump-menu .menu-item:focused,
+.context-menu.pager-jump-menu .menu-item:hover { -fx-background-color: transparent; -fx-padding: 6 8; }
+.pager-jump-label { -fx-text-fill: -color-text-strong; -fx-font-size: 12.5px; }
+.pager-jump-field {
+    -fx-background-color: white; -fx-background-radius: 8; -fx-border-radius: 8;
+    -fx-border-color: -color-line; -fx-pref-width: 64; -fx-padding: 5 8; -fx-font-size: 13px;
 }
-.log-pagination .pagination-control .left-arrow-button:hover,
-.log-pagination .pagination-control .right-arrow-button:hover { -fx-background-color: -color-surface; }
-.log-pagination .pagination-control .left-arrow,
-.log-pagination .pagination-control .right-arrow { -fx-background-color: -color-accent; }
+.pager-jump-field:focused { -fx-border-color: -color-detail; }
+.pager-jump-go {
+    -fx-background-color: -color-primary; -fx-text-fill: -color-paper; -fx-background-radius: 8;
+    -fx-padding: 5 12; -fx-font-family: "Montserrat SemiBold"; -fx-cursor: hand;
+}
 /* ---------- Recuperar contraseña: mensaje informativo en verde musgo ---------- */
 .info-label { -fx-text-fill: -color-accent; -fx-font-size: 13px; }
 /* ---------- Filtros de la bitácora ---------- */
@@ -456,7 +470,7 @@
     -fx-background-color: -color-card;
     -fx-border-color: -color-surface; -fx-border-width: 1;
     -fx-background-radius: 14; -fx-border-radius: 14;
-    -fx-padding: 14 18; -fx-spacing: 10; -fx-alignment: center-left;
+    -fx-padding: 14 18; -fx-spacing: 16; -fx-alignment: center-left;
 }
 .search-box {
     -fx-background-color: -color-surface; -fx-background-radius: 999;
@@ -628,3 +642,63 @@
     -fx-background-radius: 8;
     -fx-font-weight: bold;
 }
+
+/* ---------- Listas desplegables (ComboBox) con el estilo del sistema ---------- */
+/* La ventanita que se abre al desplegar cualquier ComboBox: tarjeta marfil redondeada, borde de
+   línea suave, opciones con la fuente de la marca y la opción elegida en el color principal.
+   Usa solo variables de color, así sigue los colores que la funeraria elija en Parámetros. */
+.combo-box-popup > .list-view {
+    -fx-background-color: -color-line, -color-card;
+    -fx-background-insets: 0, 1;
+    -fx-background-radius: 12, 11;
+    -fx-padding: 6;
+    /* Alto fijo por opción: así la ventanita mide justo sus opciones y no corta la última */
+    -fx-fixed-cell-size: 34;
+    -fx-effect: dropshadow(gaussian, -color-shadow-16, 14, 0.1, 0, 4);
+}
+.combo-box-popup > .list-view > .virtual-flow > .clipped-container > .sheet > .list-cell {
+    -fx-background-color: transparent;
+    -fx-background-radius: 8;
+    -fx-padding: 0 12;
+    -fx-text-fill: -color-ink;
+    -fx-font-family: "Montserrat", "Segoe UI", sans-serif;
+    -fx-font-size: 13px;
+    -fx-cursor: hand;
+}
+.combo-box-popup > .list-view > .virtual-flow > .clipped-container > .sheet > .list-cell:filled:hover {
+    -fx-background-color: -color-surface;
+    -fx-text-fill: -color-primary;
+}
+.combo-box-popup > .list-view > .virtual-flow > .clipped-container > .sheet > .list-cell:filled:selected {
+    -fx-background-color: -color-primary;
+    -fx-text-fill: -color-paper;
+    -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif;
+}
+.combo-box-popup > .list-view > .virtual-flow > .clipped-container > .sheet > .list-cell:filled:selected:hover {
+    -fx-background-color: -color-forest;
+}
+.combo-box-popup > .list-view > .placeholder > .label { -fx-text-fill: -color-text-muted; -fx-padding: 8 12; }
+.combo-box-popup > .list-view > .virtual-flow > .scroll-bar:vertical { -fx-background-color: transparent; -fx-pref-width: 8; -fx-padding: 2; }
+.combo-box-popup > .list-view > .virtual-flow > .scroll-bar:vertical > .thumb { -fx-background-color: -color-mist; -fx-background-radius: 999; }
+.combo-box-popup > .list-view > .virtual-flow > .scroll-bar > .increment-button,
+.combo-box-popup > .list-view > .virtual-flow > .scroll-bar > .decrement-button { -fx-padding: 0; -fx-pref-height: 0; }
+.combo-box-popup > .list-view > .virtual-flow > .scroll-bar > .increment-button > .increment-arrow,
+.combo-box-popup > .list-view > .virtual-flow > .scroll-bar > .decrement-button > .decrement-arrow { -fx-shape: ""; -fx-padding: 0; }
+.combo-box-popup > .list-view > .virtual-flow > .corner { -fx-background-color: transparent; }
+/* Texto gris del "Seleccione…" cuando la lista todavía no tiene un valor elegido */
+.root .combo-box > .list-cell:prompt, .root .combo-box > .list-cell:empty { -fx-text-fill: -color-text-faint; }
+
+
+/* ---------- Buscador con lista (ui/SearchField): titular de planes y contratos ---------- */
+.search-field-popup {
+    -fx-background-color: -color-card; -fx-background-radius: 12; -fx-border-radius: 12;
+    -fx-border-color: -color-line; -fx-padding: 6;
+    -fx-effect: dropshadow(gaussian, rgba(24,47,37,0.18), 18, 0, 0, 6);
+}
+.search-field-count { -fx-text-fill: -color-text-muted; -fx-font-size: 11px; -fx-padding: 4 10 4 10; }
+.search-field-scroll, .search-field-scroll > .viewport { -fx-background-color: transparent; -fx-background: transparent; -fx-padding: 0; }
+.search-field-row { -fx-padding: 8 10; -fx-background-radius: 8; -fx-cursor: hand; -fx-min-height: 34; }
+.search-field-row-on { -fx-background-color: -color-surface; }
+.search-field-text { -fx-fill: -color-primary; -fx-font-size: 13px; }
+.search-field-detail { -fx-fill: -color-text-muted; -fx-font-size: 11.5px; }
+.search-field-mark { -fx-font-family: "Montserrat SemiBold"; -fx-fill: -color-primary; }

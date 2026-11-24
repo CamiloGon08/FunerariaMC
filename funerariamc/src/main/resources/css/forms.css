@@ -147,6 +147,8 @@
 .form-shell .combo-box > .text-field:focused,
 .form-shell .form-combo > .text-field:focused { -fx-border-width: 0; -fx-effect: null; }
 .form-shell .combo-box .list-cell { -fx-padding: 0 4 0 14; -fx-text-fill: -color-ink; -fx-background-color: transparent; }
+/* Lista sin nada elegido: el "Seleccione…" va en gris, como el texto de ayuda de los campos */
+.form-shell .combo-box > .list-cell:prompt { -fx-text-fill: -color-text-faint; }
 .form-shell .combo-box > .arrow-button,
 .form-shell .date-picker > .arrow-button { -fx-background-color: transparent; -fx-padding: 0 14 0 8; }
 .form-shell .combo-box > .arrow-button > .arrow { -fx-background-color: -color-text-strong; }
@@ -346,3 +348,113 @@
 .form-shell .notice-tone-warning .notice-mark { -fx-stroke: -color-warning-deep; }
 .form-shell .notice-tone-error .notice-circle { -fx-fill: -color-error-bg; }
 .form-shell .notice-tone-error .notice-mark { -fx-stroke: -color-error; }
+
+/* ---------- Tarjeta de un plan exequial (ui/PlanOfferCard): cuota y lo que incluye ---------- */
+.plan-offer {
+    -fx-background-color: white; -fx-background-radius: 14; -fx-border-radius: 14;
+    -fx-border-color: -color-line; -fx-border-width: 1.5; -fx-padding: 14 16;
+}
+.plan-offer:selected { -fx-border-color: -color-primary; -fx-effect: dropshadow(gaussian, rgba(24,47,37,0.12), 8, 0, 0, 0); }
+.plan-offer:hover { -fx-cursor: hand; }
+.plan-offer-title { -fx-text-fill: -color-primary; -fx-font-family: "Montserrat SemiBold"; -fx-font-size: 14px; }
+.plan-offer-fee { -fx-text-fill: -color-primary; -fx-font-family: "Montserrat SemiBold"; -fx-font-size: 19px; }
+.plan-offer-caption { -fx-text-fill: -color-gold-text; -fx-font-size: 10px; -fx-font-family: "Montserrat SemiBold"; -fx-padding: 4 0 0 0; }
+.plan-offer-check { -fx-text-fill: -color-accent; -fx-font-family: "Montserrat SemiBold"; -fx-font-size: 12px; }
+.plan-offer-item { -fx-text-fill: -color-text-strong; -fx-font-size: 12px; }
+/* Campo que el sistema llena solo (cuota del plan): fondo crema, se puede corregir */
+.form-shell .text-field.auto-filled { -fx-background-color: #F3F0E6; -fx-border-color: #D9CCA9; }
+
+/* ---------- Nuevo contrato: tarjetas del tipo (paso 1) ---------- */
+.form-shell .choice-card {
+    -fx-background-color: white; -fx-background-radius: 14; -fx-border-radius: 14;
+    -fx-border-color: -color-line; -fx-border-width: 1.5; -fx-padding: 14 16;
+    -fx-alignment: top-left; -fx-cursor: hand;
+}
+.form-shell .choice-card:hover { -fx-border-color: -color-sage-mid; }
+.form-shell .choice-card:selected {
+    -fx-background-color: -color-paper-white; -fx-border-color: -color-primary;
+    -fx-effect: dropshadow(gaussian, rgba(24,47,37,0.12), 8, 0, 0, 0);
+}
+.form-shell .choice-card-icon {
+    -fx-background-color: -color-soft; -fx-background-radius: 10; -fx-padding: 8;
+    -fx-min-width: 36; -fx-min-height: 36;
+}
+.form-shell .choice-card:selected .choice-card-icon { -fx-background-color: -color-primary; }
+.form-shell .choice-card-icon .nav-icon { -fx-stroke: -color-accent; }
+.form-shell .choice-card:selected .choice-card-icon .nav-icon { -fx-stroke: -color-detail; }
+.form-shell .choice-card-title { -fx-text-fill: -color-primary; -fx-font-family: "Montserrat SemiBold"; -fx-font-size: 13.5px; -fx-padding: 4 0 0 0; }
+.form-shell .choice-card-text { -fx-text-fill: -color-text-strong; -fx-font-size: 12px; }
+.form-shell .choice-card-flow { -fx-text-fill: -color-gold-text; -fx-font-size: 11px; -fx-font-family: "Montserrat SemiBold"; }
+.form-shell .choice-card-badge {
+    -fx-background-color: -color-gold-wash; -fx-background-radius: 10; -fx-padding: 2 8;
+    -fx-text-fill: -color-gold-deep; -fx-font-size: 10px; -fx-font-family: "Montserrat SemiBold";
+}
+
+/* ---------- Contrato · plan: plan del titular y las personas que cubre ---------- */
+.form-shell .plan-board-card {
+    -fx-background-color: -color-primary; -fx-background-radius: 14; -fx-padding: 14 18;
+}
+.form-shell .plan-board-icon {
+    -fx-background-color: rgba(255,255,255,0.08); -fx-background-radius: 10; -fx-padding: 8;
+    -fx-min-width: 38; -fx-min-height: 38;
+}
+.form-shell .plan-board-icon .nav-icon { -fx-stroke: -color-detail; }
+.form-shell .plan-board-title { -fx-text-fill: white; -fx-font-family: "Montserrat SemiBold"; -fx-font-size: 15px; }
+.form-shell .plan-board-sub { -fx-text-fill: -color-sage-pale; -fx-font-size: 12px; }
+.form-shell .plan-board-chip-ok, .form-shell .plan-board-chip-warn {
+    -fx-background-radius: 10; -fx-padding: 2 9; -fx-font-size: 10.5px; -fx-font-family: "Montserrat SemiBold";
+}
+.form-shell .plan-board-chip-ok { -fx-background-color: #DDE8D9; -fx-text-fill: #2F5A34; }
+.form-shell .plan-board-chip-warn { -fx-background-color: -color-gold-wash; -fx-text-fill: -color-gold-deep; }
+.form-shell .plan-board-change {
+    -fx-background-color: transparent; -fx-border-color: -color-detail; -fx-border-radius: 9; -fx-background-radius: 9;
+    -fx-text-fill: -color-detail; -fx-font-family: "Montserrat SemiBold"; -fx-font-size: 12px; -fx-padding: 7 14; -fx-cursor: hand;
+}
+.form-shell .plan-board-change:hover { -fx-background-color: rgba(196,175,132,0.15); }
+.form-shell .person-card {
+    -fx-background-color: white; -fx-background-radius: 12; -fx-border-radius: 12;
+    -fx-border-color: -color-line; -fx-border-width: 1.5; -fx-padding: 10 14; -fx-alignment: center-left; -fx-cursor: hand;
+}
+.form-shell .person-card:hover { -fx-border-color: -color-sage-mid; }
+.form-shell .person-card:selected { -fx-border-color: -color-primary; -fx-background-color: -color-paper-white; }
+.form-shell .person-card:disabled { -fx-opacity: 0.62; -fx-background-color: -color-soft; }
+.form-shell .person-card-name { -fx-text-fill: -color-primary; -fx-font-family: "Montserrat SemiBold"; -fx-font-size: 12.5px; }
+.form-shell .person-card-detail { -fx-text-fill: -color-text-muted; -fx-font-size: 11.5px; }
+.form-shell .person-card-chip, .form-shell .person-card-chip-on {
+    -fx-background-radius: 10; -fx-padding: 2 9; -fx-font-size: 10.5px; -fx-font-family: "Montserrat SemiBold";
+}
+.form-shell .person-card-chip { -fx-background-color: -color-surface; -fx-text-fill: -color-text-strong; }
+.form-shell .person-card-chip-on { -fx-background-color: #DDE8D9; -fx-text-fill: #2F5A34; }
+.form-shell .person-row {
+    -fx-background-color: white; -fx-background-radius: 10; -fx-border-radius: 10;
+    -fx-border-color: -color-line; -fx-padding: 9 12;
+}
+
+/* ---------- Afiliación: vista previa del contrato (sin firmas) ---------- */
+.form-shell .contract-preview {
+    -fx-background-color: white; -fx-background-radius: 6; -fx-border-color: -color-line; -fx-border-radius: 6;
+    -fx-padding: 16 18; -fx-effect: dropshadow(gaussian, rgba(24,47,37,0.10), 10, 0, 0, 2);
+}
+.form-shell .contract-preview-head { -fx-border-color: transparent transparent -color-detail transparent; -fx-border-width: 0 0 1.5 0; -fx-padding: 0 0 8 0; }
+.form-shell .contract-preview-brand { -fx-text-fill: -color-primary; -fx-font-family: "Cormorant Garamond SemiBold", "Cormorant Garamond"; -fx-font-size: 18px; -fx-font-weight: bold; }
+.form-shell .contract-preview-meta { -fx-text-fill: -color-text-muted; -fx-font-size: 10px; }
+.form-shell .contract-preview-title {
+    -fx-text-fill: -color-primary; -fx-font-family: "Montserrat SemiBold"; -fx-font-size: 11.5px;
+    -fx-text-alignment: center; -fx-alignment: center; -fx-max-width: infinity; -fx-padding: 8 0 2 0;
+}
+.form-shell .contract-preview-section { -fx-text-fill: -color-gold-text; -fx-font-family: "Montserrat SemiBold"; -fx-font-size: 10px; -fx-padding: 8 0 2 0; }
+.form-shell .contract-preview-row { -fx-border-color: transparent transparent -color-soft transparent; -fx-padding: 3 0; }
+.form-shell .contract-preview-label { -fx-text-fill: -color-text-muted; -fx-font-size: 11px; }
+.form-shell .contract-preview-value { -fx-text-fill: -color-ink; -fx-font-size: 11px; -fx-font-family: "Montserrat SemiBold"; }
+.form-shell .contract-preview-blank { -fx-text-fill: -color-text-faint; -fx-font-size: 11px; }
+/* Aviso de por qué no se puede pasar al paso siguiente (por ejemplo, falta elegir el difunto) */
+.form-shell .form-step-error {
+    -fx-background-color: #F7E9E6; -fx-border-color: #E2BDB6; -fx-border-radius: 10; -fx-background-radius: 10;
+    -fx-text-fill: #7B2E26; -fx-padding: 10 12; -fx-font-size: 12.5px;
+}
+
+/* Archivo adjunto (certificado de defunción) y campos que vienen de otro registro y no se escriben */
+.form-shell .file-box { -fx-alignment: center-left; -fx-spacing: 10; }
+.form-shell .file-name { -fx-text-fill: -color-secondary; }
+.form-shell .text-field.form-readonly,
+.form-shell .text-field.form-readonly:focused { -fx-background-color: -color-surface; -fx-text-fill: -color-primary; }
