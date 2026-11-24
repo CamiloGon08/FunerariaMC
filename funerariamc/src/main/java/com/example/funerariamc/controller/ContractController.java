@@ -20,7 +20,12 @@ import com.example.funerariamc.service.ContractService.Quote;
 import com.example.funerariamc.service.ContractService.SaleKind;
 import com.example.funerariamc.service.ContractService.SaleRow;
 import com.example.funerariamc.service.ContractService.SaleView;
+import com.example.funerariamc.service.ClientData;
+import com.example.funerariamc.service.ClientService;
+import com.example.funerariamc.service.FuneralPlanService;
+import com.example.funerariamc.service.FuneralPlanService.PlanOffer;
 import com.example.funerariamc.service.SalePaymentData;
+import com.example.funerariamc.ui.Pager;
 import com.example.funerariamc.ui.DetailShell;
 import com.example.funerariamc.ui.Notice;
 import com.example.funerariamc.ui.Responsive;
@@ -28,6 +33,20 @@ import com.example.funerariamc.ui.DetailCache;
 import com.example.funerariamc.ui.RefreshableView;
 import com.example.funerariamc.ui.FormShell;
 import com.example.funerariamc.ui.ModuleLink;
+import com.example.funerariamc.ui.ModuleIcons;
+import com.example.funerariamc.ui.BrandTheme;
+import com.example.funerariamc.ui.PlanOfferCard;
+import com.example.funerariamc.ui.SearchField;
+import com.example.funerariamc.service.DeathDocumentData;
+import com.example.funerariamc.service.DeceasedData;
+import com.example.funerariamc.service.FileStorageService;
+import com.example.funerariamc.service.PersonNames;
+import com.example.funerariamc.service.PlanDeathService;
+import com.example.funerariamc.utils.enums.ClientType;
+import com.example.funerariamc.utils.enums.DeathType;
+import com.example.funerariamc.utils.enums.DocumentType;
+import com.example.funerariamc.utils.enums.ExternalCause;
+import com.example.funerariamc.utils.enums.Relationship;
 import javafx.animation.FadeTransition;
 import javafx.animation.PauseTransition;
 import javafx.animation.SequentialTransition;
@@ -66,6 +85,7 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.shape.SVGPath;
+import javafx.stage.FileChooser;
 import javafx.stage.Window;
 import javafx.util.Duration;
 import javafx.util.StringConverter;
@@ -74,6 +94,7 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.nio.file.Path;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.text.NumberFormat;
@@ -84,6 +105,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -118,6 +140,8 @@ public class ContractController implements RefreshableView {
     private static final double NARROW_MODULE = 1090;
 
     private final ContractService contractService;
+    private final FuneralPlanService planService;
+    private final PlanDeathService planDeathService;
     private final DetailCache<SaleView> details;
     /** Verdadero en ventana angosta: Tipo y Abonado se ocultan (siguen en el detalle de la venta). */
     private ObservableBooleanValue narrow;
@@ -172,6 +196,9 @@ public class ContractController implements RefreshableView {
     private Label toast;
 
     private final ObservableList<SaleRow> visibleRows = FXCollections.observableArrayList();
+    private Pager<SaleRow> pager;
+    /** Filtros con los que se armó la página actual (para saber si hay que volver a la página 1). */
+    private String lastFilter;
     private List<SaleRow> allRows = List.of();
     private boolean loaded;
     /** Venta abierta en el panel; null si está cerrado. */
@@ -181,9 +208,16 @@ public class ContractController implements RefreshableView {
     private int generation;
     private SequentialTransition toastMotion;
     private final PauseTransition searchDelay = new PauseTransition(Duration.millis(200));
+    /** Verdadero mientras "Nuevo contrato" está abierto porque se pidió desde Clientes o Planes. */
+    private boolean openedFromLink;
+    /** Planes que se ofrecen (Normal y Premium con su cuota); se traen en segundo plano al abrir el módulo. */
+    private volatile List<PlanOffer> offerCache;
 
-    public ContractController(ContractService contractService) {
+    public ContractController(ContractService contractService, FuneralPlanService planService,
+                              PlanDeathService planDeathService) {
         this.contractService = contractService;
+        this.planService = planService;
+        this.planDeathService = planDeathService;
         this.details = new DetailCache<>(contractService::detail, "sale-detail");
     }
 
@@ -191,7 +225,23 @@ public class ContractController implements RefreshableView {
     @Override
     public void refresh() {
         loadOverview(drawerSaleId);
+        loadOffers();
         takeLink();
+    }
+
+    /** Trae en segundo plano los planes que se ofrecen, para abrir "Nuevo contrato" sin esperar. */
+    private void loadOffers() {
+        async("sale-plan-offers", planService::planOffers, list -> offerCache = list, failure -> { });
+    }
+
+    /** Los planes que se ofrecen; si todavía no llegaron, se traen ahora. */
+    private List<PlanOffer> offers() {
+        List<PlanOffer> list = offerCache;
+        if (list == null) {
+            list = planService.planOffers();
+            offerCache = list;
+        }
+        return list;
     }
 
     @FXML
@@ -246,6 +296,11 @@ public class ContractController implements RefreshableView {
         salesList.setPlaceholder(new Label(""));
         salesList.setMinWidth(0);
         salesList.setPrefWidth(0); // la tabla toma el ancho disponible, no el de su contenido
+        // Paginación como la bitácora: 20 filas por página, debajo de la tabla.
+        pager = Pager.<SaleRow>local(Pager.TABLE_PAGE, "registro", "registros", page -> {
+            visibleRows.setAll(page);
+            salesList.scrollTo(0);
+        }).below(salesList.getParent());
 
         detail = DetailShell.install(drawer, veil, DetailShell.Kind.MODAL);
         toast.setOpacity(0);
@@ -305,11 +360,17 @@ public class ContractController implements RefreshableView {
         SaleType type = typeGroup.getSelectedToggle() == null ? null
                 : (SaleType) typeGroup.getSelectedToggle().getUserData();
         List<SaleRow> rows = ContractService.filter(allRows, type, paymentCombo.getValue(), searchField.getText());
-        visibleRows.setAll(rows);
+        // Un filtro nuevo vuelve a la página 1; recargar tras guardar se queda en la misma página.
+        String filterKey = type + "|" + paymentCombo.getValue() + "|" + searchField.getText();
+        if (filterKey.equals(lastFilter)) {
+            pager.setItems(rows);
+        } else {
+            pager.setItemsFromStart(rows);
+        }
+        lastFilter = filterKey;
         boolean filtered = rows.size() != allRows.size();
         countLabel.setText(allRows.isEmpty() ? "Sin registros todavía"
-                : (filtered ? rows.size() + " de " + allRows.size() + " registros" : rows.size() + " registros")
-                + (rows.size() > 8 ? " · desplace para ver más" : ""));
+                : filtered ? rows.size() + " de " + allRows.size() + " registros" : rows.size() + " registros");
         if (!loaded) {
             return;
         }
@@ -469,8 +530,8 @@ public class ContractController implements RefreshableView {
                         DetailShell.heroLine("Abonado", pesos(r.paid())),
                         DetailShell.heroLine("Saldo", pesos(r.balance()))))
                 .extra(DetailShell.bar(paidShare, DetailShell.Tone.GOLD))
-                .navigation(DetailShell.neighbor(visibleRows, x -> x.saleId().equals(r.saleId()), -1, x -> openDrawer(x.saleId())),
-                        DetailShell.neighbor(visibleRows, x -> x.saleId().equals(r.saleId()), 1, x -> openDrawer(x.saleId())))
+                .navigation(DetailShell.neighbor(pager.items(), x -> x.saleId().equals(r.saleId()), -1, x -> openDrawer(x.saleId())),
+                        DetailShell.neighbor(pager.items(), x -> x.saleId().equals(r.saleId()), 1, x -> openDrawer(x.saleId())))
                 .onClose(this::closeDrawer);
 
         List<Node> left = new ArrayList<>();
@@ -578,14 +639,18 @@ public class ContractController implements RefreshableView {
 
     @FXML
     private void onNewContract() {
-        openNewSale(null, null);
+        openNewSale();
     }
 
     /**
-     * Salto desde Clientes: con newSale se abre "Nuevo contrato" con el cliente ya elegido;
-     * sin él se muestran las ventas del cliente que tienen saldo, para abonar sobre una de ellas.
+     * Salto desde Clientes: con newSale se abre "Nuevo contrato" con el cliente ya elegido (el
+     * vendedor elige el tipo); sin él se muestran las ventas del cliente que tienen saldo, para abonar sobre una de ellas.
      */
     public record ClientLink(Option client, boolean newSale) {
+    }
+
+    /** Desde Clientes, recién registrado el cliente: abre la afiliación a un plan con él ya elegido. */
+    public record AffiliationLink(Option client) {
     }
 
     /**
@@ -597,7 +662,21 @@ public class ContractController implements RefreshableView {
             if (payload instanceof Long deceasedId) {
                 openSaleFor(deceasedId);
             } else if (payload instanceof ClientLink link && link.newSale()) {
-                openNewSale(null, link.client());
+                // Con el cliente ya elegido; al cerrar se vuelve a Clientes, no se queda en Contratos y ventas
+                openedFromLink = true;
+                try {
+                    openNewSale(null, null, link.client());
+                } finally {
+                    openedFromLink = false;
+                }
+                ModuleLink.back(AppModule.CONTRATOS);
+            } else if (payload instanceof AffiliationLink link) {
+                openedFromLink = true;
+                try {
+                    openAffiliation(link.client());
+                } finally {
+                    openedFromLink = false;
+                }
             } else if (payload instanceof ClientLink link) {
                 showSalesOf(link.client());
             }
@@ -614,46 +693,175 @@ public class ContractController implements RefreshableView {
     private void openSaleFor(Long deceasedId) {
         async("sale-from-plan", () -> contractService.deceasedForSale(deceasedId), found -> {
             if (found.isPresent()) {
-                openNewSale(found.get(), null);
+                // Desde Planes: al cerrar el contrato se vuelve a Planes exequiales
+                openedFromLink = true;
+                try {
+                    openNewSale(found.get(), null, null);
+                } finally {
+                    openedFromLink = false;
+                }
+                ModuleLink.back(AppModule.CONTRATOS);
             } else {
                 showError("Ese difunto ya tiene un contrato vigente. Búsquelo en la lista de contratos.");
             }
         }, failure -> showError(message(failure, "No se pudo abrir el contrato del difunto.")));
     }
 
-    /** presetDeceased y presetClient van en null si la venta se empieza desde cero. */
-    private void openNewSale(Option presetDeceased, Option presetClient) {
-        // Tipo de venta
-        ToggleGroup kindGroup = new ToggleGroup();
-        HBox kinds = new HBox();
-        kinds.getStyleClass().addAll("segmented", "form-segmented");
-        for (SaleKind kind : SaleKind.values()) {
-            ToggleButton toggle = new ToggleButton(kind.getLabel());
-            toggle.getStyleClass().add("segment");
-            toggle.setUserData(kind);
-            toggle.setToggleGroup(kindGroup);
-            kinds.getChildren().add(toggle);
-        }
-        kindGroup.getToggles().get(0).setSelected(true);
-        kindGroup.selectedToggleProperty().addListener((obs, old, toggle) -> {
-            if (toggle == null) {
-                old.setSelected(true);
-            }
-        });
+    /** Causa externa de una muerte no natural, como se lee en pantalla. */
+    private static final Map<ExternalCause, String> CAUSES = Map.of(
+            ExternalCause.ACCIDENT, "Accidente",
+            ExternalCause.HOMICIDE, "Homicidio",
+            ExternalCause.SUICIDE, "Suicidio",
+            ExternalCause.UNDETERMINED, "Indeterminada");
+    /** Quién expide el certificado: Medicina Legal si la muerte es violenta; si es natural, el médico o la clínica. */
+    private static final String FORENSIC_AUTHORITY = "Medicina Legal";
+    private static final String DOCTOR_AUTHORITY = "Médico tratante o clínica";
 
-        // Cliente, plan, difunto y vendedor
-        TextField clientSearch = new TextField();
-        clientSearch.setPromptText("Nombre o documento");
-        ComboBox<Option> client = optionCombo("Seleccione el cliente");
-        ComboBox<Option> plan = optionCombo("Elija primero el cliente");
+    /** Afiliación a un plan exequial: se elige en el paso 1 como un tipo más, pero no es una venta. */
+    private static final String AFFILIATION = "AFFILIATION";
+    /** Alto de las tarjetas del paso 1. */
+    private static final double CARD_HEIGHT = 178;
+    /** Alto de cada persona del plan en "Contrato · plan". */
+    private static final double PERSON_HEIGHT = 60;
+
+    /** Tarjeta de un tipo del paso 1: ícono del menú, nombre, qué es y por qué pasos sigue. */
+    private record KindInfo(Object choice, String icon, String title, String text, String flow) {
+    }
+
+    private static final List<KindInfo> KINDS = List.of(
+            new KindInfo(AFFILIATION, "PLANES", "Plan exequial",
+                    "Si el cliente no tiene plan, lo afilia aquí (Normal o Premium y sus beneficiarios). Si ya "
+                            + "tiene, ve su plan, lo cambia o le agrega o quita personas.",
+                    "Cliente → Plan y beneficiarios → Resumen"),
+            new KindInfo(SaleKind.PLAN, "CONTRATOS", "Registrar difunto del plan",
+                    "Falleció alguien del plan: se escoge a esa persona, se llenan los datos de la muerte y el "
+                            + "certificado, y el servicio pasa a preparación.",
+                    "Titular y persona → Fallecimiento → Fuera del plan → Sala → Pago"),
+            new KindInfo(SaleKind.PENSION, "FINANZAS", "Contrato · pensión",
+                    "Servicio que paga una entidad (empresa o fondo de pensiones) en salarios mínimos.",
+                    "Entidad y difunto → Servicio → Sala → Productos y pago"),
+            new KindInfo(SaleKind.PRIVATE, "CLIENTES", "Particular",
+                    "Servicio funerario sin plan: la familia paga todo, de contado o por abonos.",
+                    "Cliente y difunto → Servicio → Sala → Productos y pago"),
+            new KindInfo(SaleKind.PRODUCT, "INVENTARIO", "Venta",
+                    "Solo productos del inventario (ataúd, cofre, flores…), sin servicio funerario.",
+                    "Cliente → Productos y pago"));
+
+    /**
+     * Tarjetas del paso 1. Ninguna viene elegida; al tocar una se avisa a onPick. Todas siguen en la
+     * misma ventana: solo cambian los pasos.
+     */
+    private static GridPane kindCards(ToggleGroup group, Object selected, Consumer<Object> onPick) {
+        GridPane grid = new GridPane();
+        grid.setHgap(14);
+        grid.setVgap(14);
+        for (int i = 0; i < 3; i++) {
+            ColumnConstraints constraints = new ColumnConstraints();
+            constraints.setPercentWidth(100.0 / 3);
+            grid.getColumnConstraints().add(constraints);
+        }
+        for (int i = 0; i < KINDS.size(); i++) {
+            KindInfo info = KINDS.get(i);
+            Label title = label(info.title(), "choice-card-title");
+            Label text = wrapped(info.text(), "choice-card-text");
+            Label flow = wrapped(info.flow(), "choice-card-flow");
+            StackPane icon = new StackPane(ModuleIcons.of(info.icon()));
+            icon.getStyleClass().add("choice-card-icon");
+            icon.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
+            HBox top = new HBox(icon);
+            if (info.choice() == AFFILIATION || info.choice() == SaleKind.PENSION) {
+                Region gap = new Region();
+                HBox.setHgrow(gap, Priority.ALWAYS);
+                top.getChildren().addAll(gap, label(info.choice() == AFFILIATION ? "AFILIAR O ACTUALIZAR"
+                        : "SOLO EMPRESAS", "choice-card-badge"));
+            }
+            VBox content = new VBox(6, top, title, text, flow);
+            VBox.setVgrow(text, Priority.ALWAYS);
+            ToggleButton card = new ToggleButton();
+            card.setGraphic(content);
+            card.getStyleClass().add("choice-card");
+            card.setUserData(info.choice());
+            card.setToggleGroup(group);
+            card.setMaxWidth(Double.MAX_VALUE);
+            // Alto fijo: el texto envuelto calcula su alto con un ancho angosto y estiraba la tarjeta
+            card.setMinHeight(CARD_HEIGHT);
+            card.setPrefHeight(CARD_HEIGHT);
+            card.setMaxHeight(CARD_HEIGHT);
+            content.prefWidthProperty().bind(card.widthProperty().subtract(32));
+            card.setSelected(info.choice() == selected);
+            card.setOnAction(e -> {
+                if (!card.isSelected()) {
+                    card.setSelected(true); // una tarjeta elegida no se desmarca con otro clic
+                }
+                onPick.accept(info.choice());
+            });
+            grid.add(card, i % 3, i / 3);
+        }
+        return grid;
+    }
+
+    /** Muestra u oculta la tarjeta de un tipo y reacomoda las demás para que no quede un hueco. */
+    private static void showKindCard(GridPane grid, Object choice, boolean shown) {
+        int index = 0;
+        for (Node card : grid.getChildren()) {
+            if (card.getUserData() == choice) {
+                card.setVisible(shown);
+                card.setManaged(shown);
+            }
+            if (card.isManaged()) {
+                GridPane.setConstraints(card, index % 3, index / 3);
+                index++;
+            }
+        }
+    }
+
+    /** El contrato con pensión lo paga una entidad: solo se ofrece si el cliente es una empresa o fondo. */
+    private static boolean isEntity(Option client) {
+        return client == null || (client.detail() != null && client.detail().startsWith("Empresa"));
+    }
+
+    /** "Nuevo contrato" desde cero: ningún tipo ni cliente viene puesto. */
+    private void openNewSale() {
+        openNewSale(null, null, null);
+    }
+
+    /**
+     * presetDeceased llega desde Planes ("Iniciar contrato") con el difunto del plan: se abre como
+     * "Contrato · plan" con el titular y el difunto ya elegidos. presetKind abre la ventana con ese
+     * tipo elegido (al pasar desde la afiliación). presetClient llega desde Clientes (o al cambiar de
+     * tipo) con el cliente ya elegido; el vendedor puede cambiarlo.
+     */
+    private void openNewSale(Option presetDeceased, SaleKind presetKind, Option presetClient) {
+        Dialog<ButtonType>[] opened = newDialogHolder();
+        // Tipo de venta: al elegir una tarjeta solo cambian los pasos, la ventana es la misma
+        ToggleGroup kindGroup = new ToggleGroup();
+        GridPane kinds = kindCards(kindGroup, presetKind, choice -> { });
+        // Registrar difunto del plan crea el difunto: solo lo ve quien tiene acceso a Difuntos
+        showKindCard(kinds, SaleKind.PLAN, contractService.canRegisterDeceased());
+        // "Plan exequial": afiliar al cliente o actualizar el plan que ya tiene
+        AffiliationPart aff = new AffiliationPart(offers());
+        // La columna derecha cambia: total de la venta, o vista previa del contrato del plan
+        Runnable[] showSide = {() -> { }};
+
+        // Cliente o titular, plan, difunto y vendedor
+        Label clientCaption = label("CLIENTE *", "field-label");
+        // En "Contrato · pensión" el buscador solo trae entidades (empresas o fondos de pensiones)
+        boolean[] entitiesOnly = {presetKind == SaleKind.PENSION};
+        SearchField<Option> client = new SearchField<>("Buscar por nombre o documento", "clientes",
+                text -> entitiesOnly[0] ? contractService.searchClients(text).stream().filter(ContractController::isEntity)
+                        .toList() : contractService.searchClients(text), Option::label, Option::detail);
         TextField deceasedSearch = new TextField();
         deceasedSearch.setPromptText("Nombre o documento del difunto");
         ComboBox<Option> deceased = optionCombo("Seleccione el difunto");
         ComboBox<Option> salesperson = optionCombo("Seleccione el vendedor");
-        // Si el difunto está en un plan exequial, se llenan solos el tipo, el titular y el plan
+        // Contrato con plan: el plan del titular y la gente del plan (solo se elige a quien está en Difuntos)
+        VBox planBox = new VBox(12);
+        planBox.getStyleClass().add("plan-board");
+        ContractService.PlanBoard[] board = new ContractService.PlanBoard[1];
+        // Persona del plan que falleció (puede no estar aún en Difuntos: se registra en el paso siguiente)
+        ContractService.PlanPerson[] planPerson = new ContractService.PlanPerson[1];
+        Long[] wantedDeceased = new Long[1];
         Label planNote = note("");
-        Long[] wantedPlan = new Long[1];
-        bindSearch(clientSearch, client, contractService::searchClients);
         bindSearch(deceasedSearch, deceased, contractService::searchDeceased);
         async("sale-salespeople", contractService::salespeople, list -> {
             salesperson.getItems().setAll(list);
@@ -671,6 +879,14 @@ public class ContractController implements RefreshableView {
         ComboBox<ItemOption> coffin = itemCombo("Sin ataúd del inventario");
         bindItemSearch(coffinSearch, coffin);
 
+        // Contrato · plan: el plan cubre el servicio; aquí solo va lo que se cobra por fuera
+        TextField planCoffinSearch = new TextField();
+        planCoffinSearch.setPromptText("Buscar ataúd superior en inventario");
+        ComboBox<ItemOption> planCoffin = itemCombo("El ataúd que cubre el plan");
+        bindItemSearch(planCoffinSearch, planCoffin);
+        TextField planBuses = new TextField("0");
+        TextField planKm = new TextField("0");
+
         // Velación en casa: no lleva sala y no tiene descuento (se entrega la cafetería)
         CheckBox homeWake = new CheckBox("La familia vela en la casa");
         homeWake.getStyleClass().add("form-check");
@@ -679,8 +895,8 @@ public class ContractController implements RefreshableView {
         // Cementerio: arriendo de bóveda, lote doble u osario, construcción y adecuación del lote
         ComboBox<ContractData.CemeteryCharge> cemetery = new ComboBox<>();
         cemetery.getItems().setAll(ContractData.CemeteryCharge.values());
-        cemetery.setValue(ContractData.CemeteryCharge.NONE);
-        cemetery.setConverter(converter(ContractData.CemeteryCharge::getLabel, "Sin cementerio"));
+        cemetery.setConverter(converter(ContractData.CemeteryCharge::getLabel, ""));
+        FormShell.choose(cemetery); // sin opción puesta; si no se elige nada, no se cobra cementerio
         cemetery.getStyleClass().add("form-combo");
         cemetery.setMaxWidth(Double.MAX_VALUE);
         TextField constructions = new TextField("0");
@@ -697,9 +913,9 @@ public class ContractController implements RefreshableView {
             room.getItems().setAll(items);
         }, failure -> room.setPromptText("No se pudo cargar"));
         DatePicker startDate = new DatePicker(today());
-        ComboBox<LocalTime> startTime = timeCombo(LocalTime.of(8, 0));
+        ComboBox<LocalTime> startTime = timeCombo(null);
         DatePicker endDate = new DatePicker(today().plusDays(1));
-        ComboBox<LocalTime> endTime = timeCombo(LocalTime.of(10, 0));
+        ComboBox<LocalTime> endTime = timeCombo(null);
         for (DatePicker picker : List.of(startDate, endDate)) {
             picker.setEditable(false);
             picker.setConverter(dateConverter());
@@ -719,6 +935,63 @@ public class ContractController implements RefreshableView {
         VBox productList = new VBox(6);
         Label productError = note("");
 
+        // Registrar difunto del plan: datos del fallecimiento y certificado de la persona elegida.
+        // Nombres y documento vienen del plan y no se escriben otra vez.
+        TextField deathNames = new TextField();
+        TextField deathLastnames = new TextField();
+        TextField deathDocument = new TextField();
+        for (TextField field : List.of(deathNames, deathLastnames, deathDocument)) {
+            field.setEditable(false);
+            field.getStyleClass().add("form-readonly");
+        }
+        DatePicker birth = new DatePicker();
+        DatePicker deathDate = new DatePicker(today());
+        for (DatePicker picker : List.of(birth, deathDate)) {
+            picker.setEditable(false);
+            picker.setConverter(dateConverter());
+        }
+        ComboBox<DeathType> deathType = new ComboBox<>();
+        deathType.getItems().setAll(DeathType.values());
+        deathType.setConverter(converter(DeathType::getDisplayName, ""));
+        FormShell.choose(deathType); // sin tipo de muerte puesto: el usuario lo elige
+        ComboBox<ExternalCause> cause = new ComboBox<>();
+        cause.getItems().setAll(ExternalCause.values());
+        cause.setConverter(converter(CAUSES::get, ""));
+        cause.setPromptText("Solo si no es natural");
+        cause.disableProperty().bind(deathType.valueProperty().isNotEqualTo(DeathType.NON_NATURAL));
+        Label deathHint = wrapped("", "dialog-hint");
+        // Lo expide Medicina Legal si la muerte es violenta, o el médico tratante o la clínica si es natural
+        ComboBox<String> authority = new ComboBox<>();
+        authority.setEditable(true);
+        authority.getItems().setAll(DOCTOR_AUTHORITY, FORENSIC_AUTHORITY);
+        authority.setPromptText("Entidad que lo expide");
+        authority.setMaxWidth(Double.MAX_VALUE);
+        deathType.valueProperty().addListener((obs, old, value) -> {
+            authority.getEditor().setText(value == null ? "" : value == DeathType.NON_NATURAL
+                    ? FORENSIC_AUTHORITY : DOCTOR_AUTHORITY);
+            deathHint.setText(value == DeathType.NON_NATURAL ? "Muerte no natural: no se puede cremar hasta que la "
+                    + "Fiscalía cierre el caso. Después suba el informe forense y la orden de entrega en Difuntos." : "");
+        });
+        for (ComboBox<?> box : List.of(deathType, cause, authority)) {
+            box.getStyleClass().add("form-combo");
+            box.setMaxWidth(Double.MAX_VALUE);
+        }
+        TextField certificateNumber = new TextField();
+        certificateNumber.setPromptText("Número del certificado");
+        DatePicker issued = new DatePicker(today());
+        issued.setEditable(false);
+        issued.setConverter(dateConverter());
+        Path[] certificateFile = new Path[1];
+        HBox fileBox = certificateChooser(certificateFile);
+        Label deathTitle = label("", "card-subtitle");
+        Runnable fillDeath = () -> {
+            ContractService.PlanPerson person = planPerson[0];
+            deathNames.setText(person == null ? "" : orEmpty(person.firstName()));
+            deathLastnames.setText(person == null ? "" : orEmpty(person.lastName()));
+            deathDocument.setText(person == null ? "" : orEmpty(person.document()));
+            deathTitle.setText(person == null ? "" : person.name() + " · " + person.role());
+        };
+
         // Pago
         TextField initial = new TextField();
         initial.setPromptText("Ej.: 500.000 (0 si es a crédito)");
@@ -732,15 +1005,32 @@ public class ContractController implements RefreshableView {
 
         Form form = new Form()
                 .section("Tipo de venta", 1)
-                .field("TIPO *", kinds)
-                .section("Cliente y difunto", 3)
-                .field("BUSCAR CLIENTE", clientSearch)
-                .field("CLIENTE / ENTIDAD PAGADORA *", client)
-                .field("PLAN EXEQUIAL *", plan)
+                .note(kinds);
+        aff.addMain(form);
+        form.section("Cliente y difunto", 3)
+                .wide(null, new VBox(2, clientCaption, client.node()))
+                .note(planBox)
+                .grid(3)
                 .field("BUSCAR DIFUNTO", deceasedSearch)
                 .field("DIFUNTO *", deceased)
                 .field("VENDEDOR *", salesperson)
                 .note(planNote)
+                .section("Fallecimiento y certificado", 3)
+                .wide(null, deathTitle)
+                .field("NOMBRES", deathNames)
+                .field("APELLIDOS", deathLastnames)
+                .field("DOCUMENTO", deathDocument)
+                .field("FECHA DE NACIMIENTO", birth)
+                .field("FECHA DE DEFUNCIÓN *", deathDate)
+                .field("TIPO DE MUERTE *", deathType)
+                .field("CAUSA EXTERNA", cause)
+                .wide(null, deathHint)
+                .field("ENTIDAD QUE EXPIDE EL CERTIFICADO *", authority)
+                .field("NÚMERO DEL CERTIFICADO *", certificateNumber)
+                .field("FECHA DE EXPEDICIÓN *", issued)
+                .wide("CERTIFICADO DE DEFUNCIÓN (ARCHIVO) *", fileBox)
+                .note(note("El difunto queda registrado en Difuntos con este certificado, a nombre del titular y "
+                        + "vinculado al plan. Al registrar el contrato, el servicio pasa a Preparación."))
                 .section("Servicio", 3)
                 .field("CUOTA BASE DEL SERVICIO *", base)
                 .field("SALARIOS MÍNIMOS (PENSIÓN) *", wages)
@@ -748,6 +1038,14 @@ public class ContractController implements RefreshableView {
                 .field("BUSCAR ATAÚD", coffinSearch)
                 .field("ATAÚD", coffin)
                 .field("TRASLADO DESDE OTRA CIUDAD (KM)", intercityKm)
+                .section("Fuera del plan", 3)
+                .note(note("Lo que cubre el plan no se cobra: el servicio funerario, el ataúd del plan y un bus. "
+                        + "Aquí solo se registra lo que va por fuera: un ataúd superior (se cobra la diferencia), "
+                        + "buses adicionales y kilómetros de traslado desde otra ciudad."))
+                .field("BUSCAR ATAÚD SUPERIOR", planCoffinSearch)
+                .field("ATAÚD", planCoffin)
+                .field("BUSES ADICIONALES", planBuses)
+                .field("TRASLADO DESDE OTRA CIUDAD (KM)", planKm)
                 .section("Sala de velación", 3)
                 .field("VELACIÓN", homeWake)
                 .field("SALA", room)
@@ -777,13 +1075,17 @@ public class ContractController implements RefreshableView {
 
         // Habilita solo los campos que usa cada tipo de venta
         Runnable applyKind = () -> {
-            SaleKind kind = (SaleKind) kindGroup.getSelectedToggle().getUserData();
-            boolean service = kind.isService();
-            plan.setDisable(kind != SaleKind.PLAN);
-            deceasedSearch.setDisable(!service);
-            deceased.setDisable(!service);
-            salesperson.setDisable(!service);
-            base.setDisable(!(kind == SaleKind.PLAN || kind == SaleKind.PRIVATE));
+            SaleKind kind = kindOf(kindGroup);
+            boolean service = kind == null || kind.isService();
+            boolean withPlan = kind == SaleKind.PLAN;
+            planBox.setVisible(withPlan);
+            planBox.setManaged(withPlan);
+            // Con plan el difunto se elige entre la gente del plan; particular y pensión buscan entre
+            // todos los difuntos sin contrato (se registran en Difuntos sin cliente)
+            showField(deceasedSearch, kind == SaleKind.PENSION || kind == SaleKind.PRIVATE);
+            showField(deceased, service && !withPlan);
+            showField(salesperson, service);
+            base.setDisable(kind != SaleKind.PRIVATE);
             wages.setDisable(kind != SaleKind.PENSION);
             buses.setDisable(!service);
             coffinSearch.setDisable(!service);
@@ -795,31 +1097,50 @@ public class ContractController implements RefreshableView {
             for (Node n : List.of(startDate, startTime, endDate, endTime)) {
                 n.setDisable(!withRoom);
             }
-            client.setPromptText(kind == SaleKind.PENSION ? "Seleccione la entidad (empresa)" : "Seleccione el cliente");
+            // La venta no lleva difunto: el título de la sección dice solo "Cliente"
+            for (Node title : form.body.lookupAll(".section-title")) {
+                if (title instanceof Label l && l.getText().startsWith("Cliente")) {
+                    l.setText(kind == SaleKind.PRODUCT ? "Cliente" : kind == SaleKind.PLAN ? "Titular y persona"
+                            : "Cliente y difunto");
+                }
+            }
+            clientCaption.setText(kind == SaleKind.PENSION ? "ENTIDAD PAGADORA *"
+                    : withPlan ? "TITULAR DEL PLAN *" : "CLIENTE *");
+            client.field().setPromptText(kind == SaleKind.PENSION ? "Buscar la entidad (empresa) por nombre o NIT"
+                    : withPlan ? "Buscar el titular por nombre o documento" : "Buscar el cliente por nombre o documento");
         };
 
         Function<Boolean, ContractData> data = strict -> {
-            SaleKind kind = (SaleKind) kindGroup.getSelectedToggle().getUserData();
+            SaleKind kind = kindOf(kindGroup);
+            if (kind == null) {
+                throw new InvalidDataException("Elija en el paso 1 qué va a registrar.");
+            }
             boolean service = kind.isService();
             boolean withRoom = service && !homeWake.isSelected() && room.getValue() != null;
+            Long deceasedId = kind == SaleKind.PLAN ? (planPerson[0] == null ? null : planPerson[0].deceasedId())
+                    : idOf(deceased.getValue());
             return new ContractData(kind, idOf(client.getValue()),
-                    service ? idOf(deceased.getValue()) : null,
-                    kind == SaleKind.PLAN ? idOf(plan.getValue()) : null,
+                    service ? deceasedId : null,
+                    kind == SaleKind.PLAN && board[0] != null ? board[0].planId() : null,
                     service ? idOf(salesperson.getValue()) : null,
                     base.isDisable() ? null : parseAmount(base.getText(), "La cuota base"),
                     wages.isDisable() ? null : parseDecimal(wages.getText(), "Los salarios mínimos"),
                     withRoom ? room.getValue().id() : null,
                     withRoom ? at(startDate.getValue(), startTime.getValue()) : null,
                     withRoom ? at(endDate.getValue(), endTime.getValue()) : null,
-                    service && coffin.getValue() != null ? coffin.getValue().id() : null,
-                    service ? orZero(parseInteger(buses.getText(), "Los buses adicionales")) : 0,
+                    kind == SaleKind.PLAN ? (planCoffin.getValue() == null ? null : planCoffin.getValue().id())
+                            : service && coffin.getValue() != null ? coffin.getValue().id() : null,
+                    kind == SaleKind.PLAN ? orZero(parseInteger(planBuses.getText(), "Los buses adicionales"))
+                            : service ? orZero(parseInteger(buses.getText(), "Los buses adicionales")) : 0,
                     List.copyOf(products),
                     strict ? parseAmount(initial.getText(), "El abono inicial") : null,
                     service && homeWake.isSelected(),
-                    service ? orZero(parseInteger(intercityKm.getText(), "Los kilómetros del traslado")) : 0,
-                    kind == SaleKind.PENSION ? ContractData.CemeteryCharge.NONE : cemetery.getValue(),
-                    kind == SaleKind.PENSION ? 0 : orZero(parseInteger(constructions.getText(), "Los puestos a construir")),
-                    kind != SaleKind.PENSION && preparation.isSelected());
+                    kind == SaleKind.PLAN ? orZero(parseInteger(planKm.getText(), "Los kilómetros del traslado"))
+                            : service ? orZero(parseInteger(intercityKm.getText(), "Los kilómetros del traslado")) : 0,
+                    kind == SaleKind.PENSION || !service ? ContractData.CemeteryCharge.NONE : cemetery.getValue(),
+                    kind == SaleKind.PENSION || !service ? 0
+                            : orZero(parseInteger(constructions.getText(), "Los puestos a construir")),
+                    kind != SaleKind.PENSION && service && preparation.isSelected());
         };
 
         // Resumen en vivo: se recalcula en otro hilo cuando el usuario deja de cambiar datos
@@ -829,14 +1150,19 @@ public class ContractController implements RefreshableView {
             int request = ++quoteRequest[0];
             ContractData current;
             try {
-                current = data.apply(false);
+                current = kindOf(kindGroup) == null ? null : data.apply(false);
             } catch (BusinessException ex) {
                 quoteBox.getChildren().clear();
                 quoteTotal.setText("—");
                 quoteHint.setText(ex.getMessage());
                 return;
             }
-            async("sale-quote", () -> contractService.quote(current), quote -> {
+            if (current == null) {
+                quoteBox.getChildren().clear();
+                return;
+            }
+            // Total parcial: suma lo elegido hasta ahora aunque falten datos
+            async("sale-quote", () -> contractService.preview(current), quote -> {
                 if (request == quoteRequest[0]) {
                     showQuote(quote, quoteBox, quoteTotal);
                     quoteHint.setText("");
@@ -897,55 +1223,73 @@ public class ContractController implements RefreshableView {
             requote.run();
         });
 
-        kindGroup.selectedToggleProperty().addListener((obs, old, toggle) -> {
-            if (toggle != null) {
-                applyKind.run();
+        // Plan del titular: se busca al elegirlo y se dibuja con la gente del plan
+        Runnable[] loadBoard = new Runnable[1];
+        loadBoard[0] = () -> {
+            board[0] = null;
+            planPerson[0] = null;
+            planBox.getChildren().clear();
+            Option holder = client.getValue();
+            if (kindOf(kindGroup) != SaleKind.PLAN || holder == null) {
+                if (kindOf(kindGroup) == SaleKind.PLAN) {
+                    planBox.getChildren().add(note("Busque y elija el titular: aquí se verá su plan y las personas que cubre."));
+                }
                 requote.run();
+                return;
+            }
+            planBox.getChildren().add(label("Buscando el plan del titular…", "card-subtitle"));
+            async("sale-plan-board", () -> contractService.planBoard(holder.id()), found -> {
+                if (!holder.equals(client.getValue())) {
+                    return;
+                }
+                board[0] = found.orElse(null);
+                drawBoard(planBox, board[0], planPerson, wantedDeceased[0], () -> {
+                    fillDeath.run();
+                    requote.run();
+                    if (opened[0] != null) {
+                        FormShell.refreshSteps(opened[0]);
+                    }
+                }, () -> {
+                    if (board[0] != null) {
+                        openChangePlanDialog(board[0], loadBoard[0]);
+                    }
+                });
+                wantedDeceased[0] = null;
+                requote.run();
+            }, failure -> {
+                planBox.getChildren().setAll(note(message(failure, "No se pudo traer el plan del titular.")));
+                requote.run();
+            });
+        };
+
+        kindGroup.selectedToggleProperty().addListener((obs, old, toggle) -> {
+            if (toggle != null && toggle.getUserData() instanceof SaleKind) {
+                entitiesOnly[0] = toggle.getUserData() == SaleKind.PENSION;
+                if (entitiesOnly[0] && !isEntity(client.getValue())) {
+                    client.setValue(null); // una persona natural no puede ser la entidad pagadora
+                }
+                applyKind.run();
+                loadBoard[0].run();
+            }
+            showSide[0].run();
+            if (opened[0] != null) {
+                FormShell.refreshSteps(opened[0]);
             }
         });
         client.valueProperty().addListener((obs, old, value) -> {
-            plan.getItems().clear();
-            plan.setValue(null);
-            if (value == null) {
-                plan.setPromptText("Elija primero el cliente");
-            } else {
-                plan.setPromptText("Buscando planes…");
-                async("sale-plans", () -> contractService.plansOf(value.id()), list -> {
-                    if (value.equals(client.getValue())) {
-                        plan.getItems().setAll(list);
-                        Option chosen = list.stream().filter(o -> o.id().equals(wantedPlan[0])).findFirst()
-                                .orElse(list.size() == 1 ? list.get(0) : null);
-                        plan.setValue(chosen);
-                        plan.setPromptText(list.isEmpty() ? "El cliente no tiene plan activo" : "Seleccione el plan");
-                    }
-                }, failure -> plan.setPromptText("No se pudo cargar"));
-            }
-            requote.run();
+            showKindCard(kinds, SaleKind.PENSION, isEntity(value));
+            loadBoard[0].run();
         });
         deceased.valueProperty().addListener((obs, old, value) -> {
             planNote.setText("");
-            wantedPlan[0] = null;
+            requote.run();
             if (value == null) {
                 return;
             }
+            // Si el difunto está en un plan exequial se avisa: ese servicio va como "Contrato · plan"
             async("sale-deceased-plan", () -> contractService.planOfDeceased(value.id()), match -> {
-                if (!value.equals(deceased.getValue()) || match.isEmpty()) {
-                    return;
-                }
-                ContractService.PlanMatch m = match.get();
-                wantedPlan[0] = m.plan().id();
-                planNote.setText(m.note());
-                for (Toggle toggle : kindGroup.getToggles()) {
-                    if (toggle.getUserData() == SaleKind.PLAN) {
-                        toggle.setSelected(true);
-                    }
-                }
-                if (!m.client().equals(client.getValue())) {
-                    client.getItems().setAll(List.of(m.client()));
-                    client.setValue(m.client()); // carga los planes del titular y elige este
-                } else {
-                    plan.getItems().stream().filter(o -> o.id().equals(m.plan().id())).findFirst()
-                            .ifPresent(plan::setValue);
+                if (value.equals(deceased.getValue()) && match.isPresent()) {
+                    planNote.setText(match.get().note() + " Si el servicio es con el plan, elija «Registrar difunto del plan».");
                 }
             }, failure -> planNote.setText(""));
         });
@@ -953,13 +1297,14 @@ public class ContractController implements RefreshableView {
             applyKind.run();
             requote.run();
         });
-        for (ComboBox<?> box : List.of(plan, deceased, coffin, startTime, endTime)) {
+        for (ComboBox<?> box : List.of(coffin, startTime, endTime)) {
             box.valueProperty().addListener((obs, old, value) -> requote.run());
         }
         for (DatePicker picker : List.of(startDate, endDate)) {
             picker.valueProperty().addListener((obs, old, value) -> requote.run());
         }
-        for (TextField field : List.of(base, wages, buses, intercityKm, constructions)) {
+        planCoffin.valueProperty().addListener((obs, old, value) -> requote.run());
+        for (TextField field : List.of(base, wages, buses, intercityKm, constructions, planBuses, planKm)) {
             field.textProperty().addListener((obs, old, value) -> requote.run());
         }
         cemetery.valueProperty().addListener((obs, old, value) -> requote.run());
@@ -971,33 +1316,923 @@ public class ContractController implements RefreshableView {
         }
         applyKind.run();
         requote.run();
-        if (presetClient != null) {
-            client.getItems().setAll(List.of(presetClient));
-            client.setValue(presetClient); // carga sus planes; si tiene uno solo queda elegido
+        if (presetClient != null && presetDeceased == null) {
+            client.setValue(presetClient);
         }
         if (presetDeceased != null) {
-            deceased.getItems().setAll(List.of(presetDeceased));
-            deceased.setValue(presetDeceased); // el plan, el titular y el tipo se llenan solos
+            // Desde Planes: el difunto ya está en un plan; se elige "Contrato · plan", el titular y el difunto
+            async("sale-deceased-plan", () -> contractService.planOfDeceased(presetDeceased.id()), match -> {
+                if (match.isEmpty()) {
+                    planNote.setText("El difunto no está en un plan activo: elija el tipo de venta.");
+                    return;
+                }
+                wantedDeceased[0] = presetDeceased.id();
+                for (Toggle toggle : kindGroup.getToggles()) {
+                    if (toggle.getUserData() == SaleKind.PLAN) {
+                        toggle.setSelected(true);
+                    }
+                }
+                planNote.setText(match.get().note());
+                client.setValue(match.get().client()); // carga el plan y elige al difunto
+            }, failure -> planNote.setText(""));
+        } else if (presetKind != null) {
+            loadBoard[0].run();
+        }
+
+        if (presetClient != null && presetDeceased == null) {
+            aff.preset(presetClient);
         }
 
         Dialog<ButtonType> dialog = formDialog("Nuevo contrato", "Los campos con * son obligatorios.", form, 900);
+        opened[0] = dialog;
         FormShell.page(dialog, "Contratos y ventas");
-        FormShell.money(base, initial);
+        FormShell.money(base, initial, aff.fee);
         // Resumen siempre visible a la derecha: conceptos calculados y el total en la tarjeta oscura
         VBox totalCard = new VBox(label("TOTAL", "form-summary-title"), quoteTotal);
         totalCard.getStyleClass().add("form-total");
-        VBox summary = new VBox(12, label("Resumen y pago", "form-side-title"), quoteHint, totalCard, quoteBox);
-        FormShell.steps(dialog, summary,
-                new FormShell.Step("Tipo de venta", "Tipo de venta"),
+        // El total no dice nada hasta que se elige qué se va a registrar
+        Label summaryEmpty = note("Elija en el paso 1 qué va a registrar; aquí se irá sumando el total.");
+        VBox summary = new VBox(12, label("Resumen y pago", "form-side-title"), summaryEmpty, quoteHint, totalCard, quoteBox);
+        // Con "Plan exequial" la derecha muestra la vista previa del contrato del plan en vez del total
+        VBox side = new VBox(summary, aff.side);
+        showSide[0] = () -> {
+            boolean plan = isAffiliation(kindGroup);
+            boolean chosen = plan || kindOf(kindGroup) != null;
+            summary.setVisible(!plan);
+            summary.setManaged(!plan);
+            aff.side.setVisible(plan);
+            aff.side.setManaged(plan);
+            totalCard.setVisible(chosen);
+            totalCard.setManaged(chosen);
+            summaryEmpty.setText(chosen ? "" : "Elija en el paso 1 qué va a registrar; aquí se irá sumando el total.");
+        };
+        showSide[0].run();
+        aff.onChange = () -> {
+            aff.refresh();
+            FormShell.refreshSteps(dialog);
+        };
+        FormShell.steps(dialog, side,
+                new FormShell.Step("Tipo", "Tipo de venta"),
+                new FormShell.Step("Cliente", "Cliente titular"),
+                new FormShell.Step("Plan y beneficiarios", "Plan exequial", "Beneficiarios"),
                 new FormShell.Step("Cliente y difunto", "Cliente y difunto"),
+                new FormShell.Step("Fallecimiento y certificado", "Fallecimiento y certificado"),
                 new FormShell.Step("Servicio", "Servicio"),
+                new FormShell.Step("Fuera del plan", "Fuera del plan"),
                 new FormShell.Step("Sala y cementerio", "Sala de velación", "Cementerio"),
                 new FormShell.Step("Productos y pago", "Productos", "Abono"));
-        runForm(dialog, form, "Registrar", () -> contractService.register(data.apply(true)), saleId -> {
-            showToast("Venta N.° %04d registrada.".formatted(saleId));
-            loadOverview(saleId);
+        // "Plan exequial" solo pasa por Cliente y Plan y beneficiarios (la vista previa queda a la derecha). Registrar difunto del plan
+        // no pasa por Servicio (el plan lo cubre) y llena el fallecimiento solo si la persona no está en Difuntos;
+        // los demás no tienen "Fuera del plan". La venta no lleva sala ni cementerio.
+        FormShell.stepRules(dialog, step -> {
+            boolean plan = isAffiliation(kindGroup);
+            SaleKind kind = kindOf(kindGroup);
+            if ("Tipo".equals(step)) {
+                return false;
+            }
+            if (List.of("Cliente", "Plan y beneficiarios").contains(step)) {
+                return !plan;
+            }
+            if (plan) {
+                return true;
+            }
+            return switch (step) {
+                case "Fallecimiento y certificado" -> kind != SaleKind.PLAN
+                        || (planPerson[0] != null && planPerson[0].registered());
+                case "Servicio" -> kind == SaleKind.PLAN || kind == SaleKind.PRODUCT;
+                case "Fuera del plan" -> kind != SaleKind.PLAN;
+                case "Sala y cementerio" -> kind == SaleKind.PRODUCT;
+                default -> false;
+            };
+        }, step -> {
+            SaleKind kind = kindOf(kindGroup);
+            if ("Tipo".equals(step)) {
+                return kind == null && !isAffiliation(kindGroup) ? "Elija qué va a registrar." : null;
+            }
+            if (isAffiliation(kindGroup)) {
+                return aff.check(step);
+            }
+            if ("Fallecimiento y certificado".equals(step)) {
+                if (deathDate.getValue() == null || deathType.getValue() == null) {
+                    return "Escriba la fecha de defunción y el tipo de muerte.";
+                }
+                if (authority.getEditor().getText().isBlank() || certificateNumber.getText().isBlank()
+                        || issued.getValue() == null) {
+                    return "Escriba quién expide el certificado, su número y la fecha de expedición.";
+                }
+                return certificateFile[0] == null ? "Adjunte el certificado de defunción (PDF o imagen)." : null;
+            }
+            if (!"Cliente y difunto".equals(step) || kind == null) {
+                return null;
+            }
+            if (client.getValue() == null) {
+                return kind == SaleKind.PENSION ? "Elija la entidad que paga el servicio."
+                        : kind == SaleKind.PLAN ? "Elija el titular del plan." : "Elija el cliente.";
+            }
+            if (kind == SaleKind.PRODUCT) {
+                return null; // la venta solo necesita el cliente
+            }
+            if (kind == SaleKind.PENSION && !isEntity(client.getValue())) {
+                return "El contrato con pensión solo es para entidades (empresa o fondo de pensiones).";
+            }
+            if (kind == SaleKind.PLAN) {
+                if (board[0] == null) {
+                    return "Este cliente no tiene un plan exequial activo. Para afiliarlo, elija «Plan exequial».";
+                }
+                if (planPerson[0] == null) {
+                    return "Elija la persona del plan que falleció.";
+                }
+            } else if (deceased.getValue() == null) {
+                return "Busque y elija el difunto del servicio. Si no aparece, primero regístrelo en la pestaña Difuntos.";
+            }
+            return salesperson.getValue() == null ? "Elija el vendedor que gestiona el contrato." : null;
+        });
+        // En el contrato con plan el paso del cliente se lee "Titular y persona"; en la venta, solo "Cliente"
+        FormShell.stepLabels(dialog, step -> {
+            if (!"Cliente y difunto".equals(step)) {
+                return step;
+            }
+            SaleKind kind = kindOf(kindGroup);
+            return kind == SaleKind.PLAN ? "Titular y persona" : kind == SaleKind.PRODUCT ? "Cliente" : step;
+        });
+        boolean[] savedPlan = new boolean[1];
+        runForm(dialog, form, "Registrar", () -> {
+            savedPlan[0] = isAffiliation(kindGroup);
+            if (savedPlan[0]) {
+                return aff.save();
+            }
+            ContractData sale = data.apply(true);
+            if (sale.kind() != SaleKind.PLAN) {
+                return contractService.register(sale);
+            }
+            ContractService.PlanPerson person = planPerson[0];
+            if (person == null) {
+                throw new InvalidDataException("Elija la persona del plan que falleció.");
+            }
+            DeceasedData dead = person.registered() ? null : new DeceasedData(false, person.firstName(),
+                    person.lastName(), person.document(), birth.getValue(), deathDate.getValue(), deathType.getValue(),
+                    cause.getValue(), sale.clientId(), sale.planId());
+            DeathDocumentData certificate = person.registered() ? null : new DeathDocumentData(
+                    DocumentType.MEDICAL_CERTIFICATE, authority.getEditor().getText(), certificateNumber.getText(),
+                    issued.getValue(), certificateFile[0], null);
+            return planDeathService.register(sale, dead, certificate);
+        }, id -> {
+            if (savedPlan[0]) {
+                Notice.success(window(), MODULE_NAME, aff.savedTitle(), aff.savedMessage(id));
+                return;
+            }
+            showToast("Venta N.° %04d registrada.".formatted(id));
+            loadOverview(id);
+            savedFromLink("Venta N.° %04d registrada. La encuentra en la pestaña Contratos y ventas.".formatted(id));
         });
     }
+
+    /** La tarjeta elegida en el paso 1 es "Plan exequial" (afiliar o actualizar el plan). */
+    private static boolean isAffiliation(ToggleGroup group) {
+        Toggle toggle = group.getSelectedToggle();
+        return toggle != null && toggle.getUserData() == AFFILIATION;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Dialog<ButtonType>[] newDialogHolder() {
+        return (Dialog<ButtonType>[]) new Dialog[1];
+    }
+
+    private static SaleKind kindOf(ToggleGroup group) {
+        Toggle toggle = group.getSelectedToggle();
+        return toggle != null && toggle.getUserData() instanceof SaleKind kind ? kind : null;
+    }
+
+    /** Oculta o muestra un campo del formulario con su título (la caja que lo contiene). */
+    private static void showField(Node input, boolean shown) {
+        Node box = input.getParent() != null && input.getParent().getStyleClass().contains("form-field")
+                ? input.getParent() : input;
+        box.setVisible(shown);
+        box.setManaged(shown);
+    }
+
+    /**
+     * Plan del titular en "Contrato · plan": tarjeta oscura con el plan, su estado y "Cambiar plan", y
+     * debajo las personas del plan. Solo se puede elegir a quien ya está registrado en Difuntos.
+     */
+    private void drawBoard(VBox box, ContractService.PlanBoard b, ContractService.PlanPerson[] chosen, Long wanted,
+                           Runnable changed, Runnable changePlan) {
+        box.getChildren().clear();
+        if (b == null) {
+            box.getChildren().add(note("Este cliente no tiene un plan exequial activo. Para afiliarlo, elija "
+                    + "«Plan exequial» en el paso 1; si el servicio no es con plan, elija «Particular»."));
+            return;
+        }
+        Label title = label(b.planName() + " · " + b.code(), "plan-board-title");
+        HBox chips = new HBox(6, chip(b.upToDate() ? "Al día" : "Con cuotas atrasadas", b.upToDate()),
+                chip(b.waitingDone() ? "Carencia cumplida"
+                        : "En carencia hasta " + (b.waitingEnds() == null ? "—" : DATE.format(b.waitingEnds())),
+                        b.waitingDone()));
+        HBox head = new HBox(10, title, chips);
+        head.setAlignment(Pos.CENTER_LEFT);
+        Label sub = label(pesos(b.monthlyFee()) + " / mes · desde "
+                + (b.startDate() == null ? "—" : DATE.format(b.startDate())) + " · " + b.beneficiaries() + " de "
+                + b.beneficiaryLimit() + " beneficiarios", "plan-board-sub");
+        Button change = new Button("⇄  Cambiar plan");
+        change.getStyleClass().add("plan-board-change");
+        change.setOnAction(e -> changePlan.run());
+        Region gap = new Region();
+        HBox.setHgrow(gap, Priority.ALWAYS);
+        StackPane icon = new StackPane(ModuleIcons.of("PLANES"));
+        icon.getStyleClass().add("plan-board-icon");
+        HBox card = new HBox(14, icon, new VBox(4, head, sub), gap, change);
+        card.setAlignment(Pos.CENTER_LEFT);
+        card.getStyleClass().add("plan-board-card");
+
+        Label caption = label("¿QUIÉN FALLECIÓ? * · PERSONAS DE ESTE PLAN", "field-label");
+        GridPane people = new GridPane();
+        people.setHgap(10);
+        people.setVgap(10);
+        for (int i = 0; i < 2; i++) {
+            ColumnConstraints constraints = new ColumnConstraints();
+            constraints.setPercentWidth(50);
+            people.getColumnConstraints().add(constraints);
+        }
+        ToggleGroup group = new ToggleGroup();
+        for (int i = 0; i < b.people().size(); i++) {
+            ContractService.PlanPerson p = b.people().get(i);
+            String detail = p.role() + (p.document() == null ? "" : " · Doc. " + p.document())
+                    + (p.deathDate() == null ? "" : " · falleció " + DATE.format(p.deathDate()));
+            // En carencia o con cuotas atrasadas el plan no cubre servicios: se ven las personas, pero no se escogen
+            boolean selectable = p.selectable() && b.waitingDone() && b.upToDate();
+            String state = p.hasContract() ? "Ya tiene contrato" : !b.waitingDone() ? "En carencia"
+                    : !b.upToDate() ? "Cuotas atrasadas"
+                    : p.registered() ? "Ya está en Difuntos" : "Cubierto";
+            Label stateChip = label(state, selectable ? "person-card-chip-on" : "person-card-chip");
+            stateChip.setMinWidth(Region.USE_PREF_SIZE);
+            VBox text = new VBox(2, label(p.name(), "person-card-name"), label(detail, "person-card-detail"));
+            Region spacer = new Region();
+            HBox.setHgrow(spacer, Priority.ALWAYS);
+            HBox content = new HBox(10, text, spacer, stateChip);
+            content.setAlignment(Pos.CENTER_LEFT);
+            ToggleButton person = new ToggleButton();
+            person.setGraphic(content);
+            person.getStyleClass().add("person-card");
+            person.setMaxWidth(Double.MAX_VALUE);
+            person.setMinHeight(PERSON_HEIGHT);
+            person.setPrefHeight(PERSON_HEIGHT);
+            person.setMaxHeight(PERSON_HEIGHT);
+            content.prefWidthProperty().bind(person.widthProperty().subtract(30));
+            person.setDisable(!selectable);
+            person.setToggleGroup(group);
+            person.setUserData(p);
+            if (selectable && wanted != null && wanted.equals(p.deceasedId())) {
+                person.setSelected(true);
+                chosen[0] = p;
+            }
+            people.add(person, i % 2, i / 2);
+        }
+        group.selectedToggleProperty().addListener((obs, old, toggle) -> {
+            chosen[0] = toggle == null ? null : (ContractService.PlanPerson) toggle.getUserData();
+            changed.run();
+        });
+        box.getChildren().addAll(card, caption, people);
+        if (!b.waitingDone()) {
+            box.getChildren().add(note("El plan sigue en carencia hasta el "
+                    + (b.waitingEnds() == null ? "—" : DATE.format(b.waitingEnds()))
+                    + ": todavía no cubre servicios. Si el servicio se hace ahora, elija «Particular»."));
+        } else if (!b.upToDate()) {
+            box.getChildren().add(note("El plan tiene cuotas atrasadas: debe ponerse al día en Afiliados a planes "
+                    + "antes de usar sus beneficios. Si el servicio se hace ahora, elija «Particular»."));
+        } else {
+            box.getChildren().add(note("Solo salen las personas de este plan. Si la persona no está en Difuntos, "
+                    + "en el paso siguiente se registran los datos de la muerte y el certificado."));
+        }
+    }
+
+    private static Label chip(String text, boolean ok) {
+        Label chip = label(text, ok ? "plan-board-chip-ok" : "plan-board-chip-warn");
+        chip.setMinWidth(Region.USE_PREF_SIZE);
+        return chip;
+    }
+
+    /** "Cambiar plan" desde el titular del contrato: normal ⇄ premium con la cuota de Parámetros. */
+    private void openChangePlanDialog(ContractService.PlanBoard b, Runnable reload) {
+        async("sale-plan-offers", planService::planOffers, offers -> {
+            PlanOffer current = offerOf(offers, b.planName());
+            PlanOfferCard now = new PlanOfferCard(b.planName(), pesos(b.monthlyFee()) + " / mes",
+                    current == null ? List.of() : current.includes());
+            ComboBox<String> name = new ComboBox<>();
+            name.getItems().setAll(offers.stream().map(PlanOffer::name)
+                    .filter(n -> !n.equalsIgnoreCase(b.planName())).toList());
+            FormShell.choose(name);
+            name.getStyleClass().add("form-combo");
+            PlanOfferCard next = new PlanOfferCard("", null, List.of());
+            next.setSelected(true);
+            next.setVisible(false);
+            TextField fee = new TextField();
+            fee.setPromptText("Se llena al elegir el plan");
+            lockFee(fee);
+            Label feeHint = wrapped("", "dialog-hint");
+            name.valueProperty().addListener((obs, old, value) -> {
+                PlanOffer offer = offerOf(offers, value);
+                next.setVisible(offer != null);
+                if (offer != null) {
+                    next.show(offer.name(), feeText(offer.monthlyFee()), offer.includes());
+                    fillFee(fee, feeHint, offer);
+                }
+            });
+            HBox compare = new HBox(12, captioned("PLAN ACTUAL", now), captioned("NUEVO PLAN", next));
+            compare.getChildren().forEach(n -> HBox.setHgrow(n, Priority.ALWAYS));
+            Form form = new Form()
+                    .section("Plan", 2)
+                    .wide(null, compare)
+                    .field("NUEVO PLAN *", name)
+                    .field("NUEVA CUOTA MENSUAL (COP) *", new VBox(4, fee, feeHint))
+                    .note(note("Los beneficiarios, las cuotas ya pagadas y la carencia se conservan. "
+                            + "Las cuotas que se paguen desde ahora usan la nueva cuota."));
+            Dialog<ButtonType> dialog = formDialog("Cambiar plan", b.code() + " · " + b.planName() + ".", form, 640);
+            FormShell.window(dialog, "Planes exequiales");
+            FormShell.money(fee);
+            runForm(dialog, form, "Cambiar plan", () -> {
+                planService.changePlan(b.planId(), name.getValue());
+                return b.planId();
+            }, planId -> reload.run());
+        }, failure -> showError(message(failure, "No se pudieron cargar los tipos de plan.")));
+    }
+
+    private static PlanOffer offerOf(List<PlanOffer> offers, String name) {
+        return name == null ? null : offers.stream().filter(o -> o.name().equalsIgnoreCase(name)).findFirst()
+                .orElse(null);
+    }
+
+    private static String feeText(BigDecimal fee) {
+        return fee == null ? null : pesos(fee) + " / mes";
+    }
+
+    /** Llena la cuota con el valor de Parámetros; el campo no se puede editar. */
+    /** La cuota sale de Parámetros: el campo se ve pero no se escribe en él. */
+    private static void lockFee(TextField fee) {
+        fee.setEditable(false);
+        fee.setFocusTraversable(false);
+    }
+
+    private static void fillFee(TextField fee, Label hint, PlanOffer offer) {
+        if (offer.monthlyFee() == null) {
+            fee.clear();
+            fee.getStyleClass().remove("auto-filled");
+            hint.setText("La cuota del " + offer.name() + " no está definida en Parámetros: pídale al "
+                    + "administrador que la registre allí.");
+            return;
+        }
+        fee.setText(String.valueOf(offer.monthlyFee().longValue()));
+        if (!fee.getStyleClass().contains("auto-filled")) {
+            fee.getStyleClass().add("auto-filled");
+        }
+        hint.setText("Valor del " + offer.name() + " en Parámetros. Solo cambia si se cambia allí.");
+    }
+
+    /** Botón "Adjuntar" con el nombre del archivo elegido (PDF o imagen, hasta 10 MB). */
+    private HBox certificateChooser(Path[] selected) {
+        Label fileName = label("Ningún archivo (PDF, PNG o JPG, máx. 10 MB)", "file-name");
+        fileName.setWrapText(true);
+        Button attach = new Button("Adjuntar…");
+        attach.getStyleClass().add("secondary-button");
+        attach.setMinWidth(Region.USE_PREF_SIZE);
+        attach.setOnAction(e -> {
+            FileChooser chooser = new FileChooser();
+            chooser.setTitle("Seleccionar el certificado de defunción");
+            chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("PDF o imagen",
+                    FileStorageService.EXTENSIONS.stream().map(x -> "*." + x).toList()));
+            java.io.File file = chooser.showOpenDialog(window());
+            if (file != null) {
+                selected[0] = file.toPath();
+                fileName.setText(file.getName());
+            }
+        });
+        HBox box = new HBox(10, attach, fileName);
+        box.setAlignment(Pos.CENTER_LEFT);
+        box.getStyleClass().add("file-box");
+        return box;
+    }
+
+    private static VBox captioned(String caption, Node node) {
+        VBox box = new VBox(4, label(caption, "field-label"), node);
+        box.setMaxWidth(Double.MAX_VALUE);
+        return box;
+    }
+
+    // ---------- Plan exequial (afiliar o actualizar) ----------
+
+    /**
+     * Al registrar un cliente y aceptar afiliarlo: la ventana abre directo en el plan y los beneficiarios,
+     * con el cliente ya elegido (sin pasar por el tipo de contrato ni por el cliente).
+     */
+    private void openAffiliation(Option client) {
+        AffiliationPart aff = new AffiliationPart(offers());
+        Form form = new Form();
+        aff.addMain(form);
+        aff.preset(client);
+        Dialog<ButtonType> dialog = formDialog("Afiliar a plan exequial", client.label() + ": elija el plan y agregue "
+                + "sus beneficiarios. Los campos con * son obligatorios.", form, 900);
+        FormShell.page(dialog, "Clientes");
+        FormShell.money(aff.fee);
+        aff.onChange = () -> {
+            aff.refresh();
+            FormShell.refreshSteps(dialog);
+        };
+        FormShell.steps(dialog, aff.side,
+                new FormShell.Step("Cliente", "Cliente titular"),
+                new FormShell.Step("Plan y beneficiarios", "Plan exequial", "Beneficiarios"));
+        FormShell.stepRules(dialog, "Cliente"::equals, aff::check);
+        runForm(dialog, form, "Registrar", aff::save,
+                planId -> Notice.success(window(), MODULE_NAME, aff.savedTitle(), aff.savedMessage(planId)));
+    }
+
+    /**
+     * Pasos de "Plan exequial" dentro de "Nuevo contrato": si el cliente no tiene plan, se afilia
+     * (cliente ya registrado o nuevo, plan y beneficiarios); si ya lo tiene, se ve su plan y se
+     * cambia el tipo o se agregan y quitan personas. Todo se guarda junto al final.
+     */
+    private final class AffiliationPart {
+        final ToggleButton existing = new ToggleButton("Ya está registrado");
+        final ToggleButton fresh = new ToggleButton("Cliente nuevo");
+        final HBox modes = new HBox(existing, fresh);
+        final SearchField<Option> holder = new SearchField<>("Buscar por nombre o documento", "clientes",
+                contractService::searchClients, Option::label, Option::detail);
+        final ComboBox<ClientType> clientType = new ComboBox<>();
+        final ComboBox<String> documentType = new ComboBox<>();
+        final TextField document = new TextField();
+        final TextField names = new TextField();
+        final TextField lastnames = new TextField();
+        final TextField phone = new TextField();
+        final TextField email = new TextField();
+        final TextField address = new TextField();
+        final String[] planName = new String[1];
+        final TextField fee = new TextField();
+        final Label feeHint = wrapped("", "dialog-hint");
+        final Label planHint = note("");
+        final HBox planCards = new HBox(14);
+        final List<PlanOfferCard> cards = new ArrayList<>();
+        final List<PlanOffer> offers;
+        final DatePicker start = new DatePicker(today());
+        final Label startHint = wrapped("", "dialog-hint");
+        final VBox startBox = new VBox(4, start, startHint);
+        final List<FuneralPlanService.NewBeneficiary> added = new ArrayList<>();
+        final List<String> surcharges = new ArrayList<>();
+        final List<Long> removed = new ArrayList<>();
+        final VBox beneficiaryList = new VBox(8);
+        final TextField benName = new TextField();
+        final TextField benLastname = new TextField();
+        final TextField benDocument = new TextField();
+        final ComboBox<Relationship> relationship = new ComboBox<>();
+        final Button addBeneficiary = new Button("+ Agregar");
+        final Label beneficiaryError = note("");
+        final VBox preview = new VBox(4);
+        final Label feeTotal = label("—", "form-summary-value");
+        final VBox side;
+        /** Plan activo del titular elegido; null si no tiene (entonces se afilia). */
+        FuneralPlanService.PlanDetail current;
+        /** Titular cuyo plan se está buscando, para no pintar una respuesta vieja. */
+        Option loading;
+        Runnable onChange = () -> { };
+
+        AffiliationPart(List<PlanOffer> offers) {
+            this.offers = offers;
+            modes.getStyleClass().addAll("segmented", "form-segmented");
+            modes.setMaxWidth(Region.USE_PREF_SIZE);
+            ToggleGroup clientMode = new ToggleGroup();
+            for (ToggleButton mode : List.of(existing, fresh)) {
+                mode.getStyleClass().add("segment");
+                mode.setToggleGroup(clientMode);
+            }
+            existing.setSelected(true);
+            clientMode.selectedToggleProperty().addListener((obs, old, toggle) -> {
+                if (toggle == null) {
+                    old.setSelected(true);
+                    return;
+                }
+                loadPlan();
+            });
+            clientType.getItems().setAll(ClientType.values());
+            clientType.setConverter(converter(ClientType::getDisplayName, ""));
+            FormShell.choose(clientType);
+            documentType.setConverter(converter(code -> CLIENT_DOCUMENTS.getOrDefault(code, code), ""));
+            FormShell.choose(documentType);
+            document.setPromptText("Solo números");
+            FormShell.document(document, documentType::getValue, 11);
+            names.setPromptText("Nombres");
+            lastnames.setPromptText("Apellidos");
+            phone.setPromptText("3001234567");
+            FormShell.phone(phone);
+            email.setPromptText("nombre@gmail.com");
+            address.setPromptText("Opcional");
+            for (ComboBox<?> box : List.of(clientType, documentType)) {
+                box.getStyleClass().add("form-combo");
+            }
+            clientType.valueProperty().addListener((obs, old, type) -> {
+                boolean corporate = type != null && type.isCorporate();
+                documentType.getItems().setAll(corporate ? List.of(ClientService.NIT) : ClientService.NATURAL_DOCUMENT_TYPES);
+                documentType.setValue(corporate ? ClientService.NIT : null);
+                names.setPromptText(corporate ? "Razón social" : "Nombres");
+                lastnames.setDisable(corporate);
+            });
+
+            fee.setPromptText("Se llena al elegir el plan");
+            lockFee(fee);
+            start.setEditable(false); // se elige en el calendario; el texto escrito no se interpreta
+            start.setConverter(dateConverter());
+            for (PlanOffer offer : offers) {
+                PlanOfferCard card = new PlanOfferCard(offer.name(), feeText(offer.monthlyFee()), offer.includes());
+                HBox.setHgrow(card, Priority.ALWAYS);
+                card.setPrefWidth(10);
+                card.setOnMouseClicked(e -> pickPlan(offer));
+                cards.add(card);
+                planCards.getChildren().add(card);
+            }
+
+            benName.setPromptText("Nombres");
+            benLastname.setPromptText("Apellidos");
+            benDocument.setPromptText("Solo números");
+            FormShell.document(benDocument, null, 11);
+            relationship.getItems().setAll(Relationship.values());
+            relationship.setConverter(converter(Relationship::getDisplayName, ""));
+            FormShell.choose(relationship);
+            relationship.getStyleClass().add("form-combo");
+            addBeneficiary.getStyleClass().add("small-dark-button");
+            addBeneficiary.setMinWidth(Region.USE_PREF_SIZE);
+            addBeneficiary.setOnAction(e -> addBeneficiary());
+
+            preview.getStyleClass().add("contract-preview");
+            VBox totalCard = new VBox(label("CUOTA MENSUAL", "form-summary-title"), feeTotal);
+            totalCard.getStyleClass().add("form-total");
+            side = new VBox(12, label("Vista previa", "form-side-title"), preview, totalCard);
+
+            holder.valueProperty().addListener((obs, old, value) -> loadPlan());
+            for (TextField field : List.of(names, lastnames, document, email, fee)) {
+                field.textProperty().addListener((obs, old, value) -> refresh());
+            }
+            documentType.valueProperty().addListener((obs, old, value) -> refresh());
+            start.valueProperty().addListener((obs, old, value) -> refresh());
+            refresh();
+        }
+
+        /** Secciones del cliente, el plan y los beneficiarios. */
+        void addMain(Form form) {
+            form.section("Cliente titular", 3)
+                    .wide(null, modes)
+                    .wide("TITULAR *", holder.node())
+                    .field("TIPO DE CLIENTE *", clientType)
+                    .field("TIPO DE DOCUMENTO *", documentType)
+                    .field("N.° DE DOCUMENTO *", document)
+                    .field("NOMBRES O RAZÓN SOCIAL *", names)
+                    .field("APELLIDOS *", lastnames)
+                    .field("TELÉFONO *", phone)
+                    .field("CORREO *", email)
+                    .wideFrom("DIRECCIÓN", address)
+                    .section("Plan exequial", 2)
+                    .wide(null, planCards)
+                    .note(planHint)
+                    .field("CUOTA MENSUAL (COP) *", new VBox(4, fee, feeHint))
+                    .field("FECHA DE INICIO *", startBox)
+                    .section("Beneficiarios", 4)
+                    .wide(null, beneficiaryList)
+                    .field("NOMBRES", benName)
+                    .field("APELLIDOS", benLastname)
+                    .field("DOCUMENTO", benDocument)
+                    .field("PARENTESCO", relationship)
+                    .note(new HBox(addBeneficiary))
+                    .note(beneficiaryError)
+                    .note(note("Los recargos (parentesco no directo o por encima del tope) salen de Parámetros."));
+        }
+
+        void preset(Option client) {
+            if (client != null) {
+                holder.setValue(client); // desde Clientes: ya está registrado
+            }
+        }
+
+        boolean updating() {
+            return current != null;
+        }
+
+        /** Por qué no se puede salir del paso (null si se puede). */
+        String check(String step) {
+            if ("Cliente".equals(step)) {
+                if (existing.isSelected() && holder.getValue() == null) {
+                    return "Busque y elija el cliente titular, o elija «Cliente nuevo».";
+                }
+                if (existing.isSelected() && loading != null) {
+                    return "Buscando el plan del cliente…";
+                }
+            }
+            if ("Plan y beneficiarios".equals(step) && planName[0] == null) {
+                return "Elija el plan: Normal o Premium.";
+            }
+            return null;
+        }
+
+        /** Afilia o guarda los cambios del plan; devuelve el id del plan. */
+        Long save() {
+            if (planName[0] == null) {
+                throw new InvalidDataException("Elija el plan: Normal o Premium.");
+            }
+            if (current != null) {
+                Long planId = current.card().id();
+                planService.updatePlan(planId, planName[0], List.copyOf(removed), List.copyOf(added));
+                return planId;
+            }
+            ClientData newClient = fresh.isSelected() ? new ClientData(clientType.getValue(), documentType.getValue(),
+                    document.getText(), names.getText(), lastnames.isDisable() ? null : lastnames.getText(),
+                    phone.getText(), email.getText(), address.getText()) : null;
+            return planService.affiliate(new FuneralPlanService.AffiliationData(
+                    fresh.isSelected() ? null : idOf(holder.getValue()), newClient, planName[0],
+                    start.getValue(), List.copyOf(added))).getId();
+        }
+
+        String savedTitle() {
+            return current != null ? "Plan actualizado" : "Plan afiliado";
+        }
+
+        String savedMessage(Long planId) {
+            return (current != null ? "Se guardaron los cambios del plan " : "Se afilió el plan ")
+                    + FuneralPlanService.code(planId) + ". Lo encuentra en la pestaña Afiliados a planes.";
+        }
+
+        /** Con el titular elegido se busca si ya tiene plan: si lo tiene, se actualiza en vez de afiliar. */
+        private void loadPlan() {
+            current = null;
+            removed.clear();
+            Option client = fresh.isSelected() ? null : holder.getValue();
+            loading = client;
+            if (client == null) {
+                pickPlan(null);
+                onChange.run();
+                return;
+            }
+            refresh();
+            async("affiliation-current-plan", () -> planService.activePlanOf(client.id()), found -> {
+                if (client != loading) {
+                    return;
+                }
+                loading = null;
+                current = found.orElse(null);
+                added.clear();
+                surcharges.clear();
+                pickPlan(current == null ? null : offerOf(offers, current.card().planName()));
+                onChange.run();
+            }, failure -> {
+                if (client == loading) {
+                    loading = null;
+                    planHint.setText(message(failure, "No se pudo revisar si el cliente ya tiene plan."));
+                    onChange.run();
+                }
+            });
+        }
+
+        private void pickPlan(PlanOffer offer) {
+            planName[0] = offer == null ? null : offer.name();
+            for (int i = 0; i < cards.size(); i++) {
+                cards.get(i).setSelected(offer != null && offers.get(i) == offer);
+            }
+            if (offer == null) {
+                fee.clear();
+                feeHint.setText("");
+            } else {
+                fillFee(fee, feeHint, offer);
+            }
+            refresh();
+        }
+
+        private void addBeneficiary() {
+            beneficiaryError.setText("");
+            String doc = benDocument.getText() == null ? "" : benDocument.getText().trim();
+            if (benName.getText().isBlank() || benLastname.getText().isBlank()) {
+                beneficiaryError.setText("Escriba los nombres y los apellidos del beneficiario.");
+                return;
+            }
+            if (!doc.matches("\\d{5,11}")) {
+                beneficiaryError.setText("El documento del beneficiario debe tener entre 5 y 11 dígitos.");
+                return;
+            }
+            if (relationship.getValue() == null) {
+                beneficiaryError.setText("Seleccione el parentesco con el titular.");
+                return;
+            }
+            boolean repeated = added.stream().anyMatch(b -> b.documentNumber().equals(doc)) || (current != null
+                    && current.beneficiaries().stream().anyMatch(b -> doc.equals(b.documentNumber())
+                    && !removed.contains(b.id())));
+            if (repeated) {
+                beneficiaryError.setText("Ya hay un beneficiario con ese documento en el plan.");
+                return;
+            }
+            FuneralPlanService.NewBeneficiary b = new FuneralPlanService.NewBeneficiary(benName.getText().trim(),
+                    benLastname.getText().trim(), doc, relationship.getValue());
+            boolean corporate = current != null ? current.card().corporate()
+                    : fresh.isSelected() && clientType.getValue() != null && clientType.getValue().isCorporate();
+            long kept = current == null ? 0 : current.beneficiaries().size() - removed.size();
+            long position = kept + added.size() + 1L;
+            async("affiliation-surcharge", () -> planService.previewNewSurcharge(position, corporate, b.relationship()),
+                    surcharge -> {
+                        added.add(b);
+                        surcharges.add(surcharge.applies() ? "Recargo " + pesos(surcharge.total()) : "Sin recargo");
+                        benName.clear();
+                        benLastname.clear();
+                        benDocument.clear();
+                        relationship.setValue(null);
+                        refresh();
+                    }, failure -> beneficiaryError.setText(message(failure, "No se pudo calcular el recargo.")));
+        }
+
+        /** Muestra los campos que tocan y vuelve a dibujar la lista de personas y la vista previa. */
+        void refresh() {
+            boolean isNew = fresh.isSelected();
+            showField(holder.node(), !isNew);
+            for (Node n : List.of(clientType, documentType, document, names, lastnames, phone, email, address)) {
+                showField(n, isNew);
+            }
+            showField(startBox, current == null);
+            String holderName = isNew ? (names.getText() + " " + lastnames.getText()).trim()
+                    : holder.getValue() == null ? "" : holder.getValue().label();
+            String holderDoc = isNew ? (documentType.getValue() == null ? "" : documentType.getValue() + " ")
+                    + document.getText() : holder.getValue() == null ? "" : orEmpty(holder.getValue().detail());
+            if (current != null) {
+                String was = current.card().planName();
+                planHint.setText("Ya tiene el " + was + " · " + current.card().code() + ". Puede cambiarlo de tipo, "
+                        + "agregar o quitar personas; la carencia y las cuotas pagadas se conservan. Las cuotas que "
+                        + "se paguen desde ahora usan la cuota del plan elegido.");
+            } else {
+                planHint.setText(loading != null ? "Buscando si el cliente ya tiene plan…" : "");
+            }
+            // El titular va antes que los demás; luego los que ya están en el plan y los nuevos
+            beneficiaryList.getChildren().clear();
+            beneficiaryList.getChildren().add(personRow(holderName.isBlank() ? "Titular sin elegir" : holderName,
+                    (holderDoc.isBlank() ? "" : holderDoc.trim() + " · ") + "Titular", null, null));
+            if (current != null) {
+                for (FuneralPlanService.BeneficiaryInfo b : current.beneficiaries()) {
+                    if (removed.contains(b.id())) {
+                        continue;
+                    }
+                    String detail = "Doc. " + b.documentNumber() + " · " + b.relationshipLabel();
+                    beneficiaryList.getChildren().add(personRow(b.fullName(), detail,
+                            b.isDeceased() ? "Difunto del plan" : null, b.isDeceased() ? null : () -> {
+                                removed.add(b.id());
+                                refresh();
+                            }));
+                }
+            }
+            for (int i = 0; i < added.size(); i++) {
+                FuneralPlanService.NewBeneficiary b = added.get(i);
+                int index = i;
+                beneficiaryList.getChildren().add(personRow(PersonNames.titleCase(b.name() + " " + b.lastname()),
+                        "Doc. " + b.documentNumber() + " · " + b.relationship().getDisplayName() + " · nuevo",
+                        surcharges.get(i), () -> {
+                            added.remove(index);
+                            surcharges.remove(index);
+                            refresh();
+                        }));
+            }
+            LocalDate from = start.getValue();
+            startHint.setText(current == null && from == null ? "Ingrese la fecha de inicio." : "");
+            String money = feeMoney(fee.getText());
+            feeTotal.setText(money == null ? "—" : money);
+            if (current != null) {
+                drawUpdatePreview();
+            } else {
+                drawPreview(preview, holderName, holderDoc, isNew ? email.getText() : null, planName[0], fee.getText(),
+                        from, added);
+            }
+        }
+
+        /** Vista previa de los cambios a un plan que ya existe. */
+        private void drawUpdatePreview() {
+            FuneralPlanService.PlanCard card = current.card();
+            preview.getChildren().clear();
+            Label brand = label(BrandTheme.brand() == null ? "" : BrandTheme.brand().commercialName(),
+                    "contract-preview-brand");
+            Region gap = new Region();
+            HBox.setHgrow(gap, Priority.ALWAYS);
+            HBox head = new HBox(brand, gap, label(card.code() + " · " + DATE.format(today()), "contract-preview-meta"));
+            head.setAlignment(Pos.CENTER_LEFT);
+            head.getStyleClass().add("contract-preview-head");
+            boolean changed = planName[0] != null && !planName[0].equalsIgnoreCase(card.planName());
+            preview.getChildren().addAll(head, wrapped("ACTUALIZACIÓN DEL PLAN EXEQUIAL", "contract-preview-title"),
+                    label("TITULAR", "contract-preview-section"), previewRow("Nombre", card.holderName()),
+                    label("PLAN", "contract-preview-section"),
+                    previewRow("Tipo", changed ? card.planName() + " → " + planName[0] : card.planName()),
+                    previewRow("Cuota mensual", changed ? feeMoney(fee.getText()) : pesos(card.monthlyFee())),
+                    label("PERSONAS", "contract-preview-section"),
+                    previewRow(card.holderName(), "Titular"));
+            for (FuneralPlanService.BeneficiaryInfo b : current.beneficiaries()) {
+                preview.getChildren().add(previewRow(b.fullName(),
+                        removed.contains(b.id()) ? "Se quita" : b.relationshipLabel()));
+            }
+            for (FuneralPlanService.NewBeneficiary b : added) {
+                preview.getChildren().add(previewRow(PersonNames.titleCase(b.name() + " " + b.lastname()),
+                        b.relationship().getDisplayName() + " · nuevo"));
+            }
+            if (!changed && removed.isEmpty() && added.isEmpty()) {
+                preview.getChildren().add(label("Sin cambios todavía", "contract-preview-blank"));
+            }
+        }
+    }
+
+    /** Fila de una persona del plan (el titular primero). onRemove en null no muestra la ✕. */
+    private static HBox personRow(String name, String detail, String surcharge, Runnable onRemove) {
+        VBox text = new VBox(2, label(name, "person-card-name"), label(detail, "person-card-detail"));
+        Region gap = new Region();
+        HBox.setHgrow(gap, Priority.ALWAYS);
+        HBox row = new HBox(10, text, gap);
+        if (surcharge != null) {
+            Label chip = label(surcharge, surcharge.startsWith("Sin") ? "person-card-chip-on" : "plan-board-chip-warn");
+            chip.setMinWidth(Region.USE_PREF_SIZE);
+            row.getChildren().add(chip);
+        }
+        if (onRemove != null) {
+            Button remove = new Button("✕");
+            remove.getStyleClass().add("chip-remove");
+            remove.setOnAction(e -> onRemove.run());
+            row.getChildren().add(remove);
+        }
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.getStyleClass().add("person-row");
+        return row;
+    }
+
+    /** Vista previa del contrato de afiliación: se va llenando con cada paso. */
+    private static void drawPreview(VBox box, String holder, String document, String email, String plan,
+                                    String fee, LocalDate start, List<FuneralPlanService.NewBeneficiary> added) {
+        box.getChildren().clear();
+        // Se muestran como quedarán guardados: con mayúscula inicial
+        holder = PersonNames.titleCase(holder);
+        Label brand = label(BrandTheme.brand() == null ? "" : BrandTheme.brand().commercialName(), "contract-preview-brand");
+        Region gap = new Region();
+        HBox.setHgrow(gap, Priority.ALWAYS);
+        HBox head = new HBox(brand, gap, label("N.° — · " + DATE.format(LocalDate.now(AccessLogService.APP_ZONE)),
+                "contract-preview-meta"));
+        head.setAlignment(Pos.CENTER_LEFT);
+        head.getStyleClass().add("contract-preview-head");
+        Label title = wrapped("CONTRATO DE AFILIACIÓN A PLAN EXEQUIAL", "contract-preview-title");
+        box.getChildren().addAll(head, title, label("TITULAR", "contract-preview-section"),
+                previewRow("Nombre", holder), previewRow("Documento", document));
+        if (email != null) {
+            box.getChildren().add(previewRow("Correo", email));
+        }
+        String money = feeMoney(fee);
+        box.getChildren().addAll(label("PLAN", "contract-preview-section"), previewRow("Tipo", plan),
+                previewRow("Cuota mensual", money),
+                previewRow("Fecha de inicio", start == null ? null : DATE.format(start)),
+                label("BENEFICIARIOS", "contract-preview-section"));
+        // El titular va antes que los beneficiarios
+        box.getChildren().add(previewRow(holder == null || holder.isBlank() ? "Titular" : holder, "Titular"));
+        for (FuneralPlanService.NewBeneficiary b : added) {
+            box.getChildren().add(previewRow(PersonNames.titleCase(b.name() + " " + b.lastname()), b.relationship().getDisplayName()));
+        }
+        if (added.isEmpty()) {
+            box.getChildren().add(label("Sin beneficiarios todavía", "contract-preview-blank"));
+        }
+    }
+
+    private static HBox previewRow(String caption, String value) {
+        boolean empty = value == null || value.isBlank();
+        Label left = label(caption, "contract-preview-label");
+        left.setMinWidth(Region.USE_PREF_SIZE);
+        Label right = label(empty ? "________" : value, empty ? "contract-preview-blank" : "contract-preview-value");
+        right.setWrapText(true);
+        right.setTextAlignment(javafx.scene.text.TextAlignment.RIGHT);
+        right.setAlignment(Pos.CENTER_RIGHT);
+        Region gap = new Region();
+        HBox.setHgrow(gap, Priority.ALWAYS);
+        HBox row = new HBox(8, left, gap, right);
+        row.getStyleClass().add("contract-preview-row");
+        return row;
+    }
+
+    /** La cuota del campo ("$ 35.000" o "35000") escrita en pesos; null si está vacía. */
+    private static String feeMoney(String text) {
+        try {
+            BigDecimal value = parseAmount(text, "La cuota");
+            return value == null ? null : pesos(value);
+        } catch (BusinessException notANumber) {
+            return null;
+        }
+    }
+
+    private static String orEmpty(String value) {
+        return value == null ? "" : value;
+    }
+
+    /**
+     * Si "Nuevo contrato" se abrió desde otro módulo (Clientes o Planes), al cerrarlo el usuario vuelve
+     * a ese módulo en vez de quedarse en Contratos. message, si no es null, avisa lo que se guardó.
+     */
+    private void savedFromLink(String message) {
+        if (message != null && openedFromLink) {
+            Notice.success(window(), MODULE_NAME, "Venta registrada", message);
+        }
+    }
+
+    /** Documentos del cliente nuevo en la afiliación (los mismos de "Nuevo cliente"). */
+    private static final Map<String, String> CLIENT_DOCUMENTS = Map.of(
+            "CC", "CC · Cédula de ciudadanía",
+            "CE", "CE · Cédula de extranjería",
+            "PA", "PA · Pasaporte",
+            ClientService.NIT, "NIT · Número de identificación tributaria");
 
     private static void showQuote(Quote quote, VBox box, Label total) {
         box.getChildren().setAll(linesGrid(quote.lines(), quote.total()));
@@ -1059,8 +2294,7 @@ public class ContractController implements RefreshableView {
         DatePicker date = new DatePicker(today());
         date.setEditable(false);
         date.setConverter(dateConverter());
-        LocalTime now = LocalTime.now(AccessLogService.APP_ZONE);
-        ComboBox<LocalTime> time = timeCombo(LocalTime.of(now.getHour(), now.getMinute() < 30 ? 0 : 30));
+        ComboBox<LocalTime> time = timeCombo(null);
         Form form = new Form()
                 .section("Preparación del cuerpo", 3)
                 .field("CONTRATO", readOnly(c.number()))
@@ -1147,6 +2381,62 @@ public class ContractController implements RefreshableView {
         Form note(Node note) {
             body.getChildren().add(note);
             return this;
+        }
+
+        /** Campo que ocupa toda la fila; sin etiqueta si label es null. */
+        Form wide(String label, Node input) {
+            if (column > 0) {
+                column = 0;
+                row++;
+            }
+            column = 0;
+            spanning(label, input, columns);
+            column = 0;
+            row++;
+            return this;
+        }
+
+        /** Campo que ocupa desde la columna actual hasta el final de la fila. */
+        Form wideFrom(String label, Node input) {
+            if (column >= columns) {
+                column = 0;
+                row++;
+            }
+            spanning(label, input, columns - column);
+            column = 0;
+            row++;
+            return this;
+        }
+
+        /** Otra cuadrícula en la misma sección, debajo de lo último que se agregó (por ejemplo, un aviso). */
+        Form grid(int columns) {
+            grid = new GridPane();
+            grid.setHgap(18);
+            grid.setVgap(12);
+            for (int i = 0; i < columns; i++) {
+                ColumnConstraints constraints = new ColumnConstraints();
+                constraints.setPercentWidth(100.0 / columns);
+                grid.getColumnConstraints().add(constraints);
+            }
+            this.columns = columns;
+            column = 0;
+            row = 0;
+            body.getChildren().add(grid);
+            return this;
+        }
+
+        private void spanning(String label, Node input, int span) {
+            VBox box = new VBox(input);
+            if (label != null) {
+                Label caption = new Label(label);
+                caption.getStyleClass().add("field-label");
+                box.getChildren().add(0, caption);
+            }
+            box.getStyleClass().add("form-field");
+            if (input instanceof Region region && !(input instanceof Label)) {
+                region.setMaxWidth(Double.MAX_VALUE);
+            }
+            grid.add(box, column, row, Math.max(span, 1), 1);
         }
     }
 
@@ -1269,9 +2559,14 @@ public class ContractController implements RefreshableView {
         for (int minutes = 0; minutes < 24 * 60; minutes += 30) {
             box.getItems().add(LocalTime.of(minutes / 60, minutes % 60));
         }
-        box.setValue(initial);
         box.setVisibleRowCount(8);
         box.setConverter(converter(HOUR::format, ""));
+        // Al registrar no se pone una hora: el usuario la elige. Al editar se muestra la guardada.
+        if (initial == null) {
+            FormShell.choose(box, "Seleccione la hora");
+        } else {
+            box.setValue(initial);
+        }
         return box;
     }
 

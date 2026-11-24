@@ -114,7 +114,7 @@
 /* Barra de búsqueda y filtros */
 .contracts-root .filter-card {
     -fx-background-color: -eden-card; -fx-border-color: transparent;
-    -fx-background-radius: 18; -fx-border-radius: 18; -fx-padding: 10 12; -fx-spacing: 10;
+    -fx-background-radius: 18; -fx-border-radius: 18; -fx-padding: 12 16; -fx-spacing: 16;
     -fx-alignment: center-left;
 }
 .contracts-root .search-box { -fx-background-color: -eden-tint; -fx-background-radius: 12; }
