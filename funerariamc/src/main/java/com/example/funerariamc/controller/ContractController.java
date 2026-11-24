@@ -1775,6 +1775,15 @@ public class ContractController implements RefreshableView {
                 planId -> Notice.success(window(), MODULE_NAME, aff.savedTitle(), aff.savedMessage(planId)));
     }
 
+    /** Nombre del titular en la ficha: baja de línea si es largo, nunca se corta con "…". */
+    private static Label holderName(String name) {
+        Label label = new Label(PersonNames.titleCase(name));
+        label.getStyleClass().add("holder-name");
+        label.setWrapText(true);
+        label.setMinHeight(Region.USE_PREF_SIZE);
+        return label;
+    }
+
     /**
      * Pasos de "Plan exequial" dentro de "Nuevo contrato": si el cliente no tiene plan, se afilia
      * (cliente ya registrado o nuevo, plan y beneficiarios); si ya lo tiene, se ve su plan y se
@@ -2173,7 +2182,7 @@ public class ContractController implements RefreshableView {
             String kind = c == null || c.getClientType() == null ? "" : c.getClientType().getDisplayName();
             if (c == null) {
                 // Mientras llegan los datos se ve la misma animación de carga del resto del sistema
-                return infoCard("FICHA DEL TITULAR", label(PersonNames.titleCase(name), "holder-name"),
+                return infoCard("FICHA DEL TITULAR", holderName(name),
                         skeleton(true, 1), skeleton(false, 6));
             }
             GridPane facts = factsGrid();
@@ -2187,7 +2196,7 @@ public class ContractController implements RefreshableView {
                 fact(facts, 4, "Dirección", c.getAddress());
                 fact(facts, 5, "Cliente desde", c.getRegistrationDate() == null ? null : DATE.format(c.getRegistrationDate()));
             }
-            return infoCard("FICHA DEL TITULAR", label(PersonNames.titleCase(name), "holder-name"),
+            return infoCard("FICHA DEL TITULAR", holderName(name),
                     label(kind.isBlank() ? "Cliente registrado" : kind, "holder-sub"), facts);
         }
 

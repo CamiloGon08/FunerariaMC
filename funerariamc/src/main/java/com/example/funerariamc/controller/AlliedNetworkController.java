@@ -4,6 +4,7 @@ import com.example.funerariamc.exception.BusinessException;
 import com.example.funerariamc.exception.InvalidDataException;
 import com.example.funerariamc.utils.enums.AlliedPaymentStatus;
 import com.example.funerariamc.utils.enums.PaymentMethod;
+import com.example.funerariamc.service.WordSearch;
 import com.example.funerariamc.service.AlliedHomeData;
 import com.example.funerariamc.service.AlliedNetworkService;
 import com.example.funerariamc.service.AlliedNetworkService.ContractOption;
@@ -256,15 +257,15 @@ public class AlliedNetworkController implements RefreshableView {
         String digits = text.replaceAll("[^0-9]", "");
         String city = cityFilter.getValue();
         Object state = stateGroup.getSelectedToggle();
-        List<HomeCard> shown = homes.stream()
-                .filter(h -> text.isEmpty() || normalize(h.name()).contains(text)
+        List<HomeCard> shown = WordSearch.startsFirst(homes.stream()
+                .filter(h -> WordSearch.matches(h.name(), text)
                         || (!digits.isEmpty() && h.nit() != null && h.nit().replaceAll("[^0-9]", "").contains(digits)))
                 .filter(h -> city == null || ALL_CITIES.equals(city) || city.equalsIgnoreCase(h.city() == null ? "" : h.city().trim()))
                 .filter(h -> state == allState
                         || (state == upToDateState && h.state() == HomeState.UP_TO_DATE)
                         || (state == balanceState && h.state() == HomeState.WITH_BALANCE)
                         || (state == inactiveState && h.state() == HomeState.INACTIVE))
-                .toList();
+                .toList(), text, HomeCard::name);
         shownHomes = shown;
         // Un filtro nuevo vuelve a la página 1; recargar tras guardar se queda en la misma página.
         String filterKey = text + "|" + city + "|" + state;
@@ -286,11 +287,21 @@ public class AlliedNetworkController implements RefreshableView {
         }
         int columns = width >= 900 ? 3 : 2;
         double cardWidth = Math.floor((width - CARD_GAP * (columns - 1)) / columns);
+        double tallest = 0;
         for (Node node : cardsPane.getChildren()) {
             if (node instanceof Region region) {
                 region.setPrefWidth(cardWidth);
                 region.setMinWidth(cardWidth);
                 region.setMaxWidth(cardWidth);
+                region.setMinHeight(Region.USE_COMPUTED_SIZE);
+                tallest = Math.max(tallest, region.prefHeight(cardWidth));
+            }
+        }
+        // Todas las tarjetas de la página con el mismo alto (el de la más alta, por ejemplo cuando un
+        // nombre largo baja a dos líneas), para que las filas se vean parejas
+        for (Node node : cardsPane.getChildren()) {
+            if (node instanceof Region region) {
+                region.setMinHeight(tallest);
             }
         }
     }
@@ -345,16 +356,28 @@ public class AlliedNetworkController implements RefreshableView {
         pay.getStyleClass().addAll("card-button", "strong");
         pay.setDisable(h.pendingCount() == 0);
         pay.setOnAction(e -> payServices(h));
+        // Arriba las dos acciones en partes iguales y debajo Ver detalle a todo el ancho: así los tres
+        // botones nunca se salen de la tarjeta, aunque la ventana sea angosta.
+        GridPane buttons = new GridPane();
+        buttons.setHgap(8);
+        buttons.setVgap(8);
+        ColumnConstraints half = new ColumnConstraints();
+        half.setPercentWidth(50);
+        buttons.getColumnConstraints().addAll(half, half);
         for (Button b : List.of(detail, service, pay)) {
-            HBox.setHgrow(b, Priority.ALWAYS);
             b.setMaxWidth(Double.MAX_VALUE);
-            b.setMinWidth(Region.USE_PREF_SIZE);
+            b.setMinWidth(0);
         }
-        HBox buttons = new HBox(8, detail, service, pay);
+        buttons.add(service, 0, 0);
+        buttons.add(pay, 1, 0);
+        buttons.add(detail, 0, 1, 2, 1);
 
         Region rule = new Region();
         rule.getStyleClass().add("card-rule");
-        VBox card = new VBox(head, rule, info, stats, buttons);
+        // Empuja los botones al fondo: en tarjetas del mismo alto quedan alineados
+        Region push = new Region();
+        VBox.setVgrow(push, Priority.ALWAYS);
+        VBox card = new VBox(head, rule, info, stats, push, buttons);
         card.getStyleClass().add("home-card");
         if (!h.active()) {
             card.getStyleClass().add("inactive");

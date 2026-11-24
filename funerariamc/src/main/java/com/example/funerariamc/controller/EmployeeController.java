@@ -546,6 +546,8 @@ public class EmployeeController implements RefreshableView {
                 new FormShell.Step("Datos laborales", "Datos laborales"),
                 new FormShell.Step("Datos del cargo y cuenta", "Cuenta de acceso al sistema", "Vendedor funerario",
                         "Tanatólogo", "Conductor"));
+        // No se pasa al siguiente paso con un campo obligatorio vacío
+        FormShell.stepRules(stage, step -> false, view.controller()::stepProblem);
         stage.showAndWait();
     }
 

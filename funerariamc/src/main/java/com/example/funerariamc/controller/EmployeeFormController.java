@@ -8,6 +8,7 @@ import com.example.funerariamc.model.Thanatopractor;
 import com.example.funerariamc.utils.enums.EmployeePosition;
 import com.example.funerariamc.utils.enums.Sex;
 import com.example.funerariamc.service.AccessLogService;
+import com.example.funerariamc.service.ClientService;
 import com.example.funerariamc.service.SaleParameters;
 import com.example.funerariamc.service.EmployeeData;
 import com.example.funerariamc.service.EmployeeService;
@@ -431,6 +432,53 @@ public class EmployeeFormController {
         }
         errorLabel.setText("");
         return true;
+    }
+
+    /**
+     * Por qué no se puede salir del paso (o null si se puede): pide los mismos campos obligatorios que
+     * el servicio revisa al guardar, para no llegar al último paso con uno vacío.
+     */
+    public String stepProblem(String step) {
+        if ("Datos personales".equals(step)) {
+            if (text(nameField) == null) {
+                return "Los nombres son obligatorios.";
+            }
+            if (text(lastnameField) == null) {
+                return "Los apellidos son obligatorios.";
+            }
+            if (documentTypeCombo.getValue() == null) {
+                return "El tipo de documento es obligatorio.";
+            }
+            if (text(documentField) == null) {
+                return "El número de documento es obligatorio.";
+            }
+            if (sexCombo.getValue() == null) {
+                return "Seleccione el sexo del empleado.";
+            }
+            String email = text(emailField);
+            if (email == null) {
+                return "El correo es obligatorio.";
+            }
+            if (!email.matches(ClientService.EMAIL_PATTERN)) {
+                return "El correo no es válido. Escríbalo como nombre@gmail.com.";
+            }
+        } else if ("Datos laborales".equals(step)) {
+            if (positionCombo.getValue() == null) {
+                return "Seleccione el cargo.";
+            }
+            if (hireDatePicker.getValue() == null) {
+                return "La fecha de ingreso es obligatoria.";
+            }
+            try {
+                BigDecimal salary = money(salaryField, "El salario");
+                if (salary == null || salary.signum() <= 0) {
+                    return "El salario debe ser mayor que cero.";
+                }
+            } catch (NumberFormatException e) {
+                return e.getMessage();
+            }
+        }
+        return null;
     }
 
     @FXML
