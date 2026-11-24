@@ -170,7 +170,7 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
             """)
     Optional<Sale> findDetailById(@Param("id") Long id);
 
-    /** Clientes para el buscador de "Nuevo contrato". */
+    /** Búsqueda anterior (el texto en cualquier parte del nombre); Nuevo contrato ya usa la de abajo. */
     @Query("""
             select c from Client c
             where lower(concat(c.name, ' ', coalesce(c.lastname, ''))) like :pattern
@@ -178,6 +178,20 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
             order by c.name, c.lastname, c.id
             """)
     List<Client> searchClients(@Param("pattern") String pattern, Pageable pageable);
+
+    /**
+     * Clientes para el buscador de "Nuevo contrato": nombres o apellidos que EMPIEZAN con lo escrito
+     * (sin importar tildes) o documento que empieza con esos números. wordStart es "% texto%" y
+     * start es "texto%", ya en minúsculas y sin tildes.
+     */
+    @Query("""
+            select c from Client c
+            where cast(function('translate', lower(concat(' ', c.name, ' ', coalesce(c.lastname, ''))),
+                                'áéíóúüñ', 'aeiouun') as String) like :wordStart
+               or lower(coalesce(c.documentNumber, '')) like :start
+            order by c.name, c.lastname, c.id
+            """)
+    List<Client> searchClients(@Param("wordStart") String wordStart, @Param("start") String start, Pageable pageable);
 
     /** Cliente de la venta. */
     @Query("select c from Client c where c.id = :id")
