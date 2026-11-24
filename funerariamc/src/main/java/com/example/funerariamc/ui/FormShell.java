@@ -401,6 +401,14 @@ public final class FormShell {
         }
     }
 
+    /** Lo mismo para un formulario FXML en su propia ventana (por ejemplo, registrar empleado). */
+    public static void stepRules(Stage stage, Predicate<String> skip, Function<String, String> check) {
+        if (stage.getScene() != null && stage.getScene().getRoot() instanceof Pane root) {
+            root.getProperties().put(STEP_SKIP, skip);
+            root.getProperties().put(STEP_CHECK, check);
+        }
+    }
+
     private static final String STEP_LABEL = "form-steps-label";
 
     /**
