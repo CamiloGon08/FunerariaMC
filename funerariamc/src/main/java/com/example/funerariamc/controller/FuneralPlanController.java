@@ -1,6 +1,7 @@
 package com.example.funerariamc.controller;
 
 import com.example.funerariamc.exception.BusinessException;
+import com.example.funerariamc.exception.InvalidDataException;
 import com.example.funerariamc.utils.enums.PlanPaymentStatus;
 import com.example.funerariamc.utils.enums.PlanStatus;
 import com.example.funerariamc.utils.enums.Relationship;
@@ -29,6 +30,7 @@ import com.example.funerariamc.ui.Notice;
 import com.example.funerariamc.ui.DetailCache;
 import com.example.funerariamc.ui.RefreshableView;
 import com.example.funerariamc.ui.FormShell;
+import com.example.funerariamc.ui.MonthPicker;
 import com.example.funerariamc.ui.ModuleLink;
 import com.example.funerariamc.ui.PlanOfferCard;
 import javafx.animation.PauseTransition;
@@ -43,6 +45,7 @@ import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.DatePicker;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.DialogPane;
 import javafx.scene.control.Label;
@@ -795,25 +798,22 @@ public class FuneralPlanController implements RefreshableView {
     private void openPaymentDialog(PlanDetail d) {
         PlanCard c = d.card();
         YearMonth first = d.nextDue() == null ? YearMonth.now(AccessLogService.APP_ZONE) : d.nextDue();
-        ComboBox<YearMonth> month = new ComboBox<>();
         YearMonth limit = YearMonth.now(AccessLogService.APP_ZONE).plusMonths(planParameters.maxMonthsAhead());
-        List<YearMonth> months = new ArrayList<>();
         // Meses sin pagar desde el inicio del plan hasta el máximo de cuotas adelantadas configurado.
         YearMonth from = c.startDate() == null ? first : YearMonth.from(c.startDate());
         java.util.Set<YearMonth> paid = new java.util.HashSet<>();
         d.payments().stream().filter(p -> p.status() == PlanPaymentStatus.PAID).forEach(p -> paid.add(p.period()));
+        List<YearMonth> months = new ArrayList<>();
         for (YearMonth m = from; !m.isAfter(limit); m = m.plusMonths(1)) {
             if (!paid.contains(m)) {
                 months.add(m);
             }
         }
-        month.getItems().setAll(months);
-        month.setConverter(converter(m -> capitalize(MONTH.format(m)), ""));
+        // Mes y año con flechas y calendario de meses; los ya pagados se ven apagados y no se eligen.
         // Sin mes puesto: el usuario elige qué cuota paga (la próxima por vencer se indica abajo).
-        FormShell.choose(month);
-        month.getStyleClass().add("form-combo");
+        MonthPicker month = new MonthPicker("PERÍODO", from, limit, m -> !paid.contains(m), "Elija el mes");
         TextField amount = new TextField(c.monthlyFee() == null ? "" : String.valueOf(c.monthlyFee().longValue()));
-        Label hint = note((months.contains(first) ? "Próxima cuota por pagar: " + capitalize(MONTH.format(first)) + ". " : "")
+        Label hint = note((months.contains(first) ? "Próxima cuota por pagar: " + MonthPicker.label(first) + ". " : "")
                 + "Se registra como ingreso en Finanzas (cuota del plan " + c.code() + ").");
 
         Form form = new Form()
@@ -823,7 +823,7 @@ public class FuneralPlanController implements RefreshableView {
                 .note(hint);
 
         Dialog<ButtonType> dialog = formDialog("Registrar pago", c.code() + " · " + c.holderName()
-                + ". Los campos con * son obligatorios.", form, 520, false);
+                + ". Los campos con * son obligatorios.", form, 640, false);
         FormShell.window(dialog, "Planes exequiales");
         FormShell.money(amount);
         if (runForm(dialog, form, "Registrar", () -> planService.registerPayment(
@@ -841,6 +841,12 @@ public class FuneralPlanController implements RefreshableView {
         TextField document = new TextField();
         document.setPromptText("Solo números, 5 a 11 dígitos");
         FormShell.document(document, null, 11);
+        // Queda en el plan para llenarla sola si la persona fallece
+        DatePicker birth = new DatePicker();
+        birth.setEditable(false);
+        birth.setPromptText("dd/mm/aaaa");
+        birth.setMaxWidth(Double.MAX_VALUE);
+        birth.setConverter(converter(DATE::format, ""));
         ComboBox<Relationship> relationship = new ComboBox<>();
         relationship.getItems().setAll(Relationship.values());
         relationship.setConverter(converter(Relationship::getDisplayName, ""));
@@ -871,6 +877,7 @@ public class FuneralPlanController implements RefreshableView {
                 .field("NOMBRES *", name)
                 .field("APELLIDOS *", lastname)
                 .field("NÚMERO DE DOCUMENTO *", document)
+                .field("FECHA DE NACIMIENTO *", birth)
                 .field("PARENTESCO *", relationship)
                 .note(surchargeHint)
                 .note(accept);
@@ -879,9 +886,13 @@ public class FuneralPlanController implements RefreshableView {
         Dialog<ButtonType> dialog = formDialog("Agregar beneficiario", c.code() + " · " + count
                 + ". Los campos con * son obligatorios.", form, 620, false);
         FormShell.window(dialog, "Planes exequiales");
-        if (runForm(dialog, form, "Agregar", () -> planService.addBeneficiary(new BeneficiaryData(
-                c.id(), name.getText(), lastname.getText(), document.getText(), relationship.getValue(),
-                accept.isSelected())))) {
+        if (runForm(dialog, form, "Agregar", () -> {
+            if (birth.getValue() == null) {
+                throw new InvalidDataException("Elija la fecha de nacimiento del beneficiario.");
+            }
+            planService.addBeneficiary(new BeneficiaryData(c.id(), name.getText(), lastname.getText(),
+                    document.getText(), relationship.getValue(), accept.isSelected(), birth.getValue()));
+        })) {
             loadOverview(c.id());
         }
     }
