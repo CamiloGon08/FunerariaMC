@@ -825,12 +825,24 @@ public final class FormShell {
         for (int i = 0; i < root.getChildren().size(); i++) {
             Node child = root.getChildren().get(i);
             if (child instanceof ScrollPane scroll) {
-                VBox card = new VBox(side);
+                // La tarjeta tiene su propia barra: si la ventana es baja (pantalla pequeña o con zoom de
+                // Windows), la vista previa no empuja Cancelar y Siguiente fuera de la ventana.
+                ScrollPane sideScroll = new ScrollPane(side);
+                sideScroll.setFitToWidth(true);
+                sideScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+                sideScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+                sideScroll.setMinHeight(0);
+                sideScroll.getStyleClass().add("form-side-scroll");
+                VBox.setVgrow(sideScroll, Priority.ALWAYS);
+                VBox card = new VBox(sideScroll);
                 card.getStyleClass().add("form-side");
                 card.setMinWidth(300);
                 card.setPrefWidth(340);
                 card.setMaxWidth(380);
+                card.setMinHeight(0);
+                scroll.setMinHeight(0);
                 HBox center = new HBox(scroll, card);
+                center.setMinHeight(0);
                 center.getStyleClass().add("form-center");
                 HBox.setHgrow(scroll, Priority.ALWAYS);
                 VBox.setVgrow(center, Priority.ALWAYS);

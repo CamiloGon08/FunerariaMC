@@ -280,6 +280,10 @@
     -fx-padding: 26 26 26 26;
     -fx-spacing: 12;
 }
+.form-shell .form-side-scroll,
+.form-shell .form-side-scroll > .viewport { -fx-background-color: transparent; -fx-background: transparent; -fx-padding: 0; -fx-background-insets: 0; }
+.form-shell .form-side-scroll > .scroll-bar:vertical { -fx-background-color: transparent; -fx-pref-width: 8; }
+.form-shell .form-side-scroll > .scroll-bar:vertical .thumb { -fx-background-color: -color-mist; -fx-background-radius: 999; }
 .form-shell .form-side-title {
     -fx-font-family: "Montserrat SemiBold", "Segoe UI", sans-serif;
     -fx-font-size: 20px; -fx-text-fill: -color-ink;
