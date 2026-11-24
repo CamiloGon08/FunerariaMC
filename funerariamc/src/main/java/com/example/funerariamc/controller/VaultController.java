@@ -6,6 +6,8 @@ import com.example.funerariamc.utils.enums.ExhumationReason;
 import com.example.funerariamc.utils.enums.NotificationChannel;
 import com.example.funerariamc.utils.enums.NotificationStatus;
 import com.example.funerariamc.utils.enums.NotificationType;
+import com.example.funerariamc.service.AppModule;
+import com.example.funerariamc.ui.ModuleLink;
 import com.example.funerariamc.service.AccessLogService;
 import com.example.funerariamc.service.AssignVaultData;
 import com.example.funerariamc.service.CemeteryService;
@@ -23,6 +25,7 @@ import com.example.funerariamc.service.CemeteryService.WallCell;
 import com.example.funerariamc.service.ExhumationData;
 import com.example.funerariamc.service.VaultPosition;
 import com.example.funerariamc.service.VaultState;
+import com.example.funerariamc.ui.Pager;
 import com.example.funerariamc.ui.DetailShell;
 import com.example.funerariamc.ui.DetailCache;
 import com.example.funerariamc.ui.RefreshableView;
@@ -107,6 +110,8 @@ public class VaultController implements RefreshableView {
     static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     /** Bóvedas de "Requieren atención" cuyo panel se adelanta apenas carga el muro. */
     private static final int PREFETCH_ATTENTION = 3;
+    /** Arriendos por página en la columna "Requieren atención". */
+    private static final int ATTENTION_PAGE = 8;
     private static final PseudoClass SELECTED = PseudoClass.getPseudoClass("selected");
     /** Desde cuántas columnas el subtítulo avisa que hay que deslizar el muro. */
     private static final int WIDE_WALL = 14;
@@ -132,6 +137,13 @@ public class VaultController implements RefreshableView {
     private final Map<Long, Overview> overviews = new HashMap<>();
     /** Muro y lista ya armados por pabellón (clave "A|plano"); se descartan con datos nuevos. */
     private final Map<String, Node> builtViews = new HashMap<>();
+    private final Map<String, List<Node>> builtLists = new HashMap<>();
+    /** Vista lista: todas las filas del pabellón, la página visible y su barra de páginas. */
+    private List<Node> listRows = List.of();
+    private final VBox listPage = new VBox(6);
+    private Pager<Node> listPager;
+    private Pager<Attention> attentionPager;
+    private String lastListKey;
 
     @FXML
     private StackPane root;
@@ -230,6 +242,12 @@ public class VaultController implements RefreshableView {
 
     @FXML
     private void initialize() {
+        // Paginación como la bitácora en la vista lista: 20 bóvedas por página, debajo de la lista.
+        listPager = Pager.<Node>local(Pager.TABLE_PAGE, "bóveda", "bóvedas",
+                page -> listPage.getChildren().setAll(page)).below(listBox);
+        // La columna de arriendos que requieren atención es angosta: 8 por página.
+        attentionPager = Pager.<Attention>local(ATTENTION_PAGE, "bóveda", "bóvedas", this::drawAttention)
+                .below(attentionBox);
         buildLegend();
         // Sin pabellones (cementerio nuevo o sin cementerios) el selector no se muestra: quedaba una caja vacía
         pavilionFilter.setPromptText("Pabellón");
@@ -294,6 +312,12 @@ public class VaultController implements RefreshableView {
                 return;
             }
             applyOverview(screen.cemeteryId(), screen.overview(), reopenVaultId);
+            // Desde "Esperan destino" en Difuntos: se abre "Asignar bóveda" con ese difunto
+            ModuleLink.take(AppModule.CEMENTERIO).ifPresent(payload -> {
+                if (payload instanceof DeceasedController.DeceasedLink link) {
+                    openAssignDialog(selectedAvailableVault().orElse(null), link);
+                }
+            });
         }, "No se pudieron cargar las bóvedas.");
     }
 
@@ -357,6 +381,7 @@ public class VaultController implements RefreshableView {
     private void showOverview(Overview result, Long reopenVaultId) {
         overview = result;
         builtViews.clear();
+        builtLists.clear();
         String previous = pavilionFilter.getValue();
         pavilionFilter.getItems().setAll(result.pavilions().keySet());
         String pavilion = previous != null && result.pavilions().containsKey(previous) ? previous
@@ -441,8 +466,14 @@ public class VaultController implements RefreshableView {
         }
         show(emptyLabel, false);
         String key = pavilion + (plan ? "|plano" : "|lista");
-        Node view = builtViews.computeIfAbsent(key, k -> plan ? buildWall(cells, levels, columns) : buildList(cells));
-        (plan ? wallBox : listBox).getChildren().setAll(view);
+        if (plan) {
+            wallBox.getChildren().setAll(builtViews.computeIfAbsent(key, k -> buildWall(cells, levels, columns)));
+            listRows = List.of();
+            listPager.setItemsFromStart(List.of()); // el plano es un dibujo del muro: no se pagina
+        } else {
+            listRows = builtLists.computeIfAbsent(key, k -> buildList(cells));
+            listBox.getChildren().setAll(listPage);
+        }
         markSelected();
         updatePreview();
         applySearch();
@@ -510,8 +541,9 @@ public class VaultController implements RefreshableView {
     }
 
     /** Lista: una fila por bóveda con su nivel, estado, difunto, titular y vencimiento. */
-    private Node buildList(List<WallCell> cells) {
-        VBox list = new VBox(6);
+    /** Filas de la vista lista (todas las del pabellón); se muestran por páginas. */
+    private List<Node> buildList(List<WallCell> cells) {
+        List<Node> list = new ArrayList<>();
         for (WallCell cell : cells) {
             Label code = new Label(cell.code());
             code.getStyleClass().addAll("row-code", "code-" + cssName(cell.state()));
@@ -531,7 +563,7 @@ public class VaultController implements RefreshableView {
             row.getStyleClass().add("vault-row");
             row.setUserData(cell);
             prepareTarget(row, cell);
-            list.getChildren().add(row);
+            list.add(row);
         }
         return list;
     }
@@ -567,16 +599,26 @@ public class VaultController implements RefreshableView {
             }
         }
         long found = 0;
+        List<Node> matching = new ArrayList<>();
         for (Node node : cellNodes()) {
             WallCell cell = (WallCell) node.getUserData();
             boolean match = text.isEmpty() || matches(cell, text);
             found += match ? 1 : 0;
             if (planToggle.isSelected()) {
                 node.pseudoClassStateChanged(DIMMED, !match);
-            } else {
-                node.setVisible(match);
-                node.setManaged(match);
+            } else if (match) {
+                matching.add(node);
             }
+        }
+        if (!planToggle.isSelected()) {
+            // En la lista se pagina solo lo que coincide; otra búsqueda o pabellón vuelve a la página 1.
+            String listKey = pavilionFilter.getValue() + "|" + text;
+            if (listKey.equals(lastListKey)) {
+                listPager.setItems(matching);
+            } else {
+                listPager.setItemsFromStart(matching);
+            }
+            lastListKey = listKey;
         }
         if (!text.isEmpty()) {
             selectionLabel.setText(found == 0 ? "Ninguna bóveda coincide con la búsqueda."
@@ -591,8 +633,8 @@ public class VaultController implements RefreshableView {
         List<Node> nodes = new ArrayList<>();
         if (planToggle.isSelected()) {
             wallBox.lookupAll(".vault-cell").forEach(nodes::add);
-        } else if (!listBox.getChildren().isEmpty() && listBox.getChildren().get(0) instanceof VBox list) {
-            nodes.addAll(list.getChildren());
+        } else {
+            nodes.addAll(listRows);
         }
         return nodes;
     }
@@ -711,11 +753,18 @@ public class VaultController implements RefreshableView {
         attentionCount.setText(String.valueOf(items.size()));
         attentionCount.setVisible(!items.isEmpty());
         if (items.isEmpty()) {
+            attentionPager.setItemsFromStart(List.of());
             attentionBox.getChildren().add(wrapped("Ningún arriendo vencido ni por vencer en los próximos "
                     + VaultState.EXPIRING_DAYS + " días.", "card-subtitle"));
             return;
         }
-        for (Attention item : items) {
+        attentionPager.setItems(items);
+    }
+
+    /** Filas de la página visible de "Requieren atención". */
+    private void drawAttention(List<Attention> page) {
+        attentionBox.getChildren().clear();
+        for (Attention item : page) {
             boolean overdue = item.state() == VaultState.OVERDUE;
             Label code = new Label(item.code());
             code.getStyleClass().addAll("attention-code", overdue ? "code-overdue" : "code-expiring");
@@ -972,6 +1021,11 @@ public class VaultController implements RefreshableView {
 
     /** Bóveda libre, titular, difunto sin bóveda e inicio; el vencimiento se calcula a 4 años. */
     private void openAssignDialog(Long vaultId) {
+        openAssignDialog(vaultId, null);
+    }
+
+    /** forDeceased no es null cuando se llega desde Difuntos: el difunto ya viene buscado. */
+    private void openAssignDialog(Long vaultId, DeceasedController.DeceasedLink forDeceased) {
         List<WallCell> available = overview == null ? List.of() : overview.pavilions().values().stream()
                 .flatMap(List::stream)
                 .filter(c -> c.state() == VaultState.AVAILABLE)
@@ -986,7 +1040,9 @@ public class VaultController implements RefreshableView {
         vaultBox.getItems().setAll(available);
         vaultBox.setConverter(converter(c -> c.code() + " · nivel " + c.position().level()
                 + ", col. " + c.position().column(), ""));
-        vaultBox.setValue(available.stream().filter(c -> c.id().equals(vaultId)).findFirst().orElse(available.get(0)));
+        // Si se abrió desde una bóveda del muro queda esa; si no, el usuario la elige.
+        FormShell.choose(vaultBox);
+        vaultBox.setValue(available.stream().filter(c -> c.id().equals(vaultId)).findFirst().orElse(null));
 
         DatePicker start = new DatePicker(LocalDate.now(AccessLogService.APP_ZONE));
         TextField end = new TextField();
@@ -1003,6 +1059,10 @@ public class VaultController implements RefreshableView {
         Label deceasedHint = note("");
         bindSearch(clientSearch, clientBox, cemeteryService::searchClients, null);
         bindSearch(deceasedSearch, deceasedBox, cemeteryService::searchDeceasedWithoutVault, deceasedHint);
+        if (forDeceased != null) {
+            // Con un solo resultado la búsqueda lo deja elegido
+            deceasedSearch.setText(forDeceased.search());
+        }
 
         Form form = new Form()
                 .section("Bóveda y arriendo", 3)
@@ -1059,11 +1119,15 @@ public class VaultController implements RefreshableView {
         Runnable draw = () -> {
             grid.getChildren().clear();
             WallCell chosen = vaultBox.getValue();
-            if (chosen == null || overview == null) {
+            // Sin bóveda elegida se muestra el pabellón que se está viendo (o el primero con bóvedas libres).
+            String viewed = pavilionFilter.getValue();
+            String pavilion = chosen != null ? chosen.position().pavilion()
+                    : vaultBox.getItems().stream().anyMatch(c -> c.position().pavilion().equals(viewed)) ? viewed
+                    : vaultBox.getItems().isEmpty() ? null : vaultBox.getItems().get(0).position().pavilion();
+            if (pavilion == null || overview == null) {
                 title.setText("Muro del pabellón");
                 return;
             }
-            String pavilion = chosen.position().pavilion();
             String label = pavilionLabel(pavilion);
             title.setText("Muro del " + label.substring(0, 1).toLowerCase(Locale.ROOT) + label.substring(1));
             List<WallCell> cells = overview.pavilions().getOrDefault(pavilion, List.of());
@@ -1078,7 +1142,8 @@ public class VaultController implements RefreshableView {
                 Label tile = new Label(String.format("%02d", cell.position().column()));
                 tile.setTooltip(new javafx.scene.control.Tooltip(cell.code()));
                 tile.setMaxWidth(Double.MAX_VALUE);
-                tile.getStyleClass().addAll("pick-cell", cell.id().equals(chosen.id()) ? "chosen" : free ? "free" : "taken");
+                boolean isChosen = chosen != null && cell.id().equals(chosen.id());
+                tile.getStyleClass().addAll("pick-cell", isChosen ? "chosen" : free ? "free" : "taken");
                 if (free) {
                     tile.setOnMouseClicked(e -> vaultBox.getItems().stream()
                             .filter(c -> c.id().equals(cell.id())).findFirst().ifPresent(vaultBox::setValue));
@@ -1137,8 +1202,9 @@ public class VaultController implements RefreshableView {
         cemeteryBox.getStyleClass().add("form-combo");
         cemeteryBox.getItems().setAll(cemeteries);
         cemeteryBox.setConverter(converter(Option::label, ""));
-        cemeteryBox.setValue(cemeteries.stream().filter(c -> c.id().equals(cemeteryId)).findFirst()
-                .orElse(cemeteries.get(0)));
+        // Queda el cementerio que se está viendo; si no hay uno abierto, el usuario lo elige.
+        FormShell.choose(cemeteryBox);
+        cemeteryBox.setValue(cemeteries.stream().filter(c -> c.id().equals(cemeteryId)).findFirst().orElse(null));
 
         String currentPavilion = pavilionFilter.getValue();
         TextField pavilion = new TextField(currentPavilion == null || VaultPosition.GENERAL.equals(currentPavilion)
@@ -1722,6 +1788,8 @@ public class VaultController implements RefreshableView {
         show(listBox, false);
         wallBox.getChildren().clear();
         listBox.getChildren().clear();
+        listRows = List.of();
+        listPager.setItemsFromStart(List.of());
         selectionLabel.setText("");
         countLabel.setText("");
     }

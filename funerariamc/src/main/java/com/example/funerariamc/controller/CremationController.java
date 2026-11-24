@@ -4,6 +4,8 @@ import com.example.funerariamc.exception.BusinessException;
 import com.example.funerariamc.utils.enums.CremationBatchStatus;
 import com.example.funerariamc.utils.enums.CremationPurchaseStatus;
 import com.example.funerariamc.utils.enums.DeathType;
+import com.example.funerariamc.service.AppModule;
+import com.example.funerariamc.ui.ModuleLink;
 import com.example.funerariamc.service.AccessLogService;
 import com.example.funerariamc.service.AssignCremationData;
 import com.example.funerariamc.service.CremationBatchData;
@@ -24,6 +26,7 @@ import com.example.funerariamc.service.CremationStockService;
 import com.example.funerariamc.service.CremationStockService.ProviderStock;
 import com.example.funerariamc.service.CremationStockService.Purchase;
 import com.example.funerariamc.service.CremationStockService.Stock;
+import com.example.funerariamc.ui.Pager;
 import com.example.funerariamc.ui.RefreshableView;
 import com.example.funerariamc.ui.Notice;
 import com.example.funerariamc.ui.FormShell;
@@ -180,6 +183,13 @@ public class CremationController implements RefreshableView {
     private Label providerEmpty;
     @FXML
     private VBox purchaseRows;
+    private Pager<Node> furnacePager;
+    private Pager<Node> agendaPager;
+    private Pager<Node> providerPager;
+    private Pager<Node> purchasePager;
+    /** Búsqueda y filtros con que se armó cada lista (para saber si hay que volver a la página 1). */
+    private String lastFurnaceSearch;
+    private String lastAgendaKey;
     @FXML
     private Label purchaseEmpty;
     @FXML
@@ -237,6 +247,19 @@ public class CremationController implements RefreshableView {
 
         // Columnas según el ancho: en ventana angosta las tarjetas pasan a 2 (o 1) por fila
         Responsive.cardColumns(furnaceGrid, MIN_CARD_WIDTH, COLUMNS);
+        // Paginación como la bitácora: 12 tarjetas de hornos y 20 filas por tabla en cada página.
+        furnacePager = Pager.<Node>local(Pager.CARD_PAGE, "horno o proveedor", "hornos o proveedores", page -> {
+            furnaceGrid.getChildren().clear();
+            for (int i = 0; i < page.size(); i++) {
+                furnaceGrid.add(page.get(i), i % COLUMNS, i / COLUMNS);
+            }
+        }).below(furnaceGrid);
+        agendaPager = Pager.<Node>local(Pager.TABLE_PAGE, "lote", "lotes",
+                page -> agendaRows.getChildren().setAll(page)).below(agendaRows);
+        providerPager = Pager.<Node>local(Pager.TABLE_PAGE, "proveedor", "proveedores",
+                page -> providerRows.getChildren().setAll(page)).below(providerRows);
+        purchasePager = Pager.<Node>local(Pager.TABLE_PAGE, "compra", "compras",
+                page -> purchaseRows.getChildren().setAll(page)).below(purchaseRows);
 
         detail = DetailShell.install(drawer, veil, DetailShell.Kind.PANEL);
         toast.setOpacity(0);
@@ -273,6 +296,14 @@ public class CremationController implements RefreshableView {
             fillKpis(result);
             render();
             renderStock();
+            // Desde "Esperan destino" en Difuntos: el difunto se agrega desde un lote programado
+            ModuleLink.take(AppModule.CREMACIONES).ifPresent(payload -> {
+                if (payload instanceof DeceasedController.DeceasedLink link) {
+                    Notice.info(root.getScene() == null ? null : root.getScene().getWindow(), "Cremaciones",
+                            "Agregar a un lote", "Abra un lote programado y use «Agregar difunto» para "
+                                    + link.fullName() + ". Si no hay lotes abiertos, use «Programar lote».");
+                }
+            });
             if (reopenBatchId != null) {
                 Optional<Batch> batch = find(reopenBatchId);
                 if (batch.isPresent()) {
@@ -333,17 +364,26 @@ public class CremationController implements RefreshableView {
                     ? "No hay lotes abiertos. Use «Programar lote» con el código del horno o del proveedor que hará la cremación."
                     : "Ningún horno o proveedor coincide con la búsqueda.");
             show(furnaceEmpty, true);
+            furnacePager.setItemsFromStart(List.of());
             return;
         }
         show(furnaceEmpty, false);
-        for (int i = 0; i < furnaces.size(); i++) {
-            VBox card = furnaceCard(furnaces.get(i));
+        List<Node> cards = new ArrayList<>();
+        for (Furnace furnace : furnaces) {
+            VBox card = furnaceCard(furnace);
             card.setMaxWidth(Double.MAX_VALUE);
             card.setMaxHeight(Double.MAX_VALUE);
             GridPane.setFillWidth(card, true);
             GridPane.setFillHeight(card, true);
-            furnaceGrid.add(card, i % COLUMNS, i / COLUMNS);
+            cards.add(card);
         }
+        // Otra búsqueda vuelve a la página 1; la recarga de cada minuto se queda en la página actual.
+        if (text.equals(lastFurnaceSearch)) {
+            furnacePager.setItems(cards);
+        } else {
+            furnacePager.setItemsFromStart(cards);
+        }
+        lastFurnaceSearch = text;
     }
 
     private VBox furnaceCard(Furnace f) {
@@ -438,13 +478,23 @@ public class CremationController implements RefreshableView {
             agendaEmpty.setText(everything ? "No hay lotes que coincidan."
                     : weekRange ? "No hay lotes programados esta semana." : "No hay lotes para hoy.");
             show(agendaEmpty, true);
+            agendaPager.setItemsFromStart(List.of());
             return;
         }
         show(agendaEmpty, false);
         shownBatches = rows;
+        List<Node> nodes = new ArrayList<>();
         for (Batch batch : rows) {
-            agendaRows.getChildren().add(agendaRow(batch, today));
+            nodes.add(agendaRow(batch, today));
         }
+        // Otro filtro, búsqueda o rango vuelve a la página 1; la recarga de cada minuto no.
+        String agendaKey = filter + "|" + text + "|" + weekRange;
+        if (agendaKey.equals(lastAgendaKey)) {
+            agendaPager.setItems(nodes);
+        } else {
+            agendaPager.setItemsFromStart(nodes);
+        }
+        lastAgendaKey = agendaKey;
     }
 
     /** Hoy: lo de hoy y lo abierto de días anteriores. Semana: lo de los próximos 7 días y lo abierto anterior. */
@@ -695,7 +745,7 @@ public class CremationController implements RefreshableView {
         ComboBox<ProviderStock> code = providerCombo(null);
         LocalDateTime suggested = nextHalfHour(LocalDateTime.now(AccessLogService.APP_ZONE));
         DatePicker date = new DatePicker(suggested.toLocalDate());
-        ComboBox<LocalTime> time = timeCombo(suggested.toLocalTime(), 30);
+        ComboBox<LocalTime> time = timeCombo(null, 30);
 
         Form form = new Form()
                 .section("Horno o proveedor", 1)
@@ -779,7 +829,7 @@ public class CremationController implements RefreshableView {
 
         LocalDateTime nowTime = LocalDateTime.now(AccessLogService.APP_ZONE);
         DatePicker prepDate = new DatePicker(nowTime.toLocalDate());
-        ComboBox<LocalTime> prepTime = timeCombo(nowTime.toLocalTime().truncatedTo(ChronoUnit.HOURS), 15);
+        ComboBox<LocalTime> prepTime = timeCombo(null, 15);
         Label status = note("");
         Label alert = alertNote("");
 
@@ -878,7 +928,7 @@ public class CremationController implements RefreshableView {
         number.setPromptText("Número del certificado");
         LocalDateTime nowTime = LocalDateTime.now(AccessLogService.APP_ZONE);
         DatePicker date = new DatePicker(nowTime.toLocalDate());
-        ComboBox<LocalTime> time = timeCombo(nowTime.toLocalTime().truncatedTo(ChronoUnit.HOURS), 15);
+        ComboBox<LocalTime> time = timeCombo(null, 15);
         Form form = new Form()
                 .section("Cremación", 2)
                 .field("DIFUNTO", readOnly(item.deceasedName()))
@@ -967,15 +1017,11 @@ public class CremationController implements RefreshableView {
 
         providerEmpty.setText("No hay proveedores registrados. Use «Nuevo proveedor».");
         show(providerEmpty, providers.isEmpty());
-        for (ProviderStock p : providers) {
-            providerRows.getChildren().add(providerRow(p));
-        }
+        providerPager.setItems(providers.stream().map(p -> (Node) providerRow(p)).toList());
 
         purchaseEmpty.setText("Todavía no hay compras. Use «Solicitar compra».");
         show(purchaseEmpty, stock.purchases().isEmpty());
-        for (Purchase purchase : stock.purchases()) {
-            purchaseRows.getChildren().add(purchaseRow(purchase));
-        }
+        purchasePager.setItems(stock.purchases().stream().map(purchase -> (Node) purchaseRow(purchase)).toList());
     }
 
     private HBox providerRow(ProviderStock p) {
@@ -1434,9 +1480,14 @@ public class CremationController implements RefreshableView {
         for (int minutes = 0; minutes < 24 * 60; minutes += stepMinutes) {
             box.getItems().add(LocalTime.of(minutes / 60, minutes % 60));
         }
-        box.setValue(initial);
         box.setVisibleRowCount(8);
         box.setConverter(converter(HOUR::format, ""));
+        // Al registrar no se pone una hora: el usuario la elige. Al reprogramar se muestra la guardada.
+        if (initial == null) {
+            FormShell.choose(box, "Seleccione la hora");
+        } else {
+            box.setValue(initial);
+        }
         return box;
     }
 
