@@ -189,10 +189,12 @@ public class EmployeeFormController {
     private void initialize() {
         // Salario y comisión por caso se ven como "$ 1.500.000" mientras se escriben
         FormShell.money(salaryField, commissionPerCaseField);
-        // Cédula hasta 10 dígitos; extranjería y pasaporte hasta lo que guarda la base
-        FormShell.document(documentField, documentTypeCombo::getValue, 30);
+        // Cédula, extranjería y pasaporte: hasta 10 caracteres
+        FormShell.document(documentField, documentTypeCombo::getValue, 10);
         // Teléfono: solo números, máximo 10 dígitos
         FormShell.phone(phoneField);
+        // Nombres y apellidos sin números ni símbolos
+        FormShell.personName(nameField, lastnameField);
         documentTypeCombo.getItems().addAll(DOCUMENT_TYPES.keySet());
         documentTypeCombo.setConverter(new StringConverter<>() {
             @Override

@@ -112,9 +112,12 @@ public class ClientFormController {
     @FXML
     private void initialize() {
         // Cédula y NIT hasta 10 dígitos; extranjería y pasaporte hasta lo que admite el registro de clientes
-        FormShell.document(documentField, documentTypeCombo::getValue, 11);
+        FormShell.document(documentField, documentTypeCombo::getValue, 10);
         // Teléfono: solo números, máximo 10 dígitos
         FormShell.phone(phoneField);
+        // Nombres y apellidos sin números ni símbolos (la razón social de una empresa sí los admite)
+        FormShell.personName(() -> clientTypeCombo.getValue() == null || !clientTypeCombo.getValue().isCorporate(), nameField);
+        FormShell.personName(lastnameField);
         clientTypeCombo.getItems().addAll(ClientType.values());
         clientTypeCombo.setButtonCell(typeCell());
         clientTypeCombo.setCellFactory(list -> typeCell());

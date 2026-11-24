@@ -1843,9 +1843,12 @@ public class ContractController implements RefreshableView {
             documentType.setConverter(converter(code -> CLIENT_DOCUMENTS.getOrDefault(code, code), ""));
             FormShell.choose(documentType);
             document.setPromptText("Solo números");
-            FormShell.document(document, documentType::getValue, 11);
+            FormShell.document(document, documentType::getValue, 10);
             names.setPromptText("Nombres");
             lastnames.setPromptText("Apellidos");
+            // Nombres y apellidos sin números ni símbolos (la razón social de una empresa sí los admite)
+            FormShell.personName(() -> clientType.getValue() == null || !clientType.getValue().isCorporate(), names);
+            FormShell.personName(lastnames);
             phone.setPromptText("3001234567");
             FormShell.phone(phone);
             email.setPromptText("nombre@gmail.com");
@@ -1888,8 +1891,9 @@ public class ContractController implements RefreshableView {
 
             benName.setPromptText("Nombres");
             benLastname.setPromptText("Apellidos");
+            FormShell.personName(benName, benLastname);
             benDocument.setPromptText("Solo números");
-            FormShell.document(benDocument, null, 11);
+            FormShell.document(benDocument, null, 10);
             relationship.getItems().setAll(Relationship.values());
             relationship.setConverter(converter(Relationship::getDisplayName, ""));
             FormShell.choose(relationship);
@@ -2288,8 +2292,8 @@ public class ContractController implements RefreshableView {
                 beneficiaryError.setText("Escriba los nombres y los apellidos del beneficiario.");
                 return;
             }
-            if (!doc.matches("\\d{5,11}")) {
-                beneficiaryError.setText("El documento del beneficiario debe tener entre 5 y 11 dígitos.");
+            if (!doc.matches("\\d{5,10}")) {
+                beneficiaryError.setText("El documento del beneficiario debe tener entre 5 y 10 dígitos.");
                 return;
             }
             if (benBirth.getValue() == null) {
