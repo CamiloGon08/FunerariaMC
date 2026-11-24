@@ -45,7 +45,3 @@
 .action-chip.alert { -fx-background-color: -color-alert-bg; -fx-text-fill: -color-alert; }
 .action-chip.alert .action-dot { -fx-fill: -color-alert; }
 
-/* Paginación sobre la tarjeta clara */
-.access-log-root .log-pagination .pagination-control .number-button:selected { -fx-background-color: -color-forest; -fx-text-fill: -color-paper; }
-.access-log-root .log-pagination .pagination-control .left-arrow,
-.access-log-root .log-pagination .pagination-control .right-arrow { -fx-background-color: -color-forest; }

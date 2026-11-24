@@ -124,7 +124,8 @@ final class AccountDialogs {
         combo.setMaxWidth(Double.MAX_VALUE);
         combo.setButtonCell(roleCell());
         combo.setCellFactory(list -> roleCell());
-        if (!roles.isEmpty()) {
+        // Si el cargo admite un solo rol, ese queda puesto (y bloqueado); si admite varios, el usuario elige.
+        if (roles.size() == 1) {
             combo.setValue(roles.get(0));
         }
         combo.setDisable(roles.size() < 2); // Secretaría y Vendedor tienen un solo rol posible
@@ -136,7 +137,8 @@ final class AccountDialogs {
             @Override
             protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
-                setText(empty || item == null ? null : RoleNames.displayName(item));
+                setText(empty || item == null ? FormShell.CHOOSE : RoleNames.displayName(item));
+                FormShell.markPrompt(this, empty || item == null);
             }
         };
     }

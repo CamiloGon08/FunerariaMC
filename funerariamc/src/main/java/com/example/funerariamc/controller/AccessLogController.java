@@ -5,6 +5,7 @@ import com.example.funerariamc.service.AccessLogService;
 import com.example.funerariamc.ui.AccessLogLabels;
 import com.example.funerariamc.ui.EyeToggle;
 import com.example.funerariamc.ui.RefreshableView;
+import com.example.funerariamc.ui.Pager;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
 import javafx.concurrent.Task;
@@ -12,7 +13,6 @@ import javafx.fxml.FXML;
 import javafx.scene.control.DateCell;
 import javafx.scene.control.DatePicker;
 import javafx.scene.control.Label;
-import javafx.scene.control.Pagination;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
@@ -73,8 +73,8 @@ public class AccessLogController implements RefreshableView {
     private TextField userFilterField;
     @FXML
     private ToggleButton showIpButton;
-    @FXML
-    private Pagination pagination;
+    /** Barra de páginas centrada debajo de la tabla, igual a la de las demás listas. */
+    private final Pager<AccessLog> pagination = Pager.remote(PAGE_SIZE, "registro", "registros", this::loadPage);
 
     /** Filtros aplicados con "Filtrar"; la paginación siempre usa estos, no lo que esté a medio escribir. */
     private LocalDate appliedFrom;
@@ -105,16 +105,15 @@ public class AccessLogController implements RefreshableView {
         filterErrorLabel.managedProperty().bind(filterErrorLabel.textProperty().isNotEmpty());
         filterErrorLabel.visibleProperty().bind(filterErrorLabel.textProperty().isNotEmpty());
 
-        // La paginación solo aporta los botones; cada cambio de página consulta esa página.
-        pagination.setPageFactory(index -> new Region());
-        pagination.currentPageIndexProperty().addListener((obs, oldIndex, newIndex) -> loadPage(newIndex.intValue()));
+        // Cada cambio de página consulta esa página.
+        pagination.below(logTable);
         loadPage(0);
     }
 
     /** Vuelve a consultar la página que se está viendo (por si entraron registros nuevos). */
     @FXML
     private void onRefresh() {
-        loadPage(pagination.getCurrentPageIndex());
+        loadPage(pagination.page());
     }
 
     /** El menú guarda la pantalla abierta: al volver a la bitácora se recarga la página actual. */
@@ -156,19 +155,14 @@ public class AccessLogController implements RefreshableView {
         return appliedFrom != null || appliedTo != null || (appliedUser != null && !appliedUser.isBlank());
     }
 
-    /** Si ya está en la página 1 el listener no se dispara, por eso se carga a mano. */
     private void goToFirstPage() {
-        if (pagination.getCurrentPageIndex() == 0) {
-            loadPage(0);
-        } else {
-            pagination.setCurrentPageIndex(0);
-        }
+        loadPage(0);
     }
 
     /** La consulta a Supabase corre en otro hilo para que la ventana no se congele mientras llega. */
     private void loadPage(int pageIndex) {
         countLabel.setText("Cargando registros…");
-        pagination.setDisable(true);
+        pagination.setBusy(true);
         LocalDate from = appliedFrom;
         LocalDate to = appliedTo;
         String user = appliedUser;
@@ -183,15 +177,14 @@ public class AccessLogController implements RefreshableView {
             logTable.setItems(FXCollections.observableArrayList(page.getContent()));
             logTable.scrollTo(0);
             emptyLabel.setText(hasFilters() ? EMPTY_FILTER : EMPTY_LOG);
-            pagination.setPageCount(Math.max(page.getTotalPages(), 1));
+            pagination.show(pageIndex, page.getTotalPages(), page.getTotalElements());
             countLabel.setText(page.getTotalElements() == 0 ? ""
-                    : "Página " + (pageIndex + 1) + " de " + Math.max(page.getTotalPages(), 1)
-                    + " · " + page.getTotalElements() + " registros");
-            pagination.setDisable(false);
+                    : page.getTotalElements() + (page.getTotalElements() == 1 ? " registro" : " registros"));
+            pagination.setBusy(false);
         });
         task.setOnFailed(e -> {
             countLabel.setText("No se pudo cargar la bitácora. Intente de nuevo.");
-            pagination.setDisable(false);
+            pagination.setBusy(false);
         });
         Thread thread = new Thread(task, "access-log-loader");
         thread.setDaemon(true);

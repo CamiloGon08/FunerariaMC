@@ -57,7 +57,7 @@
                 </VBox>
                 <VBox styleClass="form-field" GridPane.columnIndex="0" GridPane.rowIndex="1">
                     <Label styleClass="field-label" text="TIPO DE DOCUMENTO *"/>
-                    <ComboBox fx:id="documentTypeCombo" maxWidth="Infinity" styleClass="form-combo"/>
+                    <ComboBox fx:id="documentTypeCombo" maxWidth="Infinity" styleClass="form-combo" promptText="Seleccione…"/>
                 </VBox>
                 <VBox styleClass="form-field" GridPane.columnIndex="1" GridPane.rowIndex="1">
                     <Label styleClass="field-label" text="NÚMERO DE DOCUMENTO *"/>
@@ -68,12 +68,12 @@
                     <TextField fx:id="phoneField"/>
                 </VBox>
                 <VBox styleClass="form-field" GridPane.columnIndex="0" GridPane.rowIndex="2">
-                    <Label styleClass="field-label" text="CORREO"/>
-                    <TextField fx:id="emailField"/>
+                    <Label styleClass="field-label" text="CORREO *"/>
+                    <TextField fx:id="emailField" promptText="nombre@gmail.com"/>
                 </VBox>
                 <VBox styleClass="form-field" GridPane.columnIndex="1" GridPane.rowIndex="2">
                     <Label styleClass="field-label" text="SEXO *"/>
-                    <ComboBox fx:id="sexCombo" maxWidth="Infinity" styleClass="form-combo" promptText="Seleccione"/>
+                    <ComboBox fx:id="sexCombo" maxWidth="Infinity" styleClass="form-combo" promptText="Seleccione…"/>
                 </VBox>
                 <VBox styleClass="form-field" GridPane.columnIndex="2" GridPane.rowIndex="2">
                     <Label styleClass="field-label" text="DIRECCIÓN"/>
@@ -95,7 +95,7 @@
                 <VBox styleClass="form-field" GridPane.columnIndex="0" GridPane.rowIndex="0">
                     <Label styleClass="field-label" text="CARGO *"/>
                     <ComboBox fx:id="positionCombo" maxWidth="Infinity" styleClass="form-combo"
-                              promptText="Seleccione"/>
+                              promptText="Seleccione…"/>
                 </VBox>
                 <VBox styleClass="form-field" GridPane.columnIndex="1" GridPane.rowIndex="0">
                     <Label styleClass="field-label" text="FECHA DE INGRESO *"/>
@@ -216,7 +216,7 @@
                     <VBox styleClass="form-field" GridPane.columnIndex="0" GridPane.rowIndex="0">
                         <Label styleClass="field-label" text="CATEGORÍA DE LICENCIA *"/>
                         <ComboBox fx:id="licenseCategoryCombo" maxWidth="Infinity" styleClass="form-combo"
-                                  promptText="Seleccione"/>
+                                  promptText="Seleccione…"/>
                     </VBox>
                     <VBox styleClass="form-field" GridPane.columnIndex="1" GridPane.rowIndex="0">
                         <Label styleClass="field-label" text="NÚMERO DE LICENCIA *"/>

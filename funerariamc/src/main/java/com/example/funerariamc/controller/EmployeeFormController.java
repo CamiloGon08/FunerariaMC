@@ -205,7 +205,9 @@ public class EmployeeFormController {
                 return text;
             }
         });
-        documentTypeCombo.setValue("CC");
+        // Ninguna lista viene con un valor ya elegido: el usuario escoge el tipo de documento.
+        FormShell.choose(documentTypeCombo);
+        FormShell.choose(licenseCategoryCombo);
         sexCombo.getItems().setAll(Sex.values());
         sexCombo.setButtonCell(sexCell());
         sexCombo.setCellFactory(list -> sexCell());
@@ -344,7 +346,8 @@ public class EmployeeFormController {
         accountFields.setVisible(true);
         existingAccountBox.setVisible(false);
         roleCombo.getItems().setAll(UserAccountService.rolesFor(position));
-        roleCombo.setValue(roleCombo.getItems().isEmpty() ? null : roleCombo.getItems().get(0));
+        // Si el cargo admite un solo rol, ese queda puesto (y bloqueado); si admite varios, el usuario elige.
+        roleCombo.setValue(roleCombo.getItems().size() == 1 ? roleCombo.getItems().get(0) : null);
         roleCombo.setDisable(roleCombo.getItems().size() < 2);
         suggestUsername();
         accountNote.setText("El usuario queda fijo; solo la contraseña es temporal. Se genera al guardar y "
@@ -577,7 +580,8 @@ public class EmployeeFormController {
             @Override
             protected void updateItem(EmployeePosition item, boolean empty) {
                 super.updateItem(item, empty);
-                setText(empty || item == null ? "Seleccione" : item.getDisplayName());
+                setText(empty || item == null ? FormShell.CHOOSE : item.getDisplayName());
+                FormShell.markPrompt(this, empty || item == null);
             }
         };
     }
@@ -591,7 +595,8 @@ public class EmployeeFormController {
             @Override
             protected void updateItem(Sex item, boolean empty) {
                 super.updateItem(item, empty);
-                setText(empty || item == null ? "Seleccione" : item.getDisplayName());
+                setText(empty || item == null ? FormShell.CHOOSE : item.getDisplayName());
+                FormShell.markPrompt(this, empty || item == null);
             }
         };
     }
