@@ -793,9 +793,11 @@ public class FuneralPlanService {
         }
         String name = PersonNames.titleCase(required(data.name(), "el nombre", 25));
         String lastname = PersonNames.titleCase(required(data.lastname(), "el apellido", 25));
+        PersonNames.validate(name, "Los nombres del beneficiario");
+        PersonNames.validate(lastname, "Los apellidos del beneficiario");
         String document = data.documentNumber() == null ? "" : data.documentNumber().trim();
-        if (!document.matches("\\d{5,11}")) {
-            throw new InvalidDataException("El documento del beneficiario debe tener entre 5 y 11 dígitos.");
+        if (!document.matches("\\d{5,10}")) {
+            throw new InvalidDataException("El documento del beneficiario debe tener entre 5 y 10 dígitos.");
         }
         if (data.relationship() == null) {
             throw new InvalidDataException("Seleccione el parentesco con el titular.");

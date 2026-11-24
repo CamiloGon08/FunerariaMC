@@ -390,12 +390,30 @@ class ClientServiceTest {
         verifyNoInteractions(clients, persons, accessLog);
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"Juan2", "María#", "Ana_Lucía", "José."})
+    void rejectsNumbersAndSymbolsInPersonNames(String name) {
+        assertThrows(InvalidDataException.class, () -> service.register(new ClientData(ClientType.NATURAL,
+                "CC", "1065832417", name, "Durán", "3015562087", "cliente@correo.com", "Calle 1")));
+
+        verifyNoInteractions(clients, persons, accessLog);
+    }
+
+    @Test
+    void acceptsAccentsHyphensAndApostrophesInPersonNames() {
+        Client saved = service.register(new ClientData(ClientType.NATURAL, "CC", "1065832417", "María José",
+                "García-O'Neil", "3015562087", "cliente@correo.com", "Calle 1"));
+
+        assertEquals("María José", saved.getName());
+        assertEquals("García-O'Neil", saved.getLastname());
+    }
+
     @Test
     void acceptsValuesAtTheDocumentedStorageLimits() {
-        Client saved = service.register(new ClientData(ClientType.NATURAL, "PA", "AB123456789",
+        Client saved = service.register(new ClientData(ClientType.NATURAL, "PA", "AB12345678",
                 "N".repeat(25), "A".repeat(25), "3015562087", "x".repeat(19) + "@correo.com", "D".repeat(40)));
 
-        assertEquals("AB123456789", saved.getDocumentNumber());
+        assertEquals("AB12345678", saved.getDocumentNumber());
         assertEquals(25, saved.getName().length());
         assertEquals(25, saved.getLastname().length());
         assertEquals(30, saved.getEmail().length());

@@ -45,7 +45,7 @@ public class ClientService {
 
     /** Límites de almacenamiento de person indicados en el contrato del módulo de Clientes. */
     static final int MAX_NAME = 25;
-    static final int MAX_DOCUMENT = 11;
+    static final int MAX_DOCUMENT = 10;
     static final int MAX_EMAIL = 30;
     /**
      * Correo bien escrito: usuario, @, dominio y una extensión de al menos dos letras
@@ -288,9 +288,14 @@ public class ClientService {
 
         require(data.name(), corporate ? "La razón social es obligatoria." : "Los nombres son obligatorios.");
         maxLength(data.name(), MAX_NAME, corporate ? "La razón social" : "Los nombres");
+        // La razón social puede llevar números; los nombres de una persona, no
+        if (!corporate) {
+            PersonNames.validate(data.name(), "Los nombres");
+        }
         if (!corporate) {
             require(data.lastname(), "Los apellidos son obligatorios.");
             maxLength(data.lastname(), MAX_NAME, "Los apellidos");
+            PersonNames.validate(data.lastname(), "Los apellidos");
         }
 
         require(data.phone(), "El teléfono es obligatorio.");

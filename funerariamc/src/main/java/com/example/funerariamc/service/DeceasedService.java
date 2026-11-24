@@ -425,9 +425,11 @@ public class DeceasedService {
         } else {
             deceased.setName(PersonNames.titleCase(required(data.name(), "los nombres", 25)));
             deceased.setLastname(PersonNames.titleCase(required(data.lastname(), "los apellidos", 25)));
-            String document = required(data.documentNumber(), "el número de documento", 11);
-            if (!document.matches("\\d{5,11}")) {
-                throw new InvalidDataException("El documento debe tener entre 5 y 11 dígitos.");
+            PersonNames.validate(deceased.getName(), "Los nombres");
+            PersonNames.validate(deceased.getLastname(), "Los apellidos");
+            String document = required(data.documentNumber(), "el número de documento", 10);
+            if (!document.matches("\\d{5,10}")) {
+                throw new InvalidDataException("El documento debe tener entre 5 y 10 dígitos.");
             }
             if (deceasedRepository.existsByDocumentNumber(document)) {
                 throw new InvalidDataException("Ya existe un difunto registrado con el documento " + document + ".");
