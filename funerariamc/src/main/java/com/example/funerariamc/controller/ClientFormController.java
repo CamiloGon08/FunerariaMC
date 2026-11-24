@@ -12,6 +12,7 @@ import javafx.fxml.FXML;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.DatePicker;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.TextField;
@@ -75,6 +76,10 @@ public class ClientFormController {
     @FXML
     private VBox lastnameBox;
     @FXML
+    private VBox birthBox;
+    @FXML
+    private DatePicker birthPicker;
+    @FXML
     private TextField lastnameField;
     @FXML
     private TextField phoneField;
@@ -136,7 +141,19 @@ public class ClientFormController {
         documentField.textProperty().addListener((obs, old, text) -> hideExisting());
 
         // Un elemento oculto no ocupa espacio.
-        for (Node node : List.of(lastnameBox, existingBox, errorLabel)) {
+        // Fecha en dd/mm/aaaa; se elige en el calendario
+        birthPicker.setConverter(new StringConverter<>() {
+            @Override
+            public String toString(LocalDate date) {
+                return date == null ? "" : EmployeeController.DATE.format(date);
+            }
+
+            @Override
+            public LocalDate fromString(String text) {
+                return null;
+            }
+        });
+        for (Node node : List.of(lastnameBox, birthBox, existingBox, errorLabel)) {
             node.managedProperty().bind(node.visibleProperty());
         }
         errorLabel.visibleProperty().bind(errorLabel.textProperty().isNotEmpty());
@@ -176,6 +193,7 @@ public class ClientFormController {
                 ? "—" : EmployeeController.DATE.format(client.getRegistrationDate()));
         nameField.setText(client.getName());
         lastnameField.setText(client.getLastname());
+        birthPicker.setValue(client.getBirthDate());
         phoneField.setText(client.getPhone());
         emailField.setText(client.getEmail());
         addressField.setText(client.getAddress());
@@ -204,6 +222,7 @@ public class ClientFormController {
 
         nameLabel.setText(corporate ? "RAZÓN SOCIAL *" : "NOMBRES *");
         lastnameBox.setVisible(!corporate);
+        birthBox.setVisible(!corporate);
         GridPane.setColumnSpan(nameBox, corporate ? 2 : 1);
         documentField.setPromptText(corporate ? "800.197.268-4" : "1.065.832.417");
         typeNote.setText(corporate
@@ -214,6 +233,7 @@ public class ClientFormController {
     private void setEditable(boolean editable) {
         clientTypeCombo.setDisable(!editable);
         documentTypeCombo.setDisable(!editable);
+        birthPicker.setDisable(!editable);
         for (TextField field : List.of(documentField, nameField, lastnameField, phoneField, emailField, addressField)) {
             field.setEditable(editable);
             field.setFocusTraversable(editable);
@@ -293,7 +313,8 @@ public class ClientFormController {
                 corporate ? null : text(lastnameField),
                 text(phoneField),
                 text(emailField),
-                text(addressField));
+                text(addressField),
+                corporate ? null : birthPicker.getValue());
     }
 
     private static String text(TextField field) {
