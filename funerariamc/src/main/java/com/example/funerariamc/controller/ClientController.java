@@ -16,6 +16,7 @@ import com.example.funerariamc.service.ClientOverviewService.PlanInfo;
 import com.example.funerariamc.service.ClientOverviewService.SaleInfo;
 import com.example.funerariamc.service.ClientService;
 import com.example.funerariamc.service.ClientService.BalanceFilter;
+import com.example.funerariamc.service.ClientService.PlanFilter;
 import com.example.funerariamc.service.AppModule;
 import com.example.funerariamc.service.ContractService;
 import com.example.funerariamc.ui.DetailShell;
@@ -24,6 +25,7 @@ import com.example.funerariamc.ui.Responsive;
 import com.example.funerariamc.ui.RefreshableView;
 import com.example.funerariamc.ui.FormShell;
 import com.example.funerariamc.ui.ModuleLink;
+import com.example.funerariamc.ui.Pager;
 import javafx.animation.PauseTransition;
 import javafx.concurrent.Task;
 import javafx.css.PseudoClass;
@@ -102,6 +104,8 @@ public class ClientController implements RefreshableView {
     @FXML
     private ToggleButton corporateToggle;
     @FXML
+    private ComboBox<PlanFilter> planFilter;
+    @FXML
     private ComboBox<BalanceFilter> balanceFilter;
     @FXML
     private Label totalValue;
@@ -128,8 +132,6 @@ public class ClientController implements RefreshableView {
     @FXML
     private Label emptyLabel;
     @FXML
-    private Button moreButton;
-    @FXML
     private Region veil;
     @FXML
     private VBox drawer;
@@ -138,8 +140,7 @@ public class ClientController implements RefreshableView {
     private final List<Client> clients = new ArrayList<>();
     private final Map<Long, ClientSummary> summaries = new HashMap<>();
     private final Map<Long, VBox> cards = new HashMap<>();
-    private long totalMatches;
-    private boolean loading;
+    private Pager<Client> pager;
     /** Cada búsqueda nueva invalida las respuestas que aún vienen en camino. */
     private int generation;
     /** Cliente abierto en el panel lateral (null si está cerrado). */
@@ -168,28 +169,32 @@ public class ClientController implements RefreshableView {
             if (toggle == null) {
                 old.setSelected(true); // siempre queda un tipo elegido
             } else {
-                reload();
+                reloadFromStart();
             }
         });
+
+        // Personas con plan exequial o sin plan (los planes cancelados cuentan como sin plan)
+        planFilter.getItems().setAll(PlanFilter.values());
+        planFilter.setValue(PlanFilter.ALL);
+        planFilter.setButtonCell(planCell());
+        planFilter.setCellFactory(list -> planCell());
+        planFilter.valueProperty().addListener((obs, old, value) -> reloadFromStart());
 
         balanceFilter.getItems().setAll(BalanceFilter.values());
         balanceFilter.setValue(BalanceFilter.ALL);
         balanceFilter.setButtonCell(balanceCell());
         balanceFilter.setCellFactory(list -> balanceCell());
-        balanceFilter.valueProperty().addListener((obs, old, value) -> reload());
+        balanceFilter.valueProperty().addListener((obs, old, value) -> reloadFromStart());
 
-        searchDelay.setOnFinished(e -> reload());
+        searchDelay.setOnFinished(e -> reloadFromStart());
         searchField.textProperty().addListener((obs, old, text) -> searchDelay.playFromStart());
 
-        // Al llegar al final de la barra de desplazamiento se piden las siguientes 12 tarjetas.
-        cardScroll.vvalueProperty().addListener((obs, old, value) -> {
-            if (value.doubleValue() >= cardScroll.getVmax() - 0.02 && hasMore()) {
-                loadMore();
-            }
-        });
+        // Paginación como la bitácora: cada página consulta sus 12 tarjetas en la BD.
+        pager = Pager.<Client>remote(PAGE_SIZE, "cliente", "clientes", page -> query(page))
+                .scrollTopOf(cardScroll).below(cardScroll);
 
         detail = DetailShell.install(drawer, veil, DetailShell.Kind.PANEL);
-        reload();
+        reloadFromStart();
     }
 
     // ---------- carga ----------
@@ -198,41 +203,31 @@ public class ClientController implements RefreshableView {
     private record Batch(Page<Client> page, Map<Long, ClientSummary> summaries, ClientKpis kpis) {
     }
 
-    /** Un filtro cambió o se guardó algo: vuelve a traer desde el principio lo que ya se veía. */
+    /** Se guardó algo o se volvió a la pantalla: vuelve a consultar la página que se está viendo. */
     private void reload() {
-        int size = Math.min(Math.max(PAGE_SIZE, clients.size()), ClientService.MAX_PAGE_SIZE);
-        query(0, size, true);
+        query(pager.page());
     }
 
-    @FXML
-    private void onLoadMore() {
-        loadMore();
-    }
-
-    private void loadMore() {
-        if (!loading) {
-            query(clients.size() / PAGE_SIZE, PAGE_SIZE, false);
-        }
-    }
-
-    private boolean hasMore() {
-        return clients.size() < totalMatches;
+    /** Un filtro o la búsqueda cambió: vuelve a la página 1. */
+    private void reloadFromStart() {
+        query(0);
     }
 
     /** Igual que Personal: la consulta corre en otro hilo para que la ventana no se congele. */
-    private void query(int pageIndex, int size, boolean replace) {
+    private void query(int pageIndex) {
         String text = searchField.getText();
         ClientType type = selectedType();
         BalanceFilter balance = balanceFilter.getValue();
-        int requestGeneration = replace ? ++generation : generation;
-        loading = true;
+        PlanFilter plan = planFilter.getValue();
+        int requestGeneration = ++generation;
+        pager.setBusy(true);
         showingLabel.setText("Cargando clientes…");
         Task<Batch> task = new Task<>() {
             @Override
             protected Batch call() {
                 // Una sola transacción para las tarjetas, sus resúmenes y los indicadores.
                 return readOnlyWork.run(() -> {
-                    Page<Client> page = clientService.search(text, type, balance, pageIndex, size);
+                    Page<Client> page = clientService.search(text, type, balance, plan, pageIndex, PAGE_SIZE);
                     List<Long> ids = page.getContent().stream().map(Client::getId).toList();
                     return new Batch(page, overviewService.summaries(ids), overviewService.kpis());
                 });
@@ -240,11 +235,11 @@ public class ClientController implements RefreshableView {
         };
         task.setOnSucceeded(e -> {
             if (requestGeneration == generation) {
-                show(task.getValue(), replace);
+                show(task.getValue());
             }
         });
         task.setOnFailed(e -> {
-            loading = false;
+            pager.setBusy(false);
             showingLabel.setText("");
             showError(task.getException() instanceof BusinessException business
                     ? business.getMessage()
@@ -253,19 +248,22 @@ public class ClientController implements RefreshableView {
         start(task, "client-loader");
     }
 
-    private void show(Batch batch, boolean replace) {
-        loading = false;
-        if (replace) {
-            clients.clear();
-            summaries.clear();
+    private void show(Batch batch) {
+        Page<Client> page = batch.page();
+        // Si se borró o filtró lo último de una página, se pasa a la última que sí tiene datos.
+        if (page.getContent().isEmpty() && page.getNumber() > 0 && page.getTotalPages() > 0) {
+            query(page.getTotalPages() - 1);
+            return;
         }
-        clients.addAll(batch.page().getContent());
+        pager.setBusy(false);
+        clients.clear();
+        summaries.clear();
+        clients.addAll(page.getContent());
         summaries.putAll(batch.summaries());
-        totalMatches = batch.page().getTotalElements();
         renderCards();
         showKpis(batch.kpis());
-        showingLabel.setText(totalMatches == 0 ? ""
-                : clients.size() + " de " + count(totalMatches, "cliente", "clientes") + " · más recientes primero");
+        pager.show(page.getNumber(), page.getTotalPages(), page.getTotalElements());
+        showingLabel.setText(page.getTotalElements() == 0 ? "" : "Más recientes primero");
 
         // El panel abierto se vuelve a dibujar con los datos recién guardados.
         if (drawerClientId != null) {
@@ -298,8 +296,6 @@ public class ClientController implements RefreshableView {
         boolean empty = clients.isEmpty();
         emptyLabel.setVisible(empty);
         emptyLabel.setManaged(empty);
-        moreButton.setVisible(hasMore());
-        moreButton.setManaged(hasMore());
     }
 
     private Optional<Client> findLoaded(Long id) {
@@ -570,12 +566,35 @@ public class ClientController implements RefreshableView {
 
     // ---------- acciones ----------
 
+    /**
+     * Registrar cliente: al guardarlo se abre enseguida "Nuevo contrato" con ese cliente ya elegido,
+     * para afiliarlo a un plan o hacerle un contrato o una venta. Si no hace falta, se cierra y el
+     * usuario sigue en Clientes.
+     */
     @FXML
     private void onRegister() {
-        openForm(null, ClientFormController.Mode.NEW);
+        Client created = openForm(null, ClientFormController.Mode.NEW);
+        if (created == null || !ModuleLink.canOpen(AppModule.CONTRATOS)) {
+            return;
+        }
+        // Con el cliente ya guardado se pregunta si se afilia de una vez; la afiliación se abre aquí mismo
+        String name = ClientService.displayName(created);
+        boolean affiliate = Notice.confirm(window(), "Clientes", "Cliente registrado",
+                "¿Desea afiliar a " + name + " a un plan exequial ahora?",
+                "Sí, afiliar a un plan", "Ahora no", false);
+        if (affiliate) {
+            ModuleLink.openInPlace(AppModule.CONTRATOS, new ContractController.AffiliationLink(option(created)));
+        }
     }
 
-    private void openForm(Client client, ClientFormController.Mode mode) {
+    /** El cliente como opción de los formularios de Contratos: nombre y documento. */
+    private static ContractService.Option option(Client c) {
+        String detail = (c.getClientType() == ClientType.CORPORATE ? "Empresa · " : "") + documentLabel(c);
+        return new ContractService.Option(c.getId(), ClientService.displayName(c), detail);
+    }
+
+    /** Muestra el formulario y devuelve el cliente guardado, o null si se canceló. */
+    private Client openForm(Client client, ClientFormController.Mode mode) {
         FxmlViewLoader.View<ClientFormController> view = viewLoader.loadView(FxmlViewLoader.CLIENT_FORM);
         Stage stage = new Stage();
         stage.initOwner(window());
@@ -583,12 +602,17 @@ public class ClientController implements RefreshableView {
         stage.initModality(Modality.APPLICATION_MODAL);
         stage.setTitle("Clientes");
         stage.setScene(new Scene(view.root()));
-        view.controller().init(client, mode, saved -> reload());
+        Client[] saved = new Client[1];
+        view.controller().init(client, mode, result -> {
+            saved[0] = result;
+            reload();
+        });
         FormShell.stage(stage, "Clientes", FormShell.Kind.PANEL);
         stage.showAndWait();
+        return saved[0];
     }
 
-    /** Abre Contratos y ventas con el formulario de nueva venta y este cliente ya elegido. */
+    /** Abre "Nuevo contrato" con este cliente ya elegido; al cerrarlo se vuelve a Clientes. */
     private void onNewContract(Client c) {
         openContracts(c, true);
     }
@@ -603,9 +627,13 @@ public class ClientController implements RefreshableView {
             showInfo("Contratos y ventas", "Su usuario no tiene acceso al módulo Contratos y ventas.");
             return;
         }
-        String detail = (c.getClientType() == ClientType.CORPORATE ? "Empresa · " : "") + documentLabel(c);
-        ModuleLink.open(AppModule.CONTRATOS, new ContractController.ClientLink(
-                new ContractService.Option(c.getId(), ClientService.displayName(c), detail), newSale));
+        ContractController.ClientLink link = new ContractController.ClientLink(option(c), newSale);
+        if (newSale) {
+            // "Nuevo contrato" se abre encima de Clientes; "Registrar abono" pasa a la pestaña de contratos
+            ModuleLink.openInPlace(AppModule.CONTRATOS, link);
+        } else {
+            ModuleLink.open(AppModule.CONTRATOS, link);
+        }
     }
 
     // ---------- piezas ----------
@@ -690,6 +718,16 @@ public class ClientController implements RefreshableView {
         GridPane.setHgrow(val, Priority.ALWAYS);
         grid.add(key, 0, row);
         grid.add(val, 1, row);
+    }
+
+    private static ListCell<PlanFilter> planCell() {
+        return new ListCell<>() {
+            @Override
+            protected void updateItem(PlanFilter item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty || item == null ? null : item.getLabel());
+            }
+        };
     }
 
     private static ListCell<BalanceFilter> balanceCell() {
