@@ -181,14 +181,23 @@ public class FuneralPlanService {
     /** Beneficiario del panel. surcharge es el recargo que se cobra en la venta del servicio. */
     public record BeneficiaryInfo(Long id, String fullName, String documentNumber, Relationship relationship,
                                   String relationshipLabel, BigDecimal surcharge, String surchargeReason,
-                                  Long deceasedId, LocalDate deathDate, String name, String lastname) {
+                                  Long deceasedId, LocalDate deathDate, String name, String lastname,
+                                  LocalDate birthDate) {
+
+        /** Con los nombres por separado pero sin fecha de nacimiento. */
+        public BeneficiaryInfo(Long id, String fullName, String documentNumber, Relationship relationship,
+                               String relationshipLabel, BigDecimal surcharge, String surchargeReason,
+                               Long deceasedId, LocalDate deathDate, String name, String lastname) {
+            this(id, fullName, documentNumber, relationship, relationshipLabel, surcharge, surchargeReason,
+                    deceasedId, deathDate, name, lastname, null);
+        }
 
         /** Sin los nombres y apellidos por separado (solo el nombre completo). */
         public BeneficiaryInfo(Long id, String fullName, String documentNumber, Relationship relationship,
                                String relationshipLabel, BigDecimal surcharge, String surchargeReason,
                                Long deceasedId, LocalDate deathDate) {
             this(id, fullName, documentNumber, relationship, relationshipLabel, surcharge, surchargeReason,
-                    deceasedId, deathDate, null, null);
+                    deceasedId, deathDate, null, null, null);
         }
 
         public boolean isDeceased() {
@@ -222,8 +231,14 @@ public class FuneralPlanService {
     public record PlanOffer(String name, BigDecimal monthlyFee, List<String> includes) {
     }
 
-    /** Beneficiario que se agrega al afiliar desde Contratos. */
-    public record NewBeneficiary(String name, String lastname, String documentNumber, Relationship relationship) {
+    /** Beneficiario que se agrega al afiliar desde Contratos, con su fecha de nacimiento. */
+    public record NewBeneficiary(String name, String lastname, String documentNumber, Relationship relationship,
+                                 LocalDate birthDate) {
+
+        /** Sin fecha de nacimiento (queda vacía). */
+        public NewBeneficiary(String name, String lastname, String documentNumber, Relationship relationship) {
+            this(name, lastname, documentNumber, relationship, null);
+        }
     }
 
     /**
@@ -519,7 +534,7 @@ public class FuneralPlanService {
             infos.add(new BeneficiaryInfo(b.getId(), fullName(b.getName(), b.getLastname()), b.getDocumentNumber(),
                     relationship, relationship == null ? orDash(b.getRelationship()) : relationship.getDisplayName(),
                     surcharge.total(), surchargeReason(surcharge), match == null ? null : match.getDeceasedId(),
-                    match == null ? null : match.getDeathDate(), b.getName(), b.getLastname()));
+                    match == null ? null : match.getDeathDate(), b.getName(), b.getLastname(), b.getBirthDate()));
         }
 
         List<PlanPayment> payments = paymentRepository.findHistory(planId);
@@ -704,7 +719,7 @@ public class FuneralPlanService {
         FuneralPlan plan = register(new PlanData(clientId, data.planName(), data.startDate()));
         for (NewBeneficiary b : data.beneficiaries() == null ? List.<NewBeneficiary>of() : data.beneficiaries()) {
             addBeneficiary(new BeneficiaryData(plan.getId(), b.name(), b.lastname(), b.documentNumber(),
-                    b.relationship(), true));
+                    b.relationship(), true, b.birthDate()));
         }
         return plan;
     }
@@ -729,7 +744,7 @@ public class FuneralPlanService {
         }
         for (NewBeneficiary b : add == null ? List.<NewBeneficiary>of() : add) {
             addBeneficiary(new BeneficiaryData(planId, b.name(), b.lastname(), b.documentNumber(), b.relationship(),
-                    true));
+                    true, b.birthDate()));
             changes = true;
         }
         if (!changes) {
@@ -785,6 +800,10 @@ public class FuneralPlanService {
         if (data.relationship() == null) {
             throw new InvalidDataException("Seleccione el parentesco con el titular.");
         }
+        // La fecha de nacimiento queda en el plan para llenarla sola si la persona fallece
+        if (data.birthDate() != null && data.birthDate().isAfter(LocalDate.now(clock))) {
+            throw new InvalidDataException("La fecha de nacimiento del beneficiario no puede ser futura.");
+        }
         if (document.equals(plan.getClient().getDocumentNumber())) {
             throw new InvalidDataException("Ese documento es del titular: el titular ya está cubierto por su plan.");
         }
@@ -808,6 +827,7 @@ public class FuneralPlanService {
         beneficiary.setLastname(lastname);
         beneficiary.setDocumentNumber(document);
         beneficiary.setRelationship(data.relationship().name());
+        beneficiary.setBirthDate(data.birthDate());
         Beneficiary saved = beneficiaryRepository.save(beneficiary);
         accessLogService.record(actorId, AccessLogService.BENEFICIARY_ADDED + code(plan.getId()) + " " + document);
         return saved;
