@@ -76,9 +76,9 @@
                 <Button fx:id="newButton" text="+  Nuevo contrato" onAction="#onNewContract" styleClass="primary-button" minWidth="-Infinity"/>
             </HBox>
 
-            <!-- Tabla con su propia barra para bajar entre los contratos; la lista solo dibuja las filas visibles.
-                 Alto mínimo para ver varias filas: si la ventana es baja, se desplaza toda la pantalla. -->
-            <VBox styleClass="table-card" spacing="12" VBox.vgrow="ALWAYS" minHeight="560">
+            <!-- Tabla sin barra propia: mide lo que sus filas de la página (FitRows) y la tarjeta crece con
+                 ella, así baja toda la pantalla junta. -->
+            <VBox styleClass="table-card" spacing="12" VBox.vgrow="ALWAYS" minHeight="-Infinity">
                 <VBox spacing="2">
                     <Label text="Contratos registrados" styleClass="card-title"/>
                     <Label fx:id="countLabel" styleClass="card-subtitle"/>

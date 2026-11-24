@@ -16,6 +16,7 @@ import com.example.funerariamc.service.ReportService.FlowPoint;
 import com.example.funerariamc.service.ReportService.MonthBalance;
 import com.example.funerariamc.service.ReportService.Slice;
 import com.example.funerariamc.service.ReportService.Summary;
+import com.example.funerariamc.ui.FitRows;
 import com.example.funerariamc.ui.Pager;
 import com.example.funerariamc.ui.SearchField;
 import com.example.funerariamc.ui.RefreshableView;
@@ -54,6 +55,7 @@ import javafx.scene.control.DialogPane;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.MenuButton;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
@@ -172,6 +174,7 @@ public class FinancesController implements RefreshableView, SectionView {
     @FXML private Label movementsCount;
     @FXML private TextField searchField;
     @FXML private HBox movementsHead;
+    @FXML private ScrollPane pageScroll;
     @FXML private ListView<MovementRow> movementsList;
     @FXML private Label movementsEmpty;
     @FXML private VBox commissionsPane;
@@ -295,14 +298,15 @@ public class FinancesController implements RefreshableView, SectionView {
                 cell(label("", "head-cell"), W_ACTION));
         movementsList.setItems(movementRows);
         movementsList.setCellFactory(list -> new MovementCell());
-        movementsList.setFixedCellSize(62);
+        // La lista mide lo que sus filas de la página: sin barra propia, baja con toda la pantalla
+        FitRows.apply(movementsList, 62);
         movementsList.setPlaceholder(new Label(""));
         movementsList.setPrefWidth(0);
         // Paginación como la bitácora: 20 filas por página, debajo de cada tabla.
         movementPager = Pager.<MovementRow>local(Pager.TABLE_PAGE, "movimiento", "movimientos", page -> {
             movementRows.setAll(page);
             movementsList.scrollTo(0);
-        }).below(movementsList.getParent());
+        }).scrollTopOf(pageScroll).below(movementsList.getParent());
 
         Node casesHead = cell(label("CASOS", "head-cell"), W_CASES);
         Node rateHead = cell(label("TARIFA", "head-cell"), W_CASES);
@@ -317,13 +321,14 @@ public class FinancesController implements RefreshableView, SectionView {
                 cell(label("", "head-cell"), W_ACTION + 20));
         commissionsList.setItems(commissionRows);
         commissionsList.setCellFactory(list -> new CommissionCell());
-        commissionsList.setFixedCellSize(62);
+        // La lista mide lo que sus filas de la página: sin barra propia, baja con toda la pantalla
+        FitRows.apply(commissionsList, 62);
         commissionsList.setPlaceholder(new Label(""));
         commissionsList.setPrefWidth(0);
         commissionPager = Pager.<CommissionRow>local(Pager.TABLE_PAGE, "persona", "personas", page -> {
             commissionRows.setAll(page);
             commissionsList.scrollTo(0);
-        }).below(commissionsList.getParent());
+        }).scrollTopOf(pageScroll).below(commissionsList.getParent());
 
         toast.setOpacity(0);
         toast.setMouseTransparent(true);

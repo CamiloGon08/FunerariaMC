@@ -25,6 +25,7 @@ import com.example.funerariamc.service.ClientService;
 import com.example.funerariamc.service.FuneralPlanService;
 import com.example.funerariamc.service.FuneralPlanService.PlanOffer;
 import com.example.funerariamc.service.SalePaymentData;
+import com.example.funerariamc.ui.FitRows;
 import com.example.funerariamc.ui.Pager;
 import com.example.funerariamc.ui.DetailShell;
 import com.example.funerariamc.ui.Notice;
@@ -191,6 +192,8 @@ public class ContractController implements RefreshableView {
     @FXML
     private ListView<SaleRow> salesList;
     @FXML
+    private ScrollPane pageScroll;
+    @FXML
     private Label emptyLabel;
     @FXML
     private Region veil;
@@ -297,7 +300,8 @@ public class ContractController implements RefreshableView {
 
         salesList.setItems(visibleRows);
         salesList.setCellFactory(list -> new SaleCell());
-        salesList.setFixedCellSize(77);
+        // La lista mide lo que sus filas de la página: sin barra propia, baja con toda la pantalla
+        FitRows.apply(salesList, 77);
         salesList.setPlaceholder(new Label(""));
         salesList.setMinWidth(0);
         salesList.setPrefWidth(0); // la tabla toma el ancho disponible, no el de su contenido
@@ -305,7 +309,7 @@ public class ContractController implements RefreshableView {
         pager = Pager.<SaleRow>local(Pager.TABLE_PAGE, "registro", "registros", page -> {
             visibleRows.setAll(page);
             salesList.scrollTo(0);
-        }).below(salesList.getParent());
+        }).scrollTopOf(pageScroll).below(salesList.getParent());
 
         detail = DetailShell.install(drawer, veil, DetailShell.Kind.MODAL);
         toast.setOpacity(0);

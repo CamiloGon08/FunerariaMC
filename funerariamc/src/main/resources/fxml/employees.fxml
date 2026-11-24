@@ -28,57 +28,59 @@
         <ToggleGroup fx:id="areaGroup"/>
     </fx:define>
 
-    <VBox spacing="18">
-        <!-- Banda verde (paleta verde oscura): arriba el encabezado del menú (MainController lo pone en
-             #heroHeaderSlot) y debajo los indicadores en tarjetas translúcidas. -->
-        <VBox styleClass="hero-band">
-            <StackPane id="heroHeaderSlot" alignment="TOP_LEFT"/>
-            <HBox spacing="16">
-                <VBox styleClass="kpi-card" HBox.hgrow="ALWAYS" prefWidth="0">
-                    <Label text="ACTIVOS" styleClass="kpi-caption"/>
-                    <Label fx:id="activeValue" text="—" styleClass="kpi-value"/>
-                    <Label fx:id="activeDetail" styleClass="kpi-detail"/>
-                </VBox>
-                <VBox styleClass="kpi-card" HBox.hgrow="ALWAYS" prefWidth="0">
-                    <Label text="CON CUENTA DE ACCESO" styleClass="kpi-caption"/>
-                    <Label fx:id="accountsValue" text="—" styleClass="kpi-value"/>
-                    <Label text="administración, secretaría y ventas" styleClass="kpi-detail"/>
-                </VBox>
-                <VBox styleClass="kpi-card" HBox.hgrow="ALWAYS" prefWidth="0">
-                    <Label text="DOCUMENTOS POR VENCER" styleClass="kpi-caption"/>
-                    <Label fx:id="expiringValue" text="—" styleClass="kpi-value"/>
-                    <Label fx:id="expiringDetail" text="licencias en los próximos 30 días" styleClass="kpi-detail"/>
-                </VBox>
-                <VBox styleClass="kpi-card" HBox.hgrow="ALWAYS" prefWidth="0">
-                    <Label text="INACTIVOS" styleClass="kpi-caption"/>
-                    <Label fx:id="inactiveValue" text="—" styleClass="kpi-value"/>
-                    <Label text="no se borran, quedan en historial" styleClass="kpi-detail"/>
-                </VBox>
+    <!-- Toda la pantalla se desplaza junta: banda verde, filtros, tarjetas y páginas -->
+    <ScrollPane fx:id="cardScroll" fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED"
+                styleClass="card-scroll,page-scroll">
+        <VBox spacing="18" styleClass="page-content">
+            <!-- Banda verde (paleta verde oscura): arriba el encabezado del menú (MainController lo pone en
+                 #heroHeaderSlot) y debajo los indicadores en tarjetas translúcidas. -->
+            <VBox styleClass="hero-band">
+                <StackPane id="heroHeaderSlot" alignment="TOP_LEFT"/>
+                <HBox spacing="16">
+                    <VBox styleClass="kpi-card" HBox.hgrow="ALWAYS" prefWidth="0">
+                        <Label text="ACTIVOS" styleClass="kpi-caption"/>
+                        <Label fx:id="activeValue" text="—" styleClass="kpi-value"/>
+                        <Label fx:id="activeDetail" styleClass="kpi-detail"/>
+                    </VBox>
+                    <VBox styleClass="kpi-card" HBox.hgrow="ALWAYS" prefWidth="0">
+                        <Label text="CON CUENTA DE ACCESO" styleClass="kpi-caption"/>
+                        <Label fx:id="accountsValue" text="—" styleClass="kpi-value"/>
+                        <Label text="administración, secretaría y ventas" styleClass="kpi-detail"/>
+                    </VBox>
+                    <VBox styleClass="kpi-card" HBox.hgrow="ALWAYS" prefWidth="0">
+                        <Label text="DOCUMENTOS POR VENCER" styleClass="kpi-caption"/>
+                        <Label fx:id="expiringValue" text="—" styleClass="kpi-value"/>
+                        <Label fx:id="expiringDetail" text="licencias en los próximos 30 días" styleClass="kpi-detail"/>
+                    </VBox>
+                    <VBox styleClass="kpi-card" HBox.hgrow="ALWAYS" prefWidth="0">
+                        <Label text="INACTIVOS" styleClass="kpi-caption"/>
+                        <Label fx:id="inactiveValue" text="—" styleClass="kpi-value"/>
+                        <Label text="no se borran, quedan en historial" styleClass="kpi-detail"/>
+                    </VBox>
+                </HBox>
+            </VBox>
+
+            <!-- Búsqueda, áreas, estado y registrar (.filter-card y .search-box en app.css) -->
+            <HBox styleClass="filter-card">
+                <HBox styleClass="search-box" HBox.hgrow="ALWAYS" minWidth="150">
+                    <SVGPath content="M7 1.5a5.5 5.5 0 1 1 0 11a5.5 5.5 0 0 1 0-11z M11.2 11.2 L15 15" styleClass="search-icon"/>
+                    <TextField fx:id="searchField" promptText="Buscar por nombre o cédula" HBox.hgrow="ALWAYS"/>
+                </HBox>
+                <!-- Los chips de área se agregan desde el controlador (uno por área) -->
+                <HBox fx:id="areaChips" spacing="5" alignment="CENTER_LEFT" minWidth="-Infinity"/>
+                <ComboBox fx:id="statusFilter" styleClass="chip-combo" prefWidth="118" minWidth="118"/>
+                <Button text="+  Registrar empleado" onAction="#onRegister" styleClass="primary-button"
+                        minWidth="-Infinity"/>
             </HBox>
-        </VBox>
 
-        <!-- Búsqueda, áreas, estado y registrar (.filter-card y .search-box en app.css) -->
-        <HBox styleClass="filter-card">
-            <HBox styleClass="search-box" HBox.hgrow="ALWAYS" minWidth="150">
-                <SVGPath content="M7 1.5a5.5 5.5 0 1 1 0 11a5.5 5.5 0 0 1 0-11z M11.2 11.2 L15 15" styleClass="search-icon"/>
-                <TextField fx:id="searchField" promptText="Buscar por nombre o cédula" HBox.hgrow="ALWAYS"/>
+            <HBox alignment="BOTTOM_LEFT">
+                <Label text="Equipo" styleClass="section-heading"/>
+                <Pane HBox.hgrow="ALWAYS"/>
+                <Label fx:id="showingLabel" styleClass="card-subtitle"/>
             </HBox>
-            <!-- Los chips de área se agregan desde el controlador (uno por área) -->
-            <HBox fx:id="areaChips" spacing="5" alignment="CENTER_LEFT" minWidth="-Infinity"/>
-            <ComboBox fx:id="statusFilter" styleClass="chip-combo" prefWidth="118" minWidth="118"/>
-            <Button text="+  Registrar empleado" onAction="#onRegister" styleClass="primary-button"
-                    minWidth="-Infinity"/>
-        </HBox>
 
-        <HBox alignment="BOTTOM_LEFT">
-            <Label text="Equipo" styleClass="section-heading"/>
-            <Pane HBox.hgrow="ALWAYS"/>
-            <Label fx:id="showingLabel" styleClass="card-subtitle"/>
-        </HBox>
-
-        <!-- Tarjetas: 12 por página; la barra de páginas se agrega debajo desde el controlador -->
-        <ScrollPane fx:id="cardScroll" fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="ALWAYS"
-                    styleClass="card-scroll" VBox.vgrow="ALWAYS">
+            <!-- Tarjetas: 12 por página; la barra de páginas se agrega debajo desde el controlador.
+                 No llevan barra propia: bajan con el resto de la pantalla. -->
             <VBox spacing="16" styleClass="card-scroll-content">
                 <GridPane fx:id="cardGrid" hgap="16" vgap="16">
                     <columnConstraints>
@@ -90,8 +92,8 @@
                 <Label fx:id="emptyLabel" text="No hay empleados que coincidan con la búsqueda."
                        styleClass="card-subtitle" managed="false" visible="false"/>
             </VBox>
-        </ScrollPane>
-    </VBox>
+        </VBox>
+    </ScrollPane>
 
     <!-- Panel de detalle: velo que oscurece la lista y panel a la derecha -->
     <Region fx:id="veil" styleClass="drawer-veil" visible="false" onMouseClicked="#onCloseDrawer"/>

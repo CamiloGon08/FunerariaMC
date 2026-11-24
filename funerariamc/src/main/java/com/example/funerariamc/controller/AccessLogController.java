@@ -6,13 +6,16 @@ import com.example.funerariamc.ui.AccessLogLabels;
 import com.example.funerariamc.ui.EyeToggle;
 import com.example.funerariamc.ui.RefreshableView;
 import com.example.funerariamc.ui.Pager;
+import javafx.application.Platform;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
+import javafx.scene.Node;
 import javafx.scene.control.DateCell;
 import javafx.scene.control.DatePicker;
 import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
@@ -44,6 +47,12 @@ public class AccessLogController implements RefreshableView {
     private static final DateTimeFormatter DAY_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final String EMPTY_LOG = "Aún no hay registros en la bitácora.";
     private static final String EMPTY_FILTER = "No hay registros para los filtros seleccionados.";
+    /** Alto de cada fila (igual al -fx-cell-size de access-log.css). */
+    private static final double ROW_HEIGHT = 48;
+    /** Alto del encabezado de columnas mientras la tabla aún no se ha dibujado. */
+    private static final double HEADER_HEIGHT = 40;
+    /** Filas de alto que ocupa la tabla vacía, para que quepa el aviso de "sin registros". */
+    private static final int EMPTY_ROWS = 3;
 
     private final AccessLogService accessLogService;
 
@@ -73,6 +82,8 @@ public class AccessLogController implements RefreshableView {
     private TextField userFilterField;
     @FXML
     private ToggleButton showIpButton;
+    @FXML
+    private ScrollPane pageScroll;
     /** Barra de páginas centrada debajo de la tabla, igual a la de las demás listas. */
     private final Pager<AccessLog> pagination = Pager.remote(PAGE_SIZE, "registro", "registros", this::loadPage);
 
@@ -105,9 +116,26 @@ public class AccessLogController implements RefreshableView {
         filterErrorLabel.managedProperty().bind(filterErrorLabel.textProperty().isNotEmpty());
         filterErrorLabel.visibleProperty().bind(filterErrorLabel.textProperty().isNotEmpty());
 
+        // La tabla mide lo que sus filas: sin barra propia, baja con toda la pantalla
+        logTable.setFixedCellSize(ROW_HEIGHT);
+        logTable.itemsProperty().addListener((obs, old, items) -> fitTableToRows());
+        logTable.skinProperty().addListener((obs, old, skin) -> Platform.runLater(this::fitTableToRows));
+        fitTableToRows();
+
         // Cada cambio de página consulta esa página.
-        pagination.below(logTable);
+        pagination.scrollTopOf(pageScroll).below(logTable);
         loadPage(0);
+    }
+
+    /** Alto de la tabla = encabezado + filas de la página (o unas pocas si está vacía, para el aviso). */
+    private void fitTableToRows() {
+        Node header = logTable.lookup(".column-header-background");
+        double headerHeight = header instanceof Region region && region.getHeight() > 0 ? region.getHeight() : HEADER_HEIGHT;
+        int rows = logTable.getItems() == null ? 0 : logTable.getItems().size();
+        double height = headerHeight + Math.max(rows, EMPTY_ROWS) * ROW_HEIGHT + 2;
+        logTable.setMinHeight(height);
+        logTable.setPrefHeight(height);
+        logTable.setMaxHeight(height);
     }
 
     /** Vuelve a consultar la página que se está viendo (por si entraron registros nuevos). */

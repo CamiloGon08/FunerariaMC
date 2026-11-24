@@ -116,6 +116,7 @@ public class AlliedNetworkController implements RefreshableView {
     @FXML private Label openDetail;
     @FXML private Label countLabel;
     @FXML private ScrollPane cardsScroll;
+    @FXML private StackPane cardsBox;
     @FXML private FlowPane cardsPane;
     @FXML private Label emptyLabel;
     @FXML private Region veil;
@@ -153,7 +154,7 @@ public class AlliedNetworkController implements RefreshableView {
             }
             cardsPane.getChildren().setAll(cards);
             resizeCards();
-        }).scrollTopOf(cardsScroll).below(cardsScroll.getParent());
+        }).scrollTopOf(cardsScroll).below(cardsBox);
         stateGroup.selectedToggleProperty().addListener((obs, old, toggle) -> {
             if (toggle == null) {
                 if (old != null) {
@@ -180,7 +181,7 @@ public class AlliedNetworkController implements RefreshableView {
         cityFilter.setValue(ALL_CITIES);
         cityFilter.valueProperty().addListener((obs, old, city) -> applyFilter());
         // Tres tarjetas por fila; dos si la ventana es angosta.
-        cardsScroll.viewportBoundsProperty().addListener((obs, old, bounds) -> resizeCards());
+        cardsBox.widthProperty().addListener((obs, old, width) -> resizeCards());
 
         detail = DetailShell.install(drawer, veil, DetailShell.Kind.PANEL);
         toast.setOpacity(0);
@@ -279,7 +280,7 @@ public class AlliedNetworkController implements RefreshableView {
     }
 
     private void resizeCards() {
-        double width = cardsScroll.getViewportBounds().getWidth() - 8;
+        double width = cardsBox.getWidth() - 8;
         if (width <= 0) {
             return;
         }
