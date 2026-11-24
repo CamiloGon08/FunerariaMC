@@ -45,7 +45,7 @@ public class AuthService {
         }
 
         // Usuario inexistente: mismo mensaje genérico y sin bitácora (access_log exige app_user_id).
-        AppUser user = appUserRepository.findByUsernameWithEmployeeAndRole(UserAccountService.normalizeUsername(username))
+        AppUser user = appUserRepository.findByExactUsernameWithEmployeeAndRole(username.trim())
                 .orElseThrow(AuthenticationFailedException::invalidCredentials);
 
         if (!passwordEncoder.matches(rawPassword, user.getPasswordHash())) {
