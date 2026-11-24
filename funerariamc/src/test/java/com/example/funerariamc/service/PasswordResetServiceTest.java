@@ -59,7 +59,7 @@ class PasswordResetServiceTest {
 
     @Test
     void unknownUserAndBlankUsernamesHaveNoRecoverySideEffects() {
-        when(users.findByUsernameWithEmployeeAndRole("missing")).thenReturn(Optional.empty());
+        when(users.findByExactUsernameWithEmployeeAndRole("missing")).thenReturn(Optional.empty());
 
         service.requestCode(null);
         service.requestCode(" ");
@@ -348,7 +348,7 @@ class PasswordResetServiceTest {
     }
 
     private void knownUser() {
-        when(users.findByUsernameWithEmployeeAndRole("user")).thenReturn(Optional.of(user));
+        when(users.findByExactUsernameWithEmployeeAndRole("user")).thenReturn(Optional.of(user));
     }
 
     private void recoverableCode() {

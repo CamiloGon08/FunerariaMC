@@ -64,6 +64,17 @@ class ClientServiceTest {
     }
 
     @Test
+    void naturalClientKeepsItsBirthDateButACompanyDoesNot() {
+        ClientData data = natural("1065832417");
+        Client saved = service.register(new ClientData(data.clientType(), data.documentType(), data.documentNumber(),
+                data.name(), data.lastname(), data.phone(), data.email(), data.address(), LocalDate.of(1968, 3, 14)));
+        assertEquals(LocalDate.of(1968, 3, 14), saved.getBirthDate());
+        assertThrows(InvalidDataException.class, () -> service.register(new ClientData(data.clientType(),
+                data.documentType(), "1065832418", data.name(), data.lastname(), data.phone(), data.email(),
+                data.address(), LocalDate.now(AccessLogService.APP_ZONE).plusDays(1))));
+    }
+
+    @Test
     void secondClientWithSameDocumentIsRejectedAndExistingOneIsReturned() {
         // Prueba de Jira (HU-01): registrar dos clientes con el mismo documento; PASA si el segundo se rechaza.
         Client existing = new Client();

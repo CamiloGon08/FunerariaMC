@@ -189,6 +189,17 @@ class FuneralPlanServiceTest {
     }
 
     @Test
+    void beneficiaryKeepsItsBirthDateAndAFutureOneIsRejected() {
+        FuneralPlan plan = plan(412L, client(40L, "49786112", ClientType.NATURAL), TODAY.minusYears(1));
+        when(plans.findDetailById(412L)).thenReturn(Optional.of(plan));
+        assertThrows(InvalidDataException.class, () -> service.addBeneficiary(new BeneficiaryData(412L, "Tomás",
+                "Pinto", "1065223901", Relationship.CHILD, true, TODAY.plusDays(1))));
+        Beneficiary saved = service.addBeneficiary(new BeneficiaryData(412L, "Tomás", "Pinto", "1065223901",
+                Relationship.CHILD, true, LocalDate.of(2001, 5, 9)));
+        assertEquals(LocalDate.of(2001, 5, 9), saved.getBirthDate());
+    }
+
+    @Test
     void holderDocumentCannotBeABeneficiary() {
         FuneralPlan plan = plan(412L, client(40L, "49786112", ClientType.NATURAL), TODAY.minusYears(1));
         when(plans.findDetailById(412L)).thenReturn(Optional.of(plan));
