@@ -4,11 +4,17 @@ import com.example.funerariamc.exception.InvalidDataException;
 import com.example.funerariamc.model.AccessLog;
 import com.example.funerariamc.persistence.AccessLogRepository;
 import com.example.funerariamc.persistence.AppUserRepository;
+import jakarta.annotation.PreDestroy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -19,6 +25,9 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /** Registro y consulta de la bitácora de accesos. */
 @Service
@@ -124,24 +133,66 @@ public class AccessLogService {
     private static final LocalDateTime MIN_DATE = LocalDateTime.of(2000, 1, 1, 0, 0);
     private static final LocalDateTime MAX_DATE = LocalDateTime.of(2100, 1, 1, 0, 0);
 
+    private static final Logger log = LoggerFactory.getLogger(AccessLogService.class);
     private final AccessLogRepository accessLogRepository;
     private final AppUserRepository appUserRepository;
+    /** Transacción propia de cada entrada; null en las pruebas (se guarda en el mismo hilo). */
+    private TransactionTemplate ownTransaction;
+    /** Un solo hilo de fondo escribe la bitácora en orden, sin hacer esperar al usuario. */
+    private ExecutorService writer;
+    /** La IP del equipo se busca una sola vez: en Windows esa búsqueda puede tardar. */
+    private volatile String ipAddress;
 
     public AccessLogService(AccessLogRepository accessLogRepository, AppUserRepository appUserRepository) {
         this.accessLogRepository = accessLogRepository;
         this.appUserRepository = appUserRepository;
     }
 
+    /** Con la base de datos real, la bitácora se escribe en segundo plano y en su propia transacción. */
+    @Autowired(required = false)
+    void setTransactionManager(PlatformTransactionManager transactionManager) {
+        ownTransaction = new TransactionTemplate(transactionManager);
+        ownTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        writer = Executors.newSingleThreadExecutor(task -> {
+            Thread thread = new Thread(task, "access-log-writer");
+            thread.setDaemon(true);
+            return thread;
+        });
+    }
+
+    /** Al cerrar la aplicación se terminan de escribir las entradas pendientes. */
+    @PreDestroy
+    void flush() throws InterruptedException {
+        if (writer != null) {
+            writer.shutdown();
+            writer.awaitTermination(10, TimeUnit.SECONDS);
+        }
+    }
+
     /**
-     * Guarda una entrada en su propia transacción: queda registrada aunque la
-     * operación que la originó falle (por ejemplo, un login rechazado).
+     * Guarda una entrada en su propia transacción: queda registrada aunque la operación que la
+     * originó falle (por ejemplo, un login rechazado). Se escribe en segundo plano para que guardar
+     * no espere a la base de datos una vez más por cada entrada.
      */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void record(Long appUserId, String action) {
         Objects.requireNonNull(appUserId, "El usuario de la bitácora es obligatorio.");
         if (action == null || action.isBlank()) {
             throw new IllegalArgumentException("La acción de la bitácora es obligatoria.");
         }
+        if (writer == null) {
+            save(appUserId, action);
+            return;
+        }
+        writer.execute(() -> {
+            try {
+                ownTransaction.executeWithoutResult(status -> save(appUserId, action));
+            } catch (RuntimeException e) {
+                log.warn("No se pudo guardar en la bitácora: {}", action, e);
+            }
+        });
+    }
+
+    private void save(Long appUserId, String action) {
         AccessLog entry = new AccessLog();
         entry.setAppUser(appUserRepository.getReferenceById(appUserId));
         entry.setAction(action);
@@ -201,10 +252,16 @@ public class AccessLogService {
     }
 
     private String localIpAddress() {
-        try {
-            return InetAddress.getLocalHost().getHostAddress();
-        } catch (UnknownHostException e) {
-            return "unknown";
+        String known = ipAddress;
+        if (known != null) {
+            return known;
         }
+        try {
+            known = InetAddress.getLocalHost().getHostAddress();
+        } catch (UnknownHostException e) {
+            known = "unknown";
+        }
+        ipAddress = known;
+        return known;
     }
 }
