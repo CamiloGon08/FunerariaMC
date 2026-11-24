@@ -8,7 +8,10 @@ import com.example.funerariamc.service.AccessLogService;
 import com.example.funerariamc.service.DeathCertificateService;
 import com.example.funerariamc.service.DeathDocumentData;
 import com.example.funerariamc.service.DeceasedData;
+import com.example.funerariamc.service.AppModule;
 import com.example.funerariamc.service.DeceasedService;
+import com.example.funerariamc.service.DestinationService;
+import com.example.funerariamc.service.DestinationService.Availability;
 import com.example.funerariamc.service.DeceasedService.DeceasedDetail;
 import com.example.funerariamc.service.DeceasedService.DeceasedItem;
 import com.example.funerariamc.service.DeceasedService.Departure;
@@ -24,7 +27,9 @@ import com.example.funerariamc.service.DeceasedService.Segment;
 import com.example.funerariamc.service.DeceasedService.Stage;
 import com.example.funerariamc.service.DeceasedService.TimelineStep;
 import com.example.funerariamc.service.FileStorageService;
+import com.example.funerariamc.ui.Pager;
 import com.example.funerariamc.ui.DetailShell;
+import com.example.funerariamc.ui.ModuleLink;
 import com.example.funerariamc.ui.Notice;
 import com.example.funerariamc.ui.DetailCache;
 import com.example.funerariamc.ui.RefreshableView;
@@ -77,6 +82,8 @@ import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -115,6 +122,7 @@ public class DeceasedController implements RefreshableView {
 
     private final DeceasedService deceasedService;
     private final DeathCertificateService certificateService;
+    private final DestinationService destinationService;
     /** Expedientes ya consultados o adelantados; se vacía en cada recarga. */
     private final DetailCache<DeceasedDetail> details;
     private final PauseTransition searchDelay = new PauseTransition(Duration.millis(250));
@@ -178,6 +186,12 @@ public class DeceasedController implements RefreshableView {
     @FXML
     private VBox departureBox;
     @FXML
+    private Label waitingCount;
+    @FXML
+    private VBox waitingBox;
+    @FXML
+    private VBox availabilityBox;
+    @FXML
     private VBox drawer;
     @FXML
     private Region veil;
@@ -187,11 +201,16 @@ public class DeceasedController implements RefreshableView {
     private Long drawerDeceasedId;
     /** Difuntos que se ven en el registro, en su orden: las flechas del expediente pasan por ellos. */
     private List<DeceasedItem> shownItems = List.of();
+    private Pager<DeceasedItem> registryPager;
+    /** Filtros con que se armó la página actual (para saber si hay que volver a la página 1). */
+    private String lastFilter;
     private DetailShell detail;
 
-    public DeceasedController(DeceasedService deceasedService, DeathCertificateService certificateService) {
+    public DeceasedController(DeceasedService deceasedService, DeathCertificateService certificateService,
+                              DestinationService destinationService) {
         this.deceasedService = deceasedService;
         this.certificateService = certificateService;
+        this.destinationService = destinationService;
         this.details = new DetailCache<>(deceasedService::detail, "deceased-detail");
     }
 
@@ -203,6 +222,10 @@ public class DeceasedController implements RefreshableView {
 
     @FXML
     private void initialize() {
+        // Paginación como la bitácora: 20 filas por página, debajo de la tabla del registro.
+        registryPager = Pager.<DeceasedItem>local(Pager.TABLE_PAGE, "difunto", "difuntos",
+                page -> registryBox.getChildren().setAll(page.stream().map(this::registryRow).toList()))
+                .below(registryBox);
         allToggle.setUserData(Segment.ALL);
         serviceToggle.setUserData(Segment.IN_SERVICE);
         planToggle.setUserData(Segment.WITH_PLAN);
@@ -257,12 +280,14 @@ public class DeceasedController implements RefreshableView {
             renderRegistry();
             renderPending(result.pendingDocuments());
             renderDepartures(result.departures());
+            renderWaiting(result.items(), false);
             if (reopenId != null) {
                 openDrawer(reopenId);
             }
             // Los expedientes de "En servicio ahora" son los que más se abren: se adelantan en segundo plano.
             details.prefetchAll(inServiceCards().stream().map(DeceasedItem::id).toList());
         }, "No se pudieron cargar los difuntos.");
+        run(destinationService::availability, this::renderAvailability, "No se pudo cargar lo disponible para destino.");
     }
 
     /** Igual que Cementerio: la consulta corre en otro hilo para que la ventana no se congele. */
@@ -485,8 +510,15 @@ public class DeceasedController implements RefreshableView {
         List<DeceasedItem> items = DeceasedService.filter(overview.items(),
                 new Filter(segment, deathTypeFilter.getValue(), monthFilter.getValue(), searchField.getText()));
         shownItems = items;
-        registryBox.getChildren().setAll(items.stream().map(this::registryRow).toList());
-        countLabel.setText(count(items.size(), "difunto") + (items.size() > 8 ? " · desplace para ver más" : ""));
+        // Un filtro nuevo vuelve a la página 1; recargar tras guardar se queda en la misma página.
+        String filterKey = segment + "|" + deathTypeFilter.getValue() + "|" + monthFilter.getValue() + "|" + searchField.getText();
+        if (filterKey.equals(lastFilter)) {
+            registryPager.setItems(items);
+        } else {
+            registryPager.setItemsFromStart(items);
+        }
+        lastFilter = filterKey;
+        countLabel.setText(count(items.size(), "difunto"));
         boolean empty = items.isEmpty();
         emptyLabel.setText(overview.items().isEmpty()
                 ? "Todavía no hay difuntos registrados. Use «Registrar difunto»."
@@ -585,6 +617,127 @@ public class DeceasedController implements RefreshableView {
             row.setStyle("-fx-cursor: hand;");
             departureBox.getChildren().add(row);
         }
+    }
+
+    /** Cuántos de "Esperan destino" se ven antes de "Ver los N". */
+    private static final int WAITING_SHOWN = 3;
+
+    /**
+     * Difuntos que ya terminaron la velación y no tienen bóveda ni cremación. Con muerte no natural se
+     * avisa que no se pueden cremar hasta que la Fiscalía cierre el caso.
+     */
+    private void renderWaiting(List<DeceasedItem> items, boolean all) {
+        List<DeceasedItem> waiting = items.stream()
+                .filter(i -> i.stage() == Stage.AWAITING_DESTINATION)
+                .sorted(java.util.Comparator.comparing(DeceasedItem::wakeEndAt,
+                        java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())))
+                .toList();
+        waitingCount.setText(String.valueOf(waiting.size()));
+        waitingCount.setVisible(!waiting.isEmpty());
+        waitingBox.getChildren().clear();
+        if (waiting.isEmpty()) {
+            waitingBox.getChildren().add(wrapped("Ningún difunto espera bóveda o cremación.", "card-subtitle"));
+            return;
+        }
+        LocalDateTime now = LocalDateTime.now(AccessLogService.APP_ZONE);
+        for (DeceasedItem item : all ? waiting : waiting.stream().limit(WAITING_SHOWN).toList()) {
+            Label badge = new Label(item.unidentified() ? "NN" : item.code());
+            badge.getStyleClass().addAll("attention-code", "doc-code", "code-waiting");
+            boolean nonNatural = item.deathType() == DeathType.NON_NATURAL;
+            String detail = nonNatural ? "No natural · no se puede cremar hasta que la Fiscalía cierre el caso"
+                    : (item.hasPlan() ? item.planName() : "Particular") + since(item.wakeEndAt(), now);
+            VBox text = new VBox(1, wrapped(item.fullName(), "attention-name"),
+                    wrapped(detail, nonNatural ? "attention-detail-overdue" : "waiting-detail"));
+            text.setOnMouseClicked(e -> openDrawer(item.id()));
+            text.setStyle("-fx-cursor: hand;");
+            HBox.setHgrow(text, Priority.ALWAYS);
+            HBox row = new HBox(badge, text);
+            row.getStyleClass().add("attention-row");
+            assignButton(item, nonNatural).ifPresent(row.getChildren()::add);
+            waitingBox.getChildren().add(row);
+        }
+        if (waiting.size() > WAITING_SHOWN) {
+            Button more = new Button(all ? "Ver menos" : "Ver los " + waiting.size() + " ›");
+            more.getStyleClass().add("text-action");
+            more.setOnAction(e -> renderWaiting(items, !all));
+            HBox footer = new HBox(more);
+            footer.setAlignment(Pos.CENTER_RIGHT);
+            waitingBox.getChildren().add(footer);
+        }
+    }
+
+    private static String since(LocalDateTime end, LocalDateTime now) {
+        if (end == null) {
+            return "";
+        }
+        long days = ChronoUnit.DAYS.between(end.toLocalDate(), now.toLocalDate());
+        return days <= 0 ? " · terminó hoy" : days == 1 ? " · hace 1 día" : " · hace " + days + " días";
+    }
+
+    /**
+     * "Asignar" abre la asignación en Cementerio y bóvedas o en Cremaciones, según lo que el rol
+     * pueda abrir. Sin ninguno de los dos módulos el botón no aparece.
+     */
+    private java.util.Optional<Button> assignButton(DeceasedItem item, boolean nonNatural) {
+        javafx.scene.control.ContextMenu menu = new javafx.scene.control.ContextMenu();
+        if (ModuleLink.canOpen(AppModule.CEMENTERIO)) {
+            javafx.scene.control.MenuItem vault = new javafx.scene.control.MenuItem("Asignar bóveda");
+            vault.setOnAction(e -> ModuleLink.open(AppModule.CEMENTERIO, link(item)));
+            menu.getItems().add(vault);
+        }
+        if (ModuleLink.canOpen(AppModule.CREMACIONES)) {
+            javafx.scene.control.MenuItem cremation = new javafx.scene.control.MenuItem(nonNatural
+                    ? "Cremación (espera a la Fiscalía)" : "Agregar a un lote de cremación");
+            cremation.setDisable(nonNatural);
+            cremation.setOnAction(e -> ModuleLink.open(AppModule.CREMACIONES, link(item)));
+            menu.getItems().add(cremation);
+        }
+        if (menu.getItems().isEmpty()) {
+            return java.util.Optional.empty();
+        }
+        Button assign = new Button("Asignar");
+        assign.getStyleClass().add("text-action");
+        assign.setMinWidth(Region.USE_PREF_SIZE);
+        assign.setOnAction(e -> menu.show(assign, javafx.geometry.Side.LEFT, 0, 0));
+        return java.util.Optional.of(assign);
+    }
+
+    private static DeceasedLink link(DeceasedItem item) {
+        String search = item.documentNumber() == null || item.documentNumber().isBlank()
+                ? item.fullName() : item.documentNumber();
+        return new DeceasedLink(item.id(), item.fullName(), search);
+    }
+
+    /** Lo que se lleva "Asignar" a Cementerio y bóvedas o a Cremaciones: el difunto y con qué buscarlo. */
+    public record DeceasedLink(Long deceasedId, String fullName, String search) {
+    }
+
+    /** Bóvedas, cremaciones prepagadas y salas libres, cada una con su barra. */
+    private void renderAvailability(Availability a) {
+        availabilityBox.getChildren().setAll(
+                availabilityRow("Bóvedas libres", a.freeVaults() + " de " + a.vaults(),
+                        a.vaults() == 0 ? 0 : (double) a.freeVaults() / a.vaults(), false),
+                availabilityRow("Cremaciones prepagadas", a.prepaidCremations() == 1 ? "1 queda"
+                                : a.prepaidCremations() + " quedan",
+                        a.receivedCremations() == 0 ? 0 : (double) a.prepaidCremations() / a.receivedCremations(), true),
+                availabilityRow("Salas de velación libres ahora", a.freeRooms() + " de " + a.rooms(),
+                        a.rooms() == 0 ? 0 : (double) a.freeRooms() / a.rooms(), false));
+    }
+
+    private static VBox availabilityRow(String name, String value, double fraction, boolean gold) {
+        Label nameLabel = label(name, "availability-name");
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        HBox top = new HBox(nameLabel, spacer, label(value, "availability-value"));
+        top.setAlignment(Pos.CENTER_LEFT);
+        ProgressBar bar = new ProgressBar(Math.min(1, fraction));
+        bar.getStyleClass().add("occupancy-bar");
+        if (gold) {
+            bar.getStyleClass().add("bar-gold");
+        }
+        bar.setMaxWidth(Double.MAX_VALUE);
+        bar.setPrefHeight(8);
+        return new VBox(6, top, bar);
     }
 
     // ---------- expediente ----------
@@ -834,7 +987,7 @@ public class DeceasedController implements RefreshableView {
         ComboBox<DeathType> type = new ComboBox<>();
         type.getItems().setAll(DeathType.values());
         type.setConverter(converter(DeathType::getDisplayName, ""));
-        type.setValue(DeathType.NATURAL);
+        FormShell.choose(type); // sin tipo de muerte puesto: el usuario lo elige
         type.getStyleClass().add("form-combo");
         ComboBox<ExternalCause> cause = new ComboBox<>();
         cause.getItems().setAll(ExternalCause.values());
@@ -847,39 +1000,22 @@ public class DeceasedController implements RefreshableView {
         type.valueProperty().addListener((obs, old, value) -> typeHint.setText(value == DeathType.NON_NATURAL
                 ? "Muerte no natural: después suba el informe forense y la orden de entrega." : ""));
 
-        TextField clientSearch = searchInput("Buscar cliente por nombre o documento");
-        ComboBox<Option> clientBox = optionCombo("Seleccione el responsable");
-        bindSearch(clientSearch, clientBox, deceasedService::searchClients);
-
-        ComboBox<PlanSuggestion> planBox = new ComboBox<>();
-        planBox.getStyleClass().add("form-combo");
-        planBox.setMaxWidth(Double.MAX_VALUE);
-        planBox.setConverter(converter(DeceasedController::suggestionText, "Particular (sin plan)"));
-        Label planHint = wrapped("Escriba el documento para buscar planes donde sea titular o beneficiario.",
-                "dialog-hint");
-        planHint.setPrefWidth(300);
-        PauseTransition planDelay = new PauseTransition(Duration.millis(300));
-        planDelay.setOnFinished(e -> refreshPlans(document.getText(), death.getValue(), planBox, planHint));
-        document.textProperty().addListener((obs, old, text) -> planDelay.playFromStart());
-        death.valueProperty().addListener((obs, old, value) -> planDelay.playFromStart());
-
-        for (Node node : List.of(name, document, planBox)) {
+        // Aquí no hay cliente ni plan: quien paga se elige al hacer el contrato. La persona de un plan
+        // exequial se registra desde Nuevo contrato › «Registrar difunto del plan».
+        for (Node node : List.of(name, document)) {
             node.disableProperty().bind(unidentified.selectedProperty());
         }
-        unidentified.selectedProperty().addListener((obs, old, nn) -> {
-            if (nn) {
-                planBox.setValue(null);
-            }
-        });
         // El NN se registra solo con el nombre «NN», sin apellidos ni documento
-        Label nnNote = note("Se registrará con el nombre «NN» y sin número de documento. "
-                + "El cliente responsable es opcional y no se vincula a un plan.");
+        Label nnNote = note("Se registrará con el nombre «NN» y sin número de documento.");
+        Label planNote = note("Si la persona estaba en un plan exequial, regístrela desde Clientes › Contratos y ventas "
+                + "› Nuevo contrato › «Registrar difunto del plan»: ahí se escoge del plan y su contrato queda hecho.");
 
         // Certificado de defunción
         // Lo expide Medicina Legal si la muerte es violenta, o el médico tratante o la clínica si es natural.
+        // La entidad se sugiere cuando el usuario elige el tipo de muerte (antes queda vacía).
         ComboBox<String> authority = authorityBox(MEDICAL_AUTHORITIES);
-        type.valueProperty().addListener((obs, old, value) -> authority.getEditor().setText(
-                value == DeathType.NON_NATURAL ? FORENSIC_AUTHORITY : DOCTOR_AUTHORITY));
+        type.valueProperty().addListener((obs, old, value) -> authority.getEditor().setText(value == null ? ""
+                : value == DeathType.NON_NATURAL ? FORENSIC_AUTHORITY : DOCTOR_AUTHORITY));
         TextField number = new TextField();
         number.setPromptText("Número del certificado");
         DatePicker issued = new DatePicker(LocalDate.now(AccessLogService.APP_ZONE));
@@ -901,10 +1037,7 @@ public class DeceasedController implements RefreshableView {
                 .field("TIPO DE MUERTE *", type)
                 .field("CAUSA EXTERNA", cause)
                 .span(null, causeHint, 2)
-                .section("Responsable y plan exequial", 2)
-                .field("CLIENTE RESPONSABLE *", new VBox(6, clientSearch, clientBox))
-                .captionWhen(unidentified.selectedProperty(), "CLIENTE RESPONSABLE")
-                .field("PLAN EXEQUIAL", new VBox(4, planBox, planHint))
+                .wide(null, planNote)
                 .section("Certificado de defunción", 3)
                 .field("ENTIDAD QUE LO EXPIDE *", authority)
                 .field("NÚMERO DEL CERTIFICADO *", number)
@@ -917,16 +1050,13 @@ public class DeceasedController implements RefreshableView {
         FormShell.page(dialog, "Difuntos");
         FormShell.steps(dialog, null,
                 new FormShell.Step("Datos del difunto", "Datos del difunto"),
-                new FormShell.Step("Responsable y plan", "Responsable y plan exequial"),
                 new FormShell.Step("Certificado de defunción", "Certificado de defunción"));
         Long[] savedId = new Long[1];
         boolean saved = runForm(dialog, form, "Registrar", () -> {
             boolean nn = unidentified.isSelected();
-            PlanSuggestion plan = planBox.getValue();
             DeceasedData data = new DeceasedData(nn, nn ? DeceasedService.UNIDENTIFIED_NAME : name.getText(),
                     nn ? null : lastname.getText(), nn ? null : document.getText(), birth.getValue(), death.getValue(),
-                    type.getValue(), cause.getValue(), idOf(clientBox.getValue()),
-                    nn || plan == null ? null : plan.planId());
+                    type.getValue(), cause.getValue(), null, null);
             DeathDocumentData certificate = new DeathDocumentData(DocumentType.MEDICAL_CERTIFICATE,
                     authority.getEditor().getText(), number.getText(), issued.getValue(), file[0], null);
             savedId[0] = deceasedService.register(data, certificate).getId();
@@ -967,9 +1097,14 @@ public class DeceasedController implements RefreshableView {
         ComboBox<DocumentType> type = new ComboBox<>();
         type.getItems().setAll(DocumentType.values());
         type.setConverter(converter(DocumentType::getDisplayName, ""));
-        type.setValue(suggested == null ? DocumentType.FORENSIC_REPORT : suggested);
+        // Si se abrió desde un documento pendiente ya viene ese tipo; si no, el usuario lo elige.
+        FormShell.choose(type);
+        type.setValue(suggested);
         type.getStyleClass().add("form-combo");
         ComboBox<String> authority = authorityBox(authoritiesFor(type.getValue()));
+        if (!authority.getItems().isEmpty()) {
+            authority.getEditor().setText(authority.getItems().get(0)); // la del documento pendiente
+        }
         type.valueProperty().addListener((obs, old, value) -> {
             authority.getItems().setAll(authoritiesFor(value));
             authority.getEditor().setText(authority.getItems().isEmpty() ? "" : authority.getItems().get(0));
@@ -1026,9 +1161,6 @@ public class DeceasedController implements RefreshableView {
         box.setPromptText("Entidad que lo expide");
         box.setMaxWidth(Double.MAX_VALUE);
         box.getStyleClass().add("form-combo");
-        if (!suggestions.isEmpty()) {
-            box.getEditor().setText(suggestions.get(0));
-        }
         return box;
     }
 
@@ -1257,12 +1389,6 @@ public class DeceasedController implements RefreshableView {
         return icon;
     }
 
-    private static TextField searchInput(String prompt) {
-        TextField field = new TextField();
-        field.setPromptText(prompt);
-        return field;
-    }
-
     private static ComboBox<Option> optionCombo(String prompt) {
         ComboBox<Option> box = new ComboBox<>();
         box.setPromptText(prompt);
@@ -1270,23 +1396,6 @@ public class DeceasedController implements RefreshableView {
         box.setMaxWidth(Double.MAX_VALUE);
         box.setConverter(converter(o -> o.detail() == null ? o.label() : o.label() + " · " + o.detail(), ""));
         return box;
-    }
-
-    /** Al escribir en el buscador del diálogo se vuelve a consultar; si queda uno solo, se elige. */
-    private void bindSearch(TextField field, ComboBox<Option> box, Function<String, List<Option>> search) {
-        PauseTransition delay = new PauseTransition(Duration.millis(250));
-        Runnable refresh = () -> {
-            try {
-                List<Option> options = search.apply(field.getText());
-                box.getItems().setAll(options);
-                box.setValue(options.size() == 1 ? options.get(0) : null);
-            } catch (BusinessException e) {
-                showError(e.getMessage());
-            }
-        };
-        delay.setOnFinished(e -> refresh.run());
-        field.textProperty().addListener((obs, old, text) -> delay.playFromStart());
-        refresh.run();
     }
 
     /** Diálogo de formulario: título, subtítulo, el formulario y abajo Cancelar y la acción. */

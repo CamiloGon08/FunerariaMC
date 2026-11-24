@@ -121,6 +121,19 @@
                             <Label text="Salidas de hoy" styleClass="side-title"/>
                             <VBox fx:id="departureBox" spacing="10"/>
                         </VBox>
+                        <VBox styleClass="table-card" spacing="10">
+                            <HBox alignment="CENTER_LEFT">
+                                <Label text="Esperan destino" styleClass="side-title"/>
+                                <Pane HBox.hgrow="ALWAYS"/>
+                                <Label fx:id="waitingCount" styleClass="count-badge"/>
+                            </HBox>
+                            <Label text="Velación terminada, sin bóveda ni cremación" styleClass="card-subtitle" wrapText="true"/>
+                            <VBox fx:id="waitingBox" spacing="8"/>
+                        </VBox>
+                        <VBox styleClass="table-card" spacing="10">
+                            <Label text="Disponible para destino" styleClass="side-title"/>
+                            <VBox fx:id="availabilityBox" spacing="10"/>
+                        </VBox>
                     </VBox>
                 </HBox>
             </VBox>
