@@ -33,6 +33,8 @@ public final class Responsive {
     private static final double KPI_MIN_WIDTH = 180;
     private static final Set<String> KPI_CARDS = Set.of("hero-kpi", "kpi-card");
     private static final Set<String> WRAP_ROWS = Set.of("filter-card", "wrap-row");
+    /** Espacio entre los controles de una barra de filtros (igual al -fx-spacing de .filter-card). */
+    private static final double FILTER_GAP = 16;
     /** Marca para no volver a recorrer una pantalla que ya se ajustó (las vistas se reutilizan). */
     private static final String APPLIED = "responsive-applied";
     /** Niveles desde la raíz donde se busca el ScrollPane de la pantalla completa. */
@@ -224,7 +226,9 @@ public final class Responsive {
         if (!(box.getParent() instanceof Pane parent)) {
             return;
         }
-        WrapRow row = new WrapRow(box.getSpacing(), box.getAlignment(), box.isFillHeight(), minItemWidth);
+        // La barra de filtros deja siempre el mismo aire entre controles (el HBox aún no tiene su CSS aplicado aquí)
+        double gap = box.getStyleClass().contains("filter-card") ? Math.max(FILTER_GAP, box.getSpacing()) : box.getSpacing();
+        WrapRow row = new WrapRow(gap, box.getAlignment(), box.isFillHeight(), minItemWidth);
         row.getStyleClass().setAll(box.getStyleClass());
         row.setStyle(box.getStyle());
         row.setPadding(box.getPadding());
