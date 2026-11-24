@@ -14,6 +14,7 @@ import com.example.funerariamc.service.InventoryService.ItemView;
 import com.example.funerariamc.service.InventoryService.Kpis;
 import com.example.funerariamc.service.InventoryService.MovementResult;
 import com.example.funerariamc.service.InventoryService.Overview;
+import com.example.funerariamc.ui.Pager;
 import com.example.funerariamc.ui.DetailShell;
 import com.example.funerariamc.ui.Notice;
 import com.example.funerariamc.ui.Responsive;
@@ -107,8 +108,6 @@ public class InventoryController implements RefreshableView {
     private static final DateTimeFormatter DATE_HOUR = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     /** Ancho de la foto dentro del panel de detalle (el panel menos sus márgenes). */
     private static final double PANEL_PHOTO_WIDTH = 480;
-    /** Tarjetas que se dibujan de una vez; las demás se agregan al acercarse al final. */
-    private static final int BATCH = 40;
     private static final double CARD_MIN_WIDTH = 250;
     private static final double CARD_GAP = 18;
     private static final double PHOTO_HEIGHT = 150;
@@ -209,9 +208,12 @@ public class InventoryController implements RefreshableView {
 
     private final ObservableList<ItemRow> tableRows = FXCollections.observableArrayList();
     private List<ItemRow> allRows = List.of();
-    /** Filas del filtro actual; las tarjetas se dibujan de aquí por tandas. */
+    /** Filas del filtro actual; cada vista muestra de aquí su página. */
     private List<ItemRow> filtered = List.of();
-    private int drawn;
+    private Pager<ItemRow> cardPager;
+    private Pager<ItemRow> tablePager;
+    /** Filtro con que se armó la página actual (para saber si hay que volver a la página 1). */
+    private String lastFilter;
     private boolean loaded;
     /** Artículo abierto en el panel; null si está cerrado. */
     private Long drawerItemId;
@@ -251,11 +253,9 @@ public class InventoryController implements RefreshableView {
 
         // Columnas de las tarjetas según el ancho: nunca más angostas que CARD_MIN_WIDTH.
         cardFlow.widthProperty().addListener((obs, old, width) -> resizeCards(width.doubleValue()));
-        cardScroll.vvalueProperty().addListener((obs, old, value) -> {
-            if (value.doubleValue() > 0.85) {
-                drawMore();
-            }
-        });
+        // Paginación como la bitácora: 12 tarjetas o 20 filas por página, según la vista.
+        cardPager = Pager.<ItemRow>local(Pager.CARD_PAGE, "artículo", "artículos", this::drawCards)
+                .scrollTopOf(cardScroll).below(cardFlow);
 
         // Solo la vista elegida (tarjetas o tabla) ocupa espacio: la tabla oculta no ensancha la pantalla
         tableCard.managedProperty().bind(tableCard.visibleProperty());
@@ -279,6 +279,10 @@ public class InventoryController implements RefreshableView {
         itemsList.setPlaceholder(new Label(""));
         itemsList.setMinWidth(0);
         itemsList.setPrefWidth(0); // la tabla toma el ancho disponible, no el de su contenido
+        tablePager = Pager.<ItemRow>local(Pager.TABLE_PAGE, "artículo", "artículos", page -> {
+            tableRows.setAll(page);
+            itemsList.scrollTo(0);
+        }).below(itemsList.getParent());
 
         detail = DetailShell.install(drawer, veil, DetailShell.Kind.PANEL);
         toast.setOpacity(0);
@@ -356,7 +360,10 @@ public class InventoryController implements RefreshableView {
     private void applyFilter() {
         Filter filter = (Filter) filterGroup.getSelectedToggle().getUserData();
         filtered = InventoryService.filter(allRows, filter, searchField.getText());
-        tableRows.setAll(filtered);
+        // Un filtro nuevo vuelve a la página 1; recargar tras guardar se queda en la misma página.
+        String filterKey = filter + "|" + searchField.getText();
+        boolean sameFilter = filterKey.equals(lastFilter);
+        lastFilter = filterKey;
         long low = allRows.stream().filter(ItemRow::low).count();
         String count = allRows.isEmpty() ? "Sin artículos todavía"
                 : filtered.size() == allRows.size()
@@ -367,7 +374,13 @@ public class InventoryController implements RefreshableView {
         String empty = allRows.isEmpty() ? "Todavía no hay artículos. Use «+ Nuevo artículo» para registrar el primero."
                 : filtered.isEmpty() ? "Sin resultados." : "";
         setEmpty(empty);
-        drawCards();
+        if (sameFilter) {
+            tablePager.setItems(filtered);
+            cardPager.setItems(filtered);
+        } else {
+            tablePager.setItemsFromStart(filtered);
+            cardPager.setItemsFromStart(filtered);
+        }
     }
 
     private void applyView() {
@@ -388,25 +401,13 @@ public class InventoryController implements RefreshableView {
 
     // ---------- tarjetas ----------
 
-    private void drawCards() {
-        cardFlow.getChildren().clear();
-        drawn = 0;
-        cardScroll.setVvalue(0);
-        drawMore();
-    }
-
-    /** Agrega la siguiente tanda de tarjetas (solo las que faltan). */
-    private void drawMore() {
-        if (drawn >= filtered.size()) {
-            return;
+    /** Dibuja las tarjetas de la página visible. */
+    private void drawCards(List<ItemRow> page) {
+        List<Node> cards = new ArrayList<>(page.size());
+        for (ItemRow r : page) {
+            cards.add(card(r));
         }
-        int end = Math.min(filtered.size(), drawn + BATCH);
-        List<Node> cards = new ArrayList<>(end - drawn);
-        for (int i = drawn; i < end; i++) {
-            cards.add(card(filtered.get(i)));
-        }
-        drawn = end;
-        cardFlow.getChildren().addAll(cards);
+        cardFlow.getChildren().setAll(cards);
     }
 
     private void resizeCards(double width) {

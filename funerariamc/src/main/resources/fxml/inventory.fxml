@@ -84,7 +84,7 @@
         </HBox>
 
         <StackPane VBox.vgrow="ALWAYS">
-            <!-- Tarjetas con barra de desplazamiento visible (sin paginación); se dibujan por tandas al bajar -->
+            <!-- Tarjetas: 12 por página; la barra de páginas se agrega debajo desde el controlador -->
             <ScrollPane fx:id="cardScroll" fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="ALWAYS" styleClass="card-scroll">
                 <VBox styleClass="card-scroll-content" spacing="12">
                     <VBox spacing="2">

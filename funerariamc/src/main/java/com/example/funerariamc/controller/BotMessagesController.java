@@ -7,6 +7,7 @@ import com.example.funerariamc.service.bot.BotMessageService.Kpis;
 import com.example.funerariamc.service.bot.BotMessageService.MessageView;
 import com.example.funerariamc.service.bot.BotMessageService.Overview;
 import com.example.funerariamc.service.bot.TelegramBotPoller;
+import com.example.funerariamc.ui.Pager;
 import com.example.funerariamc.ui.RefreshableView;
 import com.example.funerariamc.utils.enums.NotificationChannel;
 import javafx.animation.PauseTransition;
@@ -86,6 +87,9 @@ public class BotMessagesController implements RefreshableView {
     private int loadGeneration;
     private int threadGeneration;
     private boolean filling;
+    private Pager<ConversationView> pager;
+    /** Filtro y búsqueda con que se armó la página actual (para saber si hay que volver a la página 1). */
+    private String lastFilter;
     private final PauseTransition searchDelay = new PauseTransition(Duration.millis(200));
     /** Varios mensajes seguidos del bot se juntan en una sola recarga. */
     private final PauseTransition liveDelay = new PauseTransition(Duration.millis(600));
@@ -102,6 +106,15 @@ public class BotMessagesController implements RefreshableView {
 
     @FXML
     private void initialize() {
+        // Paginación como la bitácora: 20 conversaciones por página, debajo de la lista.
+        pager = Pager.<ConversationView>local(Pager.TABLE_PAGE, "conversación", "conversaciones", page -> {
+            filling = true;
+            conversationList.getItems().setAll(page);
+            page.stream().filter(c -> c.key().equals(selectedKey)).findFirst()
+                    .ifPresent(c -> conversationList.getSelectionModel().select(c));
+            filling = false;
+            conversationList.scrollTo(0);
+        }).below(conversationList.getParent());
         filterGroup.selectedToggleProperty().addListener((obs, old, toggle) -> {
             if (toggle == null) {
                 if (old != null) {
@@ -208,14 +221,17 @@ public class BotMessagesController implements RefreshableView {
                 .filter(c -> text.isEmpty() || c.title().toLowerCase(ES).contains(text)
                         || (c.document() != null && c.document().contains(text)))
                 .toList();
-        filling = true;
-        conversationList.getItems().setAll(shown);
         ConversationView keep = shown.stream().filter(c -> c.key().equals(selectedKey)).findFirst()
                 .orElse(shown.isEmpty() ? null : shown.get(0));
-        if (keep != null) {
-            conversationList.getSelectionModel().select(keep);
+        selectedKey = keep == null ? null : keep.key();
+        // Otro filtro o búsqueda vuelve a la página 1; un mensaje nuevo se queda en la página actual.
+        String filterKey = selected + "|" + text;
+        if (filterKey.equals(lastFilter)) {
+            pager.setItems(shown);
+        } else {
+            pager.setItemsFromStart(shown);
         }
-        filling = false;
+        lastFilter = filterKey;
         countLabel.setText(shown.size() == 1 ? "1 conversación" : shown.size() + " conversaciones");
         if (shown.isEmpty()) {
             setListEmpty(conversations.isEmpty()

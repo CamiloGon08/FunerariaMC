@@ -26,6 +26,7 @@ import com.example.funerariamc.service.TransportService.Unit;
 import com.example.funerariamc.service.TransportService.VehicleCard;
 import com.example.funerariamc.service.TransportService.VehicleState;
 import com.example.funerariamc.service.VehicleData;
+import com.example.funerariamc.ui.Pager;
 import com.example.funerariamc.ui.RefreshableView;
 import com.example.funerariamc.ui.Notice;
 import com.example.funerariamc.ui.BrandTheme;
@@ -93,6 +94,7 @@ import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 /**
  * Pantalla de Transporte (paleta verde oscura): indicadores
@@ -115,6 +117,8 @@ public class TransportController implements RefreshableView {
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("EEEE d 'de' MMMM", ES);
     /** Valor del filtro "Otro día" en Traslados. */
     private static final int OTHER_DAY = -1;
+    /** Traslados por página en la columna izquierda (tarjetas altas). */
+    private static final int TRANSFER_PAGE = 8;
     /** Cada cuánto se vuelve a leer la flota mientras la pantalla está abierta. */
     private static final Duration AUTO_REFRESH = Duration.seconds(60);
 
@@ -177,6 +181,13 @@ public class TransportController implements RefreshableView {
     private HBox fleetHead;
     @FXML
     private VBox fleetRows;
+    private Pager<Node> fleetPager;
+    private Pager<Node> vehiclePager;
+    private Pager<Node> driverPager;
+    private Pager<Node> transferPager;
+    /** Tipo de vehículo y día con que se armó cada lista (para saber si hay que volver a la página 1). */
+    private VehicleType vehiclePagerFilter;
+    private String transferPagerDay;
     @FXML
     private VBox vehiclesPane;
     @FXML
@@ -261,6 +272,16 @@ public class TransportController implements RefreshableView {
                 head("VEHÍCULO", 120), head("TRASLADO ACTUAL", 0), head("ESTADO", 140));
         stopsHead.getChildren().setAll(head("N.°", 50), head("LUGAR", 0), head("TIPO", 110), head("DIRECCIÓN", 0),
                 head("PREVISTA", 90), head("REAL", 90));
+
+        // Paginación como la bitácora: 20 filas por tabla, 12 tarjetas de vehículos y 8 traslados por página.
+        fleetPager = Pager.<Node>local(Pager.TABLE_PAGE, "vehículo", "vehículos",
+                page -> fleetRows.getChildren().setAll(page)).below(fleetRows);
+        vehiclePager = Pager.<Node>local(Pager.CARD_PAGE, "vehículo", "vehículos",
+                page -> vehicleCards.getChildren().setAll(page)).below(vehicleCards);
+        driverPager = Pager.<Node>local(Pager.TABLE_PAGE, "conductor", "conductores",
+                page -> driverRows.getChildren().setAll(page)).below(driverRows);
+        transferPager = Pager.<Node>local(TRANSFER_PAGE, "traslado", "traslados",
+                page -> transferList.getChildren().setAll(page)).below(transferList);
 
         toast.setOpacity(0);
         toast.setMouseTransparent(true);
@@ -496,13 +517,10 @@ public class TransportController implements RefreshableView {
             }
             rows.add(row);
         }
-        if (rows.isEmpty()) {
-            rows.add(wrapped(screen.canManageVehicles()
-                    ? "Todavía no hay vehículos. Regístrelos en la pestaña Vehículos con \"+ Nuevo vehículo\"."
-                    : "Todavía no hay vehículos registrados. La Secretaría o el Administrador Maestro los registran en la pestaña Vehículos.",
-                    "empty-table"));
-        }
-        fleetRows.getChildren().setAll(rows);
+        paged(fleetPager, fleetRows, rows, () -> wrapped(screen.canManageVehicles()
+                ? "Todavía no hay vehículos. Regístrelos en la pestaña Vehículos con \"+ Nuevo vehículo\"."
+                : "Todavía no hay vehículos registrados. La Secretaría o el Administrador Maestro los registran en la pestaña Vehículos.",
+                "empty-table"));
     }
 
     /** El elegido; si no hay, el primero en ruta; si no, el próximo de hoy. */
@@ -582,7 +600,14 @@ public class TransportController implements RefreshableView {
                 cards.add(vehicleCard(v));
             }
         }
-        vehicleCards.getChildren().setAll(cards);
+        if (vehicleFilter != vehiclePagerFilter) {
+            vehiclePager.setItemsFromStart(List.of()); // otro tipo de vehículo vuelve a la página 1
+        }
+        vehiclePagerFilter = vehicleFilter;
+        vehiclePager.setItems(cards);
+        if (cards.isEmpty()) {
+            vehicleCards.getChildren().clear();
+        }
         String empty = screen.vehicles().isEmpty()
                 ? (screen.canManageVehicles() ? "Todavía no hay vehículos. Use \"+ Nuevo vehículo\" para registrar el primero."
                 : "Todavía no hay vehículos registrados. La Secretaría o el Administrador Maestro los registran aquí.")
@@ -713,11 +738,9 @@ public class TransportController implements RefreshableView {
             row.getStyleClass().add("t-row");
             rows.add(row);
         }
-        if (rows.isEmpty()) {
-            rows.add(wrapped("No hay conductores activos. Regístrelos en Seguridad: personal y cuentas con el cargo Conductor.",
-                    "empty-table"));
-        }
-        driverRows.getChildren().setAll(rows);
+        paged(driverPager, driverRows, rows, () -> wrapped(
+                "No hay conductores activos. Regístrelos en Seguridad: personal y cuentas con el cargo Conductor.",
+                "empty-table"));
     }
 
     // ---------- Traslados ----------
@@ -739,14 +762,17 @@ public class TransportController implements RefreshableView {
         for (Transfer t : list) {
             items.add(transferItem(t, t.equals(selected)));
         }
-        if (items.isEmpty()) {
-            String empty = dayFilter != OTHER_DAY ? "No hay traslados para este día. Use \"+ Asignar traslado\"."
-                    : pickedDay == null ? "Elija un día en el calendario para ver sus traslados."
-                    : pickedTransfers == null ? "Cargando los traslados del " + DATE.format(pickedDay) + "…"
-                    : "No hay traslados programados para el " + DATE.format(pickedDay) + ".";
-            items.add(wrapped(empty, "empty-table"));
+        // Otro día vuelve a la página 1; elegir un traslado se queda en la página actual.
+        String dayKey = dayFilter + "|" + pickedDay;
+        if (!dayKey.equals(transferPagerDay)) {
+            transferPager.setItemsFromStart(List.of());
         }
-        transferList.getChildren().setAll(items);
+        transferPagerDay = dayKey;
+        paged(transferPager, transferList, items, () -> wrapped(dayFilter != OTHER_DAY
+                ? "No hay traslados para este día. Use \"+ Asignar traslado\"."
+                : pickedDay == null ? "Elija un día en el calendario para ver sus traslados."
+                : pickedTransfers == null ? "Cargando los traslados del " + DATE.format(pickedDay) + "…"
+                : "No hay traslados programados para el " + DATE.format(pickedDay) + ".", "empty-table"));
 
         transferRouteTitle.setText(selected == null ? "Ruta del traslado" : "Traslado " + selected.contractNumber() + " · ruta");
         showRoute(transferRouteSlot, transferRouteHint, selected, "Elija un traslado para ver su ruta.", "");
@@ -770,6 +796,14 @@ public class TransportController implements RefreshableView {
             rows.add(wrapped(selected == null ? "" : "Este traslado no tiene paradas registradas.", "empty-table"));
         }
         stopRows.getChildren().setAll(rows);
+    }
+
+    /** Muestra las filas por páginas; si no hay ninguna, deja solo el aviso. */
+    private static void paged(Pager<Node> pager, Pane box, List<Node> rows, Supplier<Node> empty) {
+        pager.setItems(rows);
+        if (rows.isEmpty()) {
+            box.getChildren().setAll(empty.get());
+        }
     }
 
     private Node transferItem(Transfer t, boolean selected) {
@@ -1043,7 +1077,7 @@ public class TransportController implements RefreshableView {
         type.getItems().addAll(VehicleType.HEARSE, VehicleType.BUS);
         type.getStyleClass().add("form-combo");
         type.setConverter(converter(TransportController::typeName, ""));
-        type.setPromptText("Seleccione");
+        FormShell.choose(type);
         type.setValue(editing ? current.type() : null);
         TextField capacity = new TextField(editing && current.capacity() != null ? String.valueOf(current.capacity()) : "");
         capacity.setPromptText("Ataúdes o pasajeros");
@@ -1112,7 +1146,7 @@ public class TransportController implements RefreshableView {
         contract.getStyleClass().add("form-combo");
         contract.setConverter(converter(o -> o.label() + " · " + o.detail(), ""));
         DatePicker date = datePicker(today());
-        ComboBox<LocalTime> time = timeCombo(nextQuarter());
+        ComboBox<LocalTime> time = timeCombo(null); // la hora se elige o la sugiere el contrato elegido
 
         ComboBox<Candidate> hearse = candidateCombo("Sin coche fúnebre");
         ComboBox<Candidate> hearseDriver = candidateCombo("Conductor del coche");
@@ -1179,7 +1213,7 @@ public class TransportController implements RefreshableView {
             row.time.valueProperty().addListener((o, a, b) -> reloadCandidates[0].run());
         };
         // El origen sugerido es la sede de la funeraria (su nombre sale de la marca)
-        addStopRow.accept(new StopRow(StopType.ORIGIN, "Sede " + BrandTheme.brand().commercialName(), nextQuarter()));
+        addStopRow.accept(new StopRow(StopType.ORIGIN, "Sede " + BrandTheme.brand().commercialName(), null));
         addStopRow.accept(new StopRow(StopType.CEREMONY, "", null));
         addStopRow.accept(new StopRow(StopType.DESTINATION, "", null));
         addStop.setOnAction(e -> {
@@ -1588,9 +1622,14 @@ public class TransportController implements RefreshableView {
         for (int minutes = 0; minutes < 24 * 60; minutes += 15) {
             box.getItems().add(LocalTime.of(minutes / 60, minutes % 60));
         }
-        box.setValue(initial);
         box.setVisibleRowCount(8);
         box.setConverter(converter(HOUR::format, ""));
+        // Sin hora guardada no se pone una: el usuario la elige.
+        if (initial == null) {
+            FormShell.choose(box, "Hora");
+        } else {
+            box.setValue(initial);
+        }
         return box;
     }
 
@@ -1600,11 +1639,6 @@ public class TransportController implements RefreshableView {
         picker.setConverter(converter(DATE::format, ""));
         picker.setMaxWidth(Double.MAX_VALUE);
         return picker;
-    }
-
-    private static LocalTime nextQuarter() {
-        LocalTime now = LocalTime.now(AccessLogService.APP_ZONE).plusMinutes(15);
-        return quarter(now);
     }
 
     private static LocalTime quarter(LocalTime time) {
