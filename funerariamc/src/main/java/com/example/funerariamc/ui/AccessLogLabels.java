@@ -56,16 +56,18 @@ public final class AccessLogLabels {
             AccessLogService.DECEASED_PLAN_LINKED, "Plan exequial vinculado al difunto ");
 
     /** Acciones del módulo Planes exequiales: guardan el código del plan (PL-0412) y, a veces, un dato más. */
-    private static final Map<String, String> PLAN_ACTIONS = Map.of(
-            AccessLogService.PLAN_REGISTERED, "Afiliación del plan ",
-            AccessLogService.BENEFICIARY_ADDED, "Beneficiario agregado al plan ",
-            AccessLogService.PLAN_PAYMENT_REGISTERED, "Pago de cuota del plan ",
-            AccessLogService.PLAN_PAYMENT_VOIDED, "Cuota anulada del plan ",
-            AccessLogService.PLAN_SUSPENDED, "Suspensión del plan ",
-            AccessLogService.PLAN_REACTIVATED, "Reactivación del plan ",
-            AccessLogService.PLAN_CANCELLED, "Cancelación del plan ",
-            AccessLogService.PLAN_HOLDER_CHANGED, "Cambio de titular del plan ",
-            AccessLogService.PLAN_WAITING_RESTARTED, "Carencia reiniciada por atraso en el plan ");
+    private static final Map<String, String> PLAN_ACTIONS = Map.ofEntries(
+            Map.entry(AccessLogService.PLAN_REGISTERED, "Afiliación del plan "),
+            Map.entry(AccessLogService.BENEFICIARY_ADDED, "Beneficiario agregado al plan "),
+            Map.entry(AccessLogService.BENEFICIARY_REMOVED, "Beneficiario quitado del plan "),
+            Map.entry(AccessLogService.PLAN_PAYMENT_REGISTERED, "Pago de cuota del plan "),
+            Map.entry(AccessLogService.PLAN_PAYMENT_VOIDED, "Cuota anulada del plan "),
+            Map.entry(AccessLogService.PLAN_SUSPENDED, "Suspensión del plan "),
+            Map.entry(AccessLogService.PLAN_REACTIVATED, "Reactivación del plan "),
+            Map.entry(AccessLogService.PLAN_CANCELLED, "Cancelación del plan "),
+            Map.entry(AccessLogService.PLAN_HOLDER_CHANGED, "Cambio de titular del plan "),
+            Map.entry(AccessLogService.PLAN_TYPE_CHANGED, "Cambio de tipo del plan "),
+            Map.entry(AccessLogService.PLAN_WAITING_RESTARTED, "Carencia reiniciada por atraso en el plan "));
 
     /** Acciones del módulo Salas de velación: guardan el nombre de la sala o el número del contrato y la sala. */
     private static final Map<String, String> WAKE_ROOM_ACTIONS = Map.of(
