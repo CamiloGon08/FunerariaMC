@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.function.Function;
+import java.util.function.Predicate;
 import javafx.application.Platform;
 import javafx.collections.MapChangeListener;
 import javafx.event.EventHandler;
@@ -15,6 +17,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.DialogEvent;
 import javafx.scene.control.DialogPane;
@@ -153,6 +156,50 @@ public final class FormShell {
             hideWhenLeaving(field, warning);
             field.setText(current == null ? "" : current);
         }
+    }
+
+    /** Texto de una lista desplegable que todavía no tiene nada elegido. */
+    public static final String CHOOSE = "Seleccione…";
+    private static final javafx.css.PseudoClass PROMPT = javafx.css.PseudoClass.getPseudoClass("prompt");
+
+    /**
+     * Lista desplegable sin valor elegido: muestra "Seleccione…" en gris hasta que el usuario escoja.
+     * En los formularios de registro ninguna lista viene con una opción ya puesta.
+     */
+    public static void choose(ComboBox<?>... boxes) {
+        for (ComboBox<?> box : boxes) {
+            choose(box, CHOOSE);
+        }
+    }
+
+    /**
+     * Igual que {@link #choose(ComboBox[])} con otro texto (por ejemplo "Seleccione la hora").
+     * Si la lista no tiene celda propia se le pone una que vuelve a mostrar el texto cuando el valor
+     * queda vacío otra vez (la celda normal de JavaFX lo pierde en ese caso).
+     */
+    public static <T> void choose(ComboBox<T> box, String prompt) {
+        box.setPromptText(prompt);
+        if (box.getButtonCell() == null) {
+            box.setButtonCell(new javafx.scene.control.ListCell<>() {
+                @Override
+                protected void updateItem(T item, boolean empty) {
+                    super.updateItem(item, empty);
+                    boolean none = empty || item == null;
+                    pseudoClassStateChanged(PROMPT, none);
+                    setText(none ? box.getPromptText()
+                            : box.getConverter() == null ? item.toString() : box.getConverter().toString(item));
+                }
+            });
+        }
+        box.setValue(null);
+    }
+
+    /**
+     * Para las listas con celda propia: pone el texto "Seleccione…" en gris cuando no hay nada elegido.
+     * Se llama desde updateItem de la celda.
+     */
+    public static void markPrompt(javafx.scene.control.ListCell<?> cell, boolean none) {
+        cell.pseudoClassStateChanged(PROMPT, none);
     }
 
     /** Muestra el aviso debajo del campo por dos segundos y medio. */
@@ -311,6 +358,45 @@ public final class FormShell {
         });
     }
 
+    private static final String STEP_SKIP = "form-steps-skip";
+    private static final String STEP_CHECK = "form-steps-check";
+
+    /**
+     * Reglas de una página por pasos, que se revisan cada vez que se avanza: {@code skip} dice qué
+     * pasos no aplican (por ejemplo, Servicio en un contrato de plan) y no se muestran en la línea;
+     * {@code check} devuelve por qué no se puede salir del paso (o null si se puede), y el aviso
+     * aparece debajo del paso en vez de avanzar. Se llama antes o después de {@link #steps}.
+     */
+    public static void stepRules(Dialog<?> dialog, Predicate<String> skip, Function<String, String> check) {
+        if (dialog.getDialogPane().getContent() instanceof Pane root) {
+            root.getProperties().put(STEP_SKIP, skip);
+            root.getProperties().put(STEP_CHECK, check);
+        }
+    }
+
+    private static final String STEP_LABEL = "form-steps-label";
+
+    /**
+     * Nombre que se muestra para cada paso (en la línea y en los botones), por si cambia según lo
+     * elegido: por ejemplo, "Cliente y difunto" se lee "Titular y persona" en el contrato con plan.
+     * Las reglas de {@link #stepRules} siguen usando el nombre original del paso.
+     */
+    public static void stepLabels(Dialog<?> dialog, Function<String, String> label) {
+        if (dialog.getDialogPane().getContent() instanceof Pane root) {
+            root.getProperties().put(STEP_LABEL, label);
+        }
+    }
+
+    /** Vuelve a dibujar la línea de pasos cuando cambió lo que aplica (por ejemplo, el tipo de venta). */
+    public static void refreshSteps(Dialog<?> dialog) {
+        if (dialog.getDialogPane().getContent() instanceof Pane root
+                && root.getProperties().get(STEP_WIZARD) instanceof Wizard wizard) {
+            wizard.redraw();
+        }
+    }
+
+    private static final String STEP_WIZARD = "form-steps-wizard";
+
     /** Un paso de un formulario largo: su nombre y las secciones del formulario que muestra. */
     public record Step(String name, String... sections) {
     }
@@ -392,18 +478,61 @@ public final class FormShell {
         private final HBox track = new HBox();
         private final Step[] steps;
         private final Pane body;
+        /** Donde el módulo deja las reglas de {@link #stepRules}. */
+        private final Pane root;
+        /** Aviso de por qué no se puede seguir al paso siguiente. */
+        private final Label stepError = new Label();
         private int at;
+        private Button backButton;
+        private Button nextButton;
+        private Button saveButton;
 
-        private Wizard(Step[] steps, Pane body) {
+        private Wizard(Step[] steps, Pane body, Pane root) {
             this.steps = steps;
             this.body = body;
+            this.root = root;
+            stepError.getStyleClass().add("form-step-error");
+            stepError.setWrapText(true);
+            stepError.managedProperty().bind(stepError.visibleProperty());
+            stepError.setVisible(false);
+        }
+
+        @SuppressWarnings("unchecked")
+        private boolean skipped(int index) {
+            Object rule = root.getProperties().get(STEP_SKIP);
+            return rule instanceof Predicate<?> skip && ((Predicate<String>) skip).test(steps[index].name());
+        }
+
+        @SuppressWarnings("unchecked")
+        private String labelOf(int index) {
+            Object rule = root.getProperties().get(STEP_LABEL);
+            String name = steps[index].name();
+            String shown = rule instanceof Function<?, ?> label ? ((Function<String, String>) label).apply(name) : null;
+            return shown == null ? name : shown;
+        }
+
+        @SuppressWarnings("unchecked")
+        private String problem(int index) {
+            Object rule = root.getProperties().get(STEP_CHECK);
+            return rule instanceof Function<?, ?> check ? ((Function<String, String>) check).apply(steps[index].name()) : null;
+        }
+
+        /** El paso siguiente (o anterior) que aplica; si no hay, se queda donde está. */
+        private int move(int from, int direction) {
+            for (int i = from + direction; i >= 0 && i < steps.length; i += direction) {
+                if (!skipped(i)) {
+                    return i;
+                }
+            }
+            return from;
         }
 
         static Wizard of(Pane root, Node side, Step[] steps) {
             if (!(bodyOf(root) instanceof Pane body)) {
                 return null;
             }
-            Wizard wizard = new Wizard(steps, body);
+            Wizard wizard = new Wizard(steps, body, root);
+            root.getProperties().put(STEP_WIZARD, wizard);
             // Agrupa lo que hay en el cuerpo por paso, según el título de cada sección
             List<List<Node>> groups = new ArrayList<>();
             for (int i = 0; i < steps.length; i++) {
@@ -428,6 +557,7 @@ public final class FormShell {
                 wizard.pages.add(page);
             }
             body.getChildren().setAll(wizard.pages);
+            body.getChildren().add(wizard.stepError);
             wizard.track.getStyleClass().add("form-steps");
             if (root.lookup(".form-hero") instanceof Pane header) {
                 header.getChildren().add(wizard.track);
@@ -439,19 +569,35 @@ public final class FormShell {
             return wizard;
         }
 
+        void redraw() {
+            refresh(backButton, nextButton, saveButton);
+        }
+
         void wire(Button back, Button next, Button save) {
+            backButton = back;
+            nextButton = next;
+            saveButton = save;
             back.getStyleClass().add("form-back");
             next.getStyleClass().add("primary-dialog-button");
             back.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
                 event.consume();
-                at = Math.max(0, at - 1);
+                at = move(at, -1);
                 refresh(back, next, save);
             });
             next.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
                 event.consume();
-                at = Math.min(steps.length - 1, at + 1);
+                String problem = problem(at);
+                if (problem != null) {
+                    stepError.setText(problem);
+                    stepError.setVisible(true);
+                    return;
+                }
+                at = move(at, 1);
                 refresh(back, next, save);
             });
+            if (skipped(at)) {
+                at = move(at, 1); // si el primer paso no aplica, la página abre en el primero que sí
+            }
             refresh(back, next, save);
         }
 
@@ -461,15 +607,29 @@ public final class FormShell {
                 pages.get(i).setManaged(i == at);
             }
             emptyNotice(pages.get(at));
-            drawTrack(track, steps, at);
-            boolean first = at == 0;
-            boolean last = at == steps.length - 1;
+            stepError.setVisible(false);
+            // La línea de pasos solo muestra los que aplican
+            List<Step> shown = new ArrayList<>();
+            int shownAt = 0;
+            for (int i = 0; i < steps.length; i++) {
+                if (i == at) {
+                    shownAt = shown.size();
+                }
+                if (i == at || !skipped(i)) {
+                    shown.add(new Step(labelOf(i), steps[i].sections()));
+                }
+            }
+            drawTrack(track, shown.toArray(new Step[0]), shownAt);
+            int previous = move(at, -1);
+            int following = move(at, 1);
+            boolean first = previous == at;
+            boolean last = following == at;
             if (back != null) {
-                back.setText(first ? "Atrás" : "←  " + steps[at - 1].name());
+                back.setText(first ? "Atrás" : "←  " + labelOf(previous));
                 showButton(back, !first);
             }
             if (next != null) {
-                next.setText(last ? "Siguiente" : "Siguiente: " + steps[at + 1].name() + "  →");
+                next.setText(last ? "Siguiente" : "Siguiente: " + labelOf(following) + "  →");
                 showButton(next, !last);
             }
             if (save != null) {
@@ -880,6 +1040,8 @@ public final class FormShell {
                     return;
                 }
                 double viewport = scroll.getViewportBounds().getWidth();
+                // Algunos formularios enlazan este alto al del cuerpo: se suelta para poder ajustarlo aquí
+                scroll.prefViewportHeightProperty().unbind();
                 scroll.setPrefViewportHeight(body.prefHeight(viewport > 0 ? viewport : -1));
                 pane.setMinHeight(Region.USE_COMPUTED_SIZE);
                 pane.setPrefHeight(Region.USE_COMPUTED_SIZE);

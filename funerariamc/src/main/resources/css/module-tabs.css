@@ -1,0 +1,24 @@
+/*
+ * Pestañas de los módulos que reúnen varias pantallas (por ejemplo Clientes, con Afiliados a
+ * planes, Difuntos y Contratos y ventas). Mismo aspecto que las pestañas de Transporte y con los
+ * colores de la marca definidos en app.css.
+ */
+.module-tabs {
+    -fx-background-color: -color-card;
+    -fx-border-color: -color-surface; -fx-border-width: 1;
+    -fx-background-radius: 14; -fx-border-radius: 14;
+    -fx-padding: 10 14; -fx-alignment: center-left;
+}
+.module-tabs .module-tab-group {
+    -fx-background-color: -color-soft; -fx-background-radius: 12;
+    -fx-padding: 4; -fx-spacing: 2; -fx-alignment: center-left;
+}
+.module-tabs .module-tab {
+    -fx-background-color: transparent; -fx-text-fill: -color-ink;
+    -fx-background-radius: 10; -fx-padding: 0 18;
+    -fx-min-height: 36; -fx-pref-height: 36; -fx-max-height: 36;
+    -fx-font-family: "Montserrat SemiBold"; -fx-font-size: 13px; -fx-cursor: hand;
+}
+.module-tabs .module-tab:hover { -fx-background-color: -color-linen-a45; }
+.module-tabs .module-tab:selected { -fx-background-color: -color-forest; -fx-text-fill: -color-paper; }
+.module-tabs .module-tab:focused { -fx-background-insets: 0; }

@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -161,6 +162,27 @@ public interface ServiceContractRepository extends JpaRepository<ServiceContract
             """)
     List<Deceased> searchDeceasedWithoutContract(@Param("cancelled") ContractStatus cancelled,
                                                  @Param("pattern") String pattern, Pageable pageable);
+
+    /** Difuntos de un cliente que aún no tienen contrato vigente, para "Nuevo contrato · Particular". */
+    @Query("""
+            select d from Deceased d
+            where d.client.id = :clientId
+              and not exists (select c.id from ServiceContract c where c.deceased = d and c.status <> :cancelled)
+            order by d.deathDate desc nulls last, d.id desc
+            """)
+    List<Deceased> findDeceasedOfClientWithoutContract(@Param("clientId") Long clientId,
+                                                       @Param("cancelled") ContractStatus cancelled);
+
+    /**
+     * Difuntos de un plan: los vinculados al plan en Difuntos y los que tienen el documento del
+     * titular o de un beneficiario. Para elegir el difunto de un contrato con plan.
+     */
+    @Query("""
+            select d from Deceased d
+            where d.funeralPlan.id = :planId or d.documentNumber in :documents
+            order by d.deathDate desc nulls last, d.id desc
+            """)
+    List<Deceased> findDeceasedOfPlan(@Param("planId") Long planId, @Param("documents") Collection<String> documents);
 
     /** Planes de un cliente (titular), para elegir el plan del contrato. */
     @Query("""

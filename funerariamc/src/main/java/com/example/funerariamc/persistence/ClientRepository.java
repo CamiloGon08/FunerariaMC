@@ -38,6 +38,21 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
                                 Pageable pageable);
 
     /**
+     * Buscador de titular (Planes exequiales): nombres o apellidos que EMPIEZAN con lo escrito,
+     * sin importar tildes, o documento que empieza con esos números. wordStart es "% texto%" y
+     * start es "texto%", ya en minúsculas y sin tildes.
+     */
+    @Query("""
+            select c from Client c
+            where cast(function('translate', lower(concat(' ', c.name, ' ', coalesce(c.lastname, ''))),
+                                'áéíóúüñ', 'aeiouun') as String) like :wordStart
+               or lower(coalesce(c.documentNumber, '')) like :start
+            order by c.name, c.lastname, c.id
+            """)
+    List<Client> searchByWordStart(@Param("wordStart") String wordStart, @Param("start") String start,
+                                   Pageable pageable);
+
+    /**
      * filtro Primeros clientes que coinciden con el texto
      */
     @Query("""
@@ -102,6 +117,87 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
             """)
     Page<Client> searchByBalance(@Param("pattern") String pattern,
                                  @Param("types") Collection<ClientType> types,
+                                 @Param("balance") String balance,
+                                 @Param("income") TransactionType income,
+                                 @Param("active") TransactionStatus active,
+                                 Pageable pageable);
+
+    /**
+     * Página de las tarjetas de Clientes con los filtros de saldo y de plan exequial: plan en
+     * 'WITH' deja a los que tienen un plan no cancelado y en 'WITHOUT' a los que no tienen ninguno.
+     */
+    @Query(value = """
+            select c from Client c
+            where c.clientType in :types
+              and (lower(concat(c.name, ' ', c.lastname)) like :pattern
+                   or lower(c.documentNumber) like :pattern)
+              and (:plan = 'ALL'
+                   or (:plan = 'WITH' and exists (
+                        select p.id from FuneralPlan p
+                        where p.client = c
+                          and p.status <> com.example.funerariamc.utils.enums.PlanStatus.CANCELLED))
+                   or (:plan = 'WITHOUT' and not exists (
+                        select p.id from FuneralPlan p
+                        where p.client = c
+                          and p.status <> com.example.funerariamc.utils.enums.PlanStatus.CANCELLED)))
+              and (:balance = 'ALL'
+                   or (:balance = 'WITH' and exists (
+                        select s.id from Sale s
+                        where s.client = c
+                          and s.status = com.example.funerariamc.utils.enums.SaleStatus.ACTIVE
+                          and coalesce(s.totalAmount, 0) > (select coalesce(sum(t.amount), 0)
+                                                            from FinancialTransaction t
+                                                            where t.relatedSale = s
+                                                              and t.transactionType = :income
+                                                              and t.status = :active)))
+                   or (:balance = 'WITHOUT' and not exists (
+                        select s.id from Sale s
+                        where s.client = c
+                          and s.status = com.example.funerariamc.utils.enums.SaleStatus.ACTIVE
+                          and coalesce(s.totalAmount, 0) > (select coalesce(sum(t.amount), 0)
+                                                            from FinancialTransaction t
+                                                            where t.relatedSale = s
+                                                              and t.transactionType = :income
+                                                              and t.status = :active))))
+            order by c.registrationDate desc, c.id desc
+            """,
+            countQuery = """
+            select count(c) from Client c
+            where c.clientType in :types
+              and (lower(concat(c.name, ' ', c.lastname)) like :pattern
+                   or lower(c.documentNumber) like :pattern)
+              and (:plan = 'ALL'
+                   or (:plan = 'WITH' and exists (
+                        select p.id from FuneralPlan p
+                        where p.client = c
+                          and p.status <> com.example.funerariamc.utils.enums.PlanStatus.CANCELLED))
+                   or (:plan = 'WITHOUT' and not exists (
+                        select p.id from FuneralPlan p
+                        where p.client = c
+                          and p.status <> com.example.funerariamc.utils.enums.PlanStatus.CANCELLED)))
+              and (:balance = 'ALL'
+                   or (:balance = 'WITH' and exists (
+                        select s.id from Sale s
+                        where s.client = c
+                          and s.status = com.example.funerariamc.utils.enums.SaleStatus.ACTIVE
+                          and coalesce(s.totalAmount, 0) > (select coalesce(sum(t.amount), 0)
+                                                            from FinancialTransaction t
+                                                            where t.relatedSale = s
+                                                              and t.transactionType = :income
+                                                              and t.status = :active)))
+                   or (:balance = 'WITHOUT' and not exists (
+                        select s.id from Sale s
+                        where s.client = c
+                          and s.status = com.example.funerariamc.utils.enums.SaleStatus.ACTIVE
+                          and coalesce(s.totalAmount, 0) > (select coalesce(sum(t.amount), 0)
+                                                            from FinancialTransaction t
+                                                            where t.relatedSale = s
+                                                              and t.transactionType = :income
+                                                              and t.status = :active))))
+            """)
+    Page<Client> searchByPlanAndBalance(@Param("pattern") String pattern,
+                                 @Param("types") Collection<ClientType> types,
+                                 @Param("plan") String plan,
                                  @Param("balance") String balance,
                                  @Param("income") TransactionType income,
                                  @Param("active") TransactionStatus active,
