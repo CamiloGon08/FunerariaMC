@@ -56,6 +56,13 @@ public record ContractData(ContractService.SaleKind kind, Long clientId, Long de
                 coffinItemId, extraBuses, products, initialPayment, false, 0, CemeteryCharge.NONE, 0, false);
     }
 
+    /** Los mismos datos con el difunto ya registrado (al registrar el difunto del plan en la misma venta). */
+    public ContractData withDeceased(Long id) {
+        return new ContractData(kind, clientId, id, planId, salespersonId, baseAmount, pensionWages, roomId, wakeStart,
+                wakeEnd, coffinItemId, extraBuses, products, initialPayment, homeWake, intercityKm, cemetery,
+                lotConstructions, lotPreparation);
+    }
+
     /** Un artículo del inventario con la cantidad que se vende. */
     public record ItemLine(Long itemId, int quantity) {
     }

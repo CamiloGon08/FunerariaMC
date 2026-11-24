@@ -76,6 +76,7 @@ public class ContractService {
     public static final BigDecimal MAX_UNIT = new BigDecimal("99999999.99");
 
     static final String BASE_LINE = "Cuota base del servicio";
+    static final String PLAN_COVERED_LINE = "Servicio funerario cubierto por el plan";
     static final String PENSION_LINE = "Servicio cubierto por pensión";
     static final String COFFIN_EXCESS_LINE = "Excedente por gama de ataúd";
     static final String COFFIN_LINE = "Ataúd";
@@ -359,7 +360,9 @@ public class ContractService {
     @Transactional(readOnly = true)
     public List<Option> searchClients(String text) {
         requireAccess();
-        return saleRepository.searchClients(pattern(text), PageRequest.of(0, SHORT_LIST)).stream()
+        // Solo nombres, apellidos o documentos que EMPIEZAN con lo escrito: "me" no trae "Romero".
+        String clean = normalize(text).replaceAll("[%_\\\\]", "");
+        return saleRepository.searchClients("% " + clean + "%", clean + "%", PageRequest.of(0, SHORT_LIST)).stream()
                 .map(c -> new Option(c.getId(), ClientService.displayName(c),
                         (c.getClientType() == ClientType.CORPORATE ? "Empresa · " : "")
                                 + Objects.toString(document(c.getDocumentType(), c.getDocumentNumber()), "")))
@@ -372,6 +375,22 @@ public class ContractService {
         requireAccess();
         return contractRepository.searchDeceasedWithoutContract(ContractStatus.CANCELLED, pattern(text),
                         PageRequest.of(0, SHORT_LIST)).stream()
+                .map(d -> new Option(d.getId(), fullName(d.getName(), d.getLastname()),
+                        d.getDocumentNumber() == null ? "Sin documento" : "Doc. " + d.getDocumentNumber()))
+                .toList();
+    }
+
+    /**
+     * Difuntos registrados a nombre del cliente que aún no tienen contrato vigente. En un servicio
+     * particular solo se puede elegir a uno de ellos; si la lista está vacía, primero se registra en Difuntos.
+     */
+    @Transactional(readOnly = true)
+    public List<Option> deceasedOfClient(Long clientId) {
+        requireAccess();
+        if (clientId == null) {
+            return List.of();
+        }
+        return contractRepository.findDeceasedOfClientWithoutContract(clientId, ContractStatus.CANCELLED).stream()
                 .map(d -> new Option(d.getId(), fullName(d.getName(), d.getLastname()),
                         d.getDocumentNumber() == null ? "Sin documento" : "Doc. " + d.getDocumentNumber()))
                 .toList();
@@ -396,6 +415,99 @@ public class ContractService {
      * titular o beneficiario. {@code note} explica al usuario de dónde salió y qué cubre.
      */
     public record PlanMatch(Option client, Option plan, String note, boolean inWaiting) {
+    }
+
+    /**
+     * Persona del plan en "Registrar difunto del plan". deceasedId va solo si ya está registrada en
+     * Difuntos; si no, se registra ahí mismo con los datos del fallecimiento. Se puede elegir si no
+     * tiene un contrato vigente. firstName y lastName sirven para registrarla como difunto.
+     */
+    public record PlanPerson(String name, String document, String role, Long deceasedId, LocalDate deathDate,
+                             boolean hasContract, String firstName, String lastName) {
+
+        public boolean selectable() {
+            return !hasContract;
+        }
+
+        /** Ya está en Difuntos (con su certificado): no hay que registrar el fallecimiento otra vez. */
+        public boolean registered() {
+            return deceasedId != null;
+        }
+    }
+
+    /** Plan activo del titular con el titular, sus beneficiarios y los difuntos del plan. */
+    public record PlanBoard(Long planId, String code, String planName, BigDecimal monthlyFee, LocalDate startDate,
+                            boolean upToDate, boolean waitingDone, LocalDate waitingEnds, long beneficiaries,
+                            int beneficiaryLimit, List<PlanPerson> people) {
+    }
+
+    /**
+     * Plan activo del cliente para "Contrato · plan": el difunto solo se elige entre la gente de
+     * ese plan (titular y beneficiarios) que ya está registrada en Difuntos. Vacío si no tiene plan activo.
+     */
+    @Transactional(readOnly = true)
+    public Optional<PlanBoard> planBoard(Long clientId) {
+        requireAccess();
+        if (clientId == null) {
+            return Optional.empty();
+        }
+        FuneralPlan plan = contractRepository.findPlansOfClient(clientId).stream()
+                .filter(p -> p.getStatus() == PlanStatus.ACTIVE).findFirst().orElse(null);
+        if (plan == null) {
+            return Optional.empty();
+        }
+        FuneralPlanService.PlanDetail detail = planService.detail(plan.getId());
+        FuneralPlanService.PlanCard card = detail.card();
+        List<PlanPerson> people = new ArrayList<>();
+        List<String> documents = new ArrayList<>();
+        Client holder = plan.getClient();
+        boolean corporate = holder != null && holder.getClientType() == ClientType.CORPORATE;
+        // Una empresa titular no fallece: solo sus beneficiarios pueden ser difuntos del plan
+        if (!corporate) {
+            people.add(new PlanPerson(card.holderName(), card.holderDocument(), "Titular", null, null, false,
+                    holder == null ? null : holder.getName(), holder == null ? null : holder.getLastname()));
+        }
+        for (FuneralPlanService.BeneficiaryInfo b : detail.beneficiaries()) {
+            people.add(new PlanPerson(b.fullName(), b.documentNumber(), b.relationshipLabel(), null, null, false,
+                    b.name(), b.lastname()));
+        }
+        for (PlanPerson person : people) {
+            if (person.document() != null && !person.document().isBlank()) {
+                documents.add(person.document());
+            }
+        }
+        // Sin documentos la consulta igual necesita un valor en la lista
+        List<Deceased> deceased = contractRepository.findDeceasedOfPlan(plan.getId(),
+                documents.isEmpty() ? List.of("-") : documents);
+        List<PlanPerson> board = new ArrayList<>();
+        java.util.Set<Long> used = new java.util.HashSet<>();
+        for (PlanPerson person : people) {
+            Deceased match = deceased.stream()
+                    .filter(d -> person.document() != null && person.document().equals(d.getDocumentNumber()))
+                    .findFirst().orElse(null);
+            if (match == null) {
+                board.add(person);
+            } else {
+                used.add(match.getId());
+                board.add(new PlanPerson(person.name(), person.document(), person.role(), match.getId(),
+                        match.getDeathDate(), hasActiveContract(match.getId()), person.firstName(), person.lastName()));
+            }
+        }
+        // Difuntos vinculados al plan en Difuntos con un documento que no es del titular ni de un beneficiario
+        for (Deceased d : deceased) {
+            if (used.add(d.getId())) {
+                board.add(new PlanPerson(fullName(d.getName(), d.getLastname()), d.getDocumentNumber(),
+                        "Vinculado al plan en Difuntos", d.getId(), d.getDeathDate(), hasActiveContract(d.getId()),
+                        d.getName(), d.getLastname()));
+            }
+        }
+        return Optional.of(new PlanBoard(plan.getId(), card.code(), card.planName(), card.monthlyFee(),
+                card.startDate(), !card.isOverdue(), !card.inWaiting(), card.waitingEnds(), card.beneficiaries(),
+                detail.beneficiaryLimit(), List.copyOf(board)));
+    }
+
+    private boolean hasActiveContract(Long deceasedId) {
+        return contractRepository.existsByDeceasedIdAndStatusNot(deceasedId, ContractStatus.CANCELLED);
     }
 
     @Transactional(readOnly = true)
@@ -508,25 +620,58 @@ public class ContractService {
     }
 
     /**
+     * Total parcial mientras se llena "Nuevo contrato": suma lo que ya se eligió aunque todavía
+     * falten el difunto, el vendedor o la cuota base. No guarda nada; al registrar se valida todo.
+     */
+    @Transactional(readOnly = true)
+    public Quote preview(ContractData data) {
+        requireAccess();
+        if (data == null || data.kind() == null) {
+            return new Quote(List.of(), BigDecimal.ZERO);
+        }
+        if (data.kind() == SaleKind.PLAN && data.planId() != null && data.deceasedId() != null) {
+            validatePlanCovers(data.planId(), findDeceased(data.deceasedId()));
+        }
+        List<Line> lines = collectLines(data);
+        return new Quote(lines, sum(lines));
+    }
+
+    /**
      * Arma las líneas independientes de la venta: cuota base o pensión, excedente de
      * ataúd o ataúd, recargo de sala especial, buses adicionales, recargo por
      * beneficiarios del plan y productos. Revisa existencias.
      */
     private List<Line> lines(ContractData data) {
+        List<Line> lines = collectLines(data);
+        if (lines.isEmpty()) {
+            throw new InvalidDataException("Agregue al menos un producto a la venta.");
+        }
+        if (sum(lines).compareTo(MAX_TOTAL) > 0) {
+            throw new InvalidDataException("El total de la venta es demasiado alto.");
+        }
+        return lines;
+    }
+
+    /** Las líneas de la venta sin revisar que haya al menos una (el total parcial puede estar vacío). */
+    private List<Line> collectLines(ContractData data) {
         List<Line> lines = new ArrayList<>();
         SaleKind kind = data.kind();
-        if (kind == SaleKind.PENSION) {
+        if (kind == SaleKind.PENSION && data.pensionWages() != null) {
             BigDecimal wages = data.pensionWages();
             BigDecimal value = wages.multiply(parameters.minimumWage()).setScale(2, RoundingMode.HALF_UP);
             lines.add(new Line(PENSION_LINE + " (" + wages.stripTrailingZeros().toPlainString()
                     + " salarios mínimos)", 1, checkUnit(value), value, null));
-        } else if (kind.isService()) {
+        } else if (kind == SaleKind.PLAN) {
+            // El plan cubre el servicio: no hay cuota base, solo se cobra lo que va por fuera del plan
+            lines.add(new Line(PLAN_COVERED_LINE, 1, BigDecimal.ZERO, BigDecimal.ZERO, null));
+        } else if (kind.isService() && data.baseAmount() != null) {
             BigDecimal base = data.baseAmount().setScale(2, RoundingMode.HALF_UP);
             lines.add(new Line(BASE_LINE, 1, checkUnit(base), base, null));
         }
 
         // El plan premium cubre un ataúd más grande y una sala especial sin recargo.
-        FuneralPlanService.PlanDetail planDetail = kind == SaleKind.PLAN ? planService.detail(data.planId()) : null;
+        FuneralPlanService.PlanDetail planDetail = kind == SaleKind.PLAN && data.planId() != null
+                ? planService.detail(data.planId()) : null;
         boolean premium = planDetail != null && planDetail.card() != null
                 && PlanParameters.isPremium(planDetail.card().planName());
         Map<Long, Integer> wanted = new LinkedHashMap<>();
@@ -575,7 +720,7 @@ public class ContractService {
 
         lines.addAll(cemeteryLines(data));
 
-        if (kind == SaleKind.PLAN) {
+        if (kind == SaleKind.PLAN && planDetail != null) {
             BigDecimal surcharge = planDetail.totalSurcharge();
             if (surcharge != null && surcharge.signum() > 0) {
                 lines.add(new Line(BENEFICIARY_LINE, 1, checkUnit(surcharge), surcharge, null));
@@ -598,12 +743,6 @@ public class ContractService {
             if (entry.getValue() > stock) {
                 throw new InsufficientStockException(stock);
             }
-        }
-        if (lines.isEmpty()) {
-            throw new InvalidDataException("Agregue al menos un producto a la venta.");
-        }
-        if (sum(lines).compareTo(MAX_TOTAL) > 0) {
-            throw new InvalidDataException("El total de la venta es demasiado alto.");
         }
         return lines;
     }
@@ -759,6 +898,10 @@ public class ContractService {
             contract.setContractNumber(nextContractNumber());
         }
         Deceased deceased = findDeceased(data.deceasedId());
+        // Un difunto registrado en Difuntos no tiene cliente: queda a nombre de quien hace el contrato
+        if (deceased.getClient() == null) {
+            deceased.setClient(client);
+        }
         contract.setDeceased(deceased);
         contract.setClient(client);
         contract.setStatus(ContractStatus.ACTIVE);
@@ -950,7 +1093,7 @@ public class ContractService {
             if (data.pensionWages() == null || data.pensionWages().signum() <= 0) {
                 throw new InvalidDataException("Ingrese cuántos salarios mínimos cubre la entidad pensional.");
             }
-        } else if (kind.isService()) {
+        } else if (kind == SaleKind.PRIVATE) {
             if (data.baseAmount() == null || data.baseAmount().signum() < 0) {
                 throw new InvalidDataException("Ingrese la cuota base del servicio (puede ser 0).");
             }
@@ -1099,6 +1242,11 @@ public class ContractService {
         }
         return Normalizer.normalize(text, Normalizer.Form.NFD).replaceAll("\\p{M}", "")
                 .toLowerCase(Locale.ROOT).trim();
+    }
+
+    /** Registrar el difunto de un plan crea el difunto: hace falta permiso sobre Difuntos. */
+    public boolean canRegisterDeceased() {
+        return sessionContext.getRoleName().map(AppModule.DIFUNTOS::isAllowedFor).orElse(false);
     }
 
     private void requireAccess() {
