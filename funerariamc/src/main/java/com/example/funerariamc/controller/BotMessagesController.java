@@ -1,6 +1,7 @@
 package com.example.funerariamc.controller;
 
 import com.example.funerariamc.exception.BusinessException;
+import com.example.funerariamc.service.WordSearch;
 import com.example.funerariamc.service.bot.BotMessageService;
 import com.example.funerariamc.service.bot.BotMessageService.ConversationView;
 import com.example.funerariamc.service.bot.BotMessageService.Kpis;
@@ -218,9 +219,9 @@ public class BotMessagesController implements RefreshableView {
                 .filter(c -> selected != queriesFilter || c.queries() > 0)
                 .filter(c -> selected != welcomeFilter || c.enrollments() > 0)
                 .filter(c -> selected != failedFilter || c.failed() > 0)
-                .filter(c -> text.isEmpty() || c.title().toLowerCase(ES).contains(text)
-                        || (c.document() != null && c.document().contains(text)))
+                .filter(c -> WordSearch.matchesAny(text, c.title(), c.document()))
                 .toList();
+        shown = WordSearch.startsFirst(shown, text, ConversationView::title);
         ConversationView keep = shown.stream().filter(c -> c.key().equals(selectedKey)).findFirst()
                 .orElse(shown.isEmpty() ? null : shown.get(0));
         selectedKey = keep == null ? null : keep.key();

@@ -3,6 +3,7 @@ package com.example.funerariamc.controller;
 import com.example.funerariamc.exception.BusinessException;
 import com.example.funerariamc.exception.InvalidDataException;
 import com.example.funerariamc.utils.enums.TransactionType;
+import com.example.funerariamc.service.WordSearch;
 import com.example.funerariamc.service.CommissionService;
 import com.example.funerariamc.service.CommissionService.CommissionRow;
 import com.example.funerariamc.service.FinancePeriod;
@@ -902,9 +903,9 @@ public class FinancesController implements RefreshableView, SectionView {
                 .filter(r -> kind == voidedType ? r.voided()
                         : kind == incomeType ? !r.voided() && r.type() == TransactionType.INCOME
                         : kind != expenseType || !r.voided() && r.type() == TransactionType.EXPENSE)
-                .filter(r -> query.isEmpty() || normalize(r.code() + " " + r.description() + " "
-                        + r.origin().getLabel() + " " + (r.registeredBy() == null ? "" : r.registeredBy()) + " "
-                        + (r.account() == null ? "" : r.account())).contains(query))
+                // Lo escrito es el comienzo de una palabra del código, descripción, origen, quién o cuenta
+                .filter(r -> WordSearch.matchesAny(query, r.code(), r.description(), r.origin().getLabel(),
+                        r.registeredBy(), r.account()))
                 .toList();
         // Un filtro nuevo vuelve a la página 1; recargar tras guardar se queda en la misma página.
         String filterKey = period + "|" + kind + "|" + query;
@@ -1037,10 +1038,10 @@ public class FinancesController implements RefreshableView, SectionView {
                     if (sales.get() == null) {
                         sales.set(transactionService.salesWithBalance());
                     }
-                    String query = text.trim().toLowerCase(Locale.ROOT);
-                    return sales.get().stream()
-                            .filter(o -> (o.number() + " " + o.label()).toLowerCase(Locale.ROOT).contains(query))
+                    List<SaleOption> found = sales.get().stream()
+                            .filter(o -> WordSearch.matchesAny(text, o.number(), o.label()))
                             .toList();
+                    return WordSearch.startsFirst(found, text, SaleOption::label);
                 }, SaleOption::label, o -> "saldo " + pesos(o.balance()));
         ComboBox<AccountOption> account = new ComboBox<>();
         account.getStyleClass().add("form-combo");
