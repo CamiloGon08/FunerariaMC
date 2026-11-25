@@ -297,7 +297,7 @@ public class DeceasedService {
             return items;
         }
         String text = filter.text() == null ? "" : normalize(filter.text());
-        return items.stream()
+        List<DeceasedItem> found = items.stream()
                 .filter(i -> switch (filter.segment() == null ? Segment.ALL : filter.segment()) {
                     case ALL -> true;
                     case IN_SERVICE -> i.inService();
@@ -306,12 +306,11 @@ public class DeceasedService {
                 })
                 .filter(i -> filter.deathType() == null || filter.deathType() == i.deathType())
                 .filter(i -> filter.month() == null || inMonth(i.deathDate(), filter.month()))
-                .filter(i -> text.isEmpty()
-                        || normalize(i.fullName()).contains(text)
-                        || normalize(i.code()).contains(text)
-                        || (i.documentNumber() != null && i.documentNumber().contains(text))
-                        || (i.contractNumber() != null && normalize(i.contractNumber()).contains(text)))
+                .filter(i -> WordSearch.matchesAny(text, i.fullName(), i.documentNumber())
+                        || (!text.isEmpty() && normalize(i.code()).contains(text))
+                        || (!text.isEmpty() && i.contractNumber() != null && normalize(i.contractNumber()).contains(text)))
                 .toList();
+        return WordSearch.startsFirst(found, text, DeceasedItem::fullName);
     }
 
     /** Expediente del difunto. */
@@ -750,8 +749,9 @@ public class DeceasedService {
                 .replaceAll("\\p{M}", "").toLowerCase(Locale.ROOT).trim();
     }
 
+    /** Comienzo de palabra, sin tildes (WordSearch). */
     private static String pattern(String text) {
-        return "%" + (text == null ? "" : text.trim().toLowerCase(Locale.ROOT)) + "%";
+        return WordSearch.sqlPattern(text);
     }
 
     private void requireAccess() {

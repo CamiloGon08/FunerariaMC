@@ -29,9 +29,9 @@ public interface DeceasedRepository extends JpaRepository<Deceased, Long> {
             where not exists (select v.id from Vault v where v.deceased = d)
               and not exists (select e.id from Exhumation e where e.deceased = d)
               and not exists (select c.id from Cremation c where c.deceased = d)
-              and (lower(concat(d.name, ' ', d.lastname)) like :pattern
-                   or lower(coalesce(d.documentNumber, '')) like :pattern)
-            order by d.deathDate desc nulls last, d.id desc
+              and (cast(function('translate', lower(concat(' ', d.name, ' ', coalesce(d.lastname, ''))), 'áéíóúüñ', 'aeiouun') as String) like :pattern
+                   or concat(' ', lower(coalesce(d.documentNumber, ''))) like :pattern)
+            order by case when cast(function('translate', lower(concat(' ', d.name)), 'áéíóúüñ', 'aeiouun') as String) like substring(:pattern, 2) then 0 else 1 end, d.deathDate desc nulls last, d.id desc
             """)
     List<Deceased> searchWithoutVault(@Param("pattern") String pattern, Pageable pageable);
 
