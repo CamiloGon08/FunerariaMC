@@ -510,7 +510,7 @@ public class TransportService {
     @Transactional(readOnly = true)
     public List<Option> searchContracts(String text) {
         requireAccess();
-        return transportRepository.searchContracts(normalize(text), ContractStatus.ACTIVE, PageRequest.of(0, SHORT_LIST))
+        return transportRepository.searchContracts(WordSearch.sqlPattern(text), ContractStatus.ACTIVE, PageRequest.of(0, SHORT_LIST))
                 .stream()
                 .map(c -> new Option(c.getId(), c.getContractNumber(),
                         fullName(c.getDeceasedName(), c.getDeceasedLastname())))
@@ -1163,11 +1163,6 @@ public class TransportService {
 
     private static String blankToNull(String text) {
         return text == null || text.isBlank() ? null : text.trim();
-    }
-
-    /** Minúsculas y sin espacios sobrantes para el buscador. */
-    private static String normalize(String text) {
-        return text == null ? "" : text.trim().toLowerCase(Locale.ROOT);
     }
 
     private LocalDateTime now() {

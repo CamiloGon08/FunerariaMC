@@ -416,14 +416,13 @@ public class ClientService {
         return phone == null ? "" : phone.replaceAll("[\\s().-]", "");
     }
 
-    /** "%texto%" en minúsculas; "1.065.832" se busca como "1065832". */
+    /** Patrón de WordSearch (comienzo de palabra, sin tildes); "1.065.832" se busca como "1065832". */
     private static String searchPattern(String text) {
         if (text == null || text.isBlank()) {
             return "%";
         }
         String trimmed = text.trim();
-        String value = trimmed.matches("[\\d.\\s-]+") ? normalizeDocument(trimmed) : trimmed.toLowerCase(Locale.ROOT);
-        return "%" + value + "%";
+        return trimmed.matches("[\\d.\\s-]+") ? "% " + normalizeDocument(trimmed) + "%" : WordSearch.sqlPattern(trimmed);
     }
 
     private static String blankToNull(String value) {

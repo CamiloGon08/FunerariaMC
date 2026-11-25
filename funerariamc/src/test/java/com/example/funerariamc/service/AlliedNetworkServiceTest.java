@@ -261,7 +261,7 @@ class AlliedNetworkServiceTest {
 
     @Test
     void contractSearchOnlyListsTheContractsOfThatHome() {
-        when(contracts.searchOfAlliedHome(eq(3L), eq(ContractStatus.CANCELLED), eq("%%"), any()))
+        when(contracts.searchOfAlliedHome(eq(3L), eq(ContractStatus.CANCELLED), eq("%"), any()))
                 .thenReturn(List.of(contract));
         assertEquals(List.of(9L), service.searchContracts(3L, "").stream()
                 .map(AlliedNetworkService.ContractOption::id).toList());

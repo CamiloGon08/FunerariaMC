@@ -268,14 +268,21 @@ public class ContractService {
         return new Overview(kpis, rows);
     }
 
-    /** Tipo de venta, estado de pago y texto se combinan. type null = todos. */
+    /**
+     * Tipo de venta, estado de pago y texto se combinan. type null = todos. El texto busca el comienzo
+     * de una palabra (difunto, cliente, plan) o cualquier parte del número; primero van los que
+     * empiezan por lo escrito.
+     */
     public static List<SaleRow> filter(List<SaleRow> rows, SaleType type, PaymentState payment, String text) {
         String needle = normalize(text);
-        return rows.stream()
+        List<SaleRow> found = rows.stream()
                 .filter(r -> type == null || r.kind().getSaleType() == type)
                 .filter(r -> payment == null || r.state() == payment)
-                .filter(r -> needle.isEmpty() || r.searchText().contains(needle))
+                .filter(r -> WordSearch.matches(r.searchText(), text)
+                        || (!needle.isEmpty() && (normalize(r.number()).contains(needle)
+                            || normalize(r.contractNumber()).contains(needle))))
                 .toList();
+        return WordSearch.startsFirst(found, text, SaleRow::title);
     }
 
     static SaleRow row(SaleRepository.SaleRow r) {
@@ -975,11 +982,11 @@ public class ContractService {
     @Transactional(readOnly = true)
     public List<Option> alliedHomes(String text) {
         requireAccess();
-        String query = text == null ? "" : text.trim().toLowerCase(Locale.ROOT);
-        return alliedHomeRepository.findAllByOrderByNameAsc().stream()
+        List<AlliedFuneralHome> found = alliedHomeRepository.findAllByOrderByNameAsc().stream()
                 .filter(h -> !Boolean.FALSE.equals(h.getActive()))
-                .filter(h -> (h.getName() + " " + (h.getCity() == null ? "" : h.getCity()))
-                        .toLowerCase(Locale.ROOT).contains(query))
+                .filter(h -> WordSearch.matchesAny(text, h.getName(), h.getCity()))
+                .toList();
+        return WordSearch.startsFirst(found, text, AlliedFuneralHome::getName).stream()
                 .limit(30)
                 .map(h -> new Option(h.getId(), h.getName(), h.getCity()))
                 .toList();
@@ -1275,9 +1282,9 @@ public class ContractService {
         return type == null || type.isBlank() ? number : type + " " + number;
     }
 
+    /** Comienzo de palabra, sin tildes (WordSearch). */
     private static String pattern(String text) {
-        String clean = text == null ? "" : text.trim().toLowerCase(Locale.ROOT);
-        return "%" + clean + "%";
+        return WordSearch.sqlPattern(text);
     }
 
     /** Minúsculas y sin tildes, para buscar "duran" y encontrar "Durán". */

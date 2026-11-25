@@ -193,19 +193,22 @@ public class InventoryService {
                 counts == null ? 0 : counts.getSold(), monthName(month));
     }
 
-    /** Filtro de la barra y texto del buscador (nombre, código o categoría), en memoria. */
+    /**
+     * Filtro de la barra y texto del buscador (nombre, código o categoría), en memoria: lo escrito
+     * debe ser el comienzo de una palabra y primero van los artículos cuyo nombre empieza así.
+     */
     public static List<ItemRow> filter(List<ItemRow> rows, Filter filter, String text) {
-        String needle = normalize(text);
         Filter f = filter == null ? Filter.ALL : filter;
-        return rows.stream()
+        List<ItemRow> found = rows.stream()
                 .filter(r -> switch (f) {
                     case ALL -> true;
                     case LOW -> r.low();
                     case SALE -> r.category() != null && r.category().isForSale();
                     case FUNERAL_USE -> r.category() != null && !r.category().isForSale();
                 })
-                .filter(r -> needle.isEmpty() || r.searchText().contains(needle))
+                .filter(r -> WordSearch.matches(r.searchText(), text))
                 .toList();
+        return WordSearch.startsFirst(found, text, ItemRow::name);
     }
 
     /** Panel del artículo: sus datos y el historial (movimientos manuales y ventas), dos consultas. */

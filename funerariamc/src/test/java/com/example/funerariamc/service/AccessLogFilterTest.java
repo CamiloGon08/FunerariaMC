@@ -38,7 +38,7 @@ class AccessLogFilterTest {
         verify(logs).findPageFiltered(
                 eq(LocalDateTime.of(2026, 10, 20, 5, 0)),
                 eq(LocalDateTime.of(2026, 10, 23, 5, 0)),
-                eq("%admin%"),
+                eq("% admin%"),
                 any(Pageable.class));
     }
 
@@ -74,7 +74,7 @@ class AccessLogFilterTest {
         verify(logs).findPageFiltered(eq(LocalDateTime.of(2026, 10, 22, 5, 0)), any(),
                 eq("%"), eq(PageRequest.of(1, 1)));
         verify(logs).findPageFiltered(any(), eq(LocalDateTime.of(2026, 10, 23, 5, 0)),
-                eq("%ana%"), eq(PageRequest.of(2, 10)));
+                eq("% ana%"), eq(PageRequest.of(2, 10)));
     }
 
     @Test
