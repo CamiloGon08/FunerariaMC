@@ -453,6 +453,19 @@
 .form-shell .contract-preview-label { -fx-text-fill: -color-text-muted; -fx-font-size: 11px; }
 .form-shell .contract-preview-value { -fx-text-fill: -color-ink; -fx-font-size: 11px; -fx-font-family: "Montserrat SemiBold"; }
 .form-shell .contract-preview-blank { -fx-text-fill: -color-text-faint; -fx-font-size: 11px; }
+/* Ventana "Contrato del plan": la misma hoja de la vista previa, más grande */
+.form-shell .contract-sheet-paper { -fx-padding: 22 26; -fx-spacing: 5; }
+.form-shell .contract-sheet-paper .contract-preview-brand { -fx-font-size: 22px; }
+.form-shell .contract-sheet-paper .contract-preview-title { -fx-font-size: 14px; -fx-padding: 12 0 4 0; }
+.form-shell .contract-sheet-paper .contract-preview-section { -fx-font-size: 11px; -fx-padding: 12 0 3 0; }
+.form-shell .contract-sheet-paper .contract-preview-label,
+.form-shell .contract-sheet-paper .contract-preview-value,
+.form-shell .contract-sheet-paper .contract-preview-blank { -fx-font-size: 12.5px; }
+.form-shell .contract-sheet-paper .contract-preview-row { -fx-padding: 5 0; }
+.form-shell .contract-sheet-include { -fx-font-family: "Source Sans 3", "Montserrat"; -fx-padding: 2 0 2 2; }
+.form-shell .contract-sheet-status { -fx-text-fill: -color-primary; -fx-font-size: 12px; }
+.form-shell .contract-sheet-total .contract-preview-value { -fx-font-size: 14px; -fx-text-fill: -color-primary; }
+.form-shell .contract-sheet-status.contract-sheet-error { -fx-text-fill: #9E3B32; }
 /* Aviso de por qué no se puede pasar al paso siguiente (por ejemplo, falta elegir el difunto) */
 .form-shell .form-step-error {
     -fx-background-color: #F7E9E6; -fx-border-color: #E2BDB6; -fx-border-radius: 10; -fx-background-radius: 10;
