@@ -388,7 +388,7 @@ class CemeteryServiceTest {
 
     @Test
     void clientSearchUsesTheListQueryWithoutCount() {
-        when(clients.searchOptions(eq("%durán%"), any())).thenReturn(List.of(client("Martha Cecilia", "Durán")));
+        when(clients.searchOptions(eq("% duran%"), any())).thenReturn(List.of(client("Martha Cecilia", "Durán")));
 
         List<CemeteryService.Option> options = service.searchClients(" Durán ");
 
@@ -567,22 +567,56 @@ class CemeteryServiceTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
-    void manualCodeContainingACommaIsStoredAsOneVault() {
+    void manualCodeNeedsAPavilionOfOneOrTwoLettersLevelAndColumn() {
+        // Un código con coma, con 3 letras o sin nivel ya no se registra.
         loginAs(RoleNames.MASTER_ADMIN);
-        Cemetery cemetery = new Cemetery(1L, "Jardines", null);
-        when(cemeteries.findById(1L)).thenReturn(Optional.of(cemetery));
+        assertThrows(InvalidDataException.class, () -> service.addVault(1L, "  a,01  "));
+        assertThrows(InvalidDataException.class, () -> service.addVault(1L, "ABC2-01"));
+        assertThrows(InvalidDataException.class, () -> service.addVault(1L, "A-07"));
+        verify(vaults, never()).saveAll(any());
+    }
+
+    @Test
+    void addPavilionAcceptsOneOrTwoLettersOnly() {
+        loginAs(RoleNames.MASTER_ADMIN);
+        when(cemeteries.findById(1L)).thenReturn(Optional.of(new Cemetery(1L, "Jardines", null)));
         when(vaults.findCodesByCemeteryId(1L)).thenReturn(List.of());
+        when(vaults.insertCodes(any(), anyString(), anyString())).thenReturn(2);
 
-        assertEquals(1, service.addVault(1L, "  a,01  ").created());
+        assertEquals(2, service.addPavilion(1L, "ab", 1, 2, 1).created());
+        assertThrows(InvalidDataException.class, () -> service.addPavilion(1L, "ABC", 1, 2, 1));
+        assertThrows(InvalidDataException.class, () -> service.addPavilion(1L, "A1", 1, 2, 1));
+    }
 
-        ArgumentCaptor<List<Vault>> saved = ArgumentCaptor.forClass(List.class);
-        verify(vaults).saveAll(saved.capture());
-        assertEquals(1, saved.getValue().size());
-        assertEquals("A,01", saved.getValue().get(0).getCode());
-        assertSame(cemetery, saved.getValue().get(0).getCemetery());
-        assertEquals(VaultStatus.AVAILABLE, saved.getValue().get(0).getStatus());
-        verify(vaults, never()).insertCodes(any(), anyString(), anyString());
+    @Test
+    void deleteCemeteryRemovesANeverUsedCemeteryWithItsVaults() {
+        loginAs(RoleNames.MASTER_ADMIN);
+        when(cemeteries.findById(3L)).thenReturn(Optional.of(new Cemetery(3L, "Cementerio Central", null)));
+        when(vaults.countByCemeteryId(3L)).thenReturn(30L);
+        when(vaults.countUsedByCemeteryId(3L)).thenReturn(0L);
+
+        assertEquals("Cementerio Central", service.deleteCemetery(3L));
+        verify(vaults).deleteByCemeteryId(3L);
+        verify(cemeteries).deleteById(3L);
+    }
+
+    @Test
+    void deleteCemeteryKeepsACemeteryWithHistory() {
+        loginAs(RoleNames.MASTER_ADMIN);
+        when(cemeteries.findById(2L)).thenReturn(Optional.of(new Cemetery(2L, "Jardines", null)));
+        when(vaults.countUsedByCemeteryId(2L)).thenReturn(3L);
+        assertThrows(InvalidDataException.class, () -> service.deleteCemetery(2L));
+
+        when(vaults.countUsedByCemeteryId(2L)).thenReturn(0L);
+        when(exhumations.existsByVaultCemeteryId(2L)).thenReturn(true);
+        assertThrows(InvalidDataException.class, () -> service.deleteCemetery(2L));
+        verify(cemeteries, never()).deleteById(any());
+    }
+
+    @Test
+    void onlyTheMasterAdminDeletesCemeteries() {
+        loginAs(RoleNames.SECRETARY);
+        assertThrows(UnauthorizedActionException.class, () -> service.deleteCemetery(3L));
     }
 
     @Test

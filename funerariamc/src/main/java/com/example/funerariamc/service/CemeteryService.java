@@ -161,6 +161,17 @@ public class CemeteryService {
     public record VaultBatch(int created, List<String> skipped) {
     }
 
+    /**
+     * Revisión antes de borrar un cementerio: cuántas bóvedas tiene y cuántas ya se usaron.
+     * Solo se puede borrar si ninguna bóveda se usó y no hay exhumaciones ni avisos de arriendo.
+     */
+    public record CemeteryDeletion(Long id, String name, long vaults, long usedVaults, boolean hasHistory) {
+
+        public boolean allowed() {
+            return usedVaults == 0 && !hasHistory;
+        }
+    }
+
     /** Panel de detalle de una bóveda. Los campos del difunto y del titular van en null si está libre. */
     public record VaultDetail(Long id, String code, VaultPosition position, String cemeteryName,
                               VaultState state, String deceasedName, LocalDate deceasedBirth,
@@ -393,6 +404,38 @@ public class CemeteryService {
         return cemeteryRepository.save(cemetery).getId();
     }
 
+    /** Revisa si un cementerio se puede borrar, sin cambiar nada (para el mensaje de confirmación). */
+    @Transactional(readOnly = true)
+    public CemeteryDeletion deletionCheck(Long cemeteryId) {
+        requireRegister();
+        Cemetery cemetery = cemeteryRepository.findById(cemeteryId)
+                .orElseThrow(() -> new InvalidDataException("El cementerio ya no existe."));
+        boolean hasHistory = exhumationRepository.existsByVaultCemeteryId(cemeteryId)
+                || leaseNotificationRepository.existsByVaultCemeteryId(cemeteryId);
+        return new CemeteryDeletion(cemetery.getId(), cemetery.getName(),
+                vaultRepository.countByCemeteryId(cemeteryId),
+                vaultRepository.countUsedByCemeteryId(cemeteryId), hasHistory);
+    }
+
+    /**
+     * Borra del sistema un cementerio que nunca se usó, junto con sus bóvedas libres.
+     * Si alguna bóveda tuvo difunto, titular o arriendo, o hay exhumaciones o avisos,
+     * no se borra para no perder esa historia. Devuelve el nombre del cementerio borrado.
+     */
+    @Transactional
+    public String deleteCemetery(Long cemeteryId) {
+        CemeteryDeletion check = deletionCheck(cemeteryId);
+        if (!check.allowed()) {
+            throw new InvalidDataException("No se puede borrar " + check.name()
+                    + ": tiene bóvedas con difuntos, titulares o arriendos registrados.");
+        }
+        vaultRepository.deleteByCemeteryId(cemeteryId);
+        cemeteryRepository.deleteById(cemeteryId);
+        Long actorId = currentUserId();
+        accessLogService.record(actorId, AccessLogService.CEMETERY_DELETED + check.name());
+        return check.name();
+    }
+
     /**
      * Crea las bóvedas de un pabellón, todas DISPONIBLES, con códigos
      * "A1-01" ... (pabellón, nivel y columna). No hay límite de columnas por nivel.
@@ -428,6 +471,10 @@ public class CemeteryService {
         String clean = code == null ? "" : code.trim().toUpperCase(Locale.ROOT);
         if (clean.isEmpty()) {
             throw new InvalidDataException("Ingrese el código de la bóveda.");
+        }
+        // Pabellón de 1 o 2 letras, nivel y columna: "A2-15" o "AB2-15"
+        if (!clean.matches(PAVILION_PATTERN + "\\d+-\\d+")) {
+            throw new InvalidDataException("El código lleva el pabellón (1 o 2 letras), el nivel y la columna, por ejemplo A2-15.");
         }
         VaultBatch result = createVaults(cemeteryId, List.of(clean));
         if (result.created() == 0) {
@@ -480,10 +527,13 @@ public class CemeteryService {
                 : position.pavilion() + "|" + position.level() + "|" + position.column();
     }
 
+    /** El pabellón son solo letras: 1 o 2 (A, B, AB). */
+    private static final String PAVILION_PATTERN = "[A-Z]{1,2}";
+
     private static String pavilionLetter(String pavilion) {
         String clean = pavilion == null ? "" : pavilion.trim().toUpperCase(Locale.ROOT);
-        if (!clean.matches("[A-Z]+")) {
-            throw new InvalidDataException("El pabellón se escribe con letras, por ejemplo A o B.");
+        if (!clean.matches(PAVILION_PATTERN)) {
+            throw new InvalidDataException("El pabellón se escribe solo con letras, 1 o 2 (por ejemplo A, B o AB).");
         }
         return clean;
     }
@@ -699,9 +749,9 @@ public class CemeteryService {
         return a.compareTo(b);
     }
 
+    /** Comienzo de palabra, sin tildes (WordSearch). */
     private static String pattern(String text) {
-        String clean = text == null ? "" : text.trim().toLowerCase(Locale.ROOT);
-        return "%" + clean + "%";
+        return WordSearch.sqlPattern(text);
     }
 
     private Vault getVault(Long id) {

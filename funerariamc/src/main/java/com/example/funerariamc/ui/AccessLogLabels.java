@@ -43,11 +43,15 @@ public final class AccessLogLabels {
     private static final Map<String, String> ACCOUNT_ACTIONS = Map.of(
             AccessLogService.USER_ACCOUNT_CREATED, "Creación de la cuenta de acceso del usuario ");
 
-    /** Acciones del módulo Cementerio y bóvedas: guardan el código de la bóveda después del prefijo. */
+    /**
+     * Acciones del módulo Cementerio y bóvedas: guardan el código de la bóveda después del prefijo
+     * (el borrado de un cementerio guarda su nombre).
+     */
     private static final Map<String, String> VAULT_ACTIONS = Map.of(
             AccessLogService.VAULT_ASSIGNED, "Asignación de la bóveda ",
             AccessLogService.VAULT_LEASE_RENEWED, "Renovación del arriendo de la bóveda ",
-            AccessLogService.EXHUMATION_REGISTERED, "Exhumación registrada en la bóveda ");
+            AccessLogService.EXHUMATION_REGISTERED, "Exhumación registrada en la bóveda ",
+            AccessLogService.CEMETERY_DELETED, "Borrado del cementerio ");
 
     /** Acciones del módulo Difuntos: guardan el código del difunto (DF-0042) y, a veces, un dato más. */
     private static final Map<String, String> DECEASED_ACTIONS = Map.of(
