@@ -50,4 +50,7 @@ public interface ExhumationRepository extends JpaRepository<Exhumation, Long> {
             order by e.exhumationDate desc, e.id desc
             """)
     List<ExhumationRow> findRecentRows(@Param("cemeteryId") Long cemeteryId, Pageable pageable);
+
+    /** Indica si alguna bóveda del cementerio tiene exhumaciones registradas. */
+    boolean existsByVaultCemeteryId(Long cemeteryId);
 }
