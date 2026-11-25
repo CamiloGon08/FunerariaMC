@@ -140,7 +140,16 @@ public final class ExportDesign {
     /** Abre un PDF A4 con la banda de la marca, el pie de página y las fuentes de la app. */
     public static PdfReport pdf(BrandView brand, String fullName, OutputStream out, String reportName) {
         BrandView b = brand == null ? BrandingService.defaults() : brand;
-        return new PdfReport(b, fullName == null ? b.fullName() : fullName, out, reportName);
+        return new PdfReport(b, fullName == null ? b.fullName() : fullName, out, reportName, 30);
+    }
+
+    /**
+     * Abre un PDF A4 con márgenes de documento, para contratos: se arma con membrete(), párrafos,
+     * datos y cláusulas en vez de la banda y las tarjetas de los reportes.
+     */
+    public static PdfReport document(BrandView brand, String fullName, OutputStream out, String reportName) {
+        BrandView b = brand == null ? BrandingService.defaults() : brand;
+        return new PdfReport(b, fullName == null ? b.fullName() : fullName, out, reportName, 44);
     }
 
     /** Marca guardada; si el servicio no está o no responde, la de El Edén. */
@@ -204,12 +213,12 @@ public final class ExportDesign {
         private final String reportName;
         private final Fonts f = fonts();
 
-        private PdfReport(BrandView brand, String fullName, OutputStream out, String reportName) {
+        private PdfReport(BrandView brand, String fullName, OutputStream out, String reportName, float margin) {
             this.brand = brand;
             this.fullName = fullName;
             this.reportName = reportName;
             this.c = Palette.of(brand);
-            this.document = new Document(PageSize.A4, 30, 30, 30, 42);
+            this.document = new Document(PageSize.A4, margin, margin, margin, 42 + margin - 30);
             PdfWriter writer = PdfWriter.getInstance(document, out);
             writer.setPageEvent(new Footer());
             document.addTitle(fullName + " · " + reportName);
@@ -335,6 +344,202 @@ public final class ExportDesign {
         /** Empieza una tarjeta blanca con título y subtítulo y una tabla con estos encabezados. */
         public PdfTable table(String title, String subtitle, float[] widths, String... headers) {
             return new PdfTable(this, title, subtitle, widths, headers);
+        }
+
+        /**
+         * Membrete de documento: logo y nombre de la funeraria a la izquierda, el número a la derecha,
+         * una línea del color de la marca y el título centrado.
+         */
+        public void letterhead(String title, String subtitle) {
+            PdfPTable top = new PdfPTable(new float[]{0.5f, 5f, 3f});
+            top.setWidthPercentage(100);
+            PdfPCell logo = new PdfPCell();
+            logo.setBorder(Rectangle.NO_BORDER);
+            logo.setPadding(0);
+            logo.setVerticalAlignment(Element.ALIGN_MIDDLE);
+            Image image = image(logoBytes(brand));
+            if (image != null) {
+                image.scaleToFit(28, 28);
+                logo.addElement(image);
+            }
+            top.addCell(logo);
+            PdfPCell name = new PdfPCell();
+            name.setBorder(Rectangle.NO_BORDER);
+            name.setPaddingLeft(6);
+            name.setVerticalAlignment(Element.ALIGN_MIDDLE);
+            Paragraph caption = new Paragraph(spaced("FUNERARIA"), font(f.bold(), 6.5f, c.goldText()));
+            caption.setLeading(8);
+            name.addElement(caption);
+            Paragraph brandName = new Paragraph(shortName(fullName), font(f.semi(), 13, c.primary()));
+            brandName.setLeading(15);
+            name.addElement(brandName);
+            top.addCell(name);
+            PdfPCell number = new PdfPCell(new Phrase(reportName, font(f.medium(), 9, c.muted())));
+            number.setBorder(Rectangle.NO_BORDER);
+            number.setHorizontalAlignment(Element.ALIGN_RIGHT);
+            number.setVerticalAlignment(Element.ALIGN_MIDDLE);
+            top.addCell(number);
+            PdfPCell rule = new PdfPCell();
+            rule.setColspan(3);
+            rule.setBorder(Rectangle.BOTTOM);
+            rule.setBorderColor(c.primary());
+            rule.setBorderWidth(1.2f);
+            rule.setFixedHeight(10);
+            top.addCell(rule);
+            add(top);
+
+            Paragraph heading = new Paragraph(title.toUpperCase(java.util.Locale.ROOT), font(f.semi(), 14, c.primary()));
+            heading.setAlignment(Element.ALIGN_CENTER);
+            heading.setSpacingBefore(12);
+            heading.setLeading(18);
+            add(heading);
+            if (subtitle != null && !subtitle.isBlank()) {
+                Paragraph sub = new Paragraph(subtitle, font(f.regular(), 9, c.muted()));
+                sub.setAlignment(Element.ALIGN_CENTER);
+                sub.setLeading(13);
+                add(sub);
+            }
+        }
+
+        /** Título de una parte del documento, en mayúsculas y con el color de la marca. */
+        public void section(String text) {
+            Paragraph p = new Paragraph(text.toUpperCase(java.util.Locale.ROOT), font(f.bold(), 8.5f, c.primary()));
+            p.setSpacingBefore(8);
+            p.setSpacingAfter(2);
+            add(p);
+        }
+
+        /**
+         * Datos como en un formulario impreso: "Nombre: valor" sobre una línea delgada, de a dos por
+         * renglón. Se pasan en pares: etiqueta, valor, etiqueta, valor...
+         */
+        public void fields(String... labelsAndValues) {
+            PdfPTable t = new PdfPTable(2);
+            t.setWidthPercentage(100);
+            t.setSpacingBefore(2);
+            int count = labelsAndValues.length / 2;
+            for (int i = 0; i < count; i++) {
+                Phrase phrase = new Phrase();
+                phrase.add(new Phrase(labelsAndValues[i * 2] + ": ", font(f.semi(), 8.5f, c.ink())));
+                String value = labelsAndValues[i * 2 + 1];
+                phrase.add(new Phrase(value == null || value.isBlank() ? "—" : value, font(f.regular(), 8.5f, c.ink())));
+                PdfPCell cell = new PdfPCell(phrase);
+                cell.setBorder(Rectangle.BOTTOM);
+                cell.setBorderColor(c.line());
+                cell.setBorderWidth(0.5f);
+                cell.setPaddingLeft(0);
+                cell.setPaddingRight(14);
+                cell.setPaddingTop(4);
+                cell.setPaddingBottom(3);
+                // un dato que queda solo al final ocupa todo el renglón
+                if (i == count - 1 && count % 2 == 1) {
+                    cell.setColspan(2);
+                }
+                t.addCell(cell);
+            }
+            add(t);
+        }
+
+        /** Lista numerada (1., 2., 3.) con sangría, por ejemplo las personas cubiertas. */
+        public void numbered(List<String> items) {
+            for (int i = 0; i < items.size(); i++) {
+                Paragraph p = new Paragraph();
+                p.setLeading(12);
+                p.setSpacingBefore(i == 0 ? 3 : 1);
+                p.setIndentationLeft(14);
+                p.setFirstLineIndent(-14);
+                p.add(new Phrase((i + 1) + ".  ", font(f.semi(), 8.5f, c.primary())));
+                p.add(new Phrase(items.get(i).replace("$ ", "$\u00A0"), font(f.regular(), 8.5f, c.ink())));
+                add(p);
+            }
+        }
+
+        /** Renglón con el valor a la derecha unido por puntos, como en una factura escrita. */
+        public void amountLine(String text, String amount, boolean strong) {
+            Paragraph p = new Paragraph();
+            p.setLeading(13);
+            p.setSpacingBefore(strong ? 6 : 2);
+            Font font = strong ? font(f.semi(), 9.5f, c.ink()) : font(f.regular(), 9, c.ink());
+            p.add(new Phrase(text + " ", font));
+            com.lowagie.text.pdf.draw.DottedLineSeparator dots = new com.lowagie.text.pdf.draw.DottedLineSeparator();
+            dots.setGap(2.5f);
+            dots.setLineColor(c.line());
+            dots.setOffset(2.5f);
+            p.add(new com.lowagie.text.Chunk(dots));
+            p.add(new Phrase(" " + amount.replace("$ ", "$\u00A0"), font));
+            add(p);
+        }
+
+        /** Título de un bloque de texto, del mismo tamaño que el de las tarjetas. */
+        public void heading(String text) {
+            Paragraph p = new Paragraph(text, font(f.semi(), 12, c.ink()));
+            p.setSpacingBefore(16);
+            p.setSpacingAfter(2);
+            add(p);
+        }
+
+        /** Texto corrido justificado, por ejemplo la presentación de las partes de un contrato. */
+        public void paragraph(String text) {
+            Paragraph p = new Paragraph(text, font(f.regular(), 8.5f, c.ink()));
+            p.setLeading(12);
+            p.setSpacingBefore(8);
+            p.setAlignment(Element.ALIGN_JUSTIFIED);
+            add(p);
+        }
+
+        /** Cláusula numerada: "PRIMERA. Objeto." resaltado y luego el texto en la misma línea. */
+        public void clause(String number, String title, String text) {
+            Paragraph p = new Paragraph();
+            p.setLeading(12);
+            p.setSpacingBefore(4);
+            p.setAlignment(Element.ALIGN_JUSTIFIED);
+            p.add(new Phrase(number + ". " + title + ". ", font(f.bold(), 8.5f, c.primary())));
+            p.add(new Phrase(text.replace("$ ", "$\u00A0"), font(f.regular(), 8.5f, c.ink())));
+            add(p);
+        }
+
+        /**
+         * Firmas: una columna por parte, con espacio para firmar, línea, nombre y los datos debajo. La
+         * frase de cierre va encima y en la misma hoja que las firmas.
+         */
+        public void signatures(String closing, List<List<String>> parties) {
+            // entre parte y parte va una columna vacía para que las líneas de firma no se toquen
+            float[] widths = new float[parties.size() * 2 - 1];
+            for (int i = 0; i < widths.length; i++) {
+                widths[i] = i % 2 == 0 ? 1f : 0.18f;
+            }
+            PdfPTable t = new PdfPTable(widths);
+            t.setWidthPercentage(100);
+            t.setSpacingBefore(6);
+            t.setKeepTogether(true);
+            PdfPCell lead = new PdfPCell(new Phrase(closing, font(f.regular(), 8.5f, c.ink())));
+            lead.setColspan(widths.length);
+            lead.setBorder(Rectangle.NO_BORDER);
+            lead.setPadding(0);
+            lead.setPaddingBottom(26);
+            t.addCell(lead);
+            for (List<String> party : parties) {
+                if (party != parties.get(0)) {
+                    PdfPCell gap = new PdfPCell();
+                    gap.setBorder(Rectangle.NO_BORDER);
+                    t.addCell(gap);
+                }
+                PdfPCell cell = new PdfPCell();
+                cell.setBorder(Rectangle.TOP);
+                cell.setBorderColor(c.ink());
+                cell.setBorderWidth(0.8f);
+                cell.setPaddingTop(5);
+                cell.setPaddingLeft(0);
+                cell.setPaddingRight(0);
+                for (int i = 0; i < party.size(); i++) {
+                    Paragraph p = new Paragraph(party.get(i), i == 0 ? font(f.bold(), 7, c.muted())
+                            : i == 1 ? font(f.semi(), 9.5f, c.ink()) : font(f.regular(), 8, c.muted()));
+                    p.setLeading(i == 1 ? 13 : 11);
+                    cell.addElement(p);
+                }
+                t.addCell(cell);
+            }
+            add(t);
         }
 
         void add(Element element) {
