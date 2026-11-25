@@ -45,6 +45,9 @@ import com.example.funerariamc.service.DeceasedData;
 import com.example.funerariamc.service.FileStorageService;
 import com.example.funerariamc.service.PersonNames;
 import com.example.funerariamc.service.PlanDeathService;
+import com.example.funerariamc.service.PlanContractService;
+import com.example.funerariamc.service.SaleContractService;
+import com.example.funerariamc.ui.ContractSheet;
 import com.example.funerariamc.utils.enums.ClientType;
 import com.example.funerariamc.utils.enums.DeathType;
 import com.example.funerariamc.utils.enums.DocumentType;
@@ -147,6 +150,8 @@ public class ContractController implements RefreshableView {
     private final FuneralPlanService planService;
     private final PlanDeathService planDeathService;
     private final ClientService clientService;
+    private final PlanContractService planContractService;
+    private final SaleContractService saleContractService;
     private final DetailCache<SaleView> details;
     /** Verdadero en ventana angosta: Tipo y Abonado se ocultan (siguen en el detalle de la venta). */
     private ObservableBooleanValue narrow;
@@ -221,11 +226,14 @@ public class ContractController implements RefreshableView {
     private volatile List<PlanOffer> offerCache;
 
     public ContractController(ContractService contractService, FuneralPlanService planService,
-                              PlanDeathService planDeathService, ClientService clientService) {
+                              PlanDeathService planDeathService, ClientService clientService,
+                              PlanContractService planContractService, SaleContractService saleContractService) {
         this.contractService = contractService;
         this.planService = planService;
         this.planDeathService = planDeathService;
         this.clientService = clientService;
+        this.planContractService = planContractService;
+        this.saleContractService = saleContractService;
         this.details = new DetailCache<>(contractService::detail, "sale-detail");
     }
 
@@ -576,6 +584,8 @@ public class ContractController implements RefreshableView {
                 && c.preparationCompletedAt() == null) {
             actions.add(DetailShell.secondary("Registrar preparación", () -> openPreparationDialog(r, c)));
         }
+        // El contrato de la venta (también el de una anulada) se ve en pantalla y se exporta a PDF
+        actions.add(DetailShell.secondary("Ver contrato", () -> showSaleContract(r.saleId())));
         if (r.state() == PaymentState.WITH_BALANCE) {
             actions.add(DetailShell.primary("Abonar", () -> openPaymentDialog(r)));
         }
@@ -1503,12 +1513,11 @@ public class ContractController implements RefreshableView {
             return planDeathService.register(sale, dead, certificate);
         }, id -> {
             if (savedPlan[0]) {
-                Notice.success(window(), MODULE_NAME, aff.savedTitle(), aff.savedMessage(id));
+                afterPlanSaved(aff, id);
                 return;
             }
-            showToast("Venta N.° %04d registrada.".formatted(id));
             loadOverview(id);
-            savedFromLink("Venta N.° %04d registrada. La encuentra en la pestaña Contratos y ventas.".formatted(id));
+            afterSaleSaved(id);
         });
     }
 
@@ -1772,7 +1781,76 @@ public class ContractController implements RefreshableView {
         // El plan se elige junto a la ficha del cliente, así que ese paso ya no se salta
         FormShell.stepRules(dialog, step -> false, aff::check);
         runForm(dialog, form, "Registrar", aff::save,
-                planId -> Notice.success(window(), MODULE_NAME, aff.savedTitle(), aff.savedMessage(planId)));
+                planId -> afterPlanSaved(aff, planId));
+    }
+
+    /**
+     * "Contratos de planes": se busca el plan por titular, documento o código y se abre su contrato
+     * de afiliación para verlo en PDF o exportarlo.
+     */
+    @FXML
+    private void onPlanContracts() {
+        SearchField<PlanContractService.PlanOption> plan = new SearchField<>("Escriba el titular, su documento o el código del plan",
+                "planes", planContractService::searchPlans, PlanContractService.PlanOption::label,
+                PlanContractService.PlanOption::detail).listWhenEmpty("No hay planes registrados.");
+        VBox body = new VBox(8, label("PLAN EXEQUIAL", "form-label"), plan.node(),
+                wrapped("Al elegirlo se abre su contrato de afiliación, con «Ver PDF» y «Exportar PDF».", "dialog-hint"));
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.initOwner(window());
+        dialog.setTitle("Contratos de planes");
+        dialog.setHeaderText("Contrato de afiliación de un plan exequial");
+        // Los colores de la marca vienen de app.css, igual que en los avisos
+        dialog.getDialogPane().getStylesheets().add(ContractController.class.getResource("/css/app.css").toExternalForm());
+        dialog.getDialogPane().setContent(body);
+        dialog.getDialogPane().getButtonTypes().setAll(ButtonType.CLOSE);
+        dialog.getDialogPane().setPrefWidth(560);
+        FormShell.window(dialog, MODULE_NAME);
+        plan.valueProperty().addListener((obs, old, chosen) -> {
+            if (chosen != null) {
+                dialog.close();
+                Platform.runLater(() -> showPlanContract(chosen.planId()));
+            }
+        });
+        dialog.show();
+    }
+
+    /** Guardado el plan, se ofrece ver su contrato (y exportarlo a PDF) antes de cerrar el aviso. */
+    private void afterPlanSaved(AffiliationPart aff, Long planId) {
+        if (Notice.successWithAction(window(), MODULE_NAME, aff.savedTitle(), aff.savedMessage(planId)
+                + "\n\nPuede ver el contrato del plan y exportarlo a PDF.", "Ver contrato", "Ahora no")) {
+            showPlanContract(planId);
+        }
+    }
+
+    /**
+     * Guardada la venta (con su contrato de servicio, o de productos), se ofrece ver el contrato y
+     * exportarlo a PDF. Desde otra pestaña se recuerda dónde queda la venta.
+     */
+    private void afterSaleSaved(Long saleId) {
+        String text = "Venta N.° %04d registrada.".formatted(saleId)
+                + (openedFromLink ? " La encuentra en la pestaña Contratos y ventas." : "")
+                + "\n\nPuede ver el contrato y exportarlo a PDF.";
+        if (Notice.successWithAction(window(), MODULE_NAME, "Venta registrada", text, "Ver contrato", "Ahora no")) {
+            showSaleContract(saleId);
+        }
+    }
+
+    /** Contrato de una venta, con "Ver PDF" y "Exportar PDF". */
+    private void showSaleContract(Long saleId) {
+        async("sale-contract", () -> saleContractService.contract(saleId),
+                contract -> ContractSheet.show(window(), MODULE_NAME, SaleContractService.document(contract),
+                        file -> saleContractService.exportPdf(contract, file),
+                        () -> saleContractService.temporaryPdf(contract)),
+                failure -> showError(message(failure, "No se pudo abrir el contrato de la venta.")));
+    }
+
+    /** Contrato de afiliación del plan guardado, con el botón "Exportar PDF". */
+    private void showPlanContract(Long planId) {
+        async("plan-contract", () -> planContractService.contract(planId),
+                contract -> ContractSheet.show(window(), MODULE_NAME, PlanContractService.document(contract),
+                        file -> planContractService.exportPdf(contract, file),
+                        () -> planContractService.temporaryPdf(contract)),
+                failure -> showError(message(failure, "No se pudo abrir el contrato del plan.")));
     }
 
     /** Nombre del titular en la ficha: baja de línea si es largo, nunca se corta con "…". */
@@ -2558,16 +2636,6 @@ public class ContractController implements RefreshableView {
 
     private static String orEmpty(String value) {
         return value == null ? "" : value;
-    }
-
-    /**
-     * Si "Nuevo contrato" se abrió desde otro módulo (Clientes o Planes), al cerrarlo el usuario vuelve
-     * a ese módulo en vez de quedarse en Contratos. message, si no es null, avisa lo que se guardó.
-     */
-    private void savedFromLink(String message) {
-        if (message != null && openedFromLink) {
-            Notice.success(window(), MODULE_NAME, "Venta registrada", message);
-        }
     }
 
     /** Documentos del cliente nuevo en la afiliación (los mismos de "Nuevo cliente"). */

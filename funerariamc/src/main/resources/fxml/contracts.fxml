@@ -73,6 +73,7 @@
                     <ToggleButton fx:id="productToggle" text="Venta" toggleGroup="$typeGroup" styleClass="segment"/>
                 </HBox>
                 <ComboBox fx:id="paymentCombo" styleClass="chip-combo" minWidth="-Infinity" prefWidth="160"/>
+                <Button text="Contratos de planes" onAction="#onPlanContracts" styleClass="secondary-button" minWidth="-Infinity"/>
                 <Button fx:id="newButton" text="+  Nuevo contrato" onAction="#onNewContract" styleClass="primary-button" minWidth="-Infinity"/>
             </HBox>
 
