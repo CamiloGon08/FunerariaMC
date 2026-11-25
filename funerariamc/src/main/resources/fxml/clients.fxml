@@ -76,7 +76,7 @@
                                   styleClass="chip, area-chip" minWidth="-Infinity"/>
                 </HBox>
                 <ComboBox fx:id="planFilter" styleClass="chip-combo" prefWidth="176" minWidth="176"/>
-                <ComboBox fx:id="balanceFilter" styleClass="chip-combo" prefWidth="186" minWidth="186"/>
+                <ComboBox fx:id="balanceFilter" styleClass="chip-combo" prefWidth="218" minWidth="218"/>
                 <Button text="+  Nuevo cliente" onAction="#onRegister" styleClass="primary-button"
                         minWidth="-Infinity"/>
             </HBox>
