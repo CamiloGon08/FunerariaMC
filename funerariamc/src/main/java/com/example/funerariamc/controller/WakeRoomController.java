@@ -335,15 +335,24 @@ public class WakeRoomController implements RefreshableView {
 
     private VBox roomCard(RoomCard c, LocalDateTime now) {
         Label caption = label("SALA %02d".formatted(c.number()), "room-caption");
-        Label name = label(c.name(), "room-name");
-        HBox nameRow = new HBox(8, name);
-        nameRow.setAlignment(Pos.CENTER_LEFT);
+        // "Especial" va junto al número de la sala y el nombre baja de renglón si no cabe, para que
+        // en la pantalla del portátil no se corten ni el nombre ni la etiqueta
+        HBox captionRow = new HBox(8, caption);
+        captionRow.setAlignment(Pos.CENTER_LEFT);
         if (c.special()) {
-            nameRow.getChildren().add(label("Especial", "special-tag"));
+            Label special = label("Especial", "special-tag");
+            special.setMinWidth(Region.USE_PREF_SIZE);
+            captionRow.getChildren().add(special);
         }
-        VBox titles = new VBox(0, caption, nameRow);
+        Label name = label(c.name(), "room-name");
+        name.setWrapText(true);
+        name.setMinWidth(0);
+        VBox titles = new VBox(2, captionRow, name);
+        titles.setMinWidth(0);
         HBox.setHgrow(titles, Priority.ALWAYS);
-        HBox header = new HBox(10, titles, stateChip(c));
+        Label chip = stateChip(c);
+        chip.setMinWidth(Region.USE_PREF_SIZE);
+        HBox header = new HBox(10, titles, chip);
         header.setAlignment(Pos.TOP_LEFT);
 
         VBox card = new VBox(header);
