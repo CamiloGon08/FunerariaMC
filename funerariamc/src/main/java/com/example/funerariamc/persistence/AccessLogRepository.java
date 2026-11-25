@@ -42,8 +42,8 @@ public interface AccessLogRepository extends JpaRepository<AccessLog, Long> {
             join fetch l.appUser u
             join fetch u.employee e
             where l.timestamp >= :from and l.timestamp < :to
-              and (lower(u.username) like :userPattern
-                   or lower(concat(e.name, ' ', e.lastname)) like :userPattern)
+              and (concat(' ', lower(u.username)) like :userPattern
+                   or cast(function('translate', lower(concat(' ', e.name, ' ', coalesce(e.lastname, ''))), 'áéíóúüñ', 'aeiouun') as String) like :userPattern)
             order by l.timestamp desc, l.id desc
             """,
             countQuery = """
@@ -51,8 +51,8 @@ public interface AccessLogRepository extends JpaRepository<AccessLog, Long> {
             join l.appUser u
             join u.employee e
             where l.timestamp >= :from and l.timestamp < :to
-              and (lower(u.username) like :userPattern
-                   or lower(concat(e.name, ' ', e.lastname)) like :userPattern)
+              and (concat(' ', lower(u.username)) like :userPattern
+                   or cast(function('translate', lower(concat(' ', e.name, ' ', coalesce(e.lastname, ''))), 'áéíóúüñ', 'aeiouun') as String) like :userPattern)
             """)
     Page<AccessLog> findPageFiltered(@Param("from") LocalDateTime from,
                                      @Param("to") LocalDateTime to,

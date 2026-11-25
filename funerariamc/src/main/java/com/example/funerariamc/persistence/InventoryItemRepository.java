@@ -20,8 +20,8 @@ public interface InventoryItemRepository extends JpaRepository<InventoryItem, Lo
     /** Buscador de artículos por nombre o categoría, para los diálogos. */
     @Query("""
             select i from InventoryItem i
-            where lower(i.name) like :pattern or lower(coalesce(i.category, '')) like :pattern
-            order by i.name, i.id
+            where cast(function('translate', lower(concat(' ', i.name, ' ', coalesce(i.category, ''))), 'áéíóúüñ', 'aeiouun') as String) like :pattern
+            order by case when cast(function('translate', lower(concat(' ', i.name)), 'áéíóúüñ', 'aeiouun') as String) like substring(:pattern, 2) then 0 else 1 end, i.name, i.id
             """)
     List<InventoryItem> searchOptions(@Param("pattern") String pattern, Pageable pageable);
 
@@ -31,9 +31,9 @@ public interface InventoryItemRepository extends JpaRepository<InventoryItem, Lo
      */
     @Query("""
             select i from InventoryItem i
-            where (lower(i.name) like :pattern or lower(coalesce(i.category, '')) like :pattern)
+            where (cast(function('translate', lower(concat(' ', i.name, ' ', coalesce(i.category, ''))), 'áéíóúüñ', 'aeiouun') as String) like :pattern)
               and coalesce(i.category, '') <> 'SUPPLY'
-            order by i.name, i.id
+            order by case when cast(function('translate', lower(concat(' ', i.name)), 'áéíóúüñ', 'aeiouun') as String) like substring(:pattern, 2) then 0 else 1 end, i.name, i.id
             """)
     List<InventoryItem> searchSaleOptions(@Param("pattern") String pattern, Pageable pageable);
 

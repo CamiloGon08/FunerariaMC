@@ -23,16 +23,16 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
             select e from Employee e
             where e.status in :statuses
               and type(e) in :types
-              and (lower(concat(e.name, ' ', e.lastname)) like :pattern
-                   or e.documentNumber like :pattern)
-            order by e.lastname, e.name, e.id
+              and (cast(function('translate', lower(concat(' ', e.name, ' ', coalesce(e.lastname, ''))), 'áéíóúüñ', 'aeiouun') as String) like :pattern
+                   or concat(' ', lower(coalesce(e.documentNumber, ''))) like :pattern)
+            order by case when cast(function('translate', lower(concat(' ', e.name)), 'áéíóúüñ', 'aeiouun') as String) like substring(:pattern, 2) then 0 else 1 end, e.lastname, e.name, e.id
             """,
             countQuery = """
             select count(e) from Employee e
             where e.status in :statuses
               and type(e) in :types
-              and (lower(concat(e.name, ' ', e.lastname)) like :pattern
-                   or e.documentNumber like :pattern)
+              and (cast(function('translate', lower(concat(' ', e.name, ' ', coalesce(e.lastname, ''))), 'áéíóúüñ', 'aeiouun') as String) like :pattern
+                   or concat(' ', lower(coalesce(e.documentNumber, ''))) like :pattern)
             """)
     Page<Employee> search(@Param("pattern") String patetrn,
                         @Param("statuses") Collection<EmployeeStatus> statuses,

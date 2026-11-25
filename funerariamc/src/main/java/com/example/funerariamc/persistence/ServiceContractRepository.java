@@ -107,10 +107,10 @@ public interface ServiceContractRepository extends JpaRepository<ServiceContract
             join fetch c.client cl
             where c.status = :active
               and c.wakeRoom is null
-              and (lower(c.contractNumber) like :pattern
-                   or lower(concat(coalesce(d.name, ''), ' ', coalesce(d.lastname, ''))) like :pattern
-                   or lower(concat(cl.name, ' ', coalesce(cl.lastname, ''))) like :pattern)
-            order by c.id desc
+              and (lower(c.contractNumber) like concat('%', trim(substring(:pattern, 2)))
+                   or cast(function('translate', lower(concat(' ', d.name, ' ', coalesce(d.lastname, ''))), 'áéíóúüñ', 'aeiouun') as String) like :pattern
+                   or cast(function('translate', lower(concat(' ', cl.name, ' ', coalesce(cl.lastname, ''))), 'áéíóúüñ', 'aeiouun') as String) like :pattern)
+            order by case when cast(function('translate', lower(concat(' ', d.name)), 'áéíóúüñ', 'aeiouun') as String) like substring(:pattern, 2) then 0 else 1 end, c.id desc
             """)
     List<ServiceContract> searchWithoutRoom(@Param("active") ContractStatus active, @Param("pattern") String pattern,
                                             Pageable pageable);
@@ -121,10 +121,10 @@ public interface ServiceContractRepository extends JpaRepository<ServiceContract
             join fetch c.deceased d
             join fetch c.client cl
             where c.status <> :cancelled
-              and (lower(c.contractNumber) like :pattern
-                   or lower(concat(coalesce(d.name, ''), ' ', coalesce(d.lastname, ''))) like :pattern
-                   or lower(concat(cl.name, ' ', coalesce(cl.lastname, ''))) like :pattern)
-            order by c.id desc
+              and (lower(c.contractNumber) like concat('%', trim(substring(:pattern, 2)))
+                   or cast(function('translate', lower(concat(' ', d.name, ' ', coalesce(d.lastname, ''))), 'áéíóúüñ', 'aeiouun') as String) like :pattern
+                   or cast(function('translate', lower(concat(' ', cl.name, ' ', coalesce(cl.lastname, ''))), 'áéíóúüñ', 'aeiouun') as String) like :pattern)
+            order by case when cast(function('translate', lower(concat(' ', d.name)), 'áéíóúüñ', 'aeiouun') as String) like substring(:pattern, 2) then 0 else 1 end, c.id desc
             """)
     List<ServiceContract> searchNotCancelled(@Param("cancelled") ContractStatus cancelled, @Param("pattern") String pattern,
                                              Pageable pageable);
@@ -136,10 +136,10 @@ public interface ServiceContractRepository extends JpaRepository<ServiceContract
             join fetch c.client cl
             where c.alliedFuneralHome.id = :homeId
               and c.status <> :cancelled
-              and (lower(c.contractNumber) like :pattern
-                   or lower(concat(coalesce(d.name, ''), ' ', coalesce(d.lastname, ''))) like :pattern
-                   or lower(concat(cl.name, ' ', coalesce(cl.lastname, ''))) like :pattern)
-            order by c.id desc
+              and (lower(c.contractNumber) like concat('%', trim(substring(:pattern, 2)))
+                   or cast(function('translate', lower(concat(' ', d.name, ' ', coalesce(d.lastname, ''))), 'áéíóúüñ', 'aeiouun') as String) like :pattern
+                   or cast(function('translate', lower(concat(' ', cl.name, ' ', coalesce(cl.lastname, ''))), 'áéíóúüñ', 'aeiouun') as String) like :pattern)
+            order by case when cast(function('translate', lower(concat(' ', d.name)), 'áéíóúüñ', 'aeiouun') as String) like substring(:pattern, 2) then 0 else 1 end, c.id desc
             """)
     List<ServiceContract> searchOfAlliedHome(@Param("homeId") Long homeId, @Param("cancelled") ContractStatus cancelled,
                                              @Param("pattern") String pattern, Pageable pageable);
@@ -171,9 +171,9 @@ public interface ServiceContractRepository extends JpaRepository<ServiceContract
     @Query("""
             select d from Deceased d
             where not exists (select c.id from ServiceContract c where c.deceased = d and c.status <> :cancelled)
-              and (lower(concat(coalesce(d.name, ''), ' ', coalesce(d.lastname, ''))) like :pattern
-                   or lower(coalesce(d.documentNumber, '')) like :pattern)
-            order by d.deathDate desc nulls last, d.id desc
+              and (cast(function('translate', lower(concat(' ', d.name, ' ', coalesce(d.lastname, ''))), 'áéíóúüñ', 'aeiouun') as String) like :pattern
+                   or concat(' ', lower(coalesce(d.documentNumber, ''))) like :pattern)
+            order by case when cast(function('translate', lower(concat(' ', d.name)), 'áéíóúüñ', 'aeiouun') as String) like substring(:pattern, 2) then 0 else 1 end, d.deathDate desc nulls last, d.id desc
             """)
     List<Deceased> searchDeceasedWithoutContract(@Param("cancelled") ContractStatus cancelled,
                                                  @Param("pattern") String pattern, Pageable pageable);
