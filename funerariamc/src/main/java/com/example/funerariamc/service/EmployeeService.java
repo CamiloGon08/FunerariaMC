@@ -276,15 +276,15 @@ public class EmployeeService {
         if (!document.matches("[A-Za-z0-9]+")) {
             throw new InvalidDataException("El número de documento debe contener letras o dígitos.");
         }
-        maxLength(data.name(), 100, "Los nombres");
-        maxLength(data.lastname(), 100, "Los apellidos");
+        maxLength(data.name(), ClientService.MAX_NAME, "Los nombres");
+        maxLength(data.lastname(), ClientService.MAX_NAME, "Los apellidos");
         PersonNames.validate(data.name(), "Los nombres");
         PersonNames.validate(data.lastname(), "Los apellidos");
         maxLength(data.documentType(), 20, "El tipo de documento");
         maxLength(document, 10, "El número de documento");
         maxLength(data.phone(), 20, "El teléfono");
-        maxLength(data.email(), 120, "El correo");
-        maxLength(data.address(), 200, "La dirección");
+        maxLength(data.email(), ClientService.MAX_EMAIL, "El correo");
+        maxLength(data.address(), ClientService.MAX_ADDRESS, "La dirección");
         // Con cédula de ciudadanía el empleado es mayor de edad
         String age = ClientService.ageProblem(data.documentType(), data.birthDate());
         if (age != null) {
