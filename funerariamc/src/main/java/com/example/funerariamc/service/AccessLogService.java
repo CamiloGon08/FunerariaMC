@@ -23,7 +23,6 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -57,6 +56,7 @@ public class AccessLogService {
     public static final String VAULT_ASSIGNED = "VAULT_ASSIGNED: ";
     public static final String VAULT_LEASE_RENEWED = "VAULT_LEASE_RENEWED: ";
     public static final String EXHUMATION_REGISTERED = "EXHUMATION_REGISTERED: ";
+    public static final String CEMETERY_DELETED = "CEMETERY_DELETED: ";
     public static final String SYSTEM_PARAMETER_UPDATED = "SYSTEM_PARAMETER_UPDATED: ";
     public static final String DECEASED_REGISTERED = "DECEASED_REGISTERED: ";
     public static final String DEATH_DOCUMENT_ADDED = "DEATH_DOCUMENT_ADDED: ";
@@ -232,9 +232,7 @@ public class AccessLogService {
         int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
         LocalDateTime from = fromDate == null ? MIN_DATE : startOfDayInDb(fromDate);
         LocalDateTime to = toDate == null ? MAX_DATE : startOfDayInDb(toDate.plusDays(1));
-        String pattern = userText == null || userText.isBlank()
-                ? "%"
-                : "%" + userText.trim().toLowerCase(Locale.ROOT) + "%";
+        String pattern = WordSearch.sqlPattern(userText);
         return accessLogRepository.findPageFiltered(from, to, pattern, PageRequest.of(safePage, safeSize));
     }
 

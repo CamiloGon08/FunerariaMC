@@ -137,17 +137,17 @@ public interface ServiceTransportRepository extends JpaRepository<ServiceTranspo
         LocalDateTime getWakeEndAt();
     }
 
-    /** Busca por número de contrato o por nombre del difunto.*/    @Query("""
+    /** Busca por número de contrato o por nombre del difunto (pattern de WordSearch.sqlPattern). */    @Query("""
             select c.id as id, c.contractNumber as contractNumber, d.name as deceasedName,
                    d.lastname as deceasedLastname, c.wakeEndAt as wakeEndAt
             from ServiceContract c
             join c.deceased d
             where c.status = :status
-              and (:text = '' or lower(c.contractNumber) like concat('%', :text, '%')
-                   or lower(concat(d.name, ' ', coalesce(d.lastname, ''))) like concat('%', :text, '%'))
-            order by c.id desc
+              and (lower(c.contractNumber) like concat('%', trim(substring(:pattern, 2)))
+                   or cast(function('translate', lower(concat(' ', d.name, ' ', coalesce(d.lastname, ''))), 'áéíóúüñ', 'aeiouun') as String) like :pattern)
+            order by case when cast(function('translate', lower(concat(' ', d.name)), 'áéíóúüñ', 'aeiouun') as String) like substring(:pattern, 2) then 0 else 1 end, c.id desc
             """)
-    List<ContractOption> searchContracts(@Param("text") String text, @Param("status") ContractStatus status,
+    List<ContractOption> searchContracts(@Param("pattern") String pattern, @Param("status") ContractStatus status,
                                          Pageable pageable);
 
     /** Cuántos vehículos incluidos de cada tipo tiene ya el contrato. */

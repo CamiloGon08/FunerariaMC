@@ -225,7 +225,7 @@ public class AlliedNetworkService {
         if (homeId == null) {
             return List.of();
         }
-        String pattern = "%" + (text == null ? "" : text.trim().toLowerCase(Locale.ROOT)) + "%";
+        String pattern = WordSearch.sqlPattern(text);
         return contractRepository.searchOfAlliedHome(homeId, ContractStatus.CANCELLED, pattern, PageRequest.of(0, 20))
                 .stream()
                 .map(c -> new ContractOption(c.getId(), c.getContractNumber(),

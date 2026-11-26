@@ -238,9 +238,9 @@ class EmployeeServiceTest {
         service.search("   ", null, null, 0, 10);
         service.search("Jorge ARAÚ", null, null, 0, 10);
 
-        verify(employees).search(eq("%1065234%"), eq(List.of(EmployeeStatus.ACTIVE)), any(), any());
+        verify(employees).search(eq("% 1065234%"), eq(List.of(EmployeeStatus.ACTIVE)), any(), any());
         verify(employees).search(eq("%"), eq(List.of(EmployeeStatus.values())), any(), any());
-        verify(employees).search(eq("%jorge araú%"), any(), any(), any());
+        verify(employees).search(eq("% jorge arau%"), any(), any(), any());
     }
 
     @Test
@@ -264,7 +264,7 @@ class EmployeeServiceTest {
                 List.of(EmployeePosition.MANAGER, EmployeePosition.RECEPTIONIST), 2, 10);
 
         assertSame(expected, result);
-        verify(employees).search(eq("%ana%"), eq(List.of(EmployeeStatus.INACTIVE)),
+        verify(employees).search(eq("% ana%"), eq(List.of(EmployeeStatus.INACTIVE)),
                 eq(List.of(Manager.class, Receptionist.class)), eq(PageRequest.of(2, 10)));
     }
 

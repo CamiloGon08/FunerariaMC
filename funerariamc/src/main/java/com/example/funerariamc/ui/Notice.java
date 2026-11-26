@@ -59,6 +59,15 @@ public final class Notice {
         show(Tone.SUCCESS, owner, module, title, text, "Aceptar", null, false);
     }
 
+    /**
+     * Aviso de algo que salió bien con una acción a seguir (por ejemplo, "Ver contrato") y el botón
+     * para cerrarlo; true si eligió la acción.
+     */
+    public static boolean successWithAction(Window owner, String module, String title, String text, String action,
+                                            String back) {
+        return show(Tone.SUCCESS, owner, module, title, text, action, back, false);
+    }
+
     /** Advertencia: el usuario debe corregir algo o el sistema no permitió la acción. */
     public static void warning(Window owner, String module, String title, String text) {
         show(Tone.WARNING, owner, module, title, text, "Entendido", null, false);

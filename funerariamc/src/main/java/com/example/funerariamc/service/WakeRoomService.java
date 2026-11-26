@@ -40,7 +40,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -622,9 +621,9 @@ public class WakeRoomService {
         return type == null || type.isBlank() ? number : type + " " + number;
     }
 
+    /** Comienzo de palabra, sin tildes (WordSearch). */
     private static String pattern(String text) {
-        String clean = text == null ? "" : text.trim().toLowerCase(Locale.ROOT);
-        return "%" + clean + "%";
+        return WordSearch.sqlPattern(text);
     }
 
     private LocalDate today() {

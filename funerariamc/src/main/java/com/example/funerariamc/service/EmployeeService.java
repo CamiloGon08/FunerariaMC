@@ -370,14 +370,13 @@ public class EmployeeService {
         return document.replaceAll("[.\\s-]", "").trim();
     }
 
-    /** "%texto%" en minúsculas; "1.065.234" se busca como "1065234". */
+    /** Patrón de WordSearch (comienzo de palabra, sin tildes); "1.065.234" se busca como "1065234". */
     private static String searchPattern(String text) {
         if (text == null || text.isBlank()) {
             return "%";
         }
         String trimmed = text.trim();
-        String value = trimmed.matches("[\\d.\\s-]+") ? normalizeDocument(trimmed) : trimmed.toLowerCase(Locale.ROOT);
-        return "%" + value + "%";
+        return trimmed.matches("[\\d.\\s-]+") ? "% " + normalizeDocument(trimmed) + "%" : WordSearch.sqlPattern(trimmed);
     }
 
     private static String blankToNull(String value) {

@@ -23,15 +23,15 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
     @Query(value = """
             select c from Client c
             where c.clientType in :types
-              and (lower(concat(c.name, ' ', c.lastname)) like :pattern
-                   or lower(c.documentNumber) like :pattern)
-            order by c.registrationDate desc, c.id desc
+              and (cast(function('translate', lower(concat(' ', c.name, ' ', coalesce(c.lastname, ''))), 'áéíóúüñ', 'aeiouun') as String) like :pattern
+                   or concat(' ', lower(coalesce(c.documentNumber, ''))) like :pattern)
+            order by case when cast(function('translate', lower(concat(' ', c.name)), 'áéíóúüñ', 'aeiouun') as String) like substring(:pattern, 2) then 0 else 1 end, c.registrationDate desc, c.id desc
             """,
             countQuery = """
             select count(c) from Client c
             where c.clientType in :types
-              and (lower(concat(c.name, ' ', c.lastname)) like :pattern
-                   or lower(c.documentNumber) like :pattern)
+              and (cast(function('translate', lower(concat(' ', c.name, ' ', coalesce(c.lastname, ''))), 'áéíóúüñ', 'aeiouun') as String) like :pattern
+                   or concat(' ', lower(coalesce(c.documentNumber, ''))) like :pattern)
             """)
             Page<Client> search(@Param("pattern") String pattern,
                                 @Param("types") Collection<ClientType> types,
@@ -47,7 +47,7 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
             where cast(function('translate', lower(concat(' ', c.name, ' ', coalesce(c.lastname, ''))),
                                 'áéíóúüñ', 'aeiouun') as String) like :wordStart
                or lower(coalesce(c.documentNumber, '')) like :start
-            order by c.name, c.lastname, c.id
+            order by case when cast(function('translate', lower(concat(' ', c.name)), 'áéíóúüñ', 'aeiouun') as String) like substring(:wordStart, 2) then 0 else 1 end, c.name, c.lastname, c.id
             """)
     List<Client> searchByWordStart(@Param("wordStart") String wordStart, @Param("start") String start,
                                    Pageable pageable);
@@ -57,9 +57,9 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
      */
     @Query("""
             select c from Client c
-            where lower(concat(c.name, ' ', c.lastname)) like :pattern
-               or lower(c.documentNumber) like :pattern
-            order by c.name, c.lastname, c.id
+            where cast(function('translate', lower(concat(' ', c.name, ' ', coalesce(c.lastname, ''))), 'áéíóúüñ', 'aeiouun') as String) like :pattern
+               or concat(' ', lower(coalesce(c.documentNumber, ''))) like :pattern
+            order by case when cast(function('translate', lower(concat(' ', c.name)), 'áéíóúüñ', 'aeiouun') as String) like substring(:pattern, 2) then 0 else 1 end, c.name, c.lastname, c.id
             """)
     List<Client> searchOptions(@Param("pattern") String pattern, Pageable pageable);
 
@@ -67,8 +67,8 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
     @Query(value = """
             select c from Client c
             where c.clientType in :types
-              and (lower(concat(c.name, ' ', c.lastname)) like :pattern
-                   or lower(c.documentNumber) like :pattern)
+              and (cast(function('translate', lower(concat(' ', c.name, ' ', coalesce(c.lastname, ''))), 'áéíóúüñ', 'aeiouun') as String) like :pattern
+                   or concat(' ', lower(coalesce(c.documentNumber, ''))) like :pattern)
               and (:balance = 'ALL'
                    or (:balance = 'WITH' and exists (
                         select s.id from Sale s
@@ -88,13 +88,13 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
                                                             where t.relatedSale = s
                                                               and t.transactionType = :income
                                                               and t.status = :active))))
-            order by c.registrationDate desc, c.id desc
+            order by case when cast(function('translate', lower(concat(' ', c.name)), 'áéíóúüñ', 'aeiouun') as String) like substring(:pattern, 2) then 0 else 1 end, c.registrationDate desc, c.id desc
             """,
             countQuery = """
             select count(c) from Client c
             where c.clientType in :types
-              and (lower(concat(c.name, ' ', c.lastname)) like :pattern
-                   or lower(c.documentNumber) like :pattern)
+              and (cast(function('translate', lower(concat(' ', c.name, ' ', coalesce(c.lastname, ''))), 'áéíóúüñ', 'aeiouun') as String) like :pattern
+                   or concat(' ', lower(coalesce(c.documentNumber, ''))) like :pattern)
               and (:balance = 'ALL'
                    or (:balance = 'WITH' and exists (
                         select s.id from Sale s
@@ -129,8 +129,8 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
     @Query(value = """
             select c from Client c
             where c.clientType in :types
-              and (lower(concat(c.name, ' ', c.lastname)) like :pattern
-                   or lower(c.documentNumber) like :pattern)
+              and (cast(function('translate', lower(concat(' ', c.name, ' ', coalesce(c.lastname, ''))), 'áéíóúüñ', 'aeiouun') as String) like :pattern
+                   or concat(' ', lower(coalesce(c.documentNumber, ''))) like :pattern)
               and (:plan = 'ALL'
                    or (:plan = 'WITH' and exists (
                         select p.id from FuneralPlan p
@@ -159,13 +159,13 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
                                                             where t.relatedSale = s
                                                               and t.transactionType = :income
                                                               and t.status = :active))))
-            order by c.registrationDate desc, c.id desc
+            order by case when cast(function('translate', lower(concat(' ', c.name)), 'áéíóúüñ', 'aeiouun') as String) like substring(:pattern, 2) then 0 else 1 end, c.registrationDate desc, c.id desc
             """,
             countQuery = """
             select count(c) from Client c
             where c.clientType in :types
-              and (lower(concat(c.name, ' ', c.lastname)) like :pattern
-                   or lower(c.documentNumber) like :pattern)
+              and (cast(function('translate', lower(concat(' ', c.name, ' ', coalesce(c.lastname, ''))), 'áéíóúüñ', 'aeiouun') as String) like :pattern
+                   or concat(' ', lower(coalesce(c.documentNumber, ''))) like :pattern)
               and (:plan = 'ALL'
                    or (:plan = 'WITH' and exists (
                         select p.id from FuneralPlan p

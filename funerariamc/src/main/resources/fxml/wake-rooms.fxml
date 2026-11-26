@@ -62,7 +62,7 @@
             <!-- Fecha consultada, filtro por estado y Nueva sala -->
             <HBox styleClass="filter-card">
                 <Button text="‹" onAction="#onPreviousDay" styleClass="day-arrow" minWidth="-Infinity"/>
-                <DatePicker fx:id="datePicker" prefWidth="260" minWidth="200" editable="false"/>
+                <DatePicker fx:id="datePicker" prefWidth="300" minWidth="300" editable="false"/>
                 <Button text="›" onAction="#onNextDay" styleClass="day-arrow" minWidth="-Infinity"/>
                 <Button text="Hoy" onAction="#onToday" styleClass="today-button" minWidth="-Infinity"/>
                 <HBox styleClass="segmented" minWidth="-Infinity">

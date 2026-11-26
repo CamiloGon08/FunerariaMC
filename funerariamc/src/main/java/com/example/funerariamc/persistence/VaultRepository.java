@@ -113,6 +113,27 @@ public interface VaultRepository extends JpaRepository<Vault, Long> {
             """, nativeQuery = true)
     int insertCodes(@Param("cemeteryId") Long cemeteryId, @Param("codes") String codes, @Param("status") String status);
 
+    /** Cuántas bóvedas tiene un cementerio (mensaje de "Borrar cementerio"). */
+    long countByCemeteryId(Long cemeteryId);
+
+    /**
+     * Cuántas bóvedas del cementerio ya se usaron: no están disponibles o guardan titular,
+     * difunto o fechas de arriendo. Un cementerio con alguna así no se puede borrar.
+     */
+    @Query("""
+            select count(v) from Vault v
+            where v.cemetery.id = :cemeteryId
+              and (v.status <> com.example.funerariamc.utils.enums.VaultStatus.AVAILABLE
+                   or v.client is not null or v.deceased is not null
+                   or v.leaseStartDate is not null or v.leaseEndDate is not null)
+            """)
+    long countUsedByCemeteryId(@Param("cemeteryId") Long cemeteryId);
+
+    /** Borra todas las bóvedas de un cementerio en una sola sentencia (al borrar un cementerio sin uso). */
+    @Modifying
+    @Query("delete from Vault v where v.cemetery.id = :cemeteryId")
+    int deleteByCemeteryId(@Param("cemeteryId") Long cemeteryId);
+
     /** Bóvedas por cementerio y estado, para la ocupación del Panel de análisis. */
     interface CemeteryCount {
         Long getCemeteryId();

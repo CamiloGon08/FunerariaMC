@@ -4,6 +4,7 @@ import com.example.funerariamc.exception.BusinessException;
 import com.example.funerariamc.utils.enums.CremationBatchStatus;
 import com.example.funerariamc.utils.enums.CremationPurchaseStatus;
 import com.example.funerariamc.utils.enums.DeathType;
+import com.example.funerariamc.service.WordSearch;
 import com.example.funerariamc.service.AppModule;
 import com.example.funerariamc.ui.SearchField;
 import com.example.funerariamc.ui.ModuleLink;
@@ -1610,9 +1611,9 @@ public class CremationController implements RefreshableView {
                 || (b.furnaceCode() != null && b.furnaceCode().toLowerCase(ES).contains(text))) {
             return true;
         }
-        return b.items().stream().anyMatch(i -> i.deceasedName().toLowerCase(ES).contains(text)
-                || i.deceasedCode().toLowerCase(ES).contains(text)
-                || (i.documentNumber() != null && i.documentNumber().contains(text)));
+        // Nombres y documentos: lo escrito es el comienzo de una palabra (WordSearch)
+        return b.items().stream().anyMatch(i -> WordSearch.matchesAny(text, i.deceasedName(), i.documentNumber())
+                || i.deceasedCode().toLowerCase(ES).contains(text));
     }
 
     private static String names(Batch b) {

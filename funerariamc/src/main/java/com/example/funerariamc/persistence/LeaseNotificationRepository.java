@@ -16,4 +16,7 @@ public interface LeaseNotificationRepository extends JpaRepository<LeaseNotifica
     /** Busca el aviso del mismo vencimiento para reutilizar fallos y evitar otro envío. */
     Optional<LeaseNotification> findFirstByVaultIdAndNotificationTypeAndScheduledDate(
             Long vaultId, NotificationType notificationType, LocalDate scheduledDate);
+
+    /** Indica si alguna bóveda del cementerio tiene avisos de arriendo. */
+    boolean existsByVaultCemeteryId(Long cemeteryId);
 }

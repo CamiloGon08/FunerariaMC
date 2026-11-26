@@ -459,10 +459,14 @@ public class FuneralPlanService {
         return 0;
     }
 
-    /** Aplica el filtro de la barra superior sin volver a consultar la base. */
+    /**
+     * Aplica el filtro de la barra superior sin volver a consultar la base. El texto busca el comienzo
+     * del nombre, apellido o documento del titular, o cualquier parte del código del plan; primero
+     * van los titulares cuyo nombre empieza por lo escrito.
+     */
     public static List<PlanCard> filter(List<PlanCard> cards, PlanFilter filter) {
         String text = normalize(filter.text());
-        return cards.stream()
+        List<PlanCard> found = cards.stream()
                 .filter(c -> filter.status() == null || c.status() == filter.status())
                 .filter(c -> filter.planName() == null || normalize(c.planName()).equals(normalize(filter.planName())))
                 .filter(c -> switch (filter.payments() == null ? PaymentFilter.ALL : filter.payments()) {
@@ -471,9 +475,10 @@ public class FuneralPlanService {
                     case OVERDUE -> c.isOverdue();
                     case WAITING -> c.inWaiting();
                 })
-                .filter(c -> text.isEmpty() || normalize(c.holderName()).contains(text)
-                        || normalize(c.holderDocument()).contains(text) || normalize(c.code()).contains(text))
+                .filter(c -> WordSearch.matchesAny(text, c.holderName(), c.holderDocument())
+                        || normalize(c.code()).contains(text))
                 .toList();
+        return WordSearch.startsFirst(found, text, PlanCard::holderName);
     }
 
     /** Panel del plan: beneficiarios con su recargo, cuadrícula de 12 meses, cuotas y servicios usados. */
@@ -1394,8 +1399,9 @@ public class FuneralPlanService {
                 .replaceAll("\\p{M}", "");
     }
 
+    /** Comienzo de palabra, sin tildes (WordSearch). */
     private static String pattern(String text) {
-        return "%" + (text == null ? "" : text.trim().toLowerCase(Locale.ROOT)) + "%";
+        return WordSearch.sqlPattern(text);
     }
 
     private FuneralPlan getPlan(Long id) {

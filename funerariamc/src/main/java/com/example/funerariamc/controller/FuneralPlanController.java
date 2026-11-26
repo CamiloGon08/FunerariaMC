@@ -34,6 +34,8 @@ import com.example.funerariamc.ui.FormShell;
 import com.example.funerariamc.ui.MonthPicker;
 import com.example.funerariamc.ui.ModuleLink;
 import com.example.funerariamc.ui.PlanOfferCard;
+import com.example.funerariamc.ui.ContractSheet;
+import com.example.funerariamc.service.PlanContractService;
 import javafx.animation.PauseTransition;
 import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
@@ -105,6 +107,7 @@ public class FuneralPlanController implements RefreshableView {
     private static final int COLUMNS = 3;
 
     private final FuneralPlanService planService;
+    private final PlanContractService planContractService;
     // Límites del plan leídos de system_parameter (por ejemplo, cuotas que se pueden adelantar).
     private final PlanParameters planParameters;
     /** Paneles de plan ya consultados o adelantados; se vacía en cada recarga. */
@@ -167,8 +170,10 @@ public class FuneralPlanController implements RefreshableView {
     private Long drawerPlanId;
     private DetailShell detail;
 
-    public FuneralPlanController(FuneralPlanService planService, PlanParameters planParameters) {
+    public FuneralPlanController(FuneralPlanService planService, PlanParameters planParameters,
+                                 PlanContractService planContractService) {
         this.planService = planService;
+        this.planContractService = planContractService;
         this.planParameters = planParameters;
         this.details = new DetailCache<>(planService::detail, "plan-detail");
     }
@@ -534,7 +539,9 @@ public class FuneralPlanController implements RefreshableView {
         more.setDisable(c.status() == PlanStatus.CANCELLED);
         Button pay = DetailShell.primary("Registrar pago", () -> openPaymentDialog(d));
         pay.setDisable(c.status() == PlanStatus.CANCELLED);
-        detail.show(c.id(), hero, sections, List.of(status, more, pay), null);
+        // El contrato de afiliación del plan, para verlo o exportarlo a PDF
+        Button contract = DetailShell.secondary("Ver contrato", () -> openContract(c.id()));
+        detail.show(c.id(), hero, sections, List.of(contract, status, more, pay), null);
     }
 
     /** Estado del plan en la banda: mora (con cuántas cuotas), suspendido, cancelado o al día. */
@@ -721,6 +728,12 @@ public class FuneralPlanController implements RefreshableView {
             if (runForm(dialog, form, "Cambiar plan",
                     () -> planService.changePlan(c.id(), name.getValue()))) {
                 loadOverview(c.id());
+                // Con el plan cambiado se ofrece el contrato ya actualizado
+                if (Notice.successWithAction(window(), MODULE_NAME, "Plan cambiado", "El plan " + c.code()
+                        + " ahora es " + name.getValue() + ".\n\nPuede ver el contrato actualizado y exportarlo a PDF.",
+                        "Ver contrato", "Ahora no")) {
+                    openContract(c.id());
+                }
             }
         }, "No se pudieron cargar los tipos de plan.");
     }
@@ -932,6 +945,15 @@ public class FuneralPlanController implements RefreshableView {
         if (runForm(dialog, form, "Cambiar titular", () -> planService.changeHolder(c.id(), idOf(clientBox.getValue())))) {
             loadOverview(c.id());
         }
+    }
+
+    /** Contrato de afiliación del plan con el botón "Exportar PDF". */
+    private void openContract(Long planId) {
+        run(() -> planContractService.contract(planId),
+                contract -> ContractSheet.show(window(), MODULE_NAME, PlanContractService.document(contract),
+                        file -> planContractService.exportPdf(contract, file),
+                        () -> planContractService.temporaryPdf(contract)),
+                "No se pudo abrir el contrato del plan.");
     }
 
     /** Confirmación como la de Personal: la pregunta arriba, la explicación y un botón con la acción. */

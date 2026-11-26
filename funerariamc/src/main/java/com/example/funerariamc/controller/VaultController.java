@@ -6,6 +6,7 @@ import com.example.funerariamc.utils.enums.ExhumationReason;
 import com.example.funerariamc.utils.enums.NotificationChannel;
 import com.example.funerariamc.utils.enums.NotificationStatus;
 import com.example.funerariamc.utils.enums.NotificationType;
+import com.example.funerariamc.service.WordSearch;
 import com.example.funerariamc.service.AppModule;
 import com.example.funerariamc.ui.SearchField;
 import com.example.funerariamc.ui.ModuleLink;
@@ -107,6 +108,8 @@ public class VaultController implements RefreshableView {
 
     /** Nombre del módulo que se muestra arriba del título en los avisos. */
     private static final String MODULE_NAME = "Cementerio y bóvedas";
+    /** Hasta 2 cementerios se muestran como pestañas; con más, se elige en una lista desplegable. */
+    private static final int MAX_CEMETERY_TABS = 2;
 
     static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     /** Bóvedas de "Requieren atención" cuyo panel se adelanta apenas carga el muro. */
@@ -157,6 +160,8 @@ public class VaultController implements RefreshableView {
     @FXML
     private HBox cemeteryTabs;
     @FXML
+    private ComboBox<Option> cemeteryPicker;
+    @FXML
     private ComboBox<String> pavilionFilter;
     @FXML
     private ToggleButton planToggle;
@@ -201,6 +206,8 @@ public class VaultController implements RefreshableView {
     @FXML
     private Button addCemeteryButton;
     @FXML
+    private Button deleteCemeteryButton;
+    @FXML
     private Button addVaultsButton;
     @FXML
     private Label countLabel;
@@ -218,6 +225,8 @@ public class VaultController implements RefreshableView {
     private Label toast;
 
     private Long cemeteryId;
+    /** Cementerios de las pestañas o de la lista desplegable, en orden por nombre. */
+    private List<Option> cemeteries = List.of();
     private String cemeteryName = "";
     private Overview overview;
     private Long selectedVaultId;
@@ -274,12 +283,21 @@ public class VaultController implements RefreshableView {
             }
         });
 
+        cemeteryPicker.setConverter(converter(Option::label, ""));
+        cemeteryPicker.setPromptText("Cementerio");
+        cemeteryPicker.valueProperty().addListener((obs, old, value) -> {
+            if (value != null && !fillingTabs) {
+                switchCemetery(value);
+            }
+        });
+
         searchDelay.setOnFinished(e -> applySearch());
         searchField.textProperty().addListener((obs, old, text) -> searchDelay.playFromStart());
 
         // Registrar cementerios y bóvedas es solo del Administrador Maestro.
         boolean canRegister = cemeteryService.canRegister();
         show(addCemeteryButton, canRegister);
+        show(deleteCemeteryButton, false); // aparece cuando hay un cementerio para borrar
         show(addVaultsButton, canRegister);
 
         detail = DetailShell.install(drawer, veil, DetailShell.Kind.PANEL);
@@ -322,23 +340,41 @@ public class VaultController implements RefreshableView {
         }, "No se pudieron cargar las bóvedas.");
     }
 
+    /**
+     * Pestañas de cementerios: hasta 2 van como pestañas; con 3 o más las pestañas no caben en la
+     * barra y el cementerio se elige en una lista desplegable con el mismo estilo del pabellón.
+     */
     private void fillTabs(Screen screen) {
         fillingTabs = true;
         try {
+            cemeteries = screen.cemeteries();
+            boolean useList = cemeteries.size() > MAX_CEMETERY_TABS;
+            show(cemeteryTabs, !useList);
+            show(cemeteryPicker, useList);
             cemeteryTabs.getChildren().clear();
             cemeteryGroup.getToggles().clear();
-            for (Option cemetery : screen.cemeteries()) {
+            cemeteryPicker.getItems().setAll(useList ? cemeteries : List.of());
+            cemeteryPicker.setValue(null);
+            for (Option cemetery : cemeteries) {
+                boolean current = cemetery.id().equals(screen.cemeteryId());
+                if (current) {
+                    cemeteryName = cemetery.label();
+                }
+                if (useList) {
+                    if (current) {
+                        cemeteryPicker.setValue(cemetery);
+                    }
+                    continue;
+                }
                 ToggleButton tab = new ToggleButton(cemetery.label());
                 tab.getStyleClass().add("segment");
                 tab.setUserData(cemetery);
                 tab.setToggleGroup(cemeteryGroup);
                 tab.setMinWidth(Region.USE_PREF_SIZE);
                 cemeteryTabs.getChildren().add(tab);
-                if (cemetery.id().equals(screen.cemeteryId())) {
-                    tab.setSelected(true);
-                    cemeteryName = cemetery.label();
-                }
+                tab.setSelected(current);
             }
+            show(deleteCemeteryButton, cemeteryService.canRegister() && !cemeteries.isEmpty());
         } finally {
             fillingTabs = false;
         }
@@ -1190,11 +1226,47 @@ public class VaultController implements RefreshableView {
                 });
     }
 
+    /**
+     * Borra el cementerio que se está viendo. Primero se revisa en segundo plano: si alguna bóveda
+     * tuvo difunto, titular o arriendo (o hay exhumaciones o avisos), se explica por qué no se puede;
+     * si nunca se usó, se pide confirmar y se borra junto con sus bóvedas libres.
+     */
+    @FXML
+    private void onDeleteCemetery() {
+        Long target = cemeteryId;
+        if (target == null) {
+            return;
+        }
+        run(() -> cemeteryService.deletionCheck(target), check -> {
+            if (!check.allowed()) {
+                String why = check.usedVaults() > 0
+                        ? "Tiene " + check.usedVaults() + (check.usedVaults() == 1 ? " bóveda ocupada o con arriendo." : " bóvedas ocupadas o con arriendo.")
+                        : "Tiene exhumaciones o avisos de arriendo registrados.";
+                com.example.funerariamc.ui.Notice.warning(window(), MODULE_NAME, "No se puede borrar " + check.name(),
+                        why + " Para no perder la historia de difuntos y arriendos, solo se borra un cementerio que nunca se ha usado.");
+                return;
+            }
+            String vaults = check.vaults() == 0 ? "No tiene bóvedas registradas."
+                    : "Se borra del sistema junto con sus " + check.vaults()
+                      + (check.vaults() == 1 ? " bóveda libre." : " bóvedas libres.") + " Ninguna tiene ni tuvo difuntos.";
+            if (!com.example.funerariamc.ui.Notice.confirmDanger(window(), MODULE_NAME, "¿Borrar " + check.name() + "?",
+                    vaults + "\n\nEsta acción no se puede deshacer.", "Borrar cementerio")) {
+                return;
+            }
+            run(() -> cemeteryService.deleteCemetery(target), name -> {
+                overviews.remove(target);
+                cemeteryId = null;
+                selectedVaultId = null;
+                overview = null;
+                closeDrawer();
+                showToast("Cementerio " + name + " borrado.");
+                loadScreen(null);
+            }, "No se pudo borrar el cementerio.");
+        }, "No se pudo revisar el cementerio.");
+    }
+
     @FXML
     private void onAddVaults() {
-        List<Option> cemeteries = cemeteryGroup.getToggles().stream()
-                .map(toggle -> (Option) toggle.getUserData())
-                .toList();
         if (cemeteries.isEmpty()) {
             showError("Primero registre un cementerio con \"+ Cementerio\".");
             return;
@@ -1210,6 +1282,14 @@ public class VaultController implements RefreshableView {
         String currentPavilion = pavilionFilter.getValue();
         TextField pavilion = new TextField(currentPavilion == null || VaultPosition.GENERAL.equals(currentPavilion)
                 ? "A" : currentPavilion);
+        // El pabellón son solo letras, 1 o 2; se pasan a mayúscula al escribir (el servicio lo valida otra vez).
+        pavilion.setTextFormatter(new javafx.scene.control.TextFormatter<String>(change -> {
+            if (!change.getControlNewText().matches("[A-Za-z]{0,2}")) {
+                return null;
+            }
+            change.setText(change.getText().toUpperCase(Locale.ROOT));
+            return change;
+        }));
         TextField levels = numberInput("5");
         TextField perLevel = numberInput("30");
         TextField firstLevel = numberInput("1");
@@ -1259,7 +1339,7 @@ public class VaultController implements RefreshableView {
                 .field("CÓDIGO *", singleCode);
         Node singleSection = form.lastSection();
         form.note(preview)
-                .note(note("El código dice el nivel y la columna: A2-15 es pabellón A, nivel 2, columna 15. "
+                .note(note("El pabellón son 1 o 2 letras (A, B o AB). El código dice el nivel y la columna: A2-15 es pabellón A, nivel 2, columna 15. "
                         + "No hay límite de bóvedas por nivel. Si un código ya existe en el cementerio, no se crea otra vez."));
         Runnable showMode = () -> {
             show(wholeSection, whole.isSelected());
@@ -1402,8 +1482,8 @@ public class VaultController implements RefreshableView {
     /** "Se crearán 150 bóvedas: A1-01 … A5-30." mientras el administrador escribe. */
     private static String batchPreview(String pavilion, String levels, String perLevel, String firstLevel) {
         String letter = pavilion == null ? "" : pavilion.trim().toUpperCase(Locale.ROOT);
-        if (!letter.matches("[A-Z]+") || levels.isBlank() || perLevel.isBlank()) {
-            return "Escriba el pabellón (letras), los niveles y las bóvedas por nivel.";
+        if (!letter.matches("[A-Z]{1,2}") || levels.isBlank() || perLevel.isBlank()) {
+            return "Escriba el pabellón (1 o 2 letras), los niveles y las bóvedas por nivel.";
         }
         int total = Integer.parseInt(levels) * Integer.parseInt(perLevel);
         int first = firstLevel.isBlank() ? 1 : Integer.parseInt(firstLevel);
@@ -1874,9 +1954,9 @@ public class VaultController implements RefreshableView {
     }
 
     private static boolean matches(WallCell cell, String text) {
+        // Código en cualquier parte; difunto y titular por el comienzo de una palabra (WordSearch)
         return normalize(cell.code()).contains(text)
-                || normalize(cell.deceasedName()).contains(text)
-                || normalize(cell.clientName()).contains(text);
+                || (!text.isEmpty() && WordSearch.matchesAny(text, cell.deceasedName(), cell.clientName()));
     }
 
     /** Minúsculas y sin tildes, para que "duran" encuentre "Durán". */

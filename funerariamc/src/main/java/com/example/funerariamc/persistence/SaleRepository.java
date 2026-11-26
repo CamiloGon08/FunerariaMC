@@ -173,9 +173,9 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
     /** Búsqueda anterior (el texto en cualquier parte del nombre); Nuevo contrato ya usa la de abajo. */
     @Query("""
             select c from Client c
-            where lower(concat(c.name, ' ', coalesce(c.lastname, ''))) like :pattern
-               or lower(coalesce(c.documentNumber, '')) like :pattern
-            order by c.name, c.lastname, c.id
+            where cast(function('translate', lower(concat(' ', c.name, ' ', coalesce(c.lastname, ''))), 'áéíóúüñ', 'aeiouun') as String) like :pattern
+               or concat(' ', lower(coalesce(c.documentNumber, ''))) like :pattern
+            order by case when cast(function('translate', lower(concat(' ', c.name)), 'áéíóúüñ', 'aeiouun') as String) like substring(:pattern, 2) then 0 else 1 end, c.name, c.lastname, c.id
             """)
     List<Client> searchClients(@Param("pattern") String pattern, Pageable pageable);
 
@@ -189,7 +189,7 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
             where cast(function('translate', lower(concat(' ', c.name, ' ', coalesce(c.lastname, ''))),
                                 'áéíóúüñ', 'aeiouun') as String) like :wordStart
                or lower(coalesce(c.documentNumber, '')) like :start
-            order by c.name, c.lastname, c.id
+            order by case when cast(function('translate', lower(concat(' ', c.name)), 'áéíóúüñ', 'aeiouun') as String) like substring(:wordStart, 2) then 0 else 1 end, c.name, c.lastname, c.id
             """)
     List<Client> searchClients(@Param("wordStart") String wordStart, @Param("start") String start, Pageable pageable);
 

@@ -627,9 +627,9 @@ public class CremationService {
         return result.isEmpty() ? null : result;
     }
 
+    /** Comienzo de palabra, sin tildes (WordSearch). */
     private static String pattern(String text) {
-        String clean = text == null ? "" : text.trim().toLowerCase(Locale.ROOT);
-        return "%" + clean + "%";
+        return WordSearch.sqlPattern(text);
     }
 
     private LocalDateTime now() {

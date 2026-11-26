@@ -217,7 +217,7 @@ class ClientServiceTest {
 
         service.search("  1.065.832 ", null, -1, 500);
 
-        verify(clients).search(eq("%1065832%"),
+        verify(clients).search(eq("% 1065832%"),
                 eq(List.of(ClientType.NATURAL, ClientType.CORPORATE)),
                 eq(PageRequest.of(0, ClientService.MAX_PAGE_SIZE)));
     }
@@ -228,7 +228,7 @@ class ClientServiceTest {
 
         service.search("Durán", ClientType.CORPORATE, 2, 10);
 
-        verify(clients).search(eq("%durán%"), eq(List.of(ClientType.CORPORATE)), eq(PageRequest.of(2, 10)));
+        verify(clients).search(eq("% duran%"), eq(List.of(ClientType.CORPORATE)), eq(PageRequest.of(2, 10)));
     }
 
     @Test
@@ -258,7 +258,7 @@ class ClientServiceTest {
 
         service.search(" 1.065.832 ", null, ClientService.BalanceFilter.UP_TO_DATE, -3, 500);
 
-        verify(clients).searchByBalance(eq("%1065832%"), eq(List.of(ClientType.values())), eq("WITHOUT"),
+        verify(clients).searchByBalance(eq("% 1065832%"), eq(List.of(ClientType.values())), eq("WITHOUT"),
                 eq(com.example.funerariamc.utils.enums.TransactionType.INCOME),
                 eq(com.example.funerariamc.utils.enums.TransactionStatus.ACTIVE),
                 eq(PageRequest.of(0, ClientService.MAX_PAGE_SIZE)));

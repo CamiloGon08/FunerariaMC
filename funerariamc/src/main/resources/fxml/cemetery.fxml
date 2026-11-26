@@ -9,6 +9,7 @@
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.control.ToggleButton?>
 <?import javafx.scene.control.ToggleGroup?>
+<?import javafx.scene.control.Tooltip?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Pane?>
 <?import javafx.scene.layout.Region?>
@@ -74,8 +75,21 @@
                 </HBox>
                 <!-- Una pestaña por cementerio; se agregan desde el controlador -->
                 <HBox fx:id="cemeteryTabs" styleClass="segmented" minWidth="-Infinity"/>
+                <!-- Con más de 2 cementerios las pestañas no caben: se elige el cementerio en esta lista,
+                     con los colores de la pestaña elegida (verde con letra clara) -->
+                <ComboBox fx:id="cemeteryPicker" styleClass="chip-combo,cemetery-picker" prefWidth="230" minWidth="200"
+                          visible="false" managed="false"/>
                 <!-- RF-BOV-01: solo lo ve el Administrador Maestro -->
                 <Button fx:id="addCemeteryButton" text="+ Cementerio" onAction="#onAddCemetery" styleClass="ghost-button" minWidth="-Infinity"/>
+                <!-- Borrar el cementerio que se está viendo (solo si nunca se usó); solo el Administrador Maestro -->
+                <Button fx:id="deleteCemeteryButton" text="Borrar cementerio" onAction="#onDeleteCemetery" styleClass="ghost-button,delete-cemetery" minWidth="-Infinity" graphicTextGap="8">
+                    <graphic>
+                        <SVGPath content="M5 3V2h6v1h4v2H1V3h4z M2.5 6h11l-1 9.5h-9z M6 8v5.5 M10 8v5.5" styleClass="delete-icon"/>
+                    </graphic>
+                    <tooltip>
+                        <Tooltip text="Borra del sistema el cementerio que está viendo (solo si nunca se usó)"/>
+                    </tooltip>
+                </Button>
                 <ComboBox fx:id="pavilionFilter" styleClass="chip-combo" prefWidth="175" minWidth="175"/>
                 <HBox styleClass="segmented,view" minWidth="-Infinity">
                     <ToggleButton fx:id="planToggle" text="Plano" toggleGroup="$viewGroup" selected="true" styleClass="segment"/>

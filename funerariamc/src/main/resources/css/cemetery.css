@@ -324,6 +324,16 @@
 .ghost-button:hover { -fx-background-color: -color-surface; }
 .cemetery-root .ghost-button { -fx-background-color: -eden-card; -fx-text-fill: -eden-text; -fx-border-color: -eden-linen; }
 .cemetery-root .ghost-button:hover { -fx-background-color: -eden-tint; }
+/* Lista de cementerios (3 o más): mismos colores de la pestaña elegida */
+.cemetery-root .cemetery-picker { -fx-background-color: -eden-forest; -fx-border-color: -eden-forest; }
+.cemetery-root .cemetery-picker:hover { -fx-background-color: -eden-moss; -fx-border-color: -eden-moss; }
+.cemetery-root .cemetery-picker > .list-cell { -fx-text-fill: -color-paper; -fx-font-weight: bold; }
+.cemetery-root .cemetery-picker > .arrow-button > .arrow { -fx-background-color: -color-paper; }
+
+/* Botón "Borrar cementerio": papelera y texto en el rojo de alerta para no confundirlo con el pabellón */
+.cemetery-root .delete-cemetery { -fx-text-fill: -eden-alert; }
+.cemetery-root .delete-cemetery .delete-icon { -fx-fill: transparent; -fx-stroke: -eden-alert; -fx-stroke-width: 1.4; }
+.cemetery-root .delete-cemetery:hover { -fx-border-color: -eden-alert; }
 .cemetery-root .wall-axis { -fx-text-fill: -color-sage-mid; -fx-font-size: 11px; }
 .cemetery-root .wall-scroll .scroll-bar:horizontal { -fx-pref-height: 10; -fx-background-color: -eden-tint; }
 .cemetery-root .wall-scroll .scroll-bar:horizontal .thumb { -fx-background-color: -color-sage-mid; }
