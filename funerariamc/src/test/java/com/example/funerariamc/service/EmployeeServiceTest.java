@@ -329,6 +329,21 @@ class EmployeeServiceTest {
     }
 
     @Test
+    void nameLastnameEmailAndAddressCannotExceedThePersonColumnLengths() {
+        // "María Alejandra Fernanda Josefina" tiene 33 caracteres y la columna guarda 25
+        assertThrows(InvalidDataException.class, () -> service.register(
+                receptionistWith("María Alejandra Fernanda Josefina", "Mejía", null, "Calle 1")));
+        assertThrows(InvalidDataException.class, () -> service.register(
+                receptionistWith("Ana", "Pérez ".repeat(5), null, "Calle 1")));
+        assertThrows(InvalidDataException.class, () -> service.register(
+                receptionistWith("Ana", "Mejía", "a".repeat(22) + "@correo.com", "Calle 1")));
+        assertThrows(InvalidDataException.class, () -> service.register(
+                receptionistWith("Ana", "Mejía", null, "Calle ".repeat(8))));
+
+        verifyNoInteractions(employees, persons, users, accessLog);
+    }
+
+    @Test
     void updateKeepsPositionRoleAndInactiveStatusWhileChangingContactDetails() {
         Receptionist employee = receptionistWithId(7L);
         employee.deactivate();
@@ -594,6 +609,12 @@ class EmployeeServiceTest {
     private static EmployeeData receptionist(String document, String email) {
         return new EmployeeData(" Ana ", " Mejía ", " CC ", document, " 3001234567 ", email,
                 " Calle 1 ", null, Sex.FEMALE, EmployeePosition.RECEPTIONIST, LocalDate.of(2024, 3, 1),
+                new BigDecimal("1600000"), null, null, null, null, null, null, null, null, null);
+    }
+
+    private static EmployeeData receptionistWith(String name, String lastname, String email, String address) {
+        return new EmployeeData(name, lastname, "CC", "77000111", "3001234567", email,
+                address, null, Sex.FEMALE, EmployeePosition.RECEPTIONIST, LocalDate.of(2024, 3, 1),
                 new BigDecimal("1600000"), null, null, null, null, null, null, null, null, null);
     }
 
